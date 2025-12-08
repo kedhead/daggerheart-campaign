@@ -2,6 +2,44 @@
   overflow: hidden;
 }
 
+.character-link-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--hope-color);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.character-sheet-link {
+  margin-bottom: 1.5rem;
+}
+
+.character-sheet-link .btn {
+  width: 100%;
+  justify-content: center;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
+}
+
+.notes-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.notes-section h4 {
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-muted);
+}
+
+.notes-section p {
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
 .character-header {
   display: flex;
   align-items: center;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search } from 'lucide-react';
-import CharacterCard from './CharacterCard';
-import CharacterForm from './CharacterForm';
+import CharacterCardSimple from './CharacterCardSimple';
+import CharacterFormSimple from './CharacterFormSimple';
 import Modal from '../Modal';
 import './CharactersView.css';
 
@@ -76,7 +76,7 @@ export default function CharactersView({ characters, addCharacter, updateCharact
       ) : (
         <div className="characters-grid">
           {filteredCharacters.map(character => (
-            <CharacterCard
+            <CharacterCardSimple
               key={character.id}
               character={character}
               onEdit={() => handleEdit(character)}
@@ -94,9 +94,9 @@ export default function CharactersView({ characters, addCharacter, updateCharact
           setEditingCharacter(null);
         }}
         title={editingCharacter ? 'Edit Character' : 'New Character'}
-        size="large"
+        size="medium"
       >
-        <CharacterForm
+        <CharacterFormSimple
           character={editingCharacter}
           onSave={handleSave}
           onCancel={() => {
