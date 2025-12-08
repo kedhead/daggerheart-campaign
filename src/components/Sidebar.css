@@ -116,10 +116,69 @@
   color: var(--fear-color);
 }
 
+.current-campaign {
+  margin-bottom: 1.5rem;
+}
+
+.campaign-switcher {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.campaign-switcher:hover {
+  border-color: var(--hope-color);
+  background: rgba(234, 179, 8, 0.1);
+}
+
+.campaign-name {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1.5rem;
+}
+
+.logout-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: white;
+}
+
 .sidebar-footer {
   margin-top: auto;
   padding-top: 2rem;
   border-top: 1px solid var(--border);
+}
+
+.powered-by {
   font-size: 0.85rem;
   color: var(--text-muted);
   text-align: center;
