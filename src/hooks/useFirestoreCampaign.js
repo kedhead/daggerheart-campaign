@@ -23,6 +23,7 @@ export function useFirestoreCampaign(campaignId) {
   const [timelineEvents, setTimelineEvents] = useState([]);
   const [locations, setLocations] = useState([]);
   const [encounters, setEncounters] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Base path for shared campaign
@@ -202,6 +203,24 @@ export function useFirestoreCampaign(campaignId) {
           ...doc.data()
         }));
         setEncounters(data);
+      }
+    );
+
+    return unsubscribe;
+  }, [basePath]);
+
+  // Subscribe to Notes
+  useEffect(() => {
+    if (!basePath) return;
+
+    const unsubscribe = onSnapshot(
+      collection(db, `${basePath}/notes`),
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setNotes(data);
       }
     );
 
@@ -390,6 +409,32 @@ export function useFirestoreCampaign(campaignId) {
     await deleteDoc(doc(db, `${basePath}/encounters`, id));
   };
 
+  // Note methods
+  const addNote = async (noteData) => {
+    if (!basePath) return;
+    const docRef = await addDoc(collection(db, `${basePath}/notes`), {
+      ...noteData,
+      createdBy: currentUser.uid,
+      createdByName: currentUser.displayName || currentUser.email,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { id: docRef.id, ...noteData };
+  };
+
+  const updateNote = async (id, updates) => {
+    if (!basePath) return;
+    await updateDoc(doc(db, `${basePath}/notes`, id), {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const deleteNote = async (id) => {
+    if (!basePath) return;
+    await deleteDoc(doc(db, `${basePath}/notes`, id));
+  };
+
   return {
     campaign,
     updateCampaign,
@@ -421,6 +466,10 @@ export function useFirestoreCampaign(campaignId) {
     addEncounter,
     updateEncounter,
     deleteEncounter,
+    notes,
+    addNote,
+    updateNote,
+    deleteNote,
     loading
   };
 }

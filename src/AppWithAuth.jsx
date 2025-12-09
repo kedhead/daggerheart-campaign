@@ -15,6 +15,7 @@ import NPCsView from './components/NPCs/NPCsView';
 import TimelineView from './components/Timeline/TimelineView';
 import LocationsView from './components/Locations/LocationsView';
 import EncountersView from './components/Encounters/EncountersView';
+import NotesView from './components/Notes/NotesView';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
 import './App.css';
@@ -78,6 +79,10 @@ function CampaignApp() {
     addEncounter,
     updateEncounter,
     deleteEncounter,
+    notes,
+    addNote,
+    updateNote,
+    deleteNote,
     loading
   } = useFirestoreCampaign(currentCampaignId);
 
@@ -203,6 +208,17 @@ function CampaignApp() {
             addEncounter={addEncounter}
             updateEncounter={updateEncounter}
             deleteEncounter={deleteEncounter}
+            isDM={isDM}
+          />
+        );
+      case 'notes':
+        return (
+          <NotesView
+            campaign={campaign}
+            addNote={addNote}
+            updateNote={updateNote}
+            deleteNote={deleteNote}
+            currentUserId={currentUser.uid}
             isDM={isDM}
           />
         );

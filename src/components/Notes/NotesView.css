@@ -1,0 +1,141 @@
+.notes-view {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.notes-controls {
+  margin-bottom: 2rem;
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Note Card */
+.note-card {
+  overflow: hidden;
+}
+
+.note-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.note-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-info h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.note-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.category-badge {
+  display: inline-flex;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.category-quest {
+  background: rgba(168, 85, 247, 0.1);
+  color: #a855f7;
+  border: 1px solid #a855f7;
+}
+
+.category-npc {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid #3b82f6;
+}
+
+.category-location {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid #10b981;
+}
+
+.category-combat {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.category-other {
+  background: rgba(156, 163, 175, 0.1);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.note-date,
+.note-author {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.note-details {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  margin-top: 1.5rem;
+  animation: slideIn 0.3s ease;
+}
+
+.note-content {
+  margin-bottom: 1.5rem;
+}
+
+.note-content p {
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.note-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.note-actions .btn {
+  flex: 1;
+}
+
+/* Note Form */
+.note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.empty-subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
