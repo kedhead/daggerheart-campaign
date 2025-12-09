@@ -79,6 +79,17 @@
 
 .reference-item {
   padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.reference-item.clickable {
+  cursor: pointer;
+}
+
+.reference-item.clickable:hover {
+  transform: translateY(-2px);
+  border-color: var(--hope-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .reference-item h4 {
@@ -96,4 +107,43 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.badge.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.badge.clickable:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.reference-modal-content {
+  padding: 1rem 0;
+}
+
+.modal-description {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+}
+
+.modal-section {
+  margin-top: 1.5rem;
+}
+
+.modal-section h4 {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.modal-section p {
+  line-height: 1.6;
+  color: var(--text-primary);
 }
