@@ -65,7 +65,7 @@ function CampaignApp() {
   const isDM = campaign?.dmId === currentUser?.uid ||
                (campaign && !campaign.dmId && campaign.createdBy === currentUser?.uid) ||
                (campaign && !campaign.dmId); // If no dmId at all, assume DM for backwards compatibility
-  const userRole = campaign?.members?.[currentUser?.uid]?.role || 'dm'; // Default to dm for legacy campaigns
+  const campaignRole = campaign?.members?.[currentUser?.uid]?.role || 'dm'; // Default to dm for legacy campaigns
 
   const handleSelectCampaign = (campaignId) => {
     setCurrentCampaignId(campaignId);
@@ -162,7 +162,7 @@ function CampaignApp() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         isDM={isDM}
-        userRole={userRole}
+        userRole={campaignRole}
         currentCampaign={campaign}
         onSwitchCampaign={() => setCurrentCampaignId(null)}
       />
