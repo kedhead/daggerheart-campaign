@@ -91,6 +91,7 @@ export default function Signup({ onToggleForm }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
+              autoComplete="email"
               required
               disabled={loading}
             />
@@ -106,6 +107,7 @@ export default function Signup({ onToggleForm }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete="new-password"
               required
               minLength="6"
               disabled={loading}
@@ -122,6 +124,7 @@ export default function Signup({ onToggleForm }) {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete="new-password"
               required
               minLength="6"
               disabled={loading}

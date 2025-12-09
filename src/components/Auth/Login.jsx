@@ -68,6 +68,7 @@ export default function Login({ onToggleForm, onForgotPassword }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
+              autoComplete="email"
               required
               disabled={loading}
             />
@@ -83,6 +84,7 @@ export default function Login({ onToggleForm, onForgotPassword }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete="current-password"
               required
               disabled={loading}
             />
