@@ -9,10 +9,17 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
     <div className="character-card character-card-simple card">
       <div className="character-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="character-avatar">
-          {character.name.charAt(0)}
+          {character.avatarUrl ? (
+            <img src={character.avatarUrl} alt={character.name} />
+          ) : (
+            <span>{character.name.charAt(0)}</span>
+          )}
         </div>
         <div className="character-info">
           <h3>{character.name}</h3>
+          {character.playerName && (
+            <p className="player-name">Played by {character.playerName}</p>
+          )}
           <p className="character-link-status">
             <ExternalLink size={14} />
             Linked to Demiplane

@@ -5,17 +5,54 @@ import './CharacterForm.css';
 export default function CharacterFormSimple({ character, onSave, onCancel, isDM }) {
   const [formData, setFormData] = useState(character || {
     name: '',
+    playerName: '',
+    avatarUrl: '',
     demiplaneLink: '',
     playerNotes: '',
     backstory: '',
     dmNotes: ''
   });
 
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
   const handleChange = (field, value) => {
     setFormData({
       ...formData,
       [field]: value
     });
+  };
+
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size (max 1MB for avatars)
+      if (file.size > 1 * 1024 * 1024) {
+        alert('Avatar size must be less than 1MB');
+        return;
+      }
+
+      // Check if it's an image
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file');
+        return;
+      }
+
+      setUploadingAvatar(true);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setFormData({
+          ...formData,
+          avatarUrl: e.target.result
+        });
+        setUploadingAvatar(false);
+      };
+      reader.onerror = () => {
+        alert('Failed to upload avatar');
+        setUploadingAvatar(false);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = (e) => {
@@ -25,6 +62,41 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM 
 
   return (
     <form className="character-form character-form-simple" onSubmit={handleSubmit}>
+      {/* Avatar Section */}
+      <div className="avatar-section">
+        <div className="avatar-preview">
+          {formData.avatarUrl ? (
+            <img src={formData.avatarUrl} alt="Character avatar" />
+          ) : (
+            <div className="avatar-placeholder">
+              <span>No Avatar</span>
+            </div>
+          )}
+        </div>
+        <div className="avatar-upload">
+          <label className="btn btn-secondary">
+            {uploadingAvatar ? 'Uploading...' : 'Upload Avatar'}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              disabled={uploadingAvatar}
+              style={{ display: 'none' }}
+            />
+          </label>
+          {formData.avatarUrl && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => handleChange('avatarUrl', '')}
+            >
+              Remove
+            </button>
+          )}
+          <small className="form-hint">Max 1MB, square images work best</small>
+        </div>
+      </div>
+
       <div className="input-group">
         <label>Character Name *</label>
         <input
@@ -33,6 +105,16 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM 
           onChange={(e) => handleChange('name', e.target.value)}
           placeholder="e.g., Eldrin Shadowstep"
           required
+        />
+      </div>
+
+      <div className="input-group">
+        <label>Player Name</label>
+        <input
+          type="text"
+          value={formData.playerName}
+          onChange={(e) => handleChange('playerName', e.target.value)}
+          placeholder="Your real name"
         />
       </div>
 
