@@ -4,6 +4,13 @@
   gap: 1.5rem;
 }
 
+.form-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  display: block;
+}
+
 .highlights-form-section label {
   display: block;
   font-weight: 500;

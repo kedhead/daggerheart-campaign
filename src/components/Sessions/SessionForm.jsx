@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, X } from 'lucide-react';
+import { Save, X, Link as LinkIcon } from 'lucide-react';
 import './SessionForm.css';
 
 export default function SessionForm({ session, onSave, onCancel, isDM }) {
@@ -8,7 +8,10 @@ export default function SessionForm({ session, onSave, onCancel, isDM }) {
     date: new Date().toISOString().split('T')[0],
     summary: '',
     highlights: [],
-    dmNotes: ''
+    dmNotes: '',
+    encounterLinks: '',
+    status: 'completed',
+    isPlanned: false
   });
 
   const [highlightInput, setHighlightInput] = useState('');
@@ -65,14 +68,44 @@ export default function SessionForm({ session, onSave, onCancel, isDM }) {
         />
       </div>
 
+      {isDM && (
+        <div className="input-group">
+          <label>Status</label>
+          <select
+            value={formData.status}
+            onChange={(e) => handleChange('status', e.target.value)}
+          >
+            <option value="planned">Planned (Future Session)</option>
+            <option value="in-progress">In Progress</option>
+            <option value="completed">Completed (Session Log)</option>
+          </select>
+        </div>
+      )}
+
+      {isDM && (
+        <div className="input-group">
+          <label>
+            <LinkIcon size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
+            Encounter Links (DM Only)
+          </label>
+          <input
+            type="text"
+            value={formData.encounterLinks}
+            onChange={(e) => handleChange('encounterLinks', e.target.value)}
+            placeholder="https://freshcutgrass.app/encounter/..."
+          />
+          <small className="form-hint">Paste FreshCutGrass encounter link(s), separate multiple with commas</small>
+        </div>
+      )}
+
       <div className="input-group">
-        <label>Summary *</label>
+        <label>Summary {formData.status === 'planned' ? '' : '*'}</label>
         <textarea
           value={formData.summary}
           onChange={(e) => handleChange('summary', e.target.value)}
           rows="6"
-          placeholder="What happened in this session?"
-          required
+          placeholder={formData.status === 'planned' ? 'What do you plan for this session?' : 'What happened in this session?'}
+          required={formData.status !== 'planned'}
         />
       </div>
 
