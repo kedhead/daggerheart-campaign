@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './components/Auth/AuthPage';
 import CampaignSelector from './components/Campaigns/CampaignSelector';
@@ -10,10 +10,20 @@ import LoreView from './components/Lore/LoreView';
 import SessionsView from './components/Sessions/SessionsView';
 import ToolsView from './components/Tools/ToolsView';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
+import { usePendingInvites } from './hooks/usePendingInvites';
 import './App.css';
 
 function CampaignApp() {
   const { currentUser } = useAuth();
+  const { checking, joinedCampaigns } = usePendingInvites();
+
+  // Show notification when user joins campaigns
+  useEffect(() => {
+    if (joinedCampaigns.length > 0) {
+      const names = joinedCampaigns.map(c => c.name).join(', ');
+      alert(`Welcome! You've been added to: ${names}`);
+    }
+  }, [joinedCampaigns]);
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentCampaignId, setCurrentCampaignId] = useState(
     localStorage.getItem('lastCampaignId') || null

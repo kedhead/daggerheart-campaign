@@ -11,37 +11,52 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    // User documents
-    match /users/{userId} {
-      allow read: if isAuthenticated() && getUserId() == userId;
-      allow write: if isAuthenticated() && getUserId() == userId;
+    function isMember(campaignData) {
+      return getUserId() in campaignData.members;
+    }
 
-      // Campaigns - user can manage their own campaigns
-      match /campaigns/{campaignId} {
-        allow read: if isAuthenticated() && getUserId() == userId;
-        allow create: if isAuthenticated() && getUserId() == userId;
-        allow update: if isAuthenticated() && getUserId() == userId;
-        allow delete: if isAuthenticated() && getUserId() == userId;
+    function isDM(campaignData) {
+      return campaignData.dmId == getUserId();
+    }
 
-        // Characters - anyone in the campaign can manage
-        match /characters/{characterId} {
-          allow read: if isAuthenticated() && getUserId() == userId;
-          allow create: if isAuthenticated() && getUserId() == userId;
-          allow update: if isAuthenticated() && getUserId() == userId;
-          allow delete: if isAuthenticated() && getUserId() == userId;
-        }
+    // Shared campaigns collection
+    match /campaigns/{campaignId} {
+      // Anyone can read campaigns they're invited to or members of
+      allow read: if isAuthenticated() && (
+        isMember(resource.data) ||
+        request.auth.token.email.lower() in resource.data.pendingInvites
+      );
 
-        // Lore
-        match /lore/{loreId} {
-          allow read: if isAuthenticated() && getUserId() == userId;
-          allow write: if isAuthenticated() && getUserId() == userId;
-        }
+      // Anyone can create a campaign
+      allow create: if isAuthenticated();
 
-        // Sessions
-        match /sessions/{sessionId} {
-          allow read: if isAuthenticated() && getUserId() == userId;
-          allow write: if isAuthenticated() && getUserId() == userId;
-        }
+      // Members can update (to join), DM has full control
+      allow update: if isAuthenticated() && (
+        isMember(resource.data) ||
+        request.auth.token.email.lower() in resource.data.pendingInvites
+      );
+
+      // Only DM can delete
+      allow delete: if isAuthenticated() && isDM(resource.data);
+
+      // Characters
+      match /characters/{characterId} {
+        allow read: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow create: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow update: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow delete: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+      }
+
+      // Lore
+      match /lore/{loreId} {
+        allow read: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+      }
+
+      // Sessions
+      match /sessions/{sessionId} {
+        allow read: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
       }
     }
   }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, doc, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, arrayRemove, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -17,57 +17,40 @@ export function usePendingInvites() {
       const joined = [];
 
       try {
-        // Search all users for campaigns with pending invites
-        const usersSnapshot = await getDocs(collection(db, 'users'));
+        // Query all campaigns that have this email in pending invites
+        const q = query(
+          collection(db, 'campaigns'),
+          where('pendingInvites', 'array-contains', userEmail)
+        );
 
-        for (const userDoc of usersSnapshot.docs) {
-          const campaignsRef = collection(db, `users/${userDoc.id}/campaigns`);
-          const campaignsSnapshot = await getDocs(campaignsRef);
+        const campaignsSnapshot = await getDocs(q);
 
-          for (const campaignDoc of campaignsSnapshot.docs) {
+        for (const campaignDoc of campaignsSnapshot.docs) {
+          try {
             const campaignData = campaignDoc.data();
-            const pendingInvites = campaignData.pendingInvites || [];
 
-            // Check if current user's email is in pending invites
-            if (pendingInvites.includes(userEmail)) {
-              try {
-                // Add user to campaign members
-                const members = campaignData.members || {};
-                members[currentUser.uid] = {
-                  role: 'player',
-                  email: currentUser.email,
-                  displayName: currentUser.displayName || currentUser.email,
-                  joinedAt: serverTimestamp()
-                };
+            // Add user to campaign members
+            const members = campaignData.members || {};
+            members[currentUser.uid] = {
+              role: 'player',
+              email: currentUser.email,
+              displayName: currentUser.displayName || currentUser.email,
+              joinedAt: serverTimestamp()
+            };
 
-                // Remove from pending invites
-                const updatedInvites = pendingInvites.filter(email => email !== userEmail);
+            // Update campaign: add member and remove from pending invites
+            await updateDoc(doc(db, 'campaigns', campaignDoc.id), {
+              members,
+              pendingInvites: arrayRemove(userEmail),
+              updatedAt: serverTimestamp()
+            });
 
-                // Update campaign
-                await updateDoc(doc(db, `users/${userDoc.id}/campaigns/${campaignDoc.id}`), {
-                  members,
-                  pendingInvites: updatedInvites.length > 0 ? updatedInvites : deleteField(),
-                  updatedAt: serverTimestamp()
-                });
-
-                // Copy campaign to current user's campaigns
-                const userCampaignRef = doc(db, `users/${currentUser.uid}/campaigns/${campaignDoc.id}`);
-                await updateDoc(userCampaignRef, {
-                  ...campaignData,
-                  members,
-                  pendingInvites: updatedInvites.length > 0 ? updatedInvites : deleteField(),
-                  sharedCampaign: true,
-                  originalOwner: userDoc.id
-                });
-
-                joined.push({
-                  id: campaignDoc.id,
-                  name: campaignData.name
-                });
-              } catch (error) {
-                console.error('Error joining campaign:', error);
-              }
-            }
+            joined.push({
+              id: campaignDoc.id,
+              name: campaignData.name
+            });
+          } catch (error) {
+            console.error('Error joining campaign:', error);
           }
         }
 

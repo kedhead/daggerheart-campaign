@@ -25,17 +25,17 @@ export default function CampaignMembers({ campaign, currentUserId }) {
 
     try {
       // Add email to pending invitations
-      const campaignRef = doc(db, `users/${campaign.createdBy}/campaigns/${campaign.id}`);
+      const campaignRef = doc(db, `campaigns/${campaign.id}`);
       await updateDoc(campaignRef, {
         pendingInvites: arrayUnion(inviteEmail.toLowerCase()),
         updatedAt: serverTimestamp()
       });
 
       setInviteEmail('');
-      alert(`Invitation sent to ${inviteEmail}. They can accept it by signing up with this email.`);
+      alert(`${inviteEmail} has been whitelisted. Share the campaign URL with them so they can sign up and join.`);
     } catch (err) {
       console.error('Error inviting player:', err);
-      setError('Failed to send invitation');
+      setError('Failed to add player to whitelist');
     } finally {
       setInviting(false);
     }

@@ -21,10 +21,8 @@ export function useFirestoreCampaign(campaignId) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Base path for current user's campaign
-  const basePath = currentUser && campaignId
-    ? `users/${currentUser.uid}/campaigns/${campaignId}`
-    : null;
+  // Base path for shared campaign
+  const basePath = campaignId ? `campaigns/${campaignId}` : null;
 
   // Subscribe to campaign info
   useEffect(() => {

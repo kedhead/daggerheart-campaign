@@ -6,6 +6,8 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  query,
+  where,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -16,7 +18,7 @@ export function useCampaigns() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Subscribe to user's campaigns
+  // Subscribe to campaigns where user is a member
   useEffect(() => {
     if (!currentUser) {
       setCampaigns([]);
@@ -24,8 +26,14 @@ export function useCampaigns() {
       return;
     }
 
+    // Query campaigns where current user is in the members map
+    const q = query(
+      collection(db, 'campaigns'),
+      where(`members.${currentUser.uid}.role`, 'in', ['dm', 'player'])
+    );
+
     const unsubscribe = onSnapshot(
-      collection(db, `users/${currentUser.uid}/campaigns`),
+      q,
       (snapshot) => {
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -48,7 +56,7 @@ export function useCampaigns() {
     if (!currentUser) return null;
 
     const docRef = await addDoc(
-      collection(db, `users/${currentUser.uid}/campaigns`),
+      collection(db, 'campaigns'),
       {
         name,
         description,
@@ -75,7 +83,7 @@ export function useCampaigns() {
     if (!currentUser) return;
 
     await updateDoc(
-      doc(db, `users/${currentUser.uid}/campaigns`, campaignId),
+      doc(db, 'campaigns', campaignId),
       {
         ...updates,
         updatedAt: serverTimestamp()
@@ -88,7 +96,7 @@ export function useCampaigns() {
     if (!currentUser) return;
 
     await deleteDoc(
-      doc(db, `users/${currentUser.uid}/campaigns`, campaignId)
+      doc(db, 'campaigns', campaignId)
     );
   };
 
