@@ -83,11 +83,11 @@
   left: 1rem;
   color: var(--text-muted);
   pointer-events: none;
-  z-index: 1;
+  flex-shrink: 0;
 }
 
 .input-with-icon input {
-  padding-left: 3rem;
+  padding-left: 3.25rem !important;
   width: 100%;
 }
 
