@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, X, Mail, Shield, User } from 'lucide-react';
+import { UserPlus, X, Mail, Shield, User, ChevronDown } from 'lucide-react';
 import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import './CampaignMembers.css';
@@ -11,6 +11,37 @@ export default function CampaignMembers({ campaign, currentUserId }) {
 
   const isDM = campaign.dmId === currentUserId;
   const members = campaign.members || {};
+
+  const handleChangeRole = async (uid, newRole) => {
+    if (!isDM) {
+      alert('Only the DM can change member roles');
+      return;
+    }
+
+    if (uid === campaign.dmId) {
+      alert('Cannot change the role of the campaign creator');
+      return;
+    }
+
+    try {
+      const updatedMembers = { ...members };
+      updatedMembers[uid] = {
+        ...updatedMembers[uid],
+        role: newRole
+      };
+
+      const campaignRef = doc(db, `campaigns/${campaign.id}`);
+      await updateDoc(campaignRef, {
+        members: updatedMembers,
+        updatedAt: serverTimestamp()
+      });
+
+      alert(`Member role updated to ${newRole === 'dm' ? 'Co-DM' : 'Player'}`);
+    } catch (err) {
+      console.error('Error changing role:', err);
+      alert('Failed to change member role');
+    }
+  };
 
   const handleInvite = async (e) => {
     e.preventDefault();
@@ -55,9 +86,21 @@ export default function CampaignMembers({ campaign, currentUserId }) {
               <span className="member-name">{member.displayName}</span>
               <span className="member-email">{member.email}</span>
             </div>
-            <span className={`member-role ${member.role}`}>
-              {member.role === 'dm' ? 'Dungeon Master' : 'Player'}
-            </span>
+            <div className="member-actions">
+              <span className={`member-role ${member.role}`}>
+                {member.role === 'dm' ? (uid === campaign.dmId ? 'Campaign Creator' : 'Co-DM') : 'Player'}
+              </span>
+              {isDM && uid !== campaign.dmId && (
+                <select
+                  className="role-select"
+                  value={member.role}
+                  onChange={(e) => handleChangeRole(uid, e.target.value)}
+                >
+                  <option value="player">Player</option>
+                  <option value="dm">Co-DM</option>
+                </select>
+              )}
+            </div>
           </div>
         ))}
       </div>
