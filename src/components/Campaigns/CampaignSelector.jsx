@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Plus, FolderOpen, Trash2, Edit3 } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, Edit3, Search } from 'lucide-react';
 import { useCampaigns } from '../../hooks/useCampaigns';
+import CampaignBrowser from './CampaignBrowser';
 import Modal from '../Modal';
 import './CampaignSelector.css';
 
 export default function CampaignSelector({ currentCampaignId, onSelectCampaign, userRole }) {
   const { campaigns, loading, createCampaign, deleteCampaign } = useCampaigns();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBrowseMode, setIsBrowseMode] = useState(false);
   const [campaignName, setCampaignName] = useState('');
   const [campaignDescription, setCampaignDescription] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const isDM = userRole === 'dm';
@@ -18,10 +21,11 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
     setCreating(true);
 
     try {
-      const newCampaignId = await createCampaign(campaignName, campaignDescription);
+      const newCampaignId = await createCampaign(campaignName, campaignDescription, isPublic);
       setIsModalOpen(false);
       setCampaignName('');
       setCampaignDescription('');
+      setIsPublic(false);
       if (newCampaignId) {
         onSelectCampaign(newCampaignId);
       }
@@ -49,6 +53,11 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
       }
     }
   };
+
+  // Show browser if in browse mode
+  if (isBrowseMode) {
+    return <CampaignBrowser onClose={() => setIsBrowseMode(false)} />;
+  }
 
   if (loading) {
     return (
@@ -79,9 +88,15 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
           <>
             <p>You haven't joined any campaigns yet</p>
             <p className="empty-state-help">
-              Ask your Dungeon Master to invite you to their campaign.
-              They'll need to add your email address to their campaign's whitelist.
+              Browse public campaigns to request to join, or ask a DM to invite you directly.
             </p>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setIsBrowseMode(true)}
+            >
+              <Search size={20} />
+              Browse Campaigns
+            </button>
           </>
         )}
 
@@ -115,6 +130,21 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
               />
             </div>
 
+            <div className="input-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  disabled={creating}
+                />
+                <span>Allow players to request to join this campaign</span>
+              </label>
+              <small className="form-hint">
+                If enabled, your campaign will be visible in the campaign browser and players can request to join. You'll approve all requests.
+              </small>
+            </div>
+
             <div className="form-actions">
               <button
                 type="button"
@@ -142,15 +172,24 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
     <div className="campaign-selector">
       <div className="campaign-selector-header">
         <h2>My Campaigns</h2>
-        {isDM && (
+        <div className="header-actions">
           <button
-            className="btn btn-primary btn-sm"
-            onClick={() => setIsModalOpen(true)}
+            className="btn btn-secondary btn-sm"
+            onClick={() => setIsBrowseMode(true)}
           >
-            <Plus size={16} />
-            New Campaign
+            <Search size={16} />
+            Browse
           </button>
-        )}
+          {isDM && (
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Plus size={16} />
+              New Campaign
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="campaigns-grid">
@@ -207,6 +246,21 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
               rows="4"
               disabled={creating}
             />
+          </div>
+
+          <div className="input-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                disabled={creating}
+              />
+              <span>Allow players to request to join this campaign</span>
+            </label>
+            <small className="form-hint">
+              If enabled, your campaign will be visible in the campaign browser and players can request to join. You'll approve all requests.
+            </small>
           </div>
 
           <div className="form-actions">

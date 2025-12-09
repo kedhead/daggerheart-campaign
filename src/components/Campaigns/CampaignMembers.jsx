@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, X, Mail, Shield, User, ChevronDown } from 'lucide-react';
+import { UserPlus, X, Mail, Shield, User, CheckCircle, XCircle } from 'lucide-react';
 import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import './CampaignMembers.css';
@@ -8,9 +8,11 @@ export default function CampaignMembers({ campaign, currentUserId }) {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState('');
+  const [processingRequest, setProcessingRequest] = useState(null);
 
   const isDM = campaign.dmId === currentUserId;
   const members = campaign.members || {};
+  const joinRequests = campaign.joinRequests || {};
 
   console.log('CampaignMembers Debug:');
   console.log('Current User ID:', currentUserId);
@@ -49,6 +51,75 @@ export default function CampaignMembers({ campaign, currentUserId }) {
     }
   };
 
+  const handleApproveRequest = async (uid, requestData) => {
+    if (!isDM) {
+      alert('Only the DM can approve join requests');
+      return;
+    }
+
+    setProcessingRequest(uid);
+
+    try {
+      const updatedMembers = { ...members };
+      const updatedRequests = { ...joinRequests };
+
+      // Add user to members
+      updatedMembers[uid] = {
+        role: 'player',
+        email: requestData.email,
+        displayName: requestData.displayName,
+        joinedAt: serverTimestamp()
+      };
+
+      // Remove from join requests
+      delete updatedRequests[uid];
+
+      const campaignRef = doc(db, `campaigns/${campaign.id}`);
+      await updateDoc(campaignRef, {
+        members: updatedMembers,
+        joinRequests: updatedRequests,
+        updatedAt: serverTimestamp()
+      });
+
+      alert(`${requestData.displayName} has been added to the campaign!`);
+    } catch (err) {
+      console.error('Error approving request:', err);
+      alert('Failed to approve join request');
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
+  const handleDenyRequest = async (uid, requestData) => {
+    if (!isDM) {
+      alert('Only the DM can deny join requests');
+      return;
+    }
+
+    setProcessingRequest(uid);
+
+    try {
+      const updatedRequests = { ...joinRequests };
+      updatedRequests[uid] = {
+        ...requestData,
+        status: 'denied'
+      };
+
+      const campaignRef = doc(db, `campaigns/${campaign.id}`);
+      await updateDoc(campaignRef, {
+        joinRequests: updatedRequests,
+        updatedAt: serverTimestamp()
+      });
+
+      alert(`Join request from ${requestData.displayName} has been declined.`);
+    } catch (err) {
+      console.error('Error denying request:', err);
+      alert('Failed to deny join request');
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
   const handleInvite = async (e) => {
     e.preventDefault();
 
@@ -78,9 +149,50 @@ export default function CampaignMembers({ campaign, currentUserId }) {
     }
   };
 
+  const pendingRequests = Object.entries(joinRequests).filter(
+    ([_, request]) => request.status === 'pending'
+  );
+
   return (
     <div className="campaign-members">
       <h3>Campaign Members</h3>
+
+      {isDM && pendingRequests.length > 0 && (
+        <div className="join-requests-section">
+          <h4>Join Requests ({pendingRequests.length})</h4>
+          <div className="join-requests-list">
+            {pendingRequests.map(([uid, request]) => (
+              <div key={uid} className="join-request-item">
+                <div className="request-info">
+                  <User size={20} />
+                  <div>
+                    <span className="request-name">{request.displayName}</span>
+                    <span className="request-email">{request.email}</span>
+                  </div>
+                </div>
+                <div className="request-actions">
+                  <button
+                    className="btn btn-success btn-sm"
+                    onClick={() => handleApproveRequest(uid, request)}
+                    disabled={processingRequest === uid}
+                  >
+                    <CheckCircle size={16} />
+                    Approve
+                  </button>
+                  <button
+                    className="btn btn-danger btn-sm"
+                    onClick={() => handleDenyRequest(uid, request)}
+                    disabled={processingRequest === uid}
+                  >
+                    <XCircle size={16} />
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="members-list">
         {Object.entries(members).map(([uid, member]) => (

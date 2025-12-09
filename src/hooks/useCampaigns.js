@@ -52,7 +52,7 @@ export function useCampaigns() {
   }, [currentUser]);
 
   // Create new campaign
-  const createCampaign = async (name, description = '') => {
+  const createCampaign = async (name, description = '', isPublic = false) => {
     if (!currentUser) return null;
 
     const docRef = await addDoc(
@@ -62,6 +62,8 @@ export function useCampaigns() {
         description,
         createdBy: currentUser.uid,
         dmId: currentUser.uid, // Creator is always the DM
+        isPublic: isPublic,
+        joinRequests: {}, // Store pending join requests
         members: {
           [currentUser.uid]: {
             role: 'dm',
