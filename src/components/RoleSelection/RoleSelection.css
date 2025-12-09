@@ -94,11 +94,20 @@
   font-size: 1.5rem;
   margin-bottom: 1rem;
   font-family: 'Cinzel', serif;
+  color: var(--text-primary);
 }
 
 .role-option p {
   color: var(--text-secondary);
   line-height: 1.6;
+}
+
+.role-option.selected h3 {
+  color: var(--text-primary);
+}
+
+.role-option.selected p {
+  color: var(--text-primary);
 }
 
 .btn-large {

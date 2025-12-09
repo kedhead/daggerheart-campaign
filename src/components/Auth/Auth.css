@@ -80,13 +80,15 @@
 
 .input-with-icon svg {
   position: absolute;
-  left: 0.875rem;
+  left: 1rem;
   color: var(--text-muted);
   pointer-events: none;
+  z-index: 1;
 }
 
 .input-with-icon input {
-  padding-left: 2.75rem;
+  padding-left: 3rem;
+  width: 100%;
 }
 
 .auth-form form {
