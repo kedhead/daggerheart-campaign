@@ -8,11 +8,11 @@ import PromptGenerator from '../../generators/PromptGenerator';
 import DirectAPIGenerator from '../../generators/DirectAPIGenerator';
 import { useAPIKey } from '../../../../hooks/useAPIKey';
 
-export default function PitchStep({ value, onChange, campaign }) {
+export default function PitchStep({ value, onChange, campaign, userId, hasAPIKey }) {
   const [showGenerator, setShowGenerator] = useState(false);
   const [mode, setMode] = useState('template');
   const { generating, result, error, generatedPrompt, generateFromTemplate, generatePrompt, parsePastedResponse, generateWithAPI, clearGeneration } = useAIGeneration();
-  const { keys, hasKey } = useAPIKey(campaign?.createdBy);
+  const { keys, hasKey } = useAPIKey(userId);
 
   const handleGenerate = async () => {
     try {
