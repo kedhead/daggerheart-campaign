@@ -15,6 +15,15 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
+  // DIAGNOSTIC: Temporarily accept all methods
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      diagnostic: 'Function is reachable!',
+      method: req.method,
+      note: 'This function requires POST with JSON body'
+    });
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
