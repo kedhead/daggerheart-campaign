@@ -1,0 +1,120 @@
+/* Wizard Progress Styles */
+
+.wizard-progress {
+  margin-bottom: 2rem;
+}
+
+.progress-steps {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: var(--card-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 80px;
+  flex: 1;
+}
+
+.progress-step:hover:not(:disabled) {
+  border-color: var(--hope-color);
+  background: var(--card-hover-bg);
+}
+
+.progress-step.current {
+  border-color: var(--hope-color);
+  background: var(--hope-color-10);
+}
+
+.progress-step.completed {
+  border-color: var(--success-color);
+  background: var(--success-color-10);
+}
+
+.progress-step:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.step-number {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.progress-step.current .step-number {
+  border-color: var(--hope-color);
+  background: var(--hope-color);
+  color: white;
+}
+
+.progress-step.completed .step-number {
+  border-color: var(--success-color);
+  background: var(--success-color);
+  color: white;
+}
+
+.step-name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.progress-step.current .step-name {
+  color: var(--hope-color);
+  font-weight: 600;
+}
+
+.progress-step.completed .step-name {
+  color: var(--success-color);
+}
+
+.progress-bar {
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--hope-color), var(--success-color));
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .progress-steps {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
+  }
+
+  .progress-step {
+    min-width: 60px;
+    flex: 0 0 auto;
+  }
+
+  .step-name {
+    display: none;
+  }
+}

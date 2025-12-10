@@ -11,7 +11,10 @@
       "Bash(git push:*)",
       "Bash(npm install:*)",
       "Bash(npm run deploy:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebFetch(domain:www.scribd.com)",
+      "Bash(dir \"K:\\AI-Projects\\Daggerheart\\src\" /s /b)",
+      "Bash(npm run dev)"
     ],
     "deny": [],
     "ask": []

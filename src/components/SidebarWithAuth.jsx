@@ -1,4 +1,4 @@
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote } from 'lucide-react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import './Sidebar.css';
 
@@ -20,6 +20,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
 
   if (isDM) {
     navItems.splice(7, 0, { id: 'encounters', label: 'Encounters', icon: Swords });
+    navItems.push({ id: 'campaignBuilder', label: 'Campaign Builder', icon: Wand2 });
     navItems.push({ id: 'members', label: 'Members', icon: UserCog });
   }
 

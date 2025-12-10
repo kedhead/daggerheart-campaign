@@ -41,6 +41,15 @@
   background: var(--hope-color-10);
 }
 
+.mode-tab.active .mode-label {
+  color: var(--text);
+}
+
+.mode-tab.active .mode-description {
+  color: var(--text);
+  opacity: 0.9;
+}
+
 .mode-tab:disabled {
   opacity: 0.5;
   cursor: not-allowed;

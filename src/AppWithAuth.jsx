@@ -16,6 +16,7 @@ import TimelineView from './components/Timeline/TimelineView';
 import LocationsView from './components/Locations/LocationsView';
 import EncountersView from './components/Encounters/EncountersView';
 import NotesView from './components/Notes/NotesView';
+import CampaignBuilderView from './components/CampaignBuilder/CampaignBuilderView';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
 import './App.css';
@@ -83,6 +84,11 @@ function CampaignApp() {
     addNote,
     updateNote,
     deleteNote,
+    campaignFrame,
+    campaignFrameDraft,
+    saveCampaignFrameDraft,
+    completeCampaignFrame,
+    deleteCampaignFrameDraft,
     loading
   } = useFirestoreCampaign(currentCampaignId);
 
@@ -220,6 +226,18 @@ function CampaignApp() {
             deleteNote={deleteNote}
             currentUserId={currentUser.uid}
             isDM={isDM}
+          />
+        );
+      case 'campaignBuilder':
+        return (
+          <CampaignBuilderView
+            campaign={campaign}
+            campaignFrame={campaignFrame}
+            campaignFrameDraft={campaignFrameDraft}
+            saveCampaignFrameDraft={saveCampaignFrameDraft}
+            completeCampaignFrame={completeCampaignFrame}
+            deleteCampaignFrameDraft={deleteCampaignFrameDraft}
+            onBack={() => setCurrentView('dashboard')}
           />
         );
       default:
