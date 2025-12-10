@@ -14,7 +14,7 @@ export const aiService = {
    * @param {string} model - Model to use (default: claude-3-5-sonnet-20241022)
    * @returns {Promise<string>} Generated text
    */
-  async generateWithClaude(prompt, apiKey, model = 'claude-3-5-sonnet-20241022') {
+  async generateWithClaude(prompt, apiKey, model = 'claude-3-5-sonnet-20240620') {
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',

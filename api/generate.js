@@ -40,7 +40,7 @@ export default async function handler(req, res) {
 
     if (provider === 'anthropic') {
       // Call Anthropic API
-      const apiModel = model || 'claude-3-5-sonnet-20241022';
+      const apiModel = model || 'claude-3-5-sonnet-20240620';
 
       const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
