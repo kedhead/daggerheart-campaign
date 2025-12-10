@@ -17,7 +17,6 @@ export function useAPIKey(userId) {
     provider: 'anthropic' // Default provider
   });
 
-  const [hasKey, setHasKey] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -41,7 +40,6 @@ export function useAPIKey(userId) {
           const decrypted = await decrypt(stored, userId);
           const parsed = JSON.parse(decrypted);
           setKeys(parsed);
-          setHasKey(!!(parsed.anthropic || parsed.openai));
         }
       } catch (err) {
         console.error('Failed to load API keys:', err);
@@ -77,7 +75,6 @@ export function useAPIKey(userId) {
       const encrypted = await encrypt(JSON.stringify(updated), userId);
       localStorage.setItem(STORAGE_KEY, encrypted);
       setKeys(updated);
-      setHasKey(!!(updated.anthropic || updated.openai));
       setError(null);
       return true;
     } catch (err) {
@@ -101,12 +98,10 @@ export function useAPIKey(userId) {
       if (!updated.anthropic && !updated.openai) {
         localStorage.removeItem(STORAGE_KEY);
         setKeys({ anthropic: null, openai: null, provider: 'anthropic' });
-        setHasKey(false);
       } else {
         const encrypted = await encrypt(JSON.stringify(updated), userId);
         localStorage.setItem(STORAGE_KEY, encrypted);
         setKeys(updated);
-        setHasKey(!!(updated.anthropic || updated.openai));
       }
 
       setError(null);
@@ -124,8 +119,20 @@ export function useAPIKey(userId) {
   const clearAllKeys = () => {
     localStorage.removeItem(STORAGE_KEY);
     setKeys({ anthropic: null, openai: null, provider: 'anthropic' });
-    setHasKey(false);
     setError(null);
+  };
+
+  /**
+   * Check if a specific provider has a key configured
+   * @param {string} provider - 'anthropic' or 'openai' (optional)
+   * @returns {boolean} - True if the provider (or any provider) has a key
+   */
+  const hasKey = (provider) => {
+    if (provider) {
+      return !!keys[provider];
+    }
+    // If no provider specified, check if any key exists
+    return !!(keys.anthropic || keys.openai);
   };
 
   /**
