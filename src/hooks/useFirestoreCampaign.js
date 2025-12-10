@@ -4,6 +4,7 @@ import {
   doc,
   addDoc,
   updateDoc,
+  setDoc,
   deleteDoc,
   onSnapshot,
   query,
@@ -24,6 +25,8 @@ export function useFirestoreCampaign(campaignId) {
   const [locations, setLocations] = useState([]);
   const [encounters, setEncounters] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [campaignFrame, setCampaignFrame] = useState(null);
+  const [campaignFrameDraft, setCampaignFrameDraft] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Base path for shared campaign
@@ -221,6 +224,42 @@ export function useFirestoreCampaign(campaignId) {
           ...doc.data()
         }));
         setNotes(data);
+      }
+    );
+
+    return unsubscribe;
+  }, [basePath]);
+
+  // Subscribe to Campaign Frame
+  useEffect(() => {
+    if (!basePath) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, `${basePath}/campaignFrame/main`),
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          setCampaignFrame({ id: docSnapshot.id, ...docSnapshot.data() });
+        } else {
+          setCampaignFrame(null);
+        }
+      }
+    );
+
+    return unsubscribe;
+  }, [basePath]);
+
+  // Subscribe to Campaign Frame Draft
+  useEffect(() => {
+    if (!basePath) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, `${basePath}/campaignFrameDraft/draft`),
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          setCampaignFrameDraft({ id: docSnapshot.id, ...docSnapshot.data() });
+        } else {
+          setCampaignFrameDraft(null);
+        }
       }
     );
 
@@ -435,6 +474,44 @@ export function useFirestoreCampaign(campaignId) {
     await deleteDoc(doc(db, `${basePath}/notes`, id));
   };
 
+  // Campaign Frame methods
+  const saveCampaignFrameDraft = async (draftData) => {
+    if (!basePath) return;
+    await setDoc(doc(db, `${basePath}/campaignFrameDraft`, 'draft'), {
+      ...draftData,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  };
+
+  const completeCampaignFrame = async (frameData) => {
+    if (!basePath) return;
+
+    // Save to main collection
+    await setDoc(doc(db, `${basePath}/campaignFrame`, 'main'), {
+      ...frameData,
+      status: 'completed',
+      completedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // Delete draft
+    try {
+      await deleteDoc(doc(db, `${basePath}/campaignFrameDraft`, 'draft'));
+    } catch (err) {
+      // Draft may not exist, that's okay
+      console.log('No draft to delete');
+    }
+  };
+
+  const deleteCampaignFrameDraft = async () => {
+    if (!basePath) return;
+    try {
+      await deleteDoc(doc(db, `${basePath}/campaignFrameDraft`, 'draft'));
+    } catch (err) {
+      console.log('No draft to delete');
+    }
+  };
+
   return {
     campaign,
     updateCampaign,
@@ -470,6 +547,11 @@ export function useFirestoreCampaign(campaignId) {
     addNote,
     updateNote,
     deleteNote,
+    campaignFrame,
+    campaignFrameDraft,
+    saveCampaignFrameDraft,
+    completeCampaignFrame,
+    deleteCampaignFrameDraft,
     loading
   };
 }

@@ -1,0 +1,170 @@
+import { useState, useEffect } from 'react';
+import { encrypt, decrypt, isEncryptionSupported } from '../utils/encryption';
+
+const STORAGE_KEY = 'dh_ai_api_keys';
+
+/**
+ * Hook for managing API keys with encryption
+ * Stores keys in localStorage, encrypted with user's Firebase UID
+ *
+ * @param {string} userId - Current user's Firebase UID
+ * @returns {object} API key management functions and state
+ */
+export function useAPIKey(userId) {
+  const [keys, setKeys] = useState({
+    anthropic: null,
+    openai: null,
+    provider: 'anthropic' // Default provider
+  });
+
+  const [hasKey, setHasKey] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Load keys from localStorage on mount
+  useEffect(() => {
+    async function loadKeys() {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      if (!isEncryptionSupported()) {
+        setError('Encryption not supported in this browser');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const decrypted = await decrypt(stored, userId);
+          const parsed = JSON.parse(decrypted);
+          setKeys(parsed);
+          setHasKey(!!(parsed.anthropic || parsed.openai));
+        }
+      } catch (err) {
+        console.error('Failed to load API keys:', err);
+        // If decryption fails, clear the stored data
+        localStorage.removeItem(STORAGE_KEY);
+        setError('Failed to load saved API keys');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadKeys();
+  }, [userId]);
+
+  /**
+   * Save an API key for a specific provider
+   * @param {string} provider - 'anthropic' or 'openai'
+   * @param {string} key - The API key to save
+   */
+  const saveKey = async (provider, key) => {
+    if (!userId) {
+      setError('User not logged in');
+      return false;
+    }
+
+    if (!isEncryptionSupported()) {
+      setError('Encryption not supported in this browser');
+      return false;
+    }
+
+    try {
+      const updated = { ...keys, [provider]: key, provider };
+      const encrypted = await encrypt(JSON.stringify(updated), userId);
+      localStorage.setItem(STORAGE_KEY, encrypted);
+      setKeys(updated);
+      setHasKey(!!(updated.anthropic || updated.openai));
+      setError(null);
+      return true;
+    } catch (err) {
+      console.error('Failed to save API key:', err);
+      setError('Failed to save API key');
+      return false;
+    }
+  };
+
+  /**
+   * Remove an API key for a specific provider
+   * @param {string} provider - 'anthropic' or 'openai'
+   */
+  const removeKey = async (provider) => {
+    if (!userId) return false;
+
+    try {
+      const updated = { ...keys, [provider]: null };
+
+      // If both keys are null, remove from localStorage entirely
+      if (!updated.anthropic && !updated.openai) {
+        localStorage.removeItem(STORAGE_KEY);
+        setKeys({ anthropic: null, openai: null, provider: 'anthropic' });
+        setHasKey(false);
+      } else {
+        const encrypted = await encrypt(JSON.stringify(updated), userId);
+        localStorage.setItem(STORAGE_KEY, encrypted);
+        setKeys(updated);
+        setHasKey(!!(updated.anthropic || updated.openai));
+      }
+
+      setError(null);
+      return true;
+    } catch (err) {
+      console.error('Failed to remove API key:', err);
+      setError('Failed to remove API key');
+      return false;
+    }
+  };
+
+  /**
+   * Clear all API keys
+   */
+  const clearAllKeys = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setKeys({ anthropic: null, openai: null, provider: 'anthropic' });
+    setHasKey(false);
+    setError(null);
+  };
+
+  /**
+   * Switch the active provider
+   * @param {string} provider - 'anthropic' or 'openai'
+   */
+  const setProvider = async (provider) => {
+    if (!userId) return false;
+
+    try {
+      const updated = { ...keys, provider };
+      const encrypted = await encrypt(JSON.stringify(updated), userId);
+      localStorage.setItem(STORAGE_KEY, encrypted);
+      setKeys(updated);
+      return true;
+    } catch (err) {
+      console.error('Failed to set provider:', err);
+      return false;
+    }
+  };
+
+  /**
+   * Get the current active API key
+   * @returns {string|null} - The active API key or null
+   */
+  const getActiveKey = () => {
+    return keys[keys.provider] || null;
+  };
+
+  return {
+    keys,
+    hasKey,
+    loading,
+    error,
+    saveKey,
+    removeKey,
+    clearAllKeys,
+    setProvider,
+    getActiveKey,
+    encryptionSupported: isEncryptionSupported()
+  };
+}

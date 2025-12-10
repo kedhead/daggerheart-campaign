@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Search, Swords, ExternalLink } from 'lucide-react';
+import { Plus, Search, Swords, ExternalLink, Wand2 } from 'lucide-react';
 import EncounterCard from './EncounterCard';
 import EncounterForm from './EncounterForm';
 import Modal from '../Modal';
+import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import './EncountersView.css';
 
 export default function EncountersView({ campaign, addEncounter, updateEncounter, deleteEncounter, isDM }) {
@@ -10,6 +11,7 @@ export default function EncountersView({ campaign, addEncounter, updateEncounter
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
+  const [quickGenOpen, setQuickGenOpen] = useState(false);
 
   const encounters = campaign?.encounters || [];
 
@@ -67,10 +69,16 @@ export default function EncountersView({ campaign, addEncounter, updateEncounter
           <p className="view-subtitle">{encounters.length} encounter{encounters.length !== 1 ? 's' : ''} prepared</p>
         </div>
         {isDM && (
-          <button className="btn btn-primary" onClick={handleAdd}>
-            <Plus size={20} />
-            Add Encounter
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn btn-secondary" onClick={() => setQuickGenOpen(true)}>
+              <Wand2 size={20} />
+              Generate with AI
+            </button>
+            <button className="btn btn-primary" onClick={handleAdd}>
+              <Plus size={20} />
+              Add Encounter
+            </button>
+          </div>
         )}
       </div>
 
@@ -191,6 +199,20 @@ export default function EncountersView({ campaign, addEncounter, updateEncounter
           }}
         />
       </Modal>
+
+      {/* Quick Generator Modal */}
+      <QuickGeneratorModal
+        isOpen={quickGenOpen}
+        onClose={() => setQuickGenOpen(false)}
+        type="encounter"
+        campaign={campaign}
+        campaignFrame={campaign?.campaignFrame}
+        existingContent={encounters}
+        onSave={async (encounterData) => {
+          await addEncounter(encounterData);
+          setQuickGenOpen(false);
+        }}
+      />
     </div>
   );
 }

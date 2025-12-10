@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Search, Users, Heart, Skull, Minus } from 'lucide-react';
+import { Plus, Search, Users, Heart, Skull, Minus, Wand2 } from 'lucide-react';
 import NPCCard from './NPCCard';
 import NPCForm from './NPCForm';
 import Modal from '../Modal';
+import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import './NPCsView.css';
 
 export default function NPCsView({ campaign, addNPC, updateNPC, deleteNPC, isDM }) {
@@ -10,6 +11,7 @@ export default function NPCsView({ campaign, addNPC, updateNPC, deleteNPC, isDM 
   const [editingNPC, setEditingNPC] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRelationship, setFilterRelationship] = useState('all');
+  const [quickGenOpen, setQuickGenOpen] = useState(false);
 
   const npcs = campaign?.npcs || [];
 
@@ -66,10 +68,16 @@ export default function NPCsView({ campaign, addNPC, updateNPC, deleteNPC, isDM 
           <p className="view-subtitle">{npcs.length} NPC{npcs.length !== 1 ? 's' : ''} in your campaign</p>
         </div>
         {isDM && (
-          <button className="btn btn-primary" onClick={handleAdd}>
-            <Plus size={20} />
-            Add NPC
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn btn-secondary" onClick={() => setQuickGenOpen(true)}>
+              <Wand2 size={20} />
+              Generate with AI
+            </button>
+            <button className="btn btn-primary" onClick={handleAdd}>
+              <Plus size={20} />
+              Add NPC
+            </button>
+          </div>
         )}
       </div>
 
@@ -168,6 +176,20 @@ export default function NPCsView({ campaign, addNPC, updateNPC, deleteNPC, isDM 
           }}
         />
       </Modal>
+
+      {/* Quick Generator Modal */}
+      <QuickGeneratorModal
+        isOpen={quickGenOpen}
+        onClose={() => setQuickGenOpen(false)}
+        type="npc"
+        campaign={campaign}
+        campaignFrame={campaign?.campaignFrame}
+        existingContent={npcs}
+        onSave={async (npcData) => {
+          await addNPC(npcData);
+          setQuickGenOpen(false);
+        }}
+      />
     </div>
   );
 }

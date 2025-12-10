@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Plus, Search, Map as MapIcon, Upload } from 'lucide-react';
+import { Plus, Search, Map as MapIcon, Upload, Wand2 } from 'lucide-react';
 import LocationCard from './LocationCard';
 import LocationForm from './LocationForm';
 import Modal from '../Modal';
+import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import './LocationsView.css';
 
 export default function LocationsView({ campaign, updateCampaign, addLocation, updateLocation, deleteLocation, isDM }) {
@@ -10,6 +11,7 @@ export default function LocationsView({ campaign, updateCampaign, addLocation, u
   const [editingLocation, setEditingLocation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadingMap, setUploadingMap] = useState(false);
+  const [quickGenOpen, setQuickGenOpen] = useState(false);
 
   const locations = campaign?.locations || [];
   const worldMap = campaign?.worldMap || null;
@@ -89,10 +91,16 @@ export default function LocationsView({ campaign, updateCampaign, addLocation, u
           <p className="view-subtitle">{locations.length} location{locations.length !== 1 ? 's' : ''} in your world</p>
         </div>
         {isDM && (
-          <button className="btn btn-primary" onClick={handleAdd}>
-            <Plus size={20} />
-            Add Location
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn btn-secondary" onClick={() => setQuickGenOpen(true)}>
+              <Wand2 size={20} />
+              Generate with AI
+            </button>
+            <button className="btn btn-primary" onClick={handleAdd}>
+              <Plus size={20} />
+              Add Location
+            </button>
+          </div>
         )}
       </div>
 
@@ -208,6 +216,20 @@ export default function LocationsView({ campaign, updateCampaign, addLocation, u
           }}
         />
       </Modal>
+
+      {/* Quick Generator Modal */}
+      <QuickGeneratorModal
+        isOpen={quickGenOpen}
+        onClose={() => setQuickGenOpen(false)}
+        type="location"
+        campaign={campaign}
+        campaignFrame={campaign?.campaignFrame}
+        existingContent={locations}
+        onSave={async (locationData) => {
+          await addLocation(locationData);
+          setQuickGenOpen(false);
+        }}
+      />
     </div>
   );
 }
