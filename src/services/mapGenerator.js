@@ -167,24 +167,27 @@ Format as JSON:
 
 /**
  * Download an image from a URL and convert to data URL
+ * Uses backend proxy to avoid CORS issues
  * @param {string} imageUrl - URL of the image
  * @returns {Promise<string>} Data URL (base64)
  */
 async function downloadImageAsDataUrl(imageUrl) {
   try {
-    const response = await fetch(imageUrl);
+    const response = await fetch('/api/download-image', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ imageUrl })
+    });
+
     if (!response.ok) {
-      throw new Error(`Failed to download image: ${response.statusText}`);
+      const error = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(error.error || `Failed to download image: ${response.statusText}`);
     }
 
-    const blob = await response.blob();
-
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    const data = await response.json();
+    return data.dataUrl;
   } catch (error) {
     console.error('Error downloading image:', error);
     throw error;
