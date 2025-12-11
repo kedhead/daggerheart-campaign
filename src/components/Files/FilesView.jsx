@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, collection, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Upload, File, Image, Map, Trash2, Download, Eye, X, Wand2, Loader2 } from 'lucide-react';
 import Modal from '../Modal';
@@ -27,9 +27,16 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
   const loadFiles = async () => {
     try {
-      // Files are stored directly in the campaign document
-      const filesData = campaign.files || [];
-      setFiles(filesData.sort((a, b) => new Date(b.timeCreated) - new Date(a.timeCreated)));
+      // Regular files are stored in the campaign document
+      const regularFiles = campaign.files || [];
+
+      // Generated maps are stored in a subcollection
+      const mapsSnapshot = await getDocs(collection(db, `campaigns/${campaign.id}/maps`));
+      const mapFiles = mapsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+      // Combine and sort by creation time
+      const allFiles = [...regularFiles, ...mapFiles];
+      setFiles(allFiles.sort((a, b) => new Date(b.timeCreated) - new Date(a.timeCreated)));
     } catch (error) {
       console.error('Error loading files:', error);
       setFiles([]);
@@ -238,63 +245,16 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         console.log(`  ${key}: ${typeof value} ${Array.isArray(value) ? '(ARRAY!)' : ''}`);
       });
 
-      // Add file to campaign's files array
-      // IMPORTANT: Don't use arrayUnion - it validates the entire existing array
-      // which may contain corrupted data from previous attempts
-      const campaignRef = doc(db, `campaigns/${campaign.id}`);
-      console.log('Reading current files array...');
+      // Save map as a document in a maps subcollection instead of the files array
+      // This avoids Firestore's nested array limitations entirely
+      console.log('Saving map to maps subcollection...');
 
       try {
-        // Get current files and clean any that might have nested arrays
-        const currentFiles = (campaign.files || []).map((file, idx) => {
-          console.log(`Examining existing file ${idx}: ${file.name}`);
-          const cleanedFile = { ...file };
-          let cleanedCount = 0;
-
-          // Check each field and stringify any arrays or objects
-          Object.keys(cleanedFile).forEach(key => {
-            if (Array.isArray(cleanedFile[key])) {
-              console.log(`  ⚠️ Field ${key} is an ARRAY with ${cleanedFile[key].length} items, stringifying`);
-              cleanedFile[key] = JSON.stringify(cleanedFile[key]);
-              cleanedCount++;
-            } else if (typeof cleanedFile[key] === 'object' && cleanedFile[key] !== null) {
-              console.log(`  ⚠️ Field ${key} is an OBJECT, stringifying`);
-              cleanedFile[key] = JSON.stringify(cleanedFile[key]);
-              cleanedCount++;
-            }
-          });
-
-          if (cleanedCount > 0) {
-            console.log(`  ✓ Cleaned ${cleanedCount} fields in file ${idx}`);
-          } else {
-            console.log(`  ✓ File ${idx} is already clean`);
-          }
-          return cleanedFile;
-        });
-
-        const updatedFiles = [...currentFiles, fileData];
-
-        console.log(`Updating files array (${currentFiles.length} -> ${updatedFiles.length} files)`);
-        await updateDoc(campaignRef, {
-          files: updatedFiles,
-          updatedAt: serverTimestamp()
-        });
-        console.log('updateDoc succeeded!');
+        const mapsCollectionRef = collection(db, `campaigns/${campaign.id}/maps`);
+        await addDoc(mapsCollectionRef, fileData);
+        console.log('Map saved successfully to subcollection!');
       } catch (err) {
-        console.error('updateDoc failed:', err);
-        console.error('fileData field summary:');
-        Object.keys(fileData).forEach(key => {
-          const val = fileData[key];
-          if (typeof val === 'string' && val.length > 100) {
-            console.error(`  ${key}: string (${val.length} chars)`);
-          } else if (Array.isArray(val)) {
-            console.error(`  ${key}: ARRAY! (${val.length} items) - THIS IS THE PROBLEM`);
-          } else if (typeof val === 'object' && val !== null) {
-            console.error(`  ${key}: OBJECT! - THIS IS THE PROBLEM`, val);
-          } else {
-            console.error(`  ${key}: ${typeof val} = ${val}`);
-          }
-        });
+        console.error('Failed to save map:', err);
         throw err;
       }
 
