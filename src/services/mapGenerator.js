@@ -35,6 +35,17 @@ Generate a map description with:
 4. Notable geographical features
 5. Scale/size of the world
 
+IMPORTANT - Map Style: Tolkien-esque fantasy cartography
+- Hand-drawn aesthetic like maps from Lord of the Rings and The Hobbit
+- Parchment texture with aged, weathered appearance
+- Elegant flowing calligraphy for location names
+- Mountain ranges drawn as small peaked illustrations
+- Forests shown as clusters of small tree symbols
+- Cities/towns as small building icons or towers
+- Decorative compass rose in medieval style
+- Sea monsters or ships in ocean areas
+- Ornate border with Celtic/medieval patterns
+
 Format as JSON:
 \`\`\`json
 {
@@ -44,8 +55,8 @@ Format as JSON:
   "locationPlacements": [
     {"location": "City Name", "position": "northern coast", "coordinates": [x, y]}
   ],
-  "style": "hand-drawn fantasy map",
-  "dallePrompt": "A comprehensive prompt for DALL-E to generate this map"
+  "style": "Tolkien-esque hand-drawn fantasy map with parchment texture",
+  "dallePrompt": "A Tolkien-style fantasy map with parchment texture, hand-drawn aesthetic resembling maps from Lord of the Rings. Include flowing calligraphy labels, illustrated mountain ranges as small peaks, forests as tree clusters, decorative compass rose, ornate Celtic border, and aged weathered appearance. [ADD YOUR SPECIFIC MAP DETAILS HERE]"
 }
 \`\`\``;
   } else if (mapType === 'regional' && specificLocation) {
@@ -68,6 +79,16 @@ Generate a regional map description showing:
 4. Roads, rivers, or other connections
 5. Scale (roughly 50-100 miles radius)
 
+IMPORTANT - Map Style: Tolkien-esque regional fantasy map
+- Hand-drawn aesthetic like The Shire or Rivendell regional maps
+- Parchment texture with aged appearance
+- Flowing calligraphy for place names
+- Illustrated terrain features (hills, woods, streams)
+- Dotted or dashed lines for roads and paths
+- Small pictographic icons for buildings and landmarks
+- Decorative compass rose
+- Scale bar in medieval style
+
 Format as JSON:
 \`\`\`json
 {
@@ -77,8 +98,8 @@ Format as JSON:
   "locationPlacements": [
     {"location": "Location Name", "position": "relative position", "coordinates": [x, y]}
   ],
-  "style": "hand-drawn regional map",
-  "dallePrompt": "A comprehensive prompt for DALL-E to generate this map"
+  "style": "Tolkien-esque hand-drawn regional map",
+  "dallePrompt": "A Tolkien-style regional fantasy map with parchment texture, hand-drawn aesthetic. Include flowing calligraphy labels, illustrated terrain (hills, forests, rivers), dotted paths and roads, small building icons, decorative compass rose, scale bar, and aged weathered appearance. [ADD YOUR SPECIFIC REGIONAL DETAILS HERE]"
 }
 \`\`\``;
   } else if (mapType === 'local' && specificLocation) {
@@ -96,6 +117,16 @@ Generate a local map description showing:
 4. Points of interest
 5. Scale (walkable city/town map)
 
+IMPORTANT - Map Style: Tolkien-esque town/city map
+- Hand-drawn aesthetic like maps of Minas Tirith or Bree
+- Parchment texture with aged appearance
+- Flowing calligraphy for district and street names
+- Buildings drawn as small 3D isometric structures or top-down floor plans
+- Streets and paths clearly marked
+- Decorative elements (trees, fountains, market stalls)
+- Compass rose and scale bar
+- Key landmarks labeled with elegant script
+
 Format as JSON:
 \`\`\`json
 {
@@ -103,8 +134,46 @@ Format as JSON:
   "districts": ["district names"],
   "landmarks": ["important landmarks"],
   "features": ["streets", "pathways", "points of interest"],
-  "style": "local city map",
-  "dallePrompt": "A comprehensive prompt for DALL-E to generate this map"
+  "style": "Tolkien-esque town/city map",
+  "dallePrompt": "A Tolkien-style town or city map with parchment texture, hand-drawn aesthetic. Show buildings as isometric structures or floor plans, clearly marked streets and pathways, flowing calligraphy labels, decorative elements (trees, fountains), compass rose, scale bar, and aged weathered appearance. [ADD YOUR SPECIFIC TOWN/CITY DETAILS HERE]"
+}
+\`\`\``;
+  } else if (mapType === 'dungeon' && specificLocation) {
+    prompt = `Create a dungeon map for "${specificLocation.name}".
+
+LOCATION DETAILS:
+Type: ${specificLocation.type}
+Description: ${specificLocation.description || 'No description'}
+Notable Features: ${specificLocation.notableFeatures || 'None listed'}
+
+Generate a dungeon map description showing:
+1. Room layout with numbered chambers
+2. Corridors and passages
+3. Entrances and exits
+4. Traps, hazards, or special features
+5. Points of interest (treasure, monsters, puzzles)
+
+IMPORTANT - Map Style: Grid-based battle map for campaign use
+- Square grid overlay (5-foot squares) for tactical combat
+- Top-down view showing exact room dimensions
+- Clearly defined walls (thick black lines)
+- Doors marked with standard D&D symbols
+- Numbered rooms for easy reference
+- Labeled features (stairs, pits, pillars, etc.)
+- Scale indicator showing grid square size
+- Clean, usable design suitable for VTT or print
+- Optional: subtle texture for floor types (stone, dirt, water)
+
+Format as JSON:
+\`\`\`json
+{
+  "description": "Detailed description of the dungeon layout and features",
+  "rooms": ["Room 1: Description", "Room 2: Description"],
+  "connections": ["corridors", "secret passages"],
+  "features": ["traps", "treasure", "encounters"],
+  "gridSize": "5-foot squares",
+  "style": "Grid-based tactical battle map",
+  "dallePrompt": "A campaign-ready dungeon battle map with square grid overlay (5ft squares). Top-down view showing exact room dimensions, thick black walls, D&D-style door symbols, numbered rooms, clearly labeled features (stairs, pillars, traps), scale indicator, clean tactical design suitable for VTT or tabletop use. Optional subtle floor textures. [ADD YOUR SPECIFIC DUNGEON DETAILS HERE]"
 }
 \`\`\``;
   }
@@ -257,6 +326,9 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
       locationPlacements: mapDescription.locationPlacements || [],
       districts: mapDescription.districts || [],
       landmarks: mapDescription.landmarks || [],
+      rooms: mapDescription.rooms || [], // For dungeon maps
+      connections: mapDescription.connections || [], // For dungeon maps
+      gridSize: mapDescription.gridSize || null, // For dungeon maps
       style: mapDescription.style || 'hand-drawn fantasy',
       imageUrl: null,
       createdAt: new Date().toISOString()

@@ -165,7 +165,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
           : `${selectedLocation?.name} Map`
       };
 
-      if (mapType === 'regional' || mapType === 'local') {
+      if (mapType === 'regional' || mapType === 'local' || mapType === 'dungeon') {
         mapContext.specificLocation = selectedLocation;
       }
 
@@ -192,6 +192,9 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         mapType: mapData.type,
         mapRegions: mapData.regions,
         mapFeatures: mapData.features,
+        rooms: mapData.rooms || [], // For dungeon maps
+        connections: mapData.connections || [], // For dungeon maps
+        gridSize: mapData.gridSize || null, // For dungeon maps
         timeCreated: new Date().toISOString(),
         uploadedBy: 'AI Generator',
         isGeneratedMap: true
@@ -306,14 +309,15 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                 disabled={generatingMap}
                 className="form-control"
               >
-                <option value="world">World Map - Overview of entire campaign world</option>
-                <option value="regional">Regional Map - Area around a specific location</option>
-                <option value="local">Local Map - Detailed map of a city/town</option>
+                <option value="world">World Map - Tolkien-esque overview of entire campaign world</option>
+                <option value="regional">Regional Map - Tolkien-esque area around a location</option>
+                <option value="local">Local Map - Tolkien-esque detailed map of a city/town</option>
+                <option value="dungeon">Dungeon Map - Grid-based tactical battle map</option>
               </select>
             </div>
 
-            {/* Location Selection for Regional/Local */}
-            {(mapType === 'regional' || mapType === 'local') && (
+            {/* Location Selection for Regional/Local/Dungeon */}
+            {(mapType === 'regional' || mapType === 'local' || mapType === 'dungeon') && (
               <div className="form-group">
                 <label>Select Location</label>
                 <select
@@ -353,7 +357,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
             <button
               className="btn btn-primary"
               onClick={handleGenerateMap}
-              disabled={generatingMap || !hasKey() || ((mapType === 'regional' || mapType === 'local') && !selectedLocation)}
+              disabled={generatingMap || !hasKey() || ((mapType === 'regional' || mapType === 'local' || mapType === 'dungeon') && !selectedLocation)}
               style={{ alignSelf: 'flex-start' }}
             >
               {generatingMap ? (
@@ -548,6 +552,35 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                     <span key={idx} className="tag">{feature}</span>
                   ))}
                 </div>
+              </>
+            )}
+
+            {viewingMap.rooms && viewingMap.rooms.length > 0 && (
+              <>
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Rooms</h3>
+                <ul style={{ lineHeight: '1.8', color: 'var(--text-secondary)' }}>
+                  {viewingMap.rooms.map((room, idx) => (
+                    <li key={idx}>{room}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {viewingMap.connections && viewingMap.connections.length > 0 && (
+              <>
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Connections</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {viewingMap.connections.map((connection, idx) => (
+                    <span key={idx} className="tag">{connection}</span>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {viewingMap.gridSize && (
+              <>
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Grid Size</h3>
+                <p style={{ color: 'var(--text-secondary)' }}>{viewingMap.gridSize}</p>
               </>
             )}
           </div>
