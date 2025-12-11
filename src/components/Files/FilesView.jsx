@@ -541,15 +541,16 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
           }
         };
 
-        let locationPlacements = safeParse(viewingMap.locationPlacements, 'locationPlacements');
-        let climateZones = safeParse(viewingMap.climateZones, 'climateZones');
-        let geographicalFeatures = safeParse(viewingMap.geographicalFeatures, 'geographicalFeatures');
+        // Parse all fields - they all have "map" prefix when saved
+        let locationPlacements = safeParse(viewingMap.mapLocationPlacements, 'locationPlacements');
+        let climateZones = safeParse(viewingMap.mapClimateZones, 'climateZones');
+        let geographicalFeatures = safeParse(viewingMap.mapGeographicalFeatures, 'geographicalFeatures');
         let mapRegions = safeParse(viewingMap.mapRegions, 'mapRegions');
         let mapFeatures = safeParse(viewingMap.mapFeatures, 'mapFeatures');
-        let districts = safeParse(viewingMap.districts, 'districts');
-        let landmarks = safeParse(viewingMap.landmarks, 'landmarks');
-        let rooms = safeParse(viewingMap.rooms, 'rooms');
-        let connections = safeParse(viewingMap.connections, 'connections');
+        let districts = safeParse(viewingMap.mapDistricts, 'districts');
+        let landmarks = safeParse(viewingMap.mapLandmarks, 'landmarks');
+        let rooms = safeParse(viewingMap.mapRooms, 'rooms');
+        let connections = safeParse(viewingMap.mapConnections, 'connections');
 
         return (
           <Modal
