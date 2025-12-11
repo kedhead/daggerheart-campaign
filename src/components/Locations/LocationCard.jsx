@@ -72,11 +72,13 @@ export default function LocationCard({ location, onEdit, onDelete, onGenerateMap
           )}
 
           {/* Location Map Section */}
-          {location.mapUrl && (
+          {(location.mapUrl || location.mapDescription) && (
             <div className="location-section">
               <h4>Location Map</h4>
               <div className="location-map-container">
-                <img src={location.mapUrl} alt={`Map of ${location.name}`} className="location-map-image" />
+                {location.mapUrl && (
+                  <img src={location.mapUrl} alt={`Map of ${location.name}`} className="location-map-image" />
+                )}
                 {location.mapDescription && (
                   <p className="map-description">{location.mapDescription}</p>
                 )}

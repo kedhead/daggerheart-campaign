@@ -121,10 +121,36 @@ Format as JSON with description, districts, landmarks, and dallePrompt.`;
 }
 
 /**
+ * Download an image from a URL and convert to data URL
+ * @param {string} imageUrl - URL of the image
+ * @returns {Promise<string>} Data URL (base64)
+ */
+async function downloadImageAsDataUrl(imageUrl) {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error('Error downloading image:', error);
+    throw error;
+  }
+}
+
+/**
  * Generate a map image using DALL-E
  * @param {string} prompt - DALL-E prompt
  * @param {string} apiKey - OpenAI API key
- * @returns {Promise<string>} Image URL
+ * @returns {Promise<string>} Image data URL (base64)
  */
 async function generateMapImage(prompt, apiKey) {
   const response = await fetch('https://api.openai.com/v1/images/generations', {
@@ -149,7 +175,14 @@ async function generateMapImage(prompt, apiKey) {
   }
 
   const data = await response.json();
-  return data.data[0].url;
+  const imageUrl = data.data[0].url;
+
+  // Download and convert to data URL so it doesn't expire
+  console.log('Downloading DALL-E image to convert to data URL...');
+  const dataUrl = await downloadImageAsDataUrl(imageUrl);
+  console.log('Image converted to data URL');
+
+  return dataUrl;
 }
 
 /**
