@@ -246,15 +246,29 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
       try {
         // Get current files and clean any that might have nested arrays
-        const currentFiles = (campaign.files || []).map(file => {
+        const currentFiles = (campaign.files || []).map((file, idx) => {
+          console.log(`Examining existing file ${idx}: ${file.name}`);
           const cleanedFile = { ...file };
-          // Check each field and stringify any arrays
+          let cleanedCount = 0;
+
+          // Check each field and stringify any arrays or objects
           Object.keys(cleanedFile).forEach(key => {
             if (Array.isArray(cleanedFile[key])) {
-              console.log(`Cleaning existing file: ${file.name}, field ${key} is an array, stringifying`);
+              console.log(`  ⚠️ Field ${key} is an ARRAY with ${cleanedFile[key].length} items, stringifying`);
               cleanedFile[key] = JSON.stringify(cleanedFile[key]);
+              cleanedCount++;
+            } else if (typeof cleanedFile[key] === 'object' && cleanedFile[key] !== null) {
+              console.log(`  ⚠️ Field ${key} is an OBJECT, stringifying`);
+              cleanedFile[key] = JSON.stringify(cleanedFile[key]);
+              cleanedCount++;
             }
           });
+
+          if (cleanedCount > 0) {
+            console.log(`  ✓ Cleaned ${cleanedCount} fields in file ${idx}`);
+          } else {
+            console.log(`  ✓ File ${idx} is already clean`);
+          }
           return cleanedFile;
         });
 
