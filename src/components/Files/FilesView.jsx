@@ -199,7 +199,10 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         name: hasImage ? `${mapData.name}.png` : `${mapData.name}.txt`,
         size: 0,
         contentType: hasImage ? 'image/png' : 'text/plain',
-        dataUrl: mapData.imageUrl || '',
+        // TEMPORARY: Skip saving base64 image - it's >1MB and Firestore has 1MB limit
+        // Need to use Firebase Storage for images
+        dataUrl: '',
+        hasLargeImage: hasImage,
         timeCreated: new Date().toISOString(),
         uploadedBy: 'AI Generator',
         isGeneratedMap: true
