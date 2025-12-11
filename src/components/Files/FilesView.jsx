@@ -238,11 +238,30 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       });
 
       // Add file to campaign's files array
+      // IMPORTANT: Don't use arrayUnion - it validates the entire existing array
+      // which may contain corrupted data from previous attempts
       const campaignRef = doc(db, `campaigns/${campaign.id}`);
-      console.log('About to call updateDoc with arrayUnion...');
+      console.log('Reading current files array...');
+
       try {
+        // Get current files and clean any that might have nested arrays
+        const currentFiles = (campaign.files || []).map(file => {
+          const cleanedFile = { ...file };
+          // Check each field and stringify any arrays
+          Object.keys(cleanedFile).forEach(key => {
+            if (Array.isArray(cleanedFile[key])) {
+              console.log(`Cleaning existing file: ${file.name}, field ${key} is an array, stringifying`);
+              cleanedFile[key] = JSON.stringify(cleanedFile[key]);
+            }
+          });
+          return cleanedFile;
+        });
+
+        const updatedFiles = [...currentFiles, fileData];
+
+        console.log(`Updating files array (${currentFiles.length} -> ${updatedFiles.length} files)`);
         await updateDoc(campaignRef, {
-          files: arrayUnion(fileData),
+          files: updatedFiles,
           updatedAt: serverTimestamp()
         });
         console.log('updateDoc succeeded!');
