@@ -230,12 +230,27 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         }
       });
 
+      // Deep check: log each field's type
+      console.log('Field types:');
+      Object.keys(fileData).forEach(key => {
+        const value = fileData[key];
+        console.log(`  ${key}: ${typeof value} ${Array.isArray(value) ? '(ARRAY!)' : ''}`);
+      });
+
       // Add file to campaign's files array
       const campaignRef = doc(db, `campaigns/${campaign.id}`);
-      await updateDoc(campaignRef, {
-        files: arrayUnion(fileData),
-        updatedAt: serverTimestamp()
-      });
+      console.log('About to call updateDoc with arrayUnion...');
+      try {
+        await updateDoc(campaignRef, {
+          files: arrayUnion(fileData),
+          updatedAt: serverTimestamp()
+        });
+        console.log('updateDoc succeeded!');
+      } catch (err) {
+        console.error('updateDoc failed:', err);
+        console.error('fileData that failed:', JSON.stringify(fileData, null, 2));
+        throw err;
+      }
 
       // Also update campaign world map if it's a world map
       if (mapType === 'world' && mapData.imageUrl) {
