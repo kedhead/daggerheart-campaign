@@ -179,12 +179,14 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       console.log('Map generated:', mapData);
 
       // Save map as a file
+      // Only save as image if we actually have an image, otherwise save as text
+      const hasImage = !!mapData.imageUrl;
       const fileData = {
         id: Date.now().toString(),
-        name: `${mapData.name}.png`,
-        size: 0, // We don't know the size of the generated image
-        contentType: 'image/png',
-        dataUrl: mapData.imageUrl || '', // Will be empty if no image generated
+        name: hasImage ? `${mapData.name}.png` : `${mapData.name}.txt`,
+        size: 0,
+        contentType: hasImage ? 'image/png' : 'text/plain',
+        dataUrl: mapData.imageUrl || '',
         mapDescription: mapData.description,
         mapType: mapData.type,
         mapRegions: mapData.regions,
@@ -406,6 +408,11 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               <div className="file-preview">
                 {isImage(file.contentType) ? (
                   <img src={file.dataUrl} alt={file.name} />
+                ) : file.isGeneratedMap && file.mapDescription ? (
+                  <div className="file-icon-large" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <Map size={48} style={{ color: 'var(--hope-color)' }} />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Text Map Description</span>
+                  </div>
                 ) : (
                   <div className="file-icon-large">
                     {getFileIcon(file.contentType)}
