@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Wand2, FileText, Sparkles } from 'lucide-react';
+import { Wand2, FileText, Sparkles, Edit, Eye, CheckCircle } from 'lucide-react';
 import CampaignBuilderWizard from './CampaignBuilderWizard';
 import { useCampaignBuilder } from '../../hooks/useCampaignBuilder';
 import { getAvailableTemplates } from '../../data/campaignFrameTemplates';
@@ -17,6 +17,7 @@ export default function CampaignBuilderView({
 }) {
   const [wizardStarted, setWizardStarted] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [viewingFrame, setViewingFrame] = useState(false);
 
   const wizardState = useCampaignBuilder(
     campaign?.id,
@@ -52,6 +53,124 @@ export default function CampaignBuilderView({
     }
   };
 
+  // If viewing completed campaign frame
+  if (viewingFrame && campaignFrame) {
+    return (
+      <div className="campaign-builder-view">
+        <div className="view-header">
+          <div>
+            <h1 style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '0 0 0.5rem 0' }}>
+              <CheckCircle size={32} style={{ color: 'var(--hope-color)' }} />
+              Campaign Frame
+            </h1>
+            <p className="view-subtitle">Your completed campaign frame for {campaign.name}</p>
+          </div>
+          <button className="btn btn-secondary" onClick={() => setViewingFrame(false)}>
+            Back
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Pitch */}
+          {campaignFrame.pitch && (
+            <div className="card">
+              <h3>Campaign Pitch</h3>
+              <p>{campaignFrame.pitch}</p>
+            </div>
+          )}
+
+          {/* Tone & Feel */}
+          {campaignFrame.toneAndFeel && campaignFrame.toneAndFeel.length > 0 && (
+            <div className="card">
+              <h3>Tone & Feel</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {campaignFrame.toneAndFeel.map((tone, i) => (
+                  <span key={i} className="tag">{tone}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Themes */}
+          {campaignFrame.themes && campaignFrame.themes.length > 0 && (
+            <div className="card">
+              <h3>Themes</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {campaignFrame.themes.map((theme, i) => (
+                  <span key={i} className="tag">{theme}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Touchstones */}
+          {campaignFrame.touchstones && campaignFrame.touchstones.length > 0 && (
+            <div className="card">
+              <h3>Touchstones</h3>
+              <ul>
+                {campaignFrame.touchstones.map((touchstone, i) => (
+                  <li key={i}>{touchstone}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Overview */}
+          {campaignFrame.overview && (
+            <div className="card">
+              <h3>Campaign Overview</h3>
+              <p style={{ whiteSpace: 'pre-wrap' }}>{campaignFrame.overview}</p>
+            </div>
+          )}
+
+          {/* Inciting Incident */}
+          {campaignFrame.incitingIncident && (
+            <div className="card">
+              <h3>Inciting Incident</h3>
+              <p style={{ whiteSpace: 'pre-wrap' }}>{campaignFrame.incitingIncident}</p>
+            </div>
+          )}
+
+          {/* Player Principles */}
+          {campaignFrame.playerPrinciples && campaignFrame.playerPrinciples.length > 0 && (
+            <div className="card">
+              <h3>Player Principles</h3>
+              <ul>
+                {campaignFrame.playerPrinciples.map((principle, i) => (
+                  <li key={i}>{principle}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* GM Principles */}
+          {campaignFrame.gmPrinciples && campaignFrame.gmPrinciples.length > 0 && (
+            <div className="card">
+              <h3>GM Principles</h3>
+              <ul>
+                {campaignFrame.gmPrinciples.map((principle, i) => (
+                  <li key={i}>{principle}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Session Zero Questions */}
+          {campaignFrame.sessionZeroQuestions && campaignFrame.sessionZeroQuestions.length > 0 && (
+            <div className="card">
+              <h3>Session Zero Questions</h3>
+              <ul>
+                {campaignFrame.sessionZeroQuestions.map((question, i) => (
+                  <li key={i}>{question}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // If wizard is started, show the wizard
   if (wizardStarted) {
     return (
@@ -65,6 +184,9 @@ export default function CampaignBuilderView({
     );
   }
 
+  // Check if a completed campaign frame exists
+  const hasCompletedFrame = campaignFrame && campaignFrame.status === 'completed';
+
   // Otherwise show the welcome/template selection screen
   return (
     <div className="campaign-builder-view">
@@ -77,6 +199,25 @@ export default function CampaignBuilderView({
           <p className="view-subtitle">Create a complete campaign frame to guide your adventure</p>
         </div>
       </div>
+
+      {/* Completed Campaign Frame */}
+      {hasCompletedFrame && (
+        <div className="card" style={{ background: 'var(--hope-color-10)', border: '2px solid var(--hope-color)', marginBottom: '2rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CheckCircle size={20} style={{ color: 'var(--hope-color)' }} />
+            Campaign Frame Completed!
+          </h3>
+          <p style={{ margin: '0 0 1rem 0', color: 'var(--text-secondary)' }}>
+            You have a completed campaign frame for this campaign.
+          </p>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-primary" onClick={() => setViewingFrame(true)}>
+              <Eye size={20} />
+              View Campaign Frame
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Continue Draft */}
       {hasDraft && (
