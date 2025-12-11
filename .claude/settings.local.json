@@ -16,7 +16,8 @@
       "Bash(dir \"K:\\AI-Projects\\Daggerheart\\src\" /s /b)",
       "Bash(npm run dev)",
       "Bash(grep:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, collection, getDocs, addDoc } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../config/firebase';
 import { Upload, File, Image, Map, Trash2, Download, Eye, X, Wand2, Loader2 } from 'lucide-react';
 import Modal from '../Modal';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -186,12 +187,28 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
       console.log('Map generated:', mapData);
 
-      // Save map as a file
-      // Only save as image if we actually have an image, otherwise save as text
+      // Upload image to Firebase Storage if we have one
+      let imageDownloadUrl = '';
       const hasImage = !!mapData.imageUrl;
 
-      // Flatten complex nested structures for Firestore
-      // Firestore doesn't allow arrays of objects with nested data
+      if (hasImage) {
+        try {
+          console.log('Uploading image to Firebase Storage...');
+          const timestamp = Date.now();
+          const imagePath = `campaigns/${campaign.id}/maps/${timestamp}.png`;
+          const imageRef = ref(storage, imagePath);
+
+          // Upload base64 image to Storage
+          await uploadString(imageRef, mapData.imageUrl, 'data_url');
+
+          // Get the download URL
+          imageDownloadUrl = await getDownloadURL(imageRef);
+          console.log('Image uploaded successfully:', imageDownloadUrl);
+        } catch (error) {
+          console.error('Failed to upload image to Storage:', error);
+          alert('Image upload failed, but map metadata will be saved.');
+        }
+      }
 
       // Build fileData with all mapData fields, AUTO-DETECTING and stringifying ALL arrays
       const fileData = {
@@ -199,10 +216,8 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         name: hasImage ? `${mapData.name}.png` : `${mapData.name}.txt`,
         size: 0,
         contentType: hasImage ? 'image/png' : 'text/plain',
-        // TEMPORARY: Skip saving base64 image - it's >1MB and Firestore has 1MB limit
-        // Need to use Firebase Storage for images
-        dataUrl: '',
-        hasLargeImage: hasImage,
+        // Store the Firebase Storage download URL instead of base64
+        dataUrl: imageDownloadUrl,
         timeCreated: new Date().toISOString(),
         uploadedBy: 'AI Generator',
         isGeneratedMap: true

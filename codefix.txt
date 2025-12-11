@@ -1,0 +1,28 @@
+// Assuming `filesData` is the result of Op(Re)
+const cleanedFilesData = filesData.map(fileEntry => {
+  // If fileEntry is an object and has properties that are arrays, clean those
+  if (typeof fileEntry === 'object' && fileEntry !== null) {
+    const newFileEntry = {};
+    for (const key in fileEntry) {
+      if (Array.isArray(fileEntry[key])) {
+        // Filter out undefined and null values from arrays
+        newFileEntry[key] = fileEntry[key].filter(item => item !== undefined && item !== null);
+      } else if (fileEntry[key] === undefined) {
+        // Remove undefined properties from objects
+        // Or assign null if null is acceptable for your schema
+        newFileEntry[key] = null; // Example: replace undefined with null
+      } else if (typeof fileEntry[key] === 'function') {
+        // If functions are accidentally included, remove them or convert to a serializable form
+        // console.warn(`Function found in data for key: ${key}. Removing.`);
+      }
+      else {
+        newFileEntry[key] = fileEntry[key];
+      }
+    }
+    return newFileEntry;
+  }
+  return fileEntry;
+});
+
+// Then use the cleaned data in your Firebase call
+await It(De, { files: cleanedFilesData, updatedAt: Ue() });
