@@ -196,8 +196,10 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         mapRegions: mapData.regions || [],
         mapFeatures: mapData.features || [],
         mapStyle: mapData.style || '',
-        // Store complex nested data as JSON strings
+        // Store ALL complex nested data as JSON strings to avoid Firestore limitations
         locationPlacements: mapData.locationPlacements ? JSON.stringify(mapData.locationPlacements) : '[]',
+        climateZones: mapData.climateZones ? JSON.stringify(mapData.climateZones) : '[]',
+        geographicalFeatures: mapData.geographicalFeatures ? JSON.stringify(mapData.geographicalFeatures) : '[]',
         districts: mapData.districts || [],
         landmarks: mapData.landmarks || [],
         rooms: mapData.rooms || [],
@@ -518,8 +520,11 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       )}
 
       {viewingMap && (() => {
-        // Parse locationPlacements if it's a JSON string
+        // Parse JSON strings back to objects
         let locationPlacements = [];
+        let climateZones = [];
+        let geographicalFeatures = [];
+
         if (viewingMap.locationPlacements) {
           try {
             locationPlacements = typeof viewingMap.locationPlacements === 'string'
@@ -527,6 +532,26 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               : viewingMap.locationPlacements;
           } catch (e) {
             console.error('Failed to parse locationPlacements:', e);
+          }
+        }
+
+        if (viewingMap.climateZones) {
+          try {
+            climateZones = typeof viewingMap.climateZones === 'string'
+              ? JSON.parse(viewingMap.climateZones)
+              : viewingMap.climateZones;
+          } catch (e) {
+            console.error('Failed to parse climateZones:', e);
+          }
+        }
+
+        if (viewingMap.geographicalFeatures) {
+          try {
+            geographicalFeatures = typeof viewingMap.geographicalFeatures === 'string'
+              ? JSON.parse(viewingMap.geographicalFeatures)
+              : viewingMap.geographicalFeatures;
+          } catch (e) {
+            console.error('Failed to parse geographicalFeatures:', e);
           }
         }
 
@@ -602,6 +627,52 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                             {loc.description}
                           </p>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {climateZones.length > 0 && (
+                <>
+                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Climate Zones</h3>
+                  <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
+                    {climateZones.map((zone, idx) => (
+                      <div key={idx} style={{
+                        padding: '0.75rem',
+                        background: 'var(--card-bg)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)'
+                      }}>
+                        <strong style={{ color: 'var(--hope-color)', fontSize: '0.9rem' }}>
+                          {zone.zone || zone.region || 'Climate Zone'}
+                        </strong>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>
+                          {zone.climate || zone.description || ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {geographicalFeatures.length > 0 && (
+                <>
+                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Geographical Features</h3>
+                  <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
+                    {geographicalFeatures.map((feature, idx) => (
+                      <div key={idx} style={{
+                        padding: '0.75rem',
+                        background: 'var(--card-bg)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)'
+                      }}>
+                        <strong style={{ color: 'var(--hope-color)', fontSize: '0.9rem' }}>
+                          {feature.feature || feature.name || 'Feature'}
+                        </strong>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>
+                          {feature.description || ''}
+                        </p>
                       </div>
                     ))}
                   </div>
