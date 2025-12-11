@@ -186,18 +186,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       // Flatten complex nested structures for Firestore
       // Firestore doesn't allow arrays of objects with nested data
 
-      // Helper function to safely stringify arrays that might contain objects
-      const safeStringifyArray = (arr) => {
-        if (!arr || arr.length === 0) return '[]';
-        // If any element is an object, stringify the whole array
-        if (arr.some(item => typeof item === 'object' && item !== null)) {
-          return JSON.stringify(arr);
-        }
-        // If all elements are primitives (strings, numbers), we can keep as array
-        // But to be safe with Firestore arrayUnion, stringify anyway
-        return JSON.stringify(arr);
-      };
-
+      // Build fileData with all mapData fields, stringifying ALL arrays
       const fileData = {
         id: Date.now().toString(),
         name: hasImage ? `${mapData.name}.png` : `${mapData.name}.txt`,
@@ -206,24 +195,25 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         dataUrl: mapData.imageUrl || '',
         mapDescription: mapData.description,
         mapType: mapData.type,
-        // Stringify ALL arrays to be safe - even simple string arrays
-        // because they'll be inside an arrayUnion which has strict rules
-        mapRegions: safeStringifyArray(mapData.regions || []),
-        mapFeatures: safeStringifyArray(mapData.features || []),
         mapStyle: mapData.style || '',
-        // Store ALL complex nested data as JSON strings to avoid Firestore limitations
-        locationPlacements: safeStringifyArray(mapData.locationPlacements || []),
-        climateZones: safeStringifyArray(mapData.climateZones || []),
-        geographicalFeatures: safeStringifyArray(mapData.geographicalFeatures || []),
-        districts: safeStringifyArray(mapData.districts || []),
-        landmarks: safeStringifyArray(mapData.landmarks || []),
-        rooms: safeStringifyArray(mapData.rooms || []),
-        connections: safeStringifyArray(mapData.connections || []),
         gridSize: mapData.gridSize || null,
         timeCreated: new Date().toISOString(),
         uploadedBy: 'AI Generator',
         isGeneratedMap: true
       };
+
+      // Stringify ALL array fields from mapData to avoid nested entity errors
+      const arrayFields = ['regions', 'features', 'locationPlacements', 'climateZones',
+        'geographicalFeatures', 'districts', 'landmarks', 'rooms', 'connections'];
+
+      arrayFields.forEach(field => {
+        const value = mapData[field];
+        if (value !== undefined && value !== null) {
+          // Always stringify arrays for Firestore safety
+          fileData[`map${field.charAt(0).toUpperCase() + field.slice(1)}`] =
+            Array.isArray(value) ? JSON.stringify(value) : value;
+        }
+      });
 
       // Add file to campaign's files array
       const campaignRef = doc(db, `campaigns/${campaign.id}`);
@@ -237,8 +227,8 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         await updateCampaign({
           worldMap: mapData.imageUrl,
           mapDescription: mapData.description,
-          mapRegions: safeStringifyArray(mapData.regions || []),
-          mapFeatures: safeStringifyArray(mapData.features || [])
+          mapRegions: JSON.stringify(mapData.regions || []),
+          mapFeatures: JSON.stringify(mapData.features || [])
         });
       }
 
