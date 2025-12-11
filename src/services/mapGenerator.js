@@ -324,6 +324,8 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
       regions: mapDescription.regions || [],
       features: mapDescription.features || [],
       locationPlacements: mapDescription.locationPlacements || [],
+      climateZones: mapDescription.climateZones || [], // Was missing!
+      geographicalFeatures: mapDescription.geographicalFeatures || [], // Was missing!
       districts: mapDescription.districts || [],
       landmarks: mapDescription.landmarks || [],
       rooms: mapDescription.rooms || [], // For dungeon maps
