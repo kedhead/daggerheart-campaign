@@ -89,14 +89,35 @@ Format as JSON with description, districts, landmarks, and dallePrompt.`;
 
   const response = await aiService.generate(prompt, apiKey, provider);
 
-  // Parse JSON from response
-  const jsonMatch = response.match(/```json\s*\n([\s\S]*?)\n```/);
+  // Parse JSON from response - try multiple patterns
+  let jsonMatch = response.match(/```json\s*\n([\s\S]*?)\n```/);
+  if (!jsonMatch) {
+    jsonMatch = response.match(/```json\s*([\s\S]*?)```/);
+  }
+  if (!jsonMatch) {
+    jsonMatch = response.match(/```\s*\n([\s\S]*?)\n```/);
+  }
+  if (!jsonMatch) {
+    jsonMatch = response.match(/```([\s\S]*?)```/);
+  }
+
   if (jsonMatch) {
-    return JSON.parse(jsonMatch[1]);
+    try {
+      return JSON.parse(jsonMatch[1].trim());
+    } catch (err) {
+      console.error('Failed to parse extracted JSON:', err);
+      console.error('Extracted content:', jsonMatch[1]);
+    }
   }
 
   // Fallback: try to parse the whole response
-  return JSON.parse(response);
+  try {
+    return JSON.parse(response.trim());
+  } catch (err) {
+    console.error('Failed to parse response as JSON:', err);
+    console.error('Response:', response);
+    throw new Error('Failed to parse map description from AI response');
+  }
 }
 
 /**
