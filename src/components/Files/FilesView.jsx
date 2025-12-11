@@ -13,6 +13,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState(null);
   const [viewingFile, setViewingFile] = useState(null);
+  const [viewingMap, setViewingMap] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generatingMap, setGeneratingMap] = useState(false);
   const [showMapGenerator, setShowMapGenerator] = useState(false);
@@ -448,7 +449,16 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                 )}
               </div>
               <div className="file-actions">
-                {isImage(file.contentType) && (
+                {file.isGeneratedMap && (
+                  <button
+                    className="btn btn-icon"
+                    onClick={() => setViewingMap(file)}
+                    title="View map details"
+                  >
+                    <Eye size={18} />
+                  </button>
+                )}
+                {isImage(file.contentType) && !file.isGeneratedMap && (
                   <button
                     className="btn btn-icon"
                     onClick={() => setViewingFile(file)}
@@ -491,6 +501,55 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         >
           <div className="file-viewer">
             <img src={viewingFile.dataUrl} alt={viewingFile.name} />
+          </div>
+        </Modal>
+      )}
+
+      {viewingMap && (
+        <Modal
+          isOpen={!!viewingMap}
+          onClose={() => setViewingMap(null)}
+          title={viewingMap.name.replace('.txt', '').replace('.png', '')}
+          size="large"
+        >
+          <div className="map-viewer" style={{ padding: '1.5rem' }}>
+            {viewingMap.dataUrl && (
+              <div style={{ marginBottom: '2rem' }}>
+                <img src={viewingMap.dataUrl} alt={viewingMap.name} style={{ width: '100%', borderRadius: '8px' }} />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <span className="tag">{viewingMap.mapType} map</span>
+              <span className="badge badge-ai"><Wand2 size={12} /> AI Generated</span>
+            </div>
+
+            <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Description</h3>
+            <p style={{ lineHeight: '1.6', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+              {viewingMap.mapDescription}
+            </p>
+
+            {viewingMap.mapRegions && viewingMap.mapRegions.length > 0 && (
+              <>
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Regions</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {viewingMap.mapRegions.map((region, idx) => (
+                    <span key={idx} className="tag">{region}</span>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {viewingMap.mapFeatures && viewingMap.mapFeatures.length > 0 && (
+              <>
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Features</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {viewingMap.mapFeatures.map((feature, idx) => (
+                    <span key={idx} className="tag">{feature}</span>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </Modal>
       )}
