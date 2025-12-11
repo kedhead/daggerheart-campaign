@@ -211,11 +211,22 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         // Stringify arrays, keep primitives as-is
         if (Array.isArray(value)) {
           fileData[fieldName] = JSON.stringify(value);
+          console.log(`Stringified array field ${fieldName}:`, value.length, 'items');
         } else if (value !== undefined && value !== null && typeof value !== 'object') {
           fileData[fieldName] = value;
         } else if (typeof value === 'object' && value !== null) {
           // Stringify any remaining objects to be safe
           fileData[fieldName] = JSON.stringify(value);
+          console.log(`Stringified object field ${fieldName}`);
+        }
+      });
+
+      // Log the final fileData structure to debug
+      console.log('Final fileData before save:', Object.keys(fileData));
+      console.log('Checking for arrays in fileData:');
+      Object.keys(fileData).forEach(key => {
+        if (Array.isArray(fileData[key])) {
+          console.error(`ERROR: ${key} is still an array!`, fileData[key]);
         }
       });
 
