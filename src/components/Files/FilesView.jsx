@@ -185,6 +185,19 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
       // Flatten complex nested structures for Firestore
       // Firestore doesn't allow arrays of objects with nested data
+
+      // Helper function to safely stringify arrays that might contain objects
+      const safeStringifyArray = (arr) => {
+        if (!arr || arr.length === 0) return '[]';
+        // If any element is an object, stringify the whole array
+        if (arr.some(item => typeof item === 'object' && item !== null)) {
+          return JSON.stringify(arr);
+        }
+        // If all elements are primitives (strings, numbers), we can keep as array
+        // But to be safe with Firestore arrayUnion, stringify anyway
+        return JSON.stringify(arr);
+      };
+
       const fileData = {
         id: Date.now().toString(),
         name: hasImage ? `${mapData.name}.png` : `${mapData.name}.txt`,
@@ -193,17 +206,19 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         dataUrl: mapData.imageUrl || '',
         mapDescription: mapData.description,
         mapType: mapData.type,
-        mapRegions: mapData.regions || [],
-        mapFeatures: mapData.features || [],
+        // Stringify ALL arrays to be safe - even simple string arrays
+        // because they'll be inside an arrayUnion which has strict rules
+        mapRegions: safeStringifyArray(mapData.regions || []),
+        mapFeatures: safeStringifyArray(mapData.features || []),
         mapStyle: mapData.style || '',
         // Store ALL complex nested data as JSON strings to avoid Firestore limitations
-        locationPlacements: mapData.locationPlacements ? JSON.stringify(mapData.locationPlacements) : '[]',
-        climateZones: mapData.climateZones ? JSON.stringify(mapData.climateZones) : '[]',
-        geographicalFeatures: mapData.geographicalFeatures ? JSON.stringify(mapData.geographicalFeatures) : '[]',
-        districts: mapData.districts || [],
-        landmarks: mapData.landmarks || [],
-        rooms: mapData.rooms || [],
-        connections: mapData.connections || [],
+        locationPlacements: safeStringifyArray(mapData.locationPlacements || []),
+        climateZones: safeStringifyArray(mapData.climateZones || []),
+        geographicalFeatures: safeStringifyArray(mapData.geographicalFeatures || []),
+        districts: safeStringifyArray(mapData.districts || []),
+        landmarks: safeStringifyArray(mapData.landmarks || []),
+        rooms: safeStringifyArray(mapData.rooms || []),
+        connections: safeStringifyArray(mapData.connections || []),
         gridSize: mapData.gridSize || null,
         timeCreated: new Date().toISOString(),
         uploadedBy: 'AI Generator',
@@ -222,8 +237,8 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         await updateCampaign({
           worldMap: mapData.imageUrl,
           mapDescription: mapData.description,
-          mapRegions: mapData.regions,
-          mapFeatures: mapData.features
+          mapRegions: safeStringifyArray(mapData.regions || []),
+          mapFeatures: safeStringifyArray(mapData.features || [])
         });
       }
 
@@ -521,39 +536,26 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
       {viewingMap && (() => {
         // Parse JSON strings back to objects
-        let locationPlacements = [];
-        let climateZones = [];
-        let geographicalFeatures = [];
-
-        if (viewingMap.locationPlacements) {
+        // Helper to safely parse any stringified array
+        const safeParse = (value, fieldName) => {
+          if (!value) return [];
           try {
-            locationPlacements = typeof viewingMap.locationPlacements === 'string'
-              ? JSON.parse(viewingMap.locationPlacements)
-              : viewingMap.locationPlacements;
+            return typeof value === 'string' ? JSON.parse(value) : value;
           } catch (e) {
-            console.error('Failed to parse locationPlacements:', e);
+            console.error(`Failed to parse ${fieldName}:`, e);
+            return [];
           }
-        }
+        };
 
-        if (viewingMap.climateZones) {
-          try {
-            climateZones = typeof viewingMap.climateZones === 'string'
-              ? JSON.parse(viewingMap.climateZones)
-              : viewingMap.climateZones;
-          } catch (e) {
-            console.error('Failed to parse climateZones:', e);
-          }
-        }
-
-        if (viewingMap.geographicalFeatures) {
-          try {
-            geographicalFeatures = typeof viewingMap.geographicalFeatures === 'string'
-              ? JSON.parse(viewingMap.geographicalFeatures)
-              : viewingMap.geographicalFeatures;
-          } catch (e) {
-            console.error('Failed to parse geographicalFeatures:', e);
-          }
-        }
+        let locationPlacements = safeParse(viewingMap.locationPlacements, 'locationPlacements');
+        let climateZones = safeParse(viewingMap.climateZones, 'climateZones');
+        let geographicalFeatures = safeParse(viewingMap.geographicalFeatures, 'geographicalFeatures');
+        let mapRegions = safeParse(viewingMap.mapRegions, 'mapRegions');
+        let mapFeatures = safeParse(viewingMap.mapFeatures, 'mapFeatures');
+        let districts = safeParse(viewingMap.districts, 'districts');
+        let landmarks = safeParse(viewingMap.landmarks, 'landmarks');
+        let rooms = safeParse(viewingMap.rooms, 'rooms');
+        let connections = safeParse(viewingMap.connections, 'connections');
 
         return (
           <Modal
@@ -580,22 +582,22 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                 {viewingMap.mapDescription}
               </p>
 
-              {viewingMap.mapRegions && viewingMap.mapRegions.length > 0 && (
+              {mapRegions && mapRegions.length > 0 && (
                 <>
                   <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Regions</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {viewingMap.mapRegions.map((region, idx) => (
+                    {mapRegions.map((region, idx) => (
                       <span key={idx} className="tag">{region}</span>
                     ))}
                   </div>
                 </>
               )}
 
-              {viewingMap.mapFeatures && viewingMap.mapFeatures.length > 0 && (
+              {mapFeatures && mapFeatures.length > 0 && (
                 <>
                   <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Features</h3>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {viewingMap.mapFeatures.map((feature, idx) => (
+                    {mapFeatures.map((feature, idx) => (
                       <span key={idx} className="tag">{feature}</span>
                     ))}
                   </div>
@@ -679,22 +681,22 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                 </>
               )}
 
-            {viewingMap.rooms && viewingMap.rooms.length > 0 && (
+            {rooms && rooms.length > 0 && (
               <>
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Rooms</h3>
                 <ul style={{ lineHeight: '1.8', color: 'var(--text-secondary)' }}>
-                  {viewingMap.rooms.map((room, idx) => (
+                  {rooms.map((room, idx) => (
                     <li key={idx}>{room}</li>
                   ))}
                 </ul>
               </>
             )}
 
-            {viewingMap.connections && viewingMap.connections.length > 0 && (
+            {connections && connections.length > 0 && (
               <>
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Connections</h3>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {viewingMap.connections.map((connection, idx) => (
+                  {connections.map((connection, idx) => (
                     <span key={idx} className="tag">{connection}</span>
                   ))}
                 </div>
