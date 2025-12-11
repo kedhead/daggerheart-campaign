@@ -136,13 +136,22 @@ export function useCampaignBuilder(campaignId, campaignFrameDraft, saveCampaignF
 
     // Save draft to Firestore
     if (saveCampaignFrameDraft) {
-      await saveCampaignFrameDraft({
+      const draftData = {
         ...data,
         currentStep: currentStep + 1,
         completedSteps: [...completedSteps, currentStep],
-        templateUsed,
+        templateUsed: templateUsed || null,
         status: 'draft'
+      };
+
+      // Filter out any undefined values
+      Object.keys(draftData).forEach(key => {
+        if (draftData[key] === undefined) {
+          delete draftData[key];
+        }
       });
+
+      await saveCampaignFrameDraft(draftData);
     }
 
     // Move to next step
@@ -161,24 +170,47 @@ export function useCampaignBuilder(campaignId, campaignFrameDraft, saveCampaignF
   // Save draft manually
   const saveDraft = useCallback(async () => {
     if (saveCampaignFrameDraft) {
-      await saveCampaignFrameDraft({
+      const draftData = {
         ...data,
         currentStep,
         completedSteps,
-        templateUsed,
+        templateUsed: templateUsed || null,
         status: 'draft'
+      };
+
+      // Filter out any undefined values
+      Object.keys(draftData).forEach(key => {
+        if (draftData[key] === undefined) {
+          delete draftData[key];
+        }
       });
+
+      await saveCampaignFrameDraft(draftData);
     }
   }, [data, currentStep, completedSteps, templateUsed, saveCampaignFrameDraft]);
 
   // Complete wizard
   const complete = useCallback(async () => {
     if (completeCampaignFrame) {
-      await completeCampaignFrame({
+      // Prepare data for saving, filtering out undefined values
+      const frameData = {
         ...data,
-        templateUsed,
-        complexity: templateUsed ? data.complexity : null
+        templateUsed: templateUsed || null
+      };
+
+      // Only add complexity if it has a valid value
+      if (data.complexity !== undefined && data.complexity !== null) {
+        frameData.complexity = data.complexity;
+      }
+
+      // Filter out any undefined values
+      Object.keys(frameData).forEach(key => {
+        if (frameData[key] === undefined) {
+          delete frameData[key];
+        }
       });
+
+      await completeCampaignFrame(frameData);
 
       // Clear localStorage
       const localKey = `dh_wizard_state_${campaignId}`;
