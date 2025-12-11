@@ -102,9 +102,10 @@ export default function PitchStep({ value, onChange, campaign, userId, hasAPIKey
             {mode === 'api' && (
               <DirectAPIGenerator
                 type="pitch"
-                hasAPIKey={hasKey()}
-                onGenerate={handleGenerate}
-                onConfigureKey={() => {/* TODO: Open settings */}}
+                apiKey={hasKey('anthropic') ? keys.anthropic : keys.openai}
+                provider={keys.provider}
+                onGenerateWithAPI={handleGenerate}
+                onOpenAPISettings={() => {/* TODO: Open settings */}}
                 generating={generating}
               />
             )}
