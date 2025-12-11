@@ -30,3 +30,7 @@ dist-ssr
 *.pdf
 daggerheart-campaign-frames (1).*
 sk-ant-api*.txt
+
+# Debug and temporary files
+error.png
+imageconsole.txt
