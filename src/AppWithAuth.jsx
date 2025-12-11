@@ -243,6 +243,7 @@ function CampaignApp() {
             saveCampaignFrameDraft={saveCampaignFrameDraft}
             completeCampaignFrame={completeCampaignFrame}
             deleteCampaignFrameDraft={deleteCampaignFrameDraft}
+            updateCampaign={updateCampaign}
             onBack={() => setCurrentView('dashboard')}
             addNPC={addNPC}
             addLocation={addLocation}

@@ -13,6 +13,7 @@ export default function CampaignBuilderView({
   saveCampaignFrameDraft,
   completeCampaignFrame,
   deleteCampaignFrameDraft,
+  updateCampaign,
   onBack,
   addNPC,
   addLocation,
@@ -190,6 +191,7 @@ export default function CampaignBuilderView({
         addLore={addLore}
         addEncounter={addEncounter}
         addTimelineEvent={addTimelineEvent}
+        updateCampaign={updateCampaign}
       />
     );
   }

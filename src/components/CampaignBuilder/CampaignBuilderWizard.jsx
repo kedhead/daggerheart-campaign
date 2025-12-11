@@ -18,6 +18,7 @@ import SessionZeroStep from './wizard/steps/SessionZeroStep';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import { generateCampaignContent } from '../../services/campaignGenerator';
+import { generateMap } from '../../services/mapGenerator';
 import './CampaignBuilder.css';
 
 export default function CampaignBuilderWizard({
@@ -30,7 +31,8 @@ export default function CampaignBuilderWizard({
   addLocation,
   addLore,
   addEncounter,
-  addTimelineEvent
+  addTimelineEvent,
+  updateCampaign
 }) {
   const { hasKey, keys } = useAPIKey(userId);
   const {
@@ -145,7 +147,44 @@ export default function CampaignBuilderWizard({
         }
       }
 
-      setGenerationProgress('Complete! Campaign content generated and saved.');
+      // Generate World Map
+      setGenerationProgress('Bonus: Generating world map...');
+      try {
+        console.log('Generating world map with locations...');
+        const openaiKey = hasKey('openai') ? keys.openai : null;
+        const generateImage = !!openaiKey; // Only generate image if we have OpenAI key
+
+        const mapData = await generateMap(
+          {
+            campaign,
+            locations: generatedContent.locations,
+            mapType: 'world',
+            mapName: `${campaign.name} World Map`
+          },
+          apiKey,
+          provider,
+          openaiKey,
+          generateImage
+        );
+
+        console.log('World map generated:', mapData);
+
+        // Save map to campaign
+        if (updateCampaign) {
+          await updateCampaign({
+            worldMap: mapData.imageUrl,
+            mapDescription: mapData.description,
+            mapRegions: mapData.regions,
+            mapFeatures: mapData.features
+          });
+          console.log('World map saved to campaign');
+        }
+      } catch (err) {
+        console.error('Failed to generate world map (non-critical):', err);
+        // Don't fail the whole process if map generation fails
+      }
+
+      setGenerationProgress('Complete! Campaign content and world map generated.');
       setGenerationComplete(true);
 
       // Give user a moment to see the success message
