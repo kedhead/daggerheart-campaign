@@ -68,7 +68,19 @@ Generate a regional map description showing:
 4. Roads, rivers, or other connections
 5. Scale (roughly 50-100 miles radius)
 
-Format as JSON with description, features, and dallePrompt.`;
+Format as JSON:
+\`\`\`json
+{
+  "description": "Detailed description of the regional geography",
+  "regions": ["region names"],
+  "features": ["terrain features"],
+  "locationPlacements": [
+    {"location": "Location Name", "position": "relative position", "coordinates": [x, y]}
+  ],
+  "style": "hand-drawn regional map",
+  "dallePrompt": "A comprehensive prompt for DALL-E to generate this map"
+}
+\`\`\``;
   } else if (mapType === 'local' && specificLocation) {
     prompt = `Create a local/city map description for "${specificLocation.name}".
 
@@ -84,40 +96,73 @@ Generate a local map description showing:
 4. Points of interest
 5. Scale (walkable city/town map)
 
-Format as JSON with description, districts, landmarks, and dallePrompt.`;
+Format as JSON:
+\`\`\`json
+{
+  "description": "Detailed description of the local area",
+  "districts": ["district names"],
+  "landmarks": ["important landmarks"],
+  "features": ["streets", "pathways", "points of interest"],
+  "style": "local city map",
+  "dallePrompt": "A comprehensive prompt for DALL-E to generate this map"
+}
+\`\`\``;
   }
 
   const response = await aiService.generate(prompt, apiKey, provider);
+  console.log('Raw AI response:', response);
 
-  // Parse JSON from response - try multiple patterns
-  let jsonMatch = response.match(/```json\s*\n([\s\S]*?)\n```/);
-  if (!jsonMatch) {
-    jsonMatch = response.match(/```json\s*([\s\S]*?)```/);
-  }
-  if (!jsonMatch) {
-    jsonMatch = response.match(/```\s*\n([\s\S]*?)\n```/);
-  }
-  if (!jsonMatch) {
-    jsonMatch = response.match(/```([\s\S]*?)```/);
-  }
+  // Try multiple JSON extraction patterns
+  const patterns = [
+    // Standard markdown code blocks
+    /```json\s*\n([\s\S]*?)\n```/,
+    /```json\s*([\s\S]*?)```/,
+    /```\s*\n([\s\S]*?)\n```/,
+    /```([\s\S]*?)```/,
+    // JSON object without code blocks
+    /\{[\s\S]*"description"[\s\S]*\}/,
+    // Look for first { to last }
+    /(\{[\s\S]*\})/
+  ];
 
-  if (jsonMatch) {
-    try {
-      return JSON.parse(jsonMatch[1].trim());
-    } catch (err) {
-      console.error('Failed to parse extracted JSON:', err);
-      console.error('Extracted content:', jsonMatch[1]);
+  for (const pattern of patterns) {
+    const match = response.match(pattern);
+    if (match) {
+      const jsonText = match[1].trim();
+      console.log('Attempting to parse JSON from pattern:', pattern.source);
+      console.log('Extracted text:', jsonText.substring(0, 200) + '...');
+
+      try {
+        const parsed = JSON.parse(jsonText);
+        // Validate it has the expected structure
+        if (parsed && typeof parsed === 'object') {
+          console.log('Successfully parsed JSON');
+          return parsed;
+        }
+      } catch (err) {
+        console.log('Failed to parse with this pattern:', err.message);
+        continue;
+      }
     }
   }
 
-  // Fallback: try to parse the whole response
+  // Last resort: try to parse the whole response
   try {
-    return JSON.parse(response.trim());
+    console.log('Attempting to parse entire response as JSON');
+    const parsed = JSON.parse(response.trim());
+    if (parsed && typeof parsed === 'object') {
+      return parsed;
+    }
   } catch (err) {
-    console.error('Failed to parse response as JSON:', err);
-    console.error('Response:', response);
-    throw new Error('Failed to parse map description from AI response');
+    // Log the full error details
+    console.error('All JSON parsing attempts failed');
+    console.error('Response length:', response.length);
+    console.error('First 500 chars:', response.substring(0, 500));
+    console.error('Last 500 chars:', response.substring(response.length - 500));
+    throw new Error('Failed to parse map description from AI response. Check console for details.');
   }
+
+  throw new Error('Failed to parse map description from AI response');
 }
 
 /**
@@ -203,10 +248,12 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
     const mapData = {
       type: context.mapType || 'world',
       name: context.mapName || `${context.campaign.name} Map`,
-      description: mapDescription.description,
+      description: mapDescription.description || 'A generated map',
       regions: mapDescription.regions || [],
       features: mapDescription.features || [],
       locationPlacements: mapDescription.locationPlacements || [],
+      districts: mapDescription.districts || [],
+      landmarks: mapDescription.landmarks || [],
       style: mapDescription.style || 'hand-drawn fantasy',
       imageUrl: null,
       createdAt: new Date().toISOString()
