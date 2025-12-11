@@ -94,6 +94,12 @@ service cloud.firestore {
         allow read: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
         allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
       }
+
+      // Maps
+      match /maps/{mapId} {
+        allow read: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+      }
     }
   }
 }
