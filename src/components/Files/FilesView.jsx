@@ -182,6 +182,9 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       // Save map as a file
       // Only save as image if we actually have an image, otherwise save as text
       const hasImage = !!mapData.imageUrl;
+
+      // Flatten complex nested structures for Firestore
+      // Firestore doesn't allow arrays of objects with nested data
       const fileData = {
         id: Date.now().toString(),
         name: hasImage ? `${mapData.name}.png` : `${mapData.name}.txt`,
@@ -190,11 +193,16 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         dataUrl: mapData.imageUrl || '',
         mapDescription: mapData.description,
         mapType: mapData.type,
-        mapRegions: mapData.regions,
-        mapFeatures: mapData.features,
-        rooms: mapData.rooms || [], // For dungeon maps
-        connections: mapData.connections || [], // For dungeon maps
-        gridSize: mapData.gridSize || null, // For dungeon maps
+        mapRegions: mapData.regions || [],
+        mapFeatures: mapData.features || [],
+        mapStyle: mapData.style || '',
+        // Store complex nested data as JSON strings
+        locationPlacements: mapData.locationPlacements ? JSON.stringify(mapData.locationPlacements) : '[]',
+        districts: mapData.districts || [],
+        landmarks: mapData.landmarks || [],
+        rooms: mapData.rooms || [],
+        connections: mapData.connections || [],
+        gridSize: mapData.gridSize || null,
         timeCreated: new Date().toISOString(),
         uploadedBy: 'AI Generator',
         isGeneratedMap: true
@@ -509,51 +517,96 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         </Modal>
       )}
 
-      {viewingMap && (
-        <Modal
-          isOpen={!!viewingMap}
-          onClose={() => setViewingMap(null)}
-          title={viewingMap.name.replace('.txt', '').replace('.png', '')}
-          size="large"
-        >
-          <div className="map-viewer" style={{ padding: '1.5rem' }}>
-            {viewingMap.dataUrl && (
-              <div style={{ marginBottom: '2rem' }}>
-                <img src={viewingMap.dataUrl} alt={viewingMap.name} style={{ width: '100%', borderRadius: '8px' }} />
+      {viewingMap && (() => {
+        // Parse locationPlacements if it's a JSON string
+        let locationPlacements = [];
+        if (viewingMap.locationPlacements) {
+          try {
+            locationPlacements = typeof viewingMap.locationPlacements === 'string'
+              ? JSON.parse(viewingMap.locationPlacements)
+              : viewingMap.locationPlacements;
+          } catch (e) {
+            console.error('Failed to parse locationPlacements:', e);
+          }
+        }
+
+        return (
+          <Modal
+            isOpen={!!viewingMap}
+            onClose={() => setViewingMap(null)}
+            title={viewingMap.name.replace('.txt', '').replace('.png', '')}
+            size="large"
+          >
+            <div className="map-viewer" style={{ padding: '1.5rem' }}>
+              {viewingMap.dataUrl && (
+                <div style={{ marginBottom: '2rem' }}>
+                  <img src={viewingMap.dataUrl} alt={viewingMap.name} style={{ width: '100%', borderRadius: '8px' }} />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <span className="tag">{viewingMap.mapType} map</span>
+                <span className="badge badge-ai"><Wand2 size={12} /> AI Generated</span>
+                {viewingMap.mapStyle && <span className="tag" style={{ fontSize: '0.75rem' }}>{viewingMap.mapStyle}</span>}
               </div>
-            )}
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-              <span className="tag">{viewingMap.mapType} map</span>
-              <span className="badge badge-ai"><Wand2 size={12} /> AI Generated</span>
-            </div>
+              <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Description</h3>
+              <p style={{ lineHeight: '1.6', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
+                {viewingMap.mapDescription}
+              </p>
 
-            <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Description</h3>
-            <p style={{ lineHeight: '1.6', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-              {viewingMap.mapDescription}
-            </p>
+              {viewingMap.mapRegions && viewingMap.mapRegions.length > 0 && (
+                <>
+                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Regions</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {viewingMap.mapRegions.map((region, idx) => (
+                      <span key={idx} className="tag">{region}</span>
+                    ))}
+                  </div>
+                </>
+              )}
 
-            {viewingMap.mapRegions && viewingMap.mapRegions.length > 0 && (
-              <>
-                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Regions</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {viewingMap.mapRegions.map((region, idx) => (
-                    <span key={idx} className="tag">{region}</span>
-                  ))}
-                </div>
-              </>
-            )}
+              {viewingMap.mapFeatures && viewingMap.mapFeatures.length > 0 && (
+                <>
+                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Features</h3>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {viewingMap.mapFeatures.map((feature, idx) => (
+                      <span key={idx} className="tag">{feature}</span>
+                    ))}
+                  </div>
+                </>
+              )}
 
-            {viewingMap.mapFeatures && viewingMap.mapFeatures.length > 0 && (
-              <>
-                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Features</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {viewingMap.mapFeatures.map((feature, idx) => (
-                    <span key={idx} className="tag">{feature}</span>
-                  ))}
-                </div>
-              </>
-            )}
+              {locationPlacements.length > 0 && (
+                <>
+                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Location Placements</h3>
+                  <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+                    {locationPlacements.map((loc, idx) => (
+                      <div key={idx} style={{
+                        padding: '1rem',
+                        background: 'var(--card-bg)',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                          <strong style={{ color: 'var(--hope-color)' }}>{loc.location}</strong>
+                          {loc.type && <span className="tag">{loc.type}</span>}
+                        </div>
+                        {loc.position && (
+                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.25rem 0' }}>
+                            📍 {loc.position}
+                          </p>
+                        )}
+                        {loc.description && (
+                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>
+                            {loc.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
             {viewingMap.rooms && viewingMap.rooms.length > 0 && (
               <>
@@ -585,7 +638,8 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
             )}
           </div>
         </Modal>
-      )}
+        );
+      })()}
     </div>
   );
 }
