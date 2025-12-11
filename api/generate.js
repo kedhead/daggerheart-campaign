@@ -42,7 +42,7 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           model: apiModel,
-          max_tokens: 2048,
+          max_tokens: 4096,
           messages: [
             {
               role: 'user',
@@ -82,7 +82,7 @@ export default async function handler(req, res) {
               content: prompt
             }
           ],
-          max_tokens: 2048,
+          max_tokens: 4096,
           temperature: 0.7
         })
       });

@@ -114,20 +114,20 @@ Format as JSON:
 
   // Try multiple JSON extraction patterns
   const patterns = [
-    // Standard markdown code blocks
+    // Standard markdown code blocks (with capture groups)
     /```json\s*\n([\s\S]*?)\n```/,
     /```json\s*([\s\S]*?)```/,
     /```\s*\n([\s\S]*?)\n```/,
     /```([\s\S]*?)```/,
-    // JSON object without code blocks
-    /\{[\s\S]*"description"[\s\S]*\}/,
-    // Look for first { to last }
+    // JSON object without code blocks (with capture groups)
+    /(\{[\s\S]*"description"[\s\S]*\})/,
+    // Look for first { to last } (already has capture group)
     /(\{[\s\S]*\})/
   ];
 
   for (const pattern of patterns) {
     const match = response.match(pattern);
-    if (match) {
+    if (match && match[1]) {
       const jsonText = match[1].trim();
       console.log('Attempting to parse JSON from pattern:', pattern.source);
       console.log('Extracted text:', jsonText.substring(0, 200) + '...');
