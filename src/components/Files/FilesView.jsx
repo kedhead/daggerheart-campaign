@@ -208,16 +208,17 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         // Create field name with 'map' prefix for clarity
         const fieldName = `map${key.charAt(0).toUpperCase() + key.slice(1)}`;
 
-        // Stringify arrays, keep primitives as-is
+        // Stringify arrays and objects, keep primitives as-is
         if (Array.isArray(value)) {
           fileData[fieldName] = JSON.stringify(value);
           console.log(`Stringified array field ${fieldName}:`, value.length, 'items');
-        } else if (value !== undefined && value !== null && typeof value !== 'object') {
-          fileData[fieldName] = value;
         } else if (typeof value === 'object' && value !== null) {
-          // Stringify any remaining objects to be safe
+          // Stringify any objects (including nested objects)
           fileData[fieldName] = JSON.stringify(value);
-          console.log(`Stringified object field ${fieldName}`);
+          console.log(`Stringified object field ${fieldName}:`, Object.keys(value).join(', '));
+        } else if (value !== undefined && value !== null) {
+          // Primitives (string, number, boolean)
+          fileData[fieldName] = value;
         }
       });
 
@@ -267,7 +268,19 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         console.log('updateDoc succeeded!');
       } catch (err) {
         console.error('updateDoc failed:', err);
-        console.error('fileData that failed:', JSON.stringify(fileData, null, 2));
+        console.error('fileData field summary:');
+        Object.keys(fileData).forEach(key => {
+          const val = fileData[key];
+          if (typeof val === 'string' && val.length > 100) {
+            console.error(`  ${key}: string (${val.length} chars)`);
+          } else if (Array.isArray(val)) {
+            console.error(`  ${key}: ARRAY! (${val.length} items) - THIS IS THE PROBLEM`);
+          } else if (typeof val === 'object' && val !== null) {
+            console.error(`  ${key}: OBJECT! - THIS IS THE PROBLEM`, val);
+          } else {
+            console.error(`  ${key}: ${typeof val} = ${val}`);
+          }
+        });
         throw err;
       }
 
