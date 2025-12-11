@@ -174,8 +174,9 @@ export default function CampaignBuilderWizard({
           await updateCampaign({
             worldMap: mapData.imageUrl,
             mapDescription: mapData.description,
-            mapRegions: mapData.regions,
-            mapFeatures: mapData.features
+            // Stringify arrays to avoid Firestore nested entity errors
+            mapRegions: JSON.stringify(mapData.regions || []),
+            mapFeatures: JSON.stringify(mapData.features || [])
           });
           console.log('World map saved to campaign');
         }
