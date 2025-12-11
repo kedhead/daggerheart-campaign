@@ -186,32 +186,36 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       // Flatten complex nested structures for Firestore
       // Firestore doesn't allow arrays of objects with nested data
 
-      // Build fileData with all mapData fields, stringifying ALL arrays
+      // Build fileData with all mapData fields, AUTO-DETECTING and stringifying ALL arrays
       const fileData = {
         id: Date.now().toString(),
         name: hasImage ? `${mapData.name}.png` : `${mapData.name}.txt`,
         size: 0,
         contentType: hasImage ? 'image/png' : 'text/plain',
         dataUrl: mapData.imageUrl || '',
-        mapDescription: mapData.description,
-        mapType: mapData.type,
-        mapStyle: mapData.style || '',
-        gridSize: mapData.gridSize || null,
         timeCreated: new Date().toISOString(),
         uploadedBy: 'AI Generator',
         isGeneratedMap: true
       };
 
-      // Stringify ALL array fields from mapData to avoid nested entity errors
-      const arrayFields = ['regions', 'features', 'locationPlacements', 'climateZones',
-        'geographicalFeatures', 'districts', 'landmarks', 'rooms', 'connections'];
+      // Auto-detect and process ALL fields from mapData
+      Object.keys(mapData).forEach(key => {
+        const value = mapData[key];
 
-      arrayFields.forEach(field => {
-        const value = mapData[field];
-        if (value !== undefined && value !== null) {
-          // Always stringify arrays for Firestore safety
-          fileData[`map${field.charAt(0).toUpperCase() + field.slice(1)}`] =
-            Array.isArray(value) ? JSON.stringify(value) : value;
+        // Skip fields we already handled or don't want to save
+        if (key === 'imageUrl' || key === 'name') return;
+
+        // Create field name with 'map' prefix for clarity
+        const fieldName = `map${key.charAt(0).toUpperCase() + key.slice(1)}`;
+
+        // Stringify arrays, keep primitives as-is
+        if (Array.isArray(value)) {
+          fileData[fieldName] = JSON.stringify(value);
+        } else if (value !== undefined && value !== null && typeof value !== 'object') {
+          fileData[fieldName] = value;
+        } else if (typeof value === 'object' && value !== null) {
+          // Stringify any remaining objects to be safe
+          fileData[fieldName] = JSON.stringify(value);
         }
       });
 
