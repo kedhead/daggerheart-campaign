@@ -100,17 +100,22 @@ function CampaignApp() {
       const gameSystem = getGameSystem(campaign.gameSystem);
       if (gameSystem?.theme) {
         // Apply CSS variables for theming
-        document.documentElement.style.setProperty('--primary', gameSystem.theme.primary);
+        // Map to the actual CSS variables used in the app
+        document.documentElement.style.setProperty('--fear-color', gameSystem.theme.primary);
+        document.documentElement.style.setProperty('--fear-secondary', gameSystem.theme.primary);
         if (gameSystem.theme.secondary) {
-          document.documentElement.style.setProperty('--secondary', gameSystem.theme.secondary);
+          document.documentElement.style.setProperty('--hope-color', gameSystem.theme.secondary);
+          document.documentElement.style.setProperty('--hope-secondary', gameSystem.theme.secondary);
         }
       }
     }
-    
+
     // Cleanup: reset to default Daggerheart theme when unmounting
     return () => {
-      document.documentElement.style.setProperty('--primary', '#7c3aed');
-      document.documentElement.style.setProperty('--secondary', '#fbbf24');
+      document.documentElement.style.setProperty('--fear-color', '#8b5cf6');
+      document.documentElement.style.setProperty('--fear-secondary', '#a78bfa');
+      document.documentElement.style.setProperty('--hope-color', '#eab308');
+      document.documentElement.style.setProperty('--hope-secondary', '#f59e0b');
     };
   }, [campaign?.gameSystem]);
 
