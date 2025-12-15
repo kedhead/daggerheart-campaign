@@ -220,7 +220,7 @@ function CampaignApp() {
           />
         );
       case 'tools':
-        return <ToolsView />;
+        return <ToolsView campaign={campaign} />;
       case 'members':
         return <CampaignMembers campaign={campaign} currentUserId={currentUser.uid} />;
       case 'npcs':

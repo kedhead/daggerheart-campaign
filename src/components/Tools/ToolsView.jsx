@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ExternalLink, X } from 'lucide-react';
-import { EXTERNAL_TOOLS, CLASSES, ANCESTRIES, COMMUNITIES } from '../../data/daggerheart';
+import { getGameSystem } from '../../data/systems/index.js';
 import Modal from '../Modal';
 import './ToolsView.css';
 
@@ -12,9 +12,15 @@ const ICON_MAP = {
   'book-open': '📖'
 };
 
-export default function ToolsView() {
+export default function ToolsView({ campaign }) {
   const [selectedItem, setSelectedItem] = useState(null);
   const [modalType, setModalType] = useState(null);
+
+  // Get game system data
+  const gameSystem = getGameSystem(campaign?.gameSystem);
+  const externalTools = gameSystem?.externalTools || [];
+  const classes = gameSystem?.classes || {};
+  const races = gameSystem?.races || [];
 
   const openModal = (item, type) => {
     setSelectedItem(item);
@@ -38,7 +44,7 @@ export default function ToolsView() {
       <div className="tools-section">
         <h3>External Tools</h3>
         <div className="external-tools-grid">
-          {EXTERNAL_TOOLS.map((tool, index) => (
+          {externalTools.map((tool, index) => (
             <a
               key={index}
               href={tool.url}
@@ -57,31 +63,33 @@ export default function ToolsView() {
         </div>
       </div>
 
-      <div className="reference-grid">
-        <div className="tools-section">
-          <h3>Classes & Domains</h3>
-          <div className="reference-list">
-            {Object.entries(CLASSES).map(([className, data]) => (
-              <div
-                key={className}
-                className="reference-item card clickable"
-                onClick={() => openModal({ name: className, ...data }, 'class')}
-              >
-                <h4>{className}</h4>
-                <div className="domains-list">
-                  {data.domains.map(domain => (
-                    <span key={domain} className="badge">{domain}</span>
-                  ))}
+      {/* Only show game-specific reference data for Daggerheart */}
+      {gameSystem?.id === 'daggerheart' && (
+        <div className="reference-grid">
+          <div className="tools-section">
+            <h3>Classes & Domains</h3>
+            <div className="reference-list">
+              {Object.entries(classes).map(([className, data]) => (
+                <div
+                  key={className}
+                  className="reference-item card clickable"
+                  onClick={() => openModal({ name: className, ...data }, 'class')}
+                >
+                  <h4>{className}</h4>
+                  <div className="domains-list">
+                    {data.domains && data.domains.map(domain => (
+                      <span key={domain} className="badge">{domain}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
         <div className="tools-section">
           <h3>Ancestries</h3>
           <div className="reference-tags">
-            {Object.entries(ANCESTRIES).map(([name, description]) => (
+            {Object.entries(gameSystem.ancestries || {}).map(([name, description]) => (
               <span
                 key={name}
                 className="badge badge-hope clickable"
@@ -94,7 +102,7 @@ export default function ToolsView() {
 
           <h3 style={{marginTop: '2rem'}}>Communities</h3>
           <div className="reference-tags">
-            {Object.entries(COMMUNITIES).map(([name, description]) => (
+            {Object.entries(gameSystem.communities || {}).map(([name, description]) => (
               <span
                 key={name}
                 className="badge badge-fear clickable"
@@ -105,7 +113,8 @@ export default function ToolsView() {
             ))}
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Modal for showing details */}
       {selectedItem && (

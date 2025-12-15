@@ -5,6 +5,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'classic-dungeon-delve',
     name: 'Classic Dungeon Delve',
+    complexity: 1,
     theme: 'Exploration & Combat',
     description: 'A traditional dungeon crawl where heroes explore ancient ruins, battle monsters, and seek legendary treasures.',
     structure: {
@@ -22,6 +23,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'political-intrigue',
     name: 'Political Intrigue',
+    complexity: 2,
     theme: 'Social & Investigation',
     description: 'Navigate the dangerous world of nobles, guilds, and power struggles in a city-state or kingdom.',
     structure: {
@@ -39,6 +41,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'planar-adventure',
     name: 'Planar Adventure',
+    complexity: 3,
     theme: 'High Magic & Cosmic Stakes',
     description: 'Travel across multiple planes of existence, dealing with cosmic threats and otherworldly beings.',
     structure: {
@@ -56,6 +59,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'dragon-hunt',
     name: 'Dragon Hunt',
+    complexity: 2,
     theme: 'Epic Quest',
     description: 'A classic quest to hunt down and defeat a dragon terrorizing the land.',
     structure: {
@@ -73,6 +77,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'mystery-murder',
     name: 'Mystery & Murder',
+    complexity: 2,
     theme: 'Investigation',
     description: 'Solve a complex mystery involving murder, conspiracy, and hidden secrets.',
     structure: {
@@ -90,6 +95,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'wilderness-survival',
     name: 'Wilderness Survival',
+    complexity: 1,
     theme: 'Survival & Exploration',
     description: 'Survive in harsh, untamed wilderness while pursuing a goal or escaping danger.',
     structure: {
@@ -107,6 +113,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'undead-uprising',
     name: 'Undead Uprising',
+    complexity: 2,
     theme: 'Horror & Combat',
     description: 'Fight against a rising tide of undead and discover the necromancer behind it all.',
     structure: {
@@ -124,6 +131,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'heist-caper',
     name: 'Heist & Caper',
+    complexity: 2,
     theme: 'Planning & Execution',
     description: 'Plan and execute an elaborate heist to steal a valuable item or rescue someone.',
     structure: {
@@ -141,6 +149,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'war-campaign',
     name: 'War Campaign',
+    complexity: 3,
     theme: 'Large-Scale Conflict',
     description: 'Navigate a kingdom at war, with the party playing a crucial role in the conflict\'s outcome.',
     structure: {
@@ -158,6 +167,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'lost-civilization',
     name: 'Lost Civilization',
+    complexity: 2,
     theme: 'Discovery & History',
     description: 'Discover the ruins of an ancient civilization and uncover its secrets and treasures.',
     structure: {
@@ -175,6 +185,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'guild-rise',
     name: 'Guild/Organization Rise',
+    complexity: 3,
     theme: 'Building & Management',
     description: 'Build and manage an adventuring guild, thieves\' guild, or similar organization.',
     structure: {
@@ -192,6 +203,7 @@ export const DND5E_CAMPAIGN_FRAMES = [
   {
     id: 'prophecy-destiny',
     name: 'Prophecy & Destiny',
+    complexity: 3,
     theme: 'Epic Fantasy',
     description: 'The party is central to an ancient prophecy that will determine the fate of the world.',
     structure: {

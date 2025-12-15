@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Users, BookOpen, ScrollText, ExternalLink, Edit3 } from 'lucide-react';
 import DiceRoller from '../DiceRoller';
 import Modal from '../Modal';
-import { EXTERNAL_TOOLS } from '../../data/daggerheart';
+import { getGameSystem } from '../../data/systems/index.js';
 import './DashboardView.css';
 
 const ICON_MAP = {
@@ -16,6 +16,10 @@ const ICON_MAP = {
 export default function DashboardView({ campaign, updateCampaign, characters, lore, sessions, isDM }) {
   const [isEditingCampaign, setIsEditingCampaign] = useState(false);
   const [campaignForm, setCampaignForm] = useState(campaign);
+
+  // Get external tools from game system
+  const gameSystem = getGameSystem(campaign?.gameSystem);
+  const externalTools = gameSystem?.externalTools || [];
 
   const handleSaveCampaign = (e) => {
     e.preventDefault();
@@ -80,7 +84,7 @@ export default function DashboardView({ campaign, updateCampaign, characters, lo
         <div className="dashboard-section">
           <h2>Quick Actions</h2>
           <div className="quick-actions-grid">
-            {EXTERNAL_TOOLS.map((tool, index) => (
+            {externalTools.map((tool, index) => (
               <a
                 key={index}
                 href={tool.url}
