@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getGameSystem } from '../data/systems/index.js';
 import './Sidebar.css';
 
 export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign }) {
   const { logout } = useAuth();
   const [expandedGroups, setExpandedGroups] = useState(['campaign', 'players', 'world', 'adventure', 'resources', 'settings']);
+
+  // Get game system name for title
+  const gameSystem = currentCampaign ? getGameSystem(currentCampaign.gameSystem) : null;
+  const systemName = gameSystem?.name || 'Daggerheart';
 
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>
@@ -87,7 +92,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
   return (
     <aside className={`sidebar ${isDM ? 'dm-mode' : 'player-mode'}`}>
       <div className="sidebar-header">
-        <h1 className="sidebar-title">Daggerheart</h1>
+        <h1 className="sidebar-title">{systemName}</h1>
         <p className="sidebar-subtitle">Campaign Manager</p>
       </div>
 

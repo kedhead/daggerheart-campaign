@@ -102,7 +102,7 @@ export default {
   // UI theme customization
   theme: {
     primary: '#c53030', // D&D red
-    secondary: '#2d3748', // dark gray
+    secondary: '#a0aec0', // light gray/silver
     iconSet: 'medieval'
   }
 };

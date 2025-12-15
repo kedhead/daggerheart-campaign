@@ -17,7 +17,8 @@
       "Bash(npm run dev)",
       "Bash(grep:*)",
       "Bash(git reset:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "WebFetch(domain:www.yellowmadhouse.com)"
     ],
     "deny": [],
     "ask": []

@@ -99,13 +99,21 @@ function CampaignApp() {
     if (campaign?.gameSystem) {
       const gameSystem = getGameSystem(campaign.gameSystem);
       if (gameSystem?.theme) {
-        // Apply CSS variables for theming
-        // Map to the actual CSS variables used in the app
+        // Apply CSS variables for theming - map to the actual CSS variables used in the app
         document.documentElement.style.setProperty('--fear-color', gameSystem.theme.primary);
         document.documentElement.style.setProperty('--fear-secondary', gameSystem.theme.primary);
+        
         if (gameSystem.theme.secondary) {
           document.documentElement.style.setProperty('--hope-color', gameSystem.theme.secondary);
           document.documentElement.style.setProperty('--hope-secondary', gameSystem.theme.secondary);
+        }
+        
+        // For non-Daggerheart systems, also update background colors for fuller theme
+        if (gameSystem.id !== 'daggerheart') {
+          // Shift backgrounds to be more neutral/grey
+          document.documentElement.style.setProperty('--bg-primary', '#1a1a1a');
+          document.documentElement.style.setProperty('--bg-secondary', '#2d2d2d');
+          document.documentElement.style.setProperty('--bg-tertiary', '#3a3a3a');
         }
       }
     }
@@ -116,6 +124,9 @@ function CampaignApp() {
       document.documentElement.style.setProperty('--fear-secondary', '#a78bfa');
       document.documentElement.style.setProperty('--hope-color', '#eab308');
       document.documentElement.style.setProperty('--hope-secondary', '#f59e0b');
+      document.documentElement.style.setProperty('--bg-primary', '#0f0f1a');
+      document.documentElement.style.setProperty('--bg-secondary', '#1a1a2e');
+      document.documentElement.style.setProperty('--bg-tertiary', '#16213e');
     };
   }, [campaign?.gameSystem]);
 
