@@ -277,9 +277,9 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       }
 
       // Also update campaign world map if it's a world map
-      if (mapType === 'world' && mapData.imageUrl) {
+      if (mapType === 'world' && imageDownloadUrl) {
         await updateCampaign({
-          worldMap: mapData.imageUrl,
+          worldMap: imageDownloadUrl,
           mapDescription: mapData.description,
           mapRegions: JSON.stringify(mapData.regions || []),
           mapFeatures: JSON.stringify(mapData.features || [])

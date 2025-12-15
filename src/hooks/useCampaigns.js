@@ -52,7 +52,7 @@ export function useCampaigns() {
   }, [currentUser]);
 
   // Create new campaign
-  const createCampaign = async (name, description = '', isPublic = false) => {
+  const createCampaign = async (name, description = '', isPublic = false, gameSystem = 'daggerheart') => {
     if (!currentUser) return null;
 
     const docRef = await addDoc(
@@ -62,6 +62,7 @@ export function useCampaigns() {
         description,
         createdBy: currentUser.uid,
         dmId: currentUser.uid, // Creator is always the DM
+        gameSystem: gameSystem, // Game system for this campaign
         isPublic: isPublic,
         joinRequests: {}, // Store pending join requests
         members: {

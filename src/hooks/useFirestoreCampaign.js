@@ -45,23 +45,32 @@ export function useFirestoreCampaign(campaignId) {
         if (docSnapshot.exists()) {
           const campaignData = { id: docSnapshot.id, ...docSnapshot.data() };
 
+          // Collect migration updates
+          const updates = {};
+
           // Migrate legacy campaigns without dmId or members
           if (!campaignData.dmId || !campaignData.members) {
-            try {
-              const updates = {
-                dmId: currentUser.uid,
-                members: {
-                  [currentUser.uid]: {
-                    role: 'dm',
-                    email: currentUser.email,
-                    displayName: currentUser.displayName || 'DM',
-                    joinedAt: serverTimestamp()
-                  }
-                }
-              };
+            updates.dmId = currentUser.uid;
+            updates.members = {
+              [currentUser.uid]: {
+                role: 'dm',
+                email: currentUser.email,
+                displayName: currentUser.displayName || 'DM',
+                joinedAt: serverTimestamp()
+              }
+            };
+          }
 
+          // Migrate legacy campaigns without gameSystem
+          if (!campaignData.gameSystem) {
+            updates.gameSystem = 'daggerheart';
+          }
+
+          // Apply migrations if needed
+          if (Object.keys(updates).length > 0) {
+            try {
               await updateDoc(docSnapshot.ref, updates);
-              console.log('Migrated legacy campaign to new structure');
+              console.log('Migrated legacy campaign:', Object.keys(updates).join(', '));
 
               // Update local state with migrated data
               setCampaign({ ...campaignData, ...updates });
