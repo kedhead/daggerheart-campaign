@@ -39,8 +39,16 @@
 
 .game-system-card.selected {
   border-color: var(--primary);
-  background: var(--bg-hover);
+  background: var(--primary);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.game-system-card.selected h3 {
+  color: white;
+}
+
+.game-system-card.selected .system-description {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .system-header {
