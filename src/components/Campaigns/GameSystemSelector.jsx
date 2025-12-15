@@ -3,6 +3,7 @@ import './GameSystemSelector.css';
 
 export default function GameSystemSelector({ selectedSystem, onSelect }) {
   const gameSystems = getAllGameSystems();
+  console.log('GameSystemSelector rendering, found systems:', gameSystems);
 
   return (
     <div className="game-system-selector">

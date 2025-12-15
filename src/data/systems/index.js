@@ -36,6 +36,7 @@ export function getGameSystem(systemId) {
  * @returns {Array} Array of game system definitions
  */
 export function getAllGameSystems() {
+  console.log('getAllGameSystems called, GAME_SYSTEMS:', GAME_SYSTEMS);
   return Object.values(GAME_SYSTEMS);
 }
 
