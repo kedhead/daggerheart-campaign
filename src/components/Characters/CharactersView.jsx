@@ -4,18 +4,22 @@ import CharacterCardSimple from './CharacterCardSimple';
 import CharacterFormSimple from './CharacterFormSimple';
 import DnD5eForm from './forms/DnD5eForm';
 import DnD5eCard from './cards/DnD5eCard';
+import StarWarsD6Form from './forms/StarWarsD6Form';
+import StarWarsD6Card from './cards/StarWarsD6Card';
 import Modal from '../Modal';
 import './CharactersView.css';
 
 // Map game systems to their form/card components
 const FORM_COMPONENTS = {
   'daggerheart': CharacterFormSimple,
-  'dnd5e': DnD5eForm
+  'dnd5e': DnD5eForm,
+  'starwarsd6': StarWarsD6Form
 };
 
 const CARD_COMPONENTS = {
   'daggerheart': CharacterCardSimple,
-  'dnd5e': DnD5eCard
+  'dnd5e': DnD5eCard,
+  'starwarsd6': StarWarsD6Card
 };
 
 export default function CharactersView({ campaign, characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId }) {

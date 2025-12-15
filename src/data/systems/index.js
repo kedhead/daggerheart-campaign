@@ -3,11 +3,13 @@
 
 import daggerheart from './daggerheart.js';
 import dnd5e from './dnd5e.js';
+import starwarsd6 from './starwarsd6.js';
 
 // Registry of all available game systems
 const GAME_SYSTEMS = {
   daggerheart,
-  dnd5e
+  dnd5e,
+  starwarsd6
 };
 
 /**
