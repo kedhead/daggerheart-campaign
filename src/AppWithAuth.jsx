@@ -20,6 +20,7 @@ import CampaignBuilderView from './components/CampaignBuilder/CampaignBuilderVie
 import APISettings from './components/Settings/APISettings';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
+import { getGameSystem } from './data/systems/index.js';
 import './App.css';
 
 function CampaignApp() {
@@ -92,6 +93,26 @@ function CampaignApp() {
     deleteCampaignFrameDraft,
     loading
   } = useFirestoreCampaign(currentCampaignId);
+
+  // Apply theme based on campaign's game system
+  useEffect(() => {
+    if (campaign?.gameSystem) {
+      const gameSystem = getGameSystem(campaign.gameSystem);
+      if (gameSystem?.theme) {
+        // Apply CSS variables for theming
+        document.documentElement.style.setProperty('--primary', gameSystem.theme.primary);
+        if (gameSystem.theme.secondary) {
+          document.documentElement.style.setProperty('--secondary', gameSystem.theme.secondary);
+        }
+      }
+    }
+    
+    // Cleanup: reset to default Daggerheart theme when unmounting
+    return () => {
+      document.documentElement.style.setProperty('--primary', '#7c3aed');
+      document.documentElement.style.setProperty('--secondary', '#fbbf24');
+    };
+  }, [campaign?.gameSystem]);
 
   // Determine if current user is DM based on campaign data
   // For legacy campaigns without dmId, assume current user is DM

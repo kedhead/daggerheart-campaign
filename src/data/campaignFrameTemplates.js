@@ -2,6 +2,7 @@
  * Campaign Frame Templates
  * Based on official Daggerheart Campaign Frames
  */
+import { getGameSystem } from './systems/index.js';
 
 export const CAMPAIGN_FRAME_TEMPLATES = [
   {
@@ -415,10 +416,28 @@ export function getTemplateById(id) {
 }
 
 /**
- * Get all templates except blank
+ * Get all templates except blank, optionally filtered by game system
+ * @param {string} gameSystem - Optional game system ID (e.g., 'daggerheart', 'dnd5e')
  * @returns {array} Array of template objects
  */
-export function getAvailableTemplates() {
+export function getAvailableTemplates(gameSystem = 'daggerheart') {
+  // If game system is daggerheart or not specified, return Daggerheart templates
+  if (!gameSystem || gameSystem === 'daggerheart') {
+    return CAMPAIGN_FRAME_TEMPLATES.filter(template => template.id !== 'blank');
+  }
+
+  // For other game systems, try to load templates from the game system definition
+  try {
+    const system = getGameSystem(gameSystem);
+
+    if (system?.campaignFrameTemplates && Array.isArray(system.campaignFrameTemplates)) {
+      return system.campaignFrameTemplates;
+    }
+  } catch (error) {
+    console.warn(`Could not load campaign frame templates for game system '${gameSystem}', falling back to Daggerheart templates`, error);
+  }
+
+  // Fallback to Daggerheart templates if game system templates not found
   return CAMPAIGN_FRAME_TEMPLATES.filter(template => template.id !== 'blank');
 }
 

@@ -2,6 +2,8 @@
 // Fifth Edition Dungeons & Dragons compatible system
 // Uses D&D Beyond for detailed character sheets
 
+import { DND5E_CAMPAIGN_FRAMES } from '../dnd5eCampaignFrames.js';
+
 const CLASSES = ['Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk', 'Paladin', 'Ranger', 'Rogue', 'Sorcerer', 'Warlock', 'Wizard'];
 
 const RACES = ['Human', 'Elf', 'Dwarf', 'Halfling', 'Dragonborn', 'Gnome', 'Half-Elf', 'Half-Orc', 'Tiefling'];
@@ -65,6 +67,9 @@ export default {
   // Game data (kept for reference/tools view)
   classes: CLASSES,
   races: RACES,
+
+  // Campaign frame templates
+  campaignFrameTemplates: DND5E_CAMPAIGN_FRAMES,
 
   // External tools
   externalTools: [

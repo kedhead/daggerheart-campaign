@@ -32,7 +32,7 @@ export default function CampaignBuilderView({
     completeCampaignFrame
   );
 
-  const templates = getAvailableTemplates();
+  const templates = getAvailableTemplates(campaign?.gameSystem);
   const hasDraft = !!campaignFrameDraft;
 
   const handleStartWizard = (template = null) => {
