@@ -256,6 +256,11 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
             />
           </div>
 
+          <GameSystemSelector
+            selectedSystem={gameSystem}
+            onSelect={setGameSystem}
+          />
+
           <div className="input-group">
             <label className="checkbox-label">
               <input
