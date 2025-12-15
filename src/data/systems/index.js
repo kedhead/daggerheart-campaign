@@ -2,13 +2,12 @@
 // This module manages loading and accessing game system definitions
 
 import daggerheart from './daggerheart.js';
-// Import additional systems as they're added
-// import dnd5e from './dnd5e.js';
+import dnd5e from './dnd5e.js';
 
 // Registry of all available game systems
 const GAME_SYSTEMS = {
   daggerheart,
-  // dnd5e, // Will be added in Phase 2
+  dnd5e
 };
 
 /**

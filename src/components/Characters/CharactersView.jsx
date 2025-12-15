@@ -2,13 +2,31 @@ import { useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import CharacterCardSimple from './CharacterCardSimple';
 import CharacterFormSimple from './CharacterFormSimple';
+import DnD5eForm from './forms/DnD5eForm';
+import DnD5eCard from './cards/DnD5eCard';
 import Modal from '../Modal';
 import './CharactersView.css';
 
-export default function CharactersView({ characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId }) {
+// Map game systems to their form/card components
+const FORM_COMPONENTS = {
+  'daggerheart': CharacterFormSimple,
+  'dnd5e': DnD5eForm
+};
+
+const CARD_COMPONENTS = {
+  'daggerheart': CharacterCardSimple,
+  'dnd5e': DnD5eCard
+};
+
+export default function CharactersView({ campaign, characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Get the right form/card components for this campaign's game system
+  const gameSystem = campaign?.gameSystem || 'daggerheart';
+  const FormComponent = FORM_COMPONENTS[gameSystem] || CharacterFormSimple;
+  const CardComponent = CARD_COMPONENTS[gameSystem] || CharacterCardSimple;
 
   const handleAdd = () => {
     setEditingCharacter(null);
@@ -37,8 +55,9 @@ export default function CharactersView({ characters, addCharacter, updateCharact
 
   const filteredCharacters = characters.filter(char =>
     char.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    char.class.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    char.ancestry.toLowerCase().includes(searchTerm.toLowerCase())
+    (char.class && char.class.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (char.ancestry && char.ancestry.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (char.playerName && char.playerName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -79,7 +98,7 @@ export default function CharactersView({ characters, addCharacter, updateCharact
       ) : (
         <div className="characters-grid">
           {filteredCharacters.map(character => (
-            <CharacterCardSimple
+            <CardComponent
               key={character.id}
               character={character}
               onEdit={() => handleEdit(character)}
@@ -100,7 +119,7 @@ export default function CharactersView({ characters, addCharacter, updateCharact
         title={editingCharacter ? 'Edit Character' : 'New Character'}
         size="medium"
       >
-        <CharacterFormSimple
+        <FormComponent
           character={editingCharacter}
           onSave={handleSave}
           onCancel={() => {

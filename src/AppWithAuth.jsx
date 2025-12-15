@@ -143,6 +143,7 @@ function CampaignApp() {
       case 'characters':
         return (
           <CharactersView
+            campaign={campaign}
             characters={characters}
             addCharacter={addCharacter}
             updateCharacter={updateCharacter}

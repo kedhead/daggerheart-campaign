@@ -332,6 +332,7 @@ export function useFirestoreCampaign(campaignId) {
     if (!basePath) return;
     const docRef = await addDoc(collection(db, `${basePath}/characters`), {
       ...character,
+      gameSystem: campaign?.gameSystem || 'daggerheart', // Inherit from campaign
       createdBy: currentUser.uid,
       createdByName: currentUser.displayName || currentUser.email,
       createdAt: serverTimestamp(),

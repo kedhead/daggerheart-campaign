@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, FolderOpen, Trash2, Edit3, Search } from 'lucide-react';
 import { useCampaigns } from '../../hooks/useCampaigns';
 import CampaignBrowser from './CampaignBrowser';
+import GameSystemSelector from './GameSystemSelector';
 import Modal from '../Modal';
 import './CampaignSelector.css';
 
@@ -12,6 +13,7 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
   const [campaignName, setCampaignName] = useState('');
   const [campaignDescription, setCampaignDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
+  const [gameSystem, setGameSystem] = useState('daggerheart');
   const [creating, setCreating] = useState(false);
 
   const isDM = userRole === 'dm';
@@ -21,11 +23,12 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
     setCreating(true);
 
     try {
-      const newCampaignId = await createCampaign(campaignName, campaignDescription, isPublic);
+      const newCampaignId = await createCampaign(campaignName, campaignDescription, isPublic, gameSystem);
       setIsModalOpen(false);
       setCampaignName('');
       setCampaignDescription('');
       setIsPublic(false);
+      setGameSystem('daggerheart');
       if (newCampaignId) {
         onSelectCampaign(newCampaignId);
       }
@@ -129,6 +132,11 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
                 disabled={creating}
               />
             </div>
+
+            <GameSystemSelector
+              selectedSystem={gameSystem}
+              onSelect={setGameSystem}
+            />
 
             <div className="input-group">
               <label className="checkbox-label">
