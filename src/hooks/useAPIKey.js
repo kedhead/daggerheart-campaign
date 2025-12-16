@@ -40,12 +40,14 @@ export function useAPIKey(userId) {
           const decrypted = await decrypt(stored, userId);
           const parsed = JSON.parse(decrypted);
           setKeys(parsed);
+          setError(null); // Clear any previous errors on successful load
         }
       } catch (err) {
         console.error('Failed to load API keys:', err);
-        // If decryption fails, clear the stored data
-        localStorage.removeItem(STORAGE_KEY);
-        setError('Failed to load saved API keys');
+        // IMPORTANT: Do NOT clear localStorage on decryption failure
+        // The user ID might be temporarily unavailable or incorrect
+        // Keys will remain encrypted and available when userId is correct
+        setError('Encrypted API keys found but cannot be decrypted. Please try refreshing the page.');
       } finally {
         setLoading(false);
       }
