@@ -1,5 +1,12 @@
 .character-card {
   overflow: hidden;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .character-card {
+    padding: 1.5rem;
+  }
 }
 
 .character-link-status {
@@ -126,8 +133,14 @@
 
 .traits-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr); /* Mobile: 2 columns */
   gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .traits-grid {
+    grid-template-columns: repeat(3, 1fr); /* Tablet+: 3 columns */
+  }
 }
 
 .trait {
@@ -152,9 +165,15 @@
 
 .vitals-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr; /* Mobile: single column */
   gap: 1rem;
   margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .vitals-section {
+    grid-template-columns: 1fr 1fr; /* Tablet+: 2 columns */
+  }
 }
 
 .vital h4 {
@@ -192,9 +211,15 @@
 
 .combat-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr); /* Mobile: 2 columns */
   gap: 1rem;
   margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .combat-stats {
+    grid-template-columns: repeat(3, 1fr); /* Tablet+: 3 columns */
+  }
 }
 
 .stat-box {
