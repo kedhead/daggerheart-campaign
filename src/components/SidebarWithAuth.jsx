@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll } from 'lucide-react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import './Sidebar.css';
 
 export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign }) {
   const { logout } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(['campaign', 'players', 'world', 'adventure', 'resources', 'settings']);
 
   // Get game system name for title
@@ -89,8 +90,31 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
     }
   };
 
+  const handleNavClick = (viewId) => {
+    setCurrentView(viewId);
+    setIsMobileMenuOpen(false); // Close mobile menu after navigation
+  };
+
   return (
-    <aside className={`sidebar ${isDM ? 'dm-mode' : 'player-mode'}`}>
+    <>
+      {/* Mobile menu toggle button */}
+      <button
+        className="mobile-menu-toggle"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label="Toggle menu"
+      >
+        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Backdrop for mobile */}
+      {isMobileMenuOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside className={`sidebar ${isDM ? 'dm-mode' : 'player-mode'} ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
       <div className="sidebar-header">
         <h1 className="sidebar-title">{systemName}</h1>
         <p className="sidebar-subtitle">Campaign Manager</p>
@@ -145,7 +169,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                       <button
                         key={item.id}
                         className={`nav-item ${currentView === item.id ? 'active' : ''}`}
-                        onClick={() => setCurrentView(item.id)}
+                        onClick={() => handleNavClick(item.id)}
                       >
                         <Icon size={18} />
                         <span>{item.label}</span>
@@ -176,5 +200,6 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         </div>
       </div>
     </aside>
+    </>
   );
 }
