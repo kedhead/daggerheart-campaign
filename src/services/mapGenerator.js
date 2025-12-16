@@ -12,8 +12,59 @@ import { aiService } from './aiService';
  * @param {string} provider - API provider
  * @returns {Promise<object>} Map description and metadata
  */
+/**
+ * Get map style instructions based on game system
+ */
+function getMapStyle(gameSystem, mapType) {
+  if (gameSystem === 'starwarsd6') {
+    const holocronBase = {
+      world: {
+        inst: 'Star Wars Holocron-style galactic map with holographic blue/cyan glowing effects, black space background with stars, glowing star systems, hyperspace routes as cyan lines, futuristic fonts, technical coordinates, no parchment - pure sci-fi',
+        dalle: 'Star Wars holographic galactic map, blue cyan glowing aesthetic, black space, glowing star systems, hyperspace routes as cyan trails, futuristic labels, scan lines, technical coordinates'
+      },
+      regional: {
+        inst: 'Star Wars Holocron-style sector map with holographic blue/cyan effects, space background, hyperspace routes, space stations, asteroid fields, grid coordinates, futuristic fonts, holographic scan lines',
+        dalle: 'Star Wars holographic sector map, blue cyan glowing, star systems, hyperspace routes, space stations, asteroid fields, futuristic labels, grid coordinates, holographic effects'
+      },
+      local: {
+        inst: 'Star Wars Holocron-style planetary map with holographic blue/cyan effects, orbital view, landing zones, technical labels, coordinate grid, futuristic fonts, scan effects, pure sci-fi',
+        dalle: 'Star Wars holographic location map, blue cyan glowing, buildings, landing pads, technical labels, coordinate grid, holographic scan effects, sci-fi design'
+      },
+      dungeon: {
+        inst: 'Star Wars technical schematic with cyan/white on dark background, grid overlay, facility/ship interior, technical labels, security points, clean lines, Imperial schematic style',
+        dalle: 'Star Wars technical schematic, cyan white on dark, blueprint facility interior, grid overlay, technical labels, precise lines, Imperial schematics style'
+      }
+    };
+    const style = holocronBase[mapType] || holocronBase.world;
+    return { instructions: 'IMPORTANT - Map Style: ' + style.inst, dallePrompt: style.dalle };
+  }
+  
+  const fantasyBase = {
+    world: {
+      inst: 'Tolkien-esque fantasy cartography with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated mountains/forests, decorative compass rose, ornate border',
+      dalle: 'Tolkien-style fantasy map, parchment texture, hand-drawn, flowing calligraphy, illustrated mountains and forests, decorative compass rose, ornate Celtic border, aged appearance'
+    },
+    regional: {
+      inst: 'Tolkien-esque regional fantasy map with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated terrain, dotted roads, compass rose, scale bar',
+      dalle: 'Tolkien-style regional fantasy map, parchment texture, hand-drawn, calligraphy labels, illustrated terrain, dotted paths, building icons, compass rose, scale bar, aged appearance'
+    },
+    local: {
+      inst: 'Tolkien-esque town/city map with hand-drawn aesthetic, parchment texture, flowing calligraphy, isometric buildings, streets, decorative elements, compass rose',
+      dalle: 'Tolkien-style town map, parchment texture, hand-drawn, isometric buildings, marked streets, calligraphy labels, decorative elements, compass rose, scale bar, aged appearance'
+    },
+    dungeon: {
+      inst: 'Grid-based battle map with square grid overlay (5-foot squares), top-down view, thick walls, D&D door symbols, numbered rooms, labeled features, clean tactical design',
+      dalle: 'Campaign dungeon battle map, square grid overlay (5ft), top-down view, thick black walls, D&D door symbols, numbered rooms, labeled features, tactical design suitable for VTT'
+    }
+  };
+  const style = fantasyBase[mapType] || fantasyBase.world;
+  return { instructions: 'IMPORTANT - Map Style: ' + style.inst, dallePrompt: style.dalle };
+}
+
+
 async function generateMapDescription(context, apiKey, provider) {
   const { campaign, locations = [], mapType = 'world', specificLocation = null } = context;
+  const gameSystem = campaign?.gameSystem || 'daggerheart';
 
   let prompt = '';
 
@@ -35,16 +86,7 @@ Generate a map description with:
 4. Notable geographical features
 5. Scale/size of the world
 
-IMPORTANT - Map Style: Tolkien-esque fantasy cartography
-- Hand-drawn aesthetic like maps from Lord of the Rings and The Hobbit
-- Parchment texture with aged, weathered appearance
-- Elegant flowing calligraphy for location names
-- Mountain ranges drawn as small peaked illustrations
-- Forests shown as clusters of small tree symbols
-- Cities/towns as small building icons or towers
-- Decorative compass rose in medieval style
-- Sea monsters or ships in ocean areas
-- Ornate border with Celtic/medieval patterns
+${getMapStyle(gameSystem, "world").instructions}
 
 Format as JSON:
 \`\`\`json
@@ -55,8 +97,8 @@ Format as JSON:
   "locationPlacements": [
     {"location": "City Name", "position": "northern coast", "coordinates": [x, y]}
   ],
-  "style": "Tolkien-esque hand-drawn fantasy map with parchment texture",
-  "dallePrompt": "A Tolkien-style fantasy map with parchment texture, hand-drawn aesthetic resembling maps from Lord of the Rings. Include flowing calligraphy labels, illustrated mountain ranges as small peaks, forests as tree clusters, decorative compass rose, ornate Celtic border, and aged weathered appearance. [ADD YOUR SPECIFIC MAP DETAILS HERE]"
+  "style": "${getMapStyle(gameSystem, 'world').dallePrompt}",
+  "dallePrompt": "${getMapStyle(gameSystem, 'world').dallePrompt} [ADD YOUR SPECIFIC MAP DETAILS HERE]"
 }
 \`\`\``;
   } else if (mapType === 'regional' && specificLocation) {
@@ -79,15 +121,7 @@ Generate a regional map description showing:
 4. Roads, rivers, or other connections
 5. Scale (roughly 50-100 miles radius)
 
-IMPORTANT - Map Style: Tolkien-esque regional fantasy map
-- Hand-drawn aesthetic like The Shire or Rivendell regional maps
-- Parchment texture with aged appearance
-- Flowing calligraphy for place names
-- Illustrated terrain features (hills, woods, streams)
-- Dotted or dashed lines for roads and paths
-- Small pictographic icons for buildings and landmarks
-- Decorative compass rose
-- Scale bar in medieval style
+${getMapStyle(gameSystem, 'regional').instructions}
 
 Format as JSON:
 \`\`\`json
@@ -98,8 +132,8 @@ Format as JSON:
   "locationPlacements": [
     {"location": "Location Name", "position": "relative position", "coordinates": [x, y]}
   ],
-  "style": "Tolkien-esque hand-drawn regional map",
-  "dallePrompt": "A Tolkien-style regional fantasy map with parchment texture, hand-drawn aesthetic. Include flowing calligraphy labels, illustrated terrain (hills, forests, rivers), dotted paths and roads, small building icons, decorative compass rose, scale bar, and aged weathered appearance. [ADD YOUR SPECIFIC REGIONAL DETAILS HERE]"
+  "style": "${getMapStyle(gameSystem, 'regional').dallePrompt}",
+  "dallePrompt": "${getMapStyle(gameSystem, 'regional').dallePrompt} [ADD YOUR SPECIFIC REGIONAL DETAILS HERE]"
 }
 \`\`\``;
   } else if (mapType === 'local' && specificLocation) {
@@ -117,15 +151,7 @@ Generate a local map description showing:
 4. Points of interest
 5. Scale (walkable city/town map)
 
-IMPORTANT - Map Style: Tolkien-esque town/city map
-- Hand-drawn aesthetic like maps of Minas Tirith or Bree
-- Parchment texture with aged appearance
-- Flowing calligraphy for district and street names
-- Buildings drawn as small 3D isometric structures or top-down floor plans
-- Streets and paths clearly marked
-- Decorative elements (trees, fountains, market stalls)
-- Compass rose and scale bar
-- Key landmarks labeled with elegant script
+${getMapStyle(gameSystem, 'local').instructions}
 
 Format as JSON:
 \`\`\`json
@@ -134,8 +160,8 @@ Format as JSON:
   "districts": ["district names"],
   "landmarks": ["important landmarks"],
   "features": ["streets", "pathways", "points of interest"],
-  "style": "Tolkien-esque town/city map",
-  "dallePrompt": "A Tolkien-style town or city map with parchment texture, hand-drawn aesthetic. Show buildings as isometric structures or floor plans, clearly marked streets and pathways, flowing calligraphy labels, decorative elements (trees, fountains), compass rose, scale bar, and aged weathered appearance. [ADD YOUR SPECIFIC TOWN/CITY DETAILS HERE]"
+  "style": "${getMapStyle(gameSystem, 'local').dallePrompt}",
+  "dallePrompt": "${getMapStyle(gameSystem, 'local').dallePrompt} [ADD YOUR SPECIFIC TOWN/CITY DETAILS HERE]"
 }
 \`\`\``;
   } else if (mapType === 'dungeon' && specificLocation) {
@@ -153,16 +179,7 @@ Generate a dungeon map description showing:
 4. Traps, hazards, or special features
 5. Points of interest (treasure, monsters, puzzles)
 
-IMPORTANT - Map Style: Grid-based battle map for campaign use
-- Square grid overlay (5-foot squares) for tactical combat
-- Top-down view showing exact room dimensions
-- Clearly defined walls (thick black lines)
-- Doors marked with standard D&D symbols
-- Numbered rooms for easy reference
-- Labeled features (stairs, pits, pillars, etc.)
-- Scale indicator showing grid square size
-- Clean, usable design suitable for VTT or print
-- Optional: subtle texture for floor types (stone, dirt, water)
+${getMapStyle(gameSystem, 'dungeon').instructions}
 
 Format as JSON:
 \`\`\`json
@@ -172,8 +189,8 @@ Format as JSON:
   "connections": ["corridors", "secret passages"],
   "features": ["traps", "treasure", "encounters"],
   "gridSize": "5-foot squares",
-  "style": "Grid-based tactical battle map",
-  "dallePrompt": "A campaign-ready dungeon battle map with square grid overlay (5ft squares). Top-down view showing exact room dimensions, thick black walls, D&D-style door symbols, numbered rooms, clearly labeled features (stairs, pillars, traps), scale indicator, clean tactical design suitable for VTT or tabletop use. Optional subtle floor textures. [ADD YOUR SPECIFIC DUNGEON DETAILS HERE]"
+  "style": "${getMapStyle(gameSystem, 'dungeon').dallePrompt}",
+  "dallePrompt": "${getMapStyle(gameSystem, 'dungeon').dallePrompt} [ADD YOUR SPECIFIC DUNGEON DETAILS HERE]"
 }
 \`\`\``;
   }
