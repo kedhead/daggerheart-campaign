@@ -285,3 +285,77 @@
     transform: translateY(0);
   }
 }
+
+/* Generic RPG / Polyhedral Dice specific styles */
+.die-type-select {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.die-type-select:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.roll-result.polyhedral {
+  border-color: #6366f1;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), transparent);
+}
+
+.roll-formula {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Cinzel', serif;
+  color: #6366f1;
+  margin-bottom: 1.5rem;
+}
+
+.dice-display.polyhedral-display {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.polyhedral-die {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  padding: 0.75rem 1rem;
+  min-width: 70px;
+  border: 2px solid;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.polyhedral-die:hover {
+  transform: scale(1.05);
+}
+
+.polyhedral-die .die-value {
+  font-size: 1.75rem;
+}
+
+/* Mobile responsiveness for polyhedral dice */
+@media (max-width: 767px) {
+  .polyhedral-die {
+    min-width: 60px;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .polyhedral-die .die-value {
+    font-size: 1.5rem;
+  }
+
+  .roll-formula {
+    font-size: 1.25rem;
+  }
+}

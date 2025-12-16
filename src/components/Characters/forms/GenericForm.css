@@ -1,0 +1,176 @@
+.generic-form {
+  max-width: 800px;
+}
+
+/* Form Sections */
+.form-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.form-section h3 {
+  font-size: 1.125rem;
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.section-header h3 {
+  margin-bottom: 0;
+}
+
+/* Form Rows */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (min-width: 768px) {
+  .form-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .form-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Dynamic Fields */
+.dynamic-fields-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dynamic-field-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dynamic-field-row .field-name {
+  flex: 2;
+}
+
+.dynamic-field-row .field-value {
+  flex: 1;
+  max-width: 120px;
+}
+
+.dynamic-field-row .btn-icon {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Abilities List */
+.abilities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ability-field {
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.ability-header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.ability-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.ability-field textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Button Variants */
+.btn-sm {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.btn-danger-ghost {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid transparent;
+}
+
+.btn-danger-ghost:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 767px) {
+  .form-section {
+    padding: 1rem;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .section-header .btn {
+    width: 100%;
+  }
+
+  .dynamic-field-row {
+    flex-wrap: wrap;
+  }
+
+  .dynamic-field-row .field-name {
+    flex: 1 1 100%;
+  }
+
+  .dynamic-field-row .field-value {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .dynamic-field-row .btn-icon {
+    flex: 0 0 auto;
+  }
+
+  .ability-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ability-header .btn-icon {
+    align-self: flex-end;
+  }
+}

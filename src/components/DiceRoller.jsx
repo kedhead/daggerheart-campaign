@@ -5,6 +5,8 @@ import './DiceRoller.css';
 export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
   const [modifier, setModifier] = useState(0);
   const [numDice, setNumDice] = useState(3); // For Star Wars D6
+  const [selectedDie, setSelectedDie] = useState(20); // For Generic polyhedral
+  const [diceQuantity, setDiceQuantity] = useState(1); // For Generic polyhedral
   const [isRolling, setIsRolling] = useState(false);
   const [currentRoll, setCurrentRoll] = useState(null);
   const [rollHistory, setRollHistory] = useState([]);
@@ -83,6 +85,32 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
     };
   };
 
+  const rollPolyhedral = () => {
+    const dieType = parseInt(selectedDie);
+    const quantity = parseInt(diceQuantity) || 1;
+    const rolls = [];
+    let total = 0;
+
+    // Roll each die
+    for (let i = 0; i < quantity; i++) {
+      const roll = Math.floor(Math.random() * dieType) + 1;
+      rolls.push(roll);
+      total += roll;
+    }
+
+    total += parseInt(modifier);
+
+    return {
+      dieType,
+      quantity,
+      rolls,
+      modifier: parseInt(modifier),
+      total,
+      timestamp: new Date().toLocaleTimeString(),
+      system: 'generic'
+    };
+  };
+
   const rollDice = () => {
     if (isRolling) return;
 
@@ -98,6 +126,9 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
           break;
         case 'starwarsd6':
           roll = rollStarWarsD6();
+          break;
+        case 'generic':
+          roll = rollPolyhedral();
           break;
         case 'daggerheart':
         default:
@@ -118,10 +149,25 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
         return 'D20 Dice Roller';
       case 'starwarsd6':
         return 'Wild Die Roller';
+      case 'generic':
+        return 'Polyhedral Dice Roller';
       case 'daggerheart':
       default:
         return 'Duality Dice Roller';
     }
+  };
+
+  // Get color for die type
+  const getDieColor = (dieType) => {
+    const colors = {
+      4: '#10b981',
+      6: '#3b82f6',
+      8: '#8b5cf6',
+      10: '#ec4899',
+      12: '#f59e0b',
+      20: '#ef4444'
+    };
+    return colors[dieType] || '#6366f1';
   };
 
   return (
@@ -129,6 +175,35 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
       <h3>{getTitle()}</h3>
 
       <div className="dice-controls">
+        {gameSystem === 'generic' && (
+          <>
+            <div className="modifier-input">
+              <label>Die Type</label>
+              <select
+                value={selectedDie}
+                onChange={(e) => setSelectedDie(e.target.value)}
+                className="die-type-select"
+              >
+                <option value={4}>d4</option>
+                <option value={6}>d6</option>
+                <option value={8}>d8</option>
+                <option value={10}>d10</option>
+                <option value={12}>d12</option>
+                <option value={20}>d20</option>
+              </select>
+            </div>
+            <div className="modifier-input">
+              <label>Quantity</label>
+              <input
+                type="number"
+                value={diceQuantity}
+                onChange={(e) => setDiceQuantity(e.target.value)}
+                min="1"
+                max="10"
+              />
+            </div>
+          </>
+        )}
         {gameSystem === 'starwarsd6' && (
           <div className="modifier-input">
             <label>Dice Pool</label>
@@ -269,6 +344,34 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
         </div>
       )}
 
+      {currentRoll && currentRoll.system === 'generic' && (
+        <div className="roll-result polyhedral">
+          <div className="roll-formula">
+            {currentRoll.quantity}d{currentRoll.dieType}
+            {currentRoll.modifier !== 0 && ` ${currentRoll.modifier >= 0 ? '+' : ''}${currentRoll.modifier}`}
+          </div>
+
+          <div className="dice-display polyhedral-display">
+            {currentRoll.rolls.map((roll, index) => (
+              <div key={index} className="die polyhedral-die" style={{ borderColor: getDieColor(currentRoll.dieType) }}>
+                <Dices size={20} style={{ color: getDieColor(currentRoll.dieType) }} />
+                <span className="die-value">{roll}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="roll-total">
+            <div className="total-value">{currentRoll.total}</div>
+          </div>
+
+          {currentRoll.modifier !== 0 && (
+            <div className="modifier-display">
+              Dice: {currentRoll.rolls.reduce((a, b) => a + b, 0)} + Modifier: {currentRoll.modifier}
+            </div>
+          )}
+        </div>
+      )}
+
       {rollHistory.length > 0 && (
         <div className="roll-history">
           <h4>Roll History</h4>
@@ -290,6 +393,11 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
                   {roll.system === 'starwarsd6' && (
                     <>
                       {roll.rolls.length}d6: {roll.rolls.join(', ')}
+                    </>
+                  )}
+                  {roll.system === 'generic' && (
+                    <>
+                      {roll.quantity}d{roll.dieType}: {roll.rolls.join(', ')}
                     </>
                   )}
                 </span>
