@@ -281,3 +281,73 @@
 .dm-mode .sidebar-footer a:hover {
   color: var(--fear-color);
 }
+
+/* Mobile hamburger menu toggle */
+.mobile-menu-toggle {
+  display: none; /* Hidden on desktop */
+}
+
+/* Mobile responsive styles */
+@media (max-width: 767px) {
+  /* Sidebar: Hidden by default, slide in when open */
+  .sidebar {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    width: 280px;
+    height: 100vh;
+    transition: left 0.3s ease;
+    z-index: 1000;
+    background: var(--bg-secondary);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+  }
+
+  .sidebar.mobile-open {
+    left: 0;
+  }
+
+  /* Mobile menu toggle button */
+  .mobile-menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 999;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.625rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+  }
+
+  .mobile-menu-toggle:hover {
+    background: var(--card-bg);
+    border-color: var(--hope-color);
+  }
+
+  /* Overlay backdrop */
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    animation: fadeIn 0.3s ease;
+  }
+}
+
+/* Tablet+: Normal sidebar, hide mobile elements */
+@media (min-width: 768px) {
+  .mobile-menu-toggle {
+    display: none;
+  }
+
+  .sidebar-backdrop {
+    display: none !important; /* Important to override inline style */
+  }
+}

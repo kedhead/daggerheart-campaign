@@ -68,3 +68,16 @@
     transform: rotate(360deg);
   }
 }
+
+/* Mobile responsive layout */
+@media (max-width: 767px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding-top: 60px; /* Space for hamburger button */
+    min-width: 0; /* Prevent overflow */
+  }
+}

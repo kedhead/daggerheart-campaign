@@ -1,7 +1,9 @@
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User } from 'lucide-react';
+import { useState } from 'react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, Menu, X } from 'lucide-react';
 import './Sidebar.css';
 
 export default function Sidebar({ currentView, setCurrentView, isDM, setIsDM }) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'characters', label: 'Characters', icon: Users },
@@ -10,12 +12,35 @@ export default function Sidebar({ currentView, setCurrentView, isDM, setIsDM }) 
     { id: 'tools', label: 'Tools', icon: Wrench }
   ];
 
+  const handleNavClick = (viewId) => {
+    setCurrentView(viewId);
+    setIsMobileMenuOpen(false); // Close mobile menu after navigation
+  };
+
   return (
-    <aside className={`sidebar ${isDM ? 'dm-mode' : 'player-mode'}`}>
-      <div className="sidebar-header">
-        <h1 className="sidebar-title">Daggerheart</h1>
-        <p className="sidebar-subtitle">Campaign Manager</p>
-      </div>
+    <>
+      {/* Mobile menu toggle button */}
+      <button
+        className="mobile-menu-toggle"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label="Toggle menu"
+      >
+        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Backdrop for mobile */}
+      {isMobileMenuOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside className={`sidebar ${isDM ? 'dm-mode' : 'player-mode'} ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar-header">
+          <h1 className="sidebar-title">Daggerheart</h1>
+          <p className="sidebar-subtitle">Campaign Manager</p>
+        </div>
 
       <div className="mode-toggle">
         <button
@@ -41,7 +66,7 @@ export default function Sidebar({ currentView, setCurrentView, isDM, setIsDM }) 
             <button
               key={item.id}
               className={`nav-item ${currentView === item.id ? 'active' : ''}`}
-              onClick={() => setCurrentView(item.id)}
+              onClick={() => handleNavClick(item.id)}
             >
               <Icon size={20} />
               <span>{item.label}</span>
@@ -60,5 +85,6 @@ export default function Sidebar({ currentView, setCurrentView, isDM, setIsDM }) 
         </a>
       </div>
     </aside>
+    </>
   );
 }
