@@ -282,25 +282,9 @@
   color: var(--fear-color);
 }
 
-/* Mobile hamburger menu toggle - TEMPORARY TEST: ALWAYS VISIBLE */
+/* Mobile hamburger menu toggle - hidden on desktop */
 .mobile-menu-toggle {
-  display: flex !important; /* TEMPORARY: Show on all screens for testing */
-  align-items: center;
-  justify-content: center;
-  position: fixed;
-  top: 1rem;
-  left: 1rem;
-  z-index: 99999;
-  min-height: 56px;
-  min-width: 56px;
-  width: 56px;
-  height: 56px;
-  background: #ff0000; /* RED for testing */
-  border: 3px solid #000;
-  border-radius: 50%;
-  color: #fff;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(255, 0, 0, 0.8);
+  display: none;
 }
 
 /* Mobile responsive styles */
@@ -322,29 +306,27 @@
     left: 0;
   }
 
-  /* Mobile menu toggle button - FORCE VISIBLE */
+  /* Mobile menu toggle button */
   .mobile-menu-toggle {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    position: fixed !important;
-    top: 1rem !important;
-    left: 1rem !important;
-    z-index: 99999 !important; /* Extremely high */
-    min-height: 56px !important;
-    min-width: 56px !important;
-    width: 56px !important;
-    height: 56px !important;
-    padding: 0 !important;
-    background: #eab308 !important; /* Bright yellow */
-    border: 3px solid #000 !important; /* Black border for contrast */
-    border-radius: 50% !important; /* Circle */
-    color: #000 !important;
-    cursor: pointer !important;
-    box-shadow: 0 4px 20px rgba(234, 179, 8, 0.8) !important;
     display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1001;
+    min-height: 48px;
+    min-width: 48px;
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    background: var(--hope-color);
+    border: 2px solid var(--hope-color);
+    border-radius: 12px;
+    color: var(--bg-primary);
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s ease;
   }
 
   .mobile-menu-toggle:hover,
