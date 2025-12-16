@@ -205,6 +205,76 @@
   color: var(--fear-color);
 }
 
+/* D&D 5e specific styles */
+.d20-die {
+  background: linear-gradient(135deg, #dc2626, #991b1b);
+  color: white;
+}
+
+.roll-result.critical {
+  border-color: #22c55e;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), transparent);
+}
+
+.roll-result.critical-fail {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), transparent);
+}
+
+.outcome-badge.critical {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+}
+
+.outcome-badge.critical-fail {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.history-outcome.critical {
+  color: #22c55e;
+}
+
+.history-outcome.critical-fail {
+  color: #ef4444;
+}
+
+/* Star Wars D6 specific styles */
+.dice-display.star-wars {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.d6-die {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  padding: 0.75rem 1rem;
+  min-width: 60px;
+}
+
+.wild-die {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: 2px solid #fbbf24;
+}
+
+.roll-result.complication {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), transparent);
+}
+
+.outcome-badge.success {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: white;
+}
+
+.outcome-badge.complication {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;
