@@ -282,9 +282,9 @@
   color: var(--fear-color);
 }
 
-/* Mobile hamburger menu toggle */
+/* Mobile hamburger menu toggle - hidden by default on desktop */
 .mobile-menu-toggle {
-  display: none; /* Hidden on desktop */
+  display: none;
 }
 
 /* Mobile responsive styles */
@@ -308,26 +308,30 @@
 
   /* Mobile menu toggle button */
   .mobile-menu-toggle {
-    display: flex;
+    display: flex !important; /* Force display on mobile */
     align-items: center;
     justify-content: center;
     position: fixed;
     top: 1rem;
     left: 1rem;
-    z-index: 999;
-    min-height: 44px;
-    min-width: 44px;
-    padding: 0.625rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-primary);
+    z-index: 1001; /* Higher than sidebar */
+    min-height: 48px;
+    min-width: 48px;
+    padding: 0.75rem;
+    background: var(--hope-color);
+    border: 2px solid var(--hope-color);
+    border-radius: 12px;
+    color: var(--bg-primary);
     transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    cursor: pointer;
   }
 
-  .mobile-menu-toggle:hover {
-    background: var(--card-bg);
-    border-color: var(--hope-color);
+  .mobile-menu-toggle:hover,
+  .mobile-menu-toggle:active {
+    background: var(--hope-secondary);
+    border-color: var(--hope-secondary);
+    transform: scale(1.05);
   }
 
   /* Overlay backdrop */
