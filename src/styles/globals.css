@@ -73,9 +73,22 @@ input, textarea, select {
 
 /* Utility classes */
 .container {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0 1.5rem;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1400px;
+    padding: 2rem;
+  }
 }
 
 .card {
@@ -93,7 +106,7 @@ input, textarea, select {
 }
 
 .btn {
-  padding: 0.625rem 1.25rem;
+  padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 8px;
   font-weight: 500;
@@ -102,6 +115,7 @@ input, textarea, select {
   align-items: center;
   gap: 0.5rem;
   transition: all 0.2s ease;
+  min-height: 44px; /* iOS touch target minimum */
 }
 
 .btn:hover {
@@ -161,12 +175,13 @@ input, textarea, select {
 .input-group input,
 .input-group textarea,
 .input-group select {
-  padding: 0.75rem;
+  padding: 0.875rem;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 0.95rem;
+  min-height: 44px; /* iOS touch target minimum */
 }
 
 .input-group input:focus,
@@ -246,4 +261,56 @@ input, textarea, select {
 
 .slide-in {
   animation: slideIn 0.3s ease;
+}
+
+/* Responsive Utilities */
+/* Visibility utilities */
+.mobile-only {
+  display: block;
+}
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none;
+  }
+
+  .desktop-only {
+    display: block;
+  }
+}
+
+/* Responsive flex utilities */
+.flex-mobile-column {
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .flex-mobile-column {
+    flex-direction: row;
+  }
+}
+
+/* Responsive grid utilities */
+.grid-mobile-1-tablet-2-desktop-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .grid-mobile-1-tablet-2-desktop-3 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-mobile-1-tablet-2-desktop-3 {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+  }
 }
