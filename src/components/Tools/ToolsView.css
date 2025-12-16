@@ -17,8 +17,15 @@
 
 .external-tools-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: 1fr; /* Mobile: single column */
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .external-tools-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+  }
 }
 
 .tool-card {
