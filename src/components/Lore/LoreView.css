@@ -1,6 +1,4 @@
-.lore-view {
-  padding: 2rem;
-}
+/* Padding now in globals.css */
 
 .lore-filters {
   display: flex;

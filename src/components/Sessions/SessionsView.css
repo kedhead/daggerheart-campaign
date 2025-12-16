@@ -1,6 +1,4 @@
-.sessions-view {
-  padding: 2rem;
-}
+/* Padding now in globals.css */
 
 .sessions-list {
   display: flex;

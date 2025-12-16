@@ -1,18 +1,4 @@
-.characters-view {
-  padding: 2rem;
-}
-
-.view-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-}
-
-.view-header h2 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
+/* Padding and view-header styles now in globals.css */
 
 .view-subtitle {
   color: var(--text-muted);
