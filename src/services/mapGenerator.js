@@ -14,8 +14,12 @@ import { aiService } from './aiService';
  */
 /**
  * Get map style instructions based on game system
+ * @param {string} gameSystem - The game system ID
+ * @param {string} mapType - Type of map (world, regional, local, dungeon)
+ * @param {string} customStyle - Optional custom style keywords to add
+ * @returns {object} Style instructions and DALL-E prompt
  */
-function getMapStyle(gameSystem, mapType) {
+function getMapStyle(gameSystem, mapType, customStyle = null) {
   if (gameSystem === 'starwarsd6') {
     const holocronBase = {
       world: {
@@ -36,9 +40,13 @@ function getMapStyle(gameSystem, mapType) {
       }
     };
     const style = holocronBase[mapType] || holocronBase.world;
-    return { instructions: 'IMPORTANT - Map Style: ' + style.inst, dallePrompt: style.dalle };
+    const customSuffix = customStyle ? `, ${customStyle}` : '';
+    return {
+      instructions: 'IMPORTANT - Map Style: ' + style.inst + customSuffix,
+      dallePrompt: style.dalle + customSuffix
+    };
   }
-  
+
   const fantasyBase = {
     world: {
       inst: 'Tolkien-esque fantasy cartography with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated mountains/forests, decorative compass rose, ornate border',
@@ -58,12 +66,16 @@ function getMapStyle(gameSystem, mapType) {
     }
   };
   const style = fantasyBase[mapType] || fantasyBase.world;
-  return { instructions: 'IMPORTANT - Map Style: ' + style.inst, dallePrompt: style.dalle };
+  const customSuffix = customStyle ? `, ${customStyle}` : '';
+  return {
+    instructions: 'IMPORTANT - Map Style: ' + style.inst + customSuffix,
+    dallePrompt: style.dalle + customSuffix
+  };
 }
 
 
 async function generateMapDescription(context, apiKey, provider) {
-  const { campaign, locations = [], mapType = 'world', specificLocation = null } = context;
+  const { campaign, locations = [], mapType = 'world', specificLocation = null, customStyle = null } = context;
   const gameSystem = campaign?.gameSystem || 'daggerheart';
 
   let prompt = '';
@@ -86,7 +98,7 @@ Generate a map description with:
 4. Notable geographical features
 5. Scale/size of the world
 
-${getMapStyle(gameSystem, "world").instructions}
+${getMapStyle(gameSystem, "world", customStyle).instructions}
 
 Format as JSON:
 \`\`\`json
@@ -97,8 +109,8 @@ Format as JSON:
   "locationPlacements": [
     {"location": "City Name", "position": "northern coast", "coordinates": [x, y]}
   ],
-  "style": "${getMapStyle(gameSystem, 'world').dallePrompt}",
-  "dallePrompt": "${getMapStyle(gameSystem, 'world').dallePrompt} [ADD YOUR SPECIFIC MAP DETAILS HERE]"
+  "style": "${getMapStyle(gameSystem, 'world', customStyle).dallePrompt}",
+  "dallePrompt": "${getMapStyle(gameSystem, 'world', customStyle).dallePrompt} [ADD YOUR SPECIFIC MAP DETAILS HERE]"
 }
 \`\`\``;
   } else if (mapType === 'regional' && specificLocation) {
@@ -121,7 +133,7 @@ Generate a regional map description showing:
 4. Roads, rivers, or other connections
 5. Scale (roughly 50-100 miles radius)
 
-${getMapStyle(gameSystem, 'regional').instructions}
+${getMapStyle(gameSystem, 'regional', customStyle).instructions}
 
 Format as JSON:
 \`\`\`json
@@ -132,8 +144,8 @@ Format as JSON:
   "locationPlacements": [
     {"location": "Location Name", "position": "relative position", "coordinates": [x, y]}
   ],
-  "style": "${getMapStyle(gameSystem, 'regional').dallePrompt}",
-  "dallePrompt": "${getMapStyle(gameSystem, 'regional').dallePrompt} [ADD YOUR SPECIFIC REGIONAL DETAILS HERE]"
+  "style": "${getMapStyle(gameSystem, 'regional', customStyle).dallePrompt}",
+  "dallePrompt": "${getMapStyle(gameSystem, 'regional', customStyle).dallePrompt} [ADD YOUR SPECIFIC REGIONAL DETAILS HERE]"
 }
 \`\`\``;
   } else if (mapType === 'local' && specificLocation) {
@@ -151,7 +163,7 @@ Generate a local map description showing:
 4. Points of interest
 5. Scale (walkable city/town map)
 
-${getMapStyle(gameSystem, 'local').instructions}
+${getMapStyle(gameSystem, 'local', customStyle).instructions}
 
 Format as JSON:
 \`\`\`json
@@ -160,8 +172,8 @@ Format as JSON:
   "districts": ["district names"],
   "landmarks": ["important landmarks"],
   "features": ["streets", "pathways", "points of interest"],
-  "style": "${getMapStyle(gameSystem, 'local').dallePrompt}",
-  "dallePrompt": "${getMapStyle(gameSystem, 'local').dallePrompt} [ADD YOUR SPECIFIC TOWN/CITY DETAILS HERE]"
+  "style": "${getMapStyle(gameSystem, 'local', customStyle).dallePrompt}",
+  "dallePrompt": "${getMapStyle(gameSystem, 'local', customStyle).dallePrompt} [ADD YOUR SPECIFIC TOWN/CITY DETAILS HERE]"
 }
 \`\`\``;
   } else if (mapType === 'dungeon' && specificLocation) {
@@ -179,7 +191,7 @@ Generate a dungeon map description showing:
 4. Traps, hazards, or special features
 5. Points of interest (treasure, monsters, puzzles)
 
-${getMapStyle(gameSystem, 'dungeon').instructions}
+${getMapStyle(gameSystem, 'dungeon', customStyle).instructions}
 
 Format as JSON:
 \`\`\`json
@@ -189,8 +201,8 @@ Format as JSON:
   "connections": ["corridors", "secret passages"],
   "features": ["traps", "treasure", "encounters"],
   "gridSize": "5-foot squares",
-  "style": "${getMapStyle(gameSystem, 'dungeon').dallePrompt}",
-  "dallePrompt": "${getMapStyle(gameSystem, 'dungeon').dallePrompt} [ADD YOUR SPECIFIC DUNGEON DETAILS HERE]"
+  "style": "${getMapStyle(gameSystem, 'dungeon', customStyle).dallePrompt}",
+  "dallePrompt": "${getMapStyle(gameSystem, 'dungeon', customStyle).dallePrompt} [ADD YOUR SPECIFIC DUNGEON DETAILS HERE]"
 }
 \`\`\``;
   }

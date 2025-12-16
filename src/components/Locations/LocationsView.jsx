@@ -15,6 +15,7 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
   const [uploadingMap, setUploadingMap] = useState(false);
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [generatingMapFor, setGeneratingMapFor] = useState(null);
+  const [customMapStyle, setCustomMapStyle] = useState('');
   const { hasKey, keys } = useAPIKey(userId);
   const worldMap = campaign?.worldMap || null;
 
@@ -102,7 +103,8 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
           locations: locations.filter(loc => loc.id !== location.id), // Other nearby locations
           mapType: mapType,
           specificLocation: location,
-          mapName: `${location.name} Map`
+          mapName: `${location.name} Map`,
+          customStyle: customMapStyle || null
         },
         apiKey,
         provider,
@@ -163,6 +165,24 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
             <MapIcon size={20} />
             World Map
           </h3>
+
+          {/* Custom Map Style Input */}
+          {hasKey() && (
+            <div className="input-group" style={{ marginBottom: '1rem' }}>
+              <label>Custom Map Style Keywords (Optional)</label>
+              <input
+                type="text"
+                value={customMapStyle}
+                onChange={(e) => setCustomMapStyle(e.target.value)}
+                placeholder="e.g., watercolor, vintage, minimalist, detailed..."
+                className="style-keywords-input"
+              />
+              <small className="form-hint">
+                Add custom keywords to influence the AI-generated map style. Leave blank to use default system style.
+              </small>
+            </div>
+          )}
+
           {worldMap ? (
             <div className="world-map-container">
               <img src={worldMap} alt="World Map" className="world-map-image" />

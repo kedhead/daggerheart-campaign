@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Wand2, FileText, Sparkles, Edit, Eye, CheckCircle } from 'lucide-react';
+import { Wand2, FileText, Sparkles, Edit, Eye, CheckCircle, Info } from 'lucide-react';
 import CampaignBuilderWizard from './CampaignBuilderWizard';
 import { useCampaignBuilder } from '../../hooks/useCampaignBuilder';
 import { getAvailableTemplates } from '../../data/campaignFrameTemplates';
+import { getGameSystem } from '../../data/systems/index.js';
 import './CampaignBuilder.css';
 
 export default function CampaignBuilderView({
@@ -32,6 +33,10 @@ export default function CampaignBuilderView({
     completeCampaignFrame
   );
 
+  // Check if the current game system supports campaign frames
+  const gameSystem = getGameSystem(campaign?.gameSystem);
+  const supportsCampaignFrames = gameSystem?.campaignFrameTemplates !== undefined;
+
   const templates = getAvailableTemplates(campaign?.gameSystem);
   const hasDraft = !!campaignFrameDraft;
 
@@ -58,6 +63,40 @@ export default function CampaignBuilderView({
       onBack();
     }
   };
+
+  // Show message if campaign frames are not supported for this game system
+  if (!supportsCampaignFrames) {
+    return (
+      <div className="campaign-builder-view">
+        <div className="view-header" style={{ textAlign: 'center' }}>
+          <div>
+            <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: '0 0 0.5rem 0' }}>
+              <Info size={32} />
+              Campaign Builder
+            </h1>
+            <p className="view-subtitle">Not available for {gameSystem?.name || 'this game system'}</p>
+          </div>
+        </div>
+
+        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+          <Info size={64} style={{ color: 'var(--text-muted)', margin: '0 auto 1.5rem', opacity: 0.5 }} />
+          <h3 style={{ marginBottom: '1rem' }}>Campaign Frames Not Supported</h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', maxWidth: '600px', margin: '0 auto 1.5rem' }}>
+            The Campaign Builder feature uses structured campaign frames, which are specific to certain game systems.
+            The <strong>{gameSystem?.name || 'current game system'}</strong> doesn't use this structured approach.
+          </p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '2rem' }}>
+            You can still use all other features like Characters, NPCs, Locations, Lore, Sessions, and more to build your campaign!
+          </p>
+          {onBack && (
+            <button className="btn btn-secondary" onClick={onBack}>
+              Back to Campaign
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // If viewing completed campaign frame
   if (viewingFrame && campaignFrame) {
