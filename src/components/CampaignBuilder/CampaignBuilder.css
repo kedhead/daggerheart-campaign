@@ -1,9 +1,21 @@
 /* Campaign Builder Styles */
 
 .campaign-builder-view {
-  padding: 2rem;
+  padding: 1rem; /* Mobile: smaller padding */
   max-width: 1400px;
   margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .campaign-builder-view {
+    padding: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .campaign-builder-view {
+    padding: 2rem;
+  }
 }
 
 /* Generation Mode Selector */
@@ -13,13 +25,20 @@
 
 .mode-tabs {
   display: flex;
+  flex-direction: column; /* Mobile: stack */
   gap: 1rem;
-  flex-wrap: wrap;
+}
+
+@media (min-width: 768px) {
+  .mode-tabs {
+    flex-direction: row; /* Tablet+: side by side */
+    flex-wrap: wrap;
+  }
 }
 
 .mode-tab {
   flex: 1;
-  min-width: 200px;
+  min-width: auto; /* Mobile: full width */
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
@@ -29,6 +48,12 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s;
+}
+
+@media (min-width: 768px) {
+  .mode-tab {
+    min-width: 200px;
+  }
 }
 
 .mode-tab:hover:not(:disabled) {
@@ -87,12 +112,21 @@
 
 .generator-info {
   display: flex;
+  flex-direction: column; /* Mobile: stack */
   align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 0.75rem;
+  padding: 0.75rem;
   background: var(--card-bg);
   border-radius: 8px;
   border: 1px solid var(--border);
+}
+
+@media (min-width: 768px) {
+  .generator-info {
+    flex-direction: row;
+    gap: 1rem;
+    padding: 1rem;
+  }
 }
 
 .generator-info.warning {
@@ -173,10 +207,16 @@
 /* Results Preview */
 .results-preview {
   margin-top: 1.5rem;
-  padding: 1.5rem;
+  padding: 1rem; /* Mobile: smaller padding */
   background: var(--card-bg);
   border: 2px solid var(--hope-color);
   border-radius: 8px;
+}
+
+@media (min-width: 768px) {
+  .results-preview {
+    padding: 1.5rem;
+  }
 }
 
 .results-preview h3 {
@@ -232,14 +272,7 @@
   color: var(--text);
 }
 
-/* Modal Actions */
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
+/* Modal Actions - responsive styles now in Modal.css */
 
 /* Error Display */
 .generator-error {
@@ -274,21 +307,4 @@
   to { transform: rotate(360deg); }
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .mode-tabs {
-    flex-direction: column;
-  }
-
-  .mode-tab {
-    min-width: 100%;
-  }
-
-  .modal-actions {
-    flex-direction: column;
-  }
-
-  .modal-actions button {
-    width: 100%;
-  }
-}
+/* Mobile-first responsive styles are now integrated above */
