@@ -64,34 +64,88 @@ export default function CampaignBuilderView({
     }
   };
 
-  // Show message if campaign frames are not supported for this game system
+  // For systems without campaign frames, show freeform AI generation
   if (!supportsCampaignFrames) {
     return (
       <div className="campaign-builder-view">
         <div className="view-header" style={{ textAlign: 'center' }}>
           <div>
             <h1 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', margin: '0 0 0.5rem 0' }}>
-              <Info size={32} />
+              <Wand2 size={32} />
               Campaign Builder
             </h1>
-            <p className="view-subtitle">Not available for {gameSystem?.name || 'this game system'}</p>
+            <p className="view-subtitle">AI-Powered Campaign Generation for {gameSystem?.name || 'your game'}</p>
           </div>
         </div>
 
-        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-          <Info size={64} style={{ color: 'var(--text-muted)', margin: '0 auto 1.5rem', opacity: 0.5 }} />
-          <h3 style={{ marginBottom: '1rem' }}>Campaign Frames Not Supported</h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', maxWidth: '600px', margin: '0 auto 1.5rem' }}>
-            The Campaign Builder feature uses structured campaign frames, which are specific to certain game systems.
-            The <strong>{gameSystem?.name || 'current game system'}</strong> doesn't use this structured approach.
+        <div className="card">
+          <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Sparkles size={20} />
+            Freeform AI Generation
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+            {gameSystem?.name || 'This game system'} doesn't use structured campaign frames. Instead, you can use AI to generate
+            campaign elements directly using the Quick Generator in each section:
           </p>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '2rem' }}>
-            You can still use all other features like Characters, NPCs, Locations, Lore, Sessions, and more to build your campaign!
-          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+            <div className="card" style={{ background: 'var(--bg-tertiary)', padding: '1rem' }}>
+              <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Wand2 size={16} />
+                Generate NPCs
+              </h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Go to the NPCs tab and use "Generate with AI" to create characters, villains, and allies
+              </p>
+            </div>
+
+            <div className="card" style={{ background: 'var(--bg-tertiary)', padding: '1rem' }}>
+              <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Wand2 size={16} />
+                Generate Locations
+              </h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Use the Locations tab to generate cities, dungeons, and maps with AI
+              </p>
+            </div>
+
+            <div className="card" style={{ background: 'var(--bg-tertiary)', padding: '1rem' }}>
+              <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Wand2 size={16} />
+                Generate Lore & Story
+              </h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Use the Lore tab to create world history, factions, and story hooks
+              </p>
+            </div>
+
+            <div className="card" style={{ background: 'var(--bg-tertiary)', padding: '1rem' }}>
+              <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Wand2 size={16} />
+                Generate Encounters
+              </h4>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Use the Encounters tab to create battles, challenges, and plot events
+              </p>
+            </div>
+          </div>
+
+          <div style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1))', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+            <h4 style={{ fontSize: '1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              💡 Pro Tip
+            </h4>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Each "Generate with AI" button lets you provide custom prompts to get exactly what you need for your campaign.
+              You have full creative control without being locked into a specific framework!
+            </p>
+          </div>
+
           {onBack && (
-            <button className="btn btn-secondary" onClick={onBack}>
-              Back to Campaign
-            </button>
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <button className="btn btn-primary" onClick={onBack}>
+                Start Building Your Campaign
+              </button>
+            </div>
           )}
         </div>
       </div>
