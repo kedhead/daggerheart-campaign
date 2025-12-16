@@ -35,7 +35,9 @@ export default function CampaignBuilderView({
 
   // Check if the current game system supports campaign frames
   const gameSystem = getGameSystem(campaign?.gameSystem);
-  const supportsCampaignFrames = gameSystem?.campaignFrameTemplates !== undefined;
+  // Daggerheart always supports frames (templates in separate file)
+  // Other systems support frames if they have the campaignFrameTemplates property
+  const supportsCampaignFrames = campaign?.gameSystem === 'daggerheart' || gameSystem?.campaignFrameTemplates !== undefined;
 
   const templates = getAvailableTemplates(campaign?.gameSystem);
   const hasDraft = !!campaignFrameDraft;
