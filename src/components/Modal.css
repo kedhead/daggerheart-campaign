@@ -10,8 +10,14 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 1rem;
+  padding: 0.5rem; /* Mobile: smaller padding */
   animation: fadeIn 0.2s ease;
+}
+
+@media (min-width: 768px) {
+  .modal-overlay {
+    padding: 1rem;
+  }
 }
 
 .modal-content {
@@ -37,34 +43,62 @@
   }
 }
 
-.modal-small {
-  max-width: 400px;
-}
-
-.modal-medium {
-  max-width: 600px;
-}
-
+/* Mobile: use most of screen width */
+.modal-small,
+.modal-medium,
 .modal-large {
-  max-width: 900px;
+  max-width: calc(100vw - 1rem);
+}
+
+/* Tablet+: restore size classes */
+@media (min-width: 768px) {
+  .modal-small {
+    max-width: 400px;
+  }
+
+  .modal-medium {
+    max-width: 600px;
+  }
+
+  .modal-large {
+    max-width: 900px;
+  }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
+  padding: 1rem; /* Mobile: smaller padding */
   border-bottom: 1px solid var(--border);
 }
 
+@media (min-width: 768px) {
+  .modal-header {
+    padding: 1.5rem;
+  }
+}
+
 .modal-header h2 {
-  font-size: 1.5rem;
+  font-size: 1.25rem; /* Mobile: smaller font */
   margin: 0;
 }
 
+@media (min-width: 768px) {
+  .modal-header h2 {
+    font-size: 1.5rem;
+  }
+}
+
 .modal-body {
-  padding: 1.5rem;
+  padding: 1rem; /* Mobile: smaller padding */
   overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .modal-body {
+    padding: 1.5rem;
+  }
 }
 
 .modal-body::-webkit-scrollbar {
@@ -78,4 +112,30 @@
 .modal-body::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 4px;
+}
+
+/* Modal actions utility (for button containers in modals) */
+.modal-actions {
+  display: flex;
+  flex-direction: column; /* Mobile: stack buttons */
+  gap: 0.75rem;
+  padding-top: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.modal-actions .btn {
+  width: 100%; /* Mobile: full-width buttons */
+}
+
+@media (min-width: 768px) {
+  .modal-actions {
+    flex-direction: row; /* Tablet+: side-by-side */
+    justify-content: flex-end;
+    gap: 1rem;
+  }
+
+  .modal-actions .btn {
+    width: auto;
+  }
 }
