@@ -284,6 +284,13 @@ function CampaignApp() {
             deleteNote={deleteNote}
             currentUserId={currentUser.uid}
             isDM={isDM}
+            npcs={npcs}
+            locations={locations}
+            lore={lore}
+            sessions={sessions}
+            timelineEvents={timelineEvents}
+            encounters={encounters}
+            notes={notes}
           />
         );
       case 'campaignBuilder':

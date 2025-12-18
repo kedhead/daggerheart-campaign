@@ -5,13 +5,13 @@ import NoteForm from './NoteForm';
 import Modal from '../Modal';
 import './NotesView.css';
 
-export default function NotesView({ campaign, addNote, updateNote, deleteNote, currentUserId, isDM }) {
+export default function NotesView({ campaign, addNote, updateNote, deleteNote, currentUserId, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes: allNotesEntities = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
 
-  const allNotes = campaign?.notes || [];
+  const allNotes = allNotesEntities.length > 0 ? allNotesEntities : (campaign?.notes || []);
 
   // Filter notes - players only see their own, DM sees all
   const userNotes = isDM
@@ -182,6 +182,7 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
             setEditingNote(null);
           }}
           campaign={campaign}
+          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes: allNotesEntities }}
         />
       </Modal>
     </div>
