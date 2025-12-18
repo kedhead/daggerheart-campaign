@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Plus, Search, Calendar, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Search, Calendar, ScrollText } from 'lucide-react';
 import TimelineEventCard from './TimelineEventCard';
 import TimelineEventForm from './TimelineEventForm';
+import SessionCard from '../Sessions/SessionCard';
 import Modal from '../Modal';
 import './TimelineView.css';
 
@@ -10,6 +11,8 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
   const [editingEvent, setEditingEvent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [showSessions, setShowSessions] = useState(true);
+  const [showEvents, setShowEvents] = useState(true);
 
   const handleAdd = () => {
     setEditingEvent(null);
@@ -37,27 +40,69 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
     }
   };
 
-  // Filter events
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.location?.toLowerCase().includes(searchTerm.toLowerCase());
+  // Combine sessions and events into unified timeline
+  const timelineItems = [];
 
-    const matchesFilter = filterType === 'all' || event.type === filterType;
+  // Add events with type marker
+  if (showEvents) {
+    events.forEach(event => {
+      timelineItems.push({
+        ...event,
+        itemType: 'event',
+        displayDate: event.date || '',
+        displayTitle: event.title
+      });
+    });
+  }
+
+  // Add sessions with type marker
+  if (showSessions) {
+    sessions.forEach(session => {
+      timelineItems.push({
+        ...session,
+        itemType: 'session',
+        displayDate: session.date || '',
+        displayTitle: session.title
+      });
+    });
+  }
+
+  // Filter timeline items
+  const filteredItems = timelineItems.filter(item => {
+    const matchesSearch = item.displayTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.location?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Filter by event type (only applies to events, not sessions)
+    const matchesFilter = filterType === 'all' ||
+                         item.itemType === 'session' ||
+                         item.type === filterType;
 
     return matchesSearch && matchesFilter;
   });
 
-  // Sort by date (in-game date string for now)
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    if (!a.date) return 1;
-    if (!b.date) return -1;
-    return a.date.localeCompare(b.date);
+  // Sort by date
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    if (!a.displayDate) return 1;
+    if (!b.displayDate) return -1;
+
+    // Try to compare dates
+    const dateA = new Date(a.displayDate);
+    const dateB = new Date(b.displayDate);
+
+    if (!isNaN(dateA) && !isNaN(dateB)) {
+      return dateB - dateA; // Most recent first
+    }
+
+    // Fallback to string comparison
+    return b.displayDate.localeCompare(a.displayDate);
   });
 
   // Count by type
   const counts = {
-    all: events.length,
+    all: events.length + sessions.length,
+    sessions: sessions.length,
     event: events.filter(e => e.type === 'event').length,
     quest: events.filter(e => e.type === 'quest').length,
     milestone: events.filter(e => e.type === 'milestone').length,
@@ -69,7 +114,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
       <div className="view-header">
         <div>
           <h2>Campaign Timeline</h2>
-          <p className="view-subtitle">{events.length} event{events.length !== 1 ? 's' : ''} in your campaign</p>
+          <p className="view-subtitle">{counts.all} total items - {counts.sessions} sessions, {events.length} events</p>
         </div>
         {isDM && (
           <button className="btn btn-primary" onClick={handleAdd}>
@@ -85,10 +130,27 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
           <Search size={20} />
           <input
             type="text"
-            placeholder="Search events by title, description, or location..."
+            placeholder="Search timeline by title, description, or location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+        </div>
+
+        <div className="timeline-toggles">
+          <button
+            className={`toggle-btn ${showSessions ? 'active' : ''}`}
+            onClick={() => setShowSessions(!showSessions)}
+          >
+            <ScrollText size={16} />
+            Sessions ({counts.sessions})
+          </button>
+          <button
+            className={`toggle-btn ${showEvents ? 'active' : ''}`}
+            onClick={() => setShowEvents(!showEvents)}
+          >
+            <Calendar size={16} />
+            Events ({events.length})
+          </button>
         </div>
 
         <div className="filter-tabs">
@@ -96,8 +158,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
             className={`filter-tab ${filterType === 'all' ? 'active' : ''}`}
             onClick={() => setFilterType('all')}
           >
-            <Calendar size={16} />
-            All ({counts.all})
+            All
           </button>
           <button
             className={`filter-tab ${filterType === 'event' ? 'active' : ''}`}
@@ -126,15 +187,15 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
         </div>
       </div>
 
-      {/* Timeline */}
-      {sortedEvents.length === 0 ? (
+      {/* Enhanced Timeline */}
+      {sortedItems.length === 0 ? (
         <div className="empty-state card">
-          {searchTerm || filterType !== 'all' ? (
-            <p>No events match your search</p>
+          {searchTerm || filterType !== 'all' || !showSessions || !showEvents ? (
+            <p>No items match your filters</p>
           ) : (
             <>
               <Calendar size={64} />
-              <p>No events yet</p>
+              <p>No timeline items yet</p>
               {isDM && (
                 <button className="btn btn-primary" onClick={handleAdd}>
                   <Plus size={20} />
@@ -145,17 +206,39 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
           )}
         </div>
       ) : (
-        <div className="timeline-list">
-          {sortedEvents.map((event) => (
-            <TimelineEventCard
-              key={event.id}
-              event={event}
-              onEdit={() => handleEdit(event)}
-              onDelete={() => handleDelete(event.id)}
-              isDM={isDM}
-              campaign={campaign}
-            />
-          ))}
+        <div className="timeline-enhanced">
+          <div className="timeline-rail"></div>
+          <div className="timeline-items">
+            {sortedItems.map((item, index) => (
+              <div key={`${item.itemType}-${item.id}`} className="timeline-item-wrapper">
+                <div className={`timeline-node ${item.itemType}-node`}>
+                  {item.itemType === 'session' ? (
+                    <ScrollText size={16} />
+                  ) : (
+                    <Calendar size={16} />
+                  )}
+                </div>
+                <div className="timeline-item-content">
+                  {item.itemType === 'session' ? (
+                    <SessionCard
+                      session={item}
+                      isDM={isDM}
+                      campaign={campaign}
+                      isEmbedded={true}
+                    />
+                  ) : (
+                    <TimelineEventCard
+                      event={item}
+                      onEdit={() => handleEdit(item)}
+                      onDelete={() => handleDelete(item.id)}
+                      isDM={isDM}
+                      campaign={campaign}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
