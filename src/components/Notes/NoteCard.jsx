@@ -5,10 +5,10 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NotesView.css';
 
-export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, campaign, isEmbedded = false }) {
+export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign);
+  const { getByName } = useEntityRegistry(campaign, entities);
 
   // Only allow editing if user owns the note or is DM
   const canEdit = note.createdBy === currentUserId || isDM;
@@ -91,6 +91,8 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, 
           onClose={() => setViewingEntity(null)}
           isDM={isDM}
           campaign={campaign}
+          currentUserId={currentUserId}
+          entities={entities}
         />
       )}
     </div>

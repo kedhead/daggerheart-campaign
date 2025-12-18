@@ -5,10 +5,10 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionCard.css';
 
-export default function SessionCard({ session, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
+export default function SessionCard({ session, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign);
+  const { getByName } = useEntityRegistry(campaign, entities);
 
   const formattedDate = new Date(session.date).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -129,6 +129,7 @@ export default function SessionCard({ session, onEdit, onDelete, isDM, campaign,
           onClose={() => setViewingEntity(null)}
           isDM={isDM}
           campaign={campaign}
+          entities={entities}
         />
       )}
     </div>

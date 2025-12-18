@@ -5,10 +5,10 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LocationsView.css';
 
-export default function LocationCard({ location, onEdit, onDelete, onGenerateMap, isDM, generatingMapFor, campaign, isEmbedded = false }) {
+export default function LocationCard({ location, onEdit, onDelete, onGenerateMap, isDM, generatingMapFor, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign);
+  const { getByName } = useEntityRegistry(campaign, entities);
   const isGeneratingMap = generatingMapFor === location.id;
 
   const getTypeColor = (type) => {
@@ -149,6 +149,7 @@ export default function LocationCard({ location, onEdit, onDelete, onGenerateMap
           onClose={() => setViewingEntity(null)}
           isDM={isDM}
           campaign={campaign}
+          entities={entities}
         />
       )}
     </div>

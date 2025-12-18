@@ -64,15 +64,22 @@ export default function WikiText({ text, onLinkClick, getEntity }) {
           // Link rendering
           if (part.exists && onLinkClick) {
             return (
-              <button
+              <span
                 key={index}
                 className="wiki-link wiki-link-exists"
                 onClick={() => onLinkClick(part.entity)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onLinkClick(part.entity);
+                  }
+                }}
                 title={`Open ${part.entity.displayName} (${part.entity.subtitle})`}
-                type="button"
+                role="button"
+                tabIndex={0}
               >
                 {part.entityName}
-              </button>
+              </span>
             );
           } else {
             // Broken link (entity not found)

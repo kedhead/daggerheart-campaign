@@ -5,10 +5,10 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NPCsView.css';
 
-export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
+export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign);
+  const { getByName } = useEntityRegistry(campaign, entities);
 
   const getRelationshipIcon = (relationship) => {
     switch (relationship) {
@@ -120,6 +120,7 @@ export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign, isEmbed
           onClose={() => setViewingEntity(null)}
           isDM={isDM}
           campaign={campaign}
+          entities={entities}
         />
       )}
     </div>

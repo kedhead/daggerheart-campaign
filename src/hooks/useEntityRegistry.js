@@ -167,9 +167,17 @@ export function useEntityRegistry(campaign, separateEntities = null) {
    * @returns {Object|undefined} Matching entity or undefined
    */
   const getByName = (name) => {
-    if (!name) return undefined;
+    console.log('[useEntityRegistry] getByName() called with:', name);
+    if (!name) {
+      console.log('[useEntityRegistry] No name provided, returning undefined');
+      return undefined;
+    }
     const lowerName = name.toLowerCase().trim();
-    return registry.find(entity => entity.name.toLowerCase() === lowerName);
+    console.log('[useEntityRegistry] Searching for:', lowerName);
+    console.log('[useEntityRegistry] Available entities:', registry.map(e => e.name));
+    const result = registry.find(entity => entity.name.toLowerCase() === lowerName);
+    console.log('[useEntityRegistry] Found:', result);
+    return result;
   };
 
   return {

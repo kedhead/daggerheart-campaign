@@ -5,10 +5,10 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './EncountersView.css';
 
-export default function EncounterCard({ encounter, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
+export default function EncounterCard({ encounter, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign);
+  const { getByName } = useEntityRegistry(campaign, entities);
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
@@ -139,6 +139,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, isDM, campa
           onClose={() => setViewingEntity(null)}
           isDM={isDM}
           campaign={campaign}
+          entities={entities}
         />
       )}
     </div>

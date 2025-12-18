@@ -15,10 +15,10 @@ const TYPE_ICONS = {
   other: MoreHorizontal
 };
 
-export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
+export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign);
+  const { getByName } = useEntityRegistry(campaign, entities);
   // Support both 'type' and 'category' for backwards compatibility
   const loreType = lore.type || lore.category || 'other';
   const Icon = TYPE_ICONS[loreType] || MoreHorizontal;
@@ -91,6 +91,7 @@ export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign, isEmb
           onClose={() => setViewingEntity(null)}
           isDM={isDM}
           campaign={campaign}
+          entities={entities}
         />
       )}
     </div>

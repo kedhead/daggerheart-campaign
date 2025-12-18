@@ -159,6 +159,7 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
               currentUserId={currentUserId}
               isDM={isDM}
               campaign={campaign}
+              entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes: allNotesEntities }}
             />
           ))}
         </div>

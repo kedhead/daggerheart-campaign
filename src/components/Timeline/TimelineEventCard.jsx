@@ -5,10 +5,10 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './TimelineView.css';
 
-export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
+export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign);
+  const { getByName } = useEntityRegistry(campaign, entities);
 
   const getTypeColor = (type) => {
     switch (type) {
@@ -108,6 +108,7 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campa
           onClose={() => setViewingEntity(null)}
           isDM={isDM}
           campaign={campaign}
+          entities={entities}
         />
       )}
     </div>

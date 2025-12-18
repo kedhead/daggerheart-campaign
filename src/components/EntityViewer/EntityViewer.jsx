@@ -8,7 +8,7 @@ import EncounterCard from '../Encounters/EncounterCard';
 import NoteCard from '../Notes/NoteCard';
 import './EntityViewer.css';
 
-export default function EntityViewer({ entity, onClose, campaign, currentUserId, isDM }) {
+export default function EntityViewer({ entity, onClose, campaign, currentUserId, isDM, entities }) {
   if (!entity) return null;
 
   const renderEntityContent = () => {
@@ -20,6 +20,7 @@ export default function EntityViewer({ entity, onClose, campaign, currentUserId,
             isDM={isDM}
             campaign={campaign}
             isEmbedded={true}
+            entities={entities}
           />
         );
 
@@ -30,6 +31,7 @@ export default function EntityViewer({ entity, onClose, campaign, currentUserId,
             isDM={isDM}
             campaign={campaign}
             isEmbedded={true}
+            entities={entities}
           />
         );
 
@@ -40,6 +42,7 @@ export default function EntityViewer({ entity, onClose, campaign, currentUserId,
             isDM={isDM}
             campaign={campaign}
             isEmbedded={true}
+            entities={entities}
           />
         );
 
@@ -50,6 +53,7 @@ export default function EntityViewer({ entity, onClose, campaign, currentUserId,
             isDM={isDM}
             campaign={campaign}
             isEmbedded={true}
+            entities={entities}
           />
         );
 
@@ -60,6 +64,7 @@ export default function EntityViewer({ entity, onClose, campaign, currentUserId,
             isDM={isDM}
             campaign={campaign}
             isEmbedded={true}
+            entities={entities}
           />
         );
 
@@ -70,6 +75,7 @@ export default function EntityViewer({ entity, onClose, campaign, currentUserId,
             isDM={isDM}
             campaign={campaign}
             isEmbedded={true}
+            entities={entities}
           />
         );
 
@@ -81,6 +87,7 @@ export default function EntityViewer({ entity, onClose, campaign, currentUserId,
             isDM={isDM}
             campaign={campaign}
             isEmbedded={true}
+            entities={entities}
           />
         );
 
