@@ -18,7 +18,10 @@
       "Bash(grep:*)",
       "Bash(git reset:*)",
       "Bash(git restore:*)",
-      "WebFetch(domain:www.yellowmadhouse.com)"
+      "WebFetch(domain:www.yellowmadhouse.com)",
+      "WebFetch(domain:www.legendkeeper.com)",
+      "Bash(find:*)",
+      "Bash(firebase deploy:*)"
     ],
     "deny": [],
     "ask": []

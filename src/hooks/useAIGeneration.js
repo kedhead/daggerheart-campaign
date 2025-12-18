@@ -135,13 +135,13 @@ export function useAIGeneration() {
 
         switch (step) {
           case 'pitch':
-            generated = templateService.generatePitch(context.requirements);
+            generated = templateService.generatePitch({ ...context.requirements, campaign: context.campaign });
             break;
           case 'toneAndFeel':
-            generated = templateService.generateToneAndFeel(6);
+            generated = templateService.generateToneAndFeel(6, { campaign: context.campaign });
             break;
           case 'themes':
-            generated = templateService.generateThemes(5);
+            generated = templateService.generateThemes(5, { campaign: context.campaign });
             break;
           case 'playerPrinciples':
             generated = templateService.generatePlayerPrinciples(3);
@@ -150,7 +150,7 @@ export function useAIGeneration() {
             generated = templateService.generateGMPrinciples(3);
             break;
           case 'incitingIncident':
-            generated = templateService.generateIncitingIncident();
+            generated = templateService.generateIncitingIncident({ campaign: context.campaign });
             break;
           case 'sessionZeroQuestions':
             generated = templateService.generateSessionZeroQuestions(7);
