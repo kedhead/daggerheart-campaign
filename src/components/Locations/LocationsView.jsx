@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../config/firebase';
 import { Plus, Search, Map as MapIcon, Upload, Wand2 } from 'lucide-react';
 import LocationCard from './LocationCard';
 import LocationForm from './LocationForm';
@@ -45,13 +47,13 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
     }
   };
 
-  const handleMapUpload = (e) => {
+  const handleMapUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Base64 encoding increases size by ~33%, and Firestore has 1MB document limit
-      // Even a 750KB image will exceed the limit when base64-encoded
-      if (file.size > 500 * 1024) {
-        alert('Map image size must be less than 500KB to avoid Firestore size limits.\n\nTIP: Compress your image or use a smaller resolution.\n\nTODO: We will add Firebase Storage support to allow larger images.');
+      // Firebase Storage supports much larger files (up to 5GB)
+      // But we'll keep a reasonable limit for map images
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Map image size must be less than 10MB');
         return;
       }
 
@@ -62,25 +64,43 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
 
       setUploadingMap(true);
 
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const base64String = e.target.result;
+      try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const base64String = e.target.result;
 
-        // Check if base64 string is too large for Firestore (1MB document limit)
-        if (base64String.length > 1000000) {
-          alert('Image is too large when encoded. Please use a smaller file (< 500KB).');
+          try {
+            console.log('Uploading world map to Firebase Storage...');
+            const timestamp = Date.now();
+            const imagePath = `campaigns/${campaign.id}/maps/world-map-${timestamp}.${file.name.split('.').pop()}`;
+            const imageRef = ref(storage, imagePath);
+
+            // Upload base64 image to Storage
+            await uploadString(imageRef, base64String, 'data_url');
+
+            // Get the download URL
+            const imageDownloadUrl = await getDownloadURL(imageRef);
+            console.log('World map uploaded successfully:', imageDownloadUrl);
+
+            // Save the Storage URL (not base64) to Firestore
+            await updateCampaign({ worldMap: imageDownloadUrl });
+            setUploadingMap(false);
+          } catch (error) {
+            console.error('Upload error:', error);
+            alert('Failed to upload map to Firebase Storage');
+            setUploadingMap(false);
+          }
+        };
+        reader.onerror = () => {
+          alert('Failed to read file');
           setUploadingMap(false);
-          return;
-        }
-
-        await updateCampaign({ worldMap: base64String });
-        setUploadingMap(false);
-      };
-      reader.onerror = () => {
+        };
+        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Error uploading map:', error);
         alert('Failed to upload map');
         setUploadingMap(false);
-      };
-      reader.readAsDataURL(file);
+      }
     }
   };
 

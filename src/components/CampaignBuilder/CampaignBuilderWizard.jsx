@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../config/firebase';
 import WizardProgress from './wizard/WizardProgress';
 import StepNavigation from './wizard/StepNavigation';
 import PitchStep from './wizard/steps/PitchStep';
@@ -171,16 +173,37 @@ export default function CampaignBuilderWizard({
 
         // Save map to campaign
         if (updateCampaign) {
-          // Note: Skipping worldMap image save - base64 images exceed Firestore 1MB limit
-          // TODO: Upload image to Firebase Storage instead and save the Storage URL
+          // Upload image to Firebase Storage if we have one
+          let imageDownloadUrl = '';
+          const hasImage = !!mapData.imageUrl;
+
+          if (hasImage) {
+            try {
+              console.log('Uploading world map image to Firebase Storage...');
+              const timestamp = Date.now();
+              const imagePath = `campaigns/${campaign.id}/maps/world-map-${timestamp}.png`;
+              const imageRef = ref(storage, imagePath);
+
+              // Upload base64 image to Storage
+              await uploadString(imageRef, mapData.imageUrl, 'data_url');
+
+              // Get the download URL
+              imageDownloadUrl = await getDownloadURL(imageRef);
+              console.log('World map image uploaded successfully:', imageDownloadUrl);
+            } catch (error) {
+              console.error('Failed to upload world map image to Storage:', error);
+              // Continue without image - we still save the description
+            }
+          }
+
           await updateCampaign({
-            // worldMap: mapData.imageUrl, // SKIP: Base64 images are too large for Firestore
+            worldMap: imageDownloadUrl || null, // Firebase Storage URL (small string) instead of base64
             mapDescription: mapData.description,
             // Stringify arrays to avoid Firestore nested entity errors
             mapRegions: JSON.stringify(mapData.regions || []),
             mapFeatures: JSON.stringify(mapData.features || [])
           });
-          console.log('World map description saved to campaign (image skipped due to size limits)');
+          console.log('World map saved to campaign', imageDownloadUrl ? '(with image)' : '(description only)');
         }
       } catch (err) {
         console.error('Failed to generate world map (non-critical):', err);
