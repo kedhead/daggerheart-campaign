@@ -5,7 +5,7 @@ import SessionForm from './SessionForm';
 import Modal from '../Modal';
 import './SessionsView.css';
 
-export default function SessionsView({ sessions, addSession, updateSession, deleteSession, isDM, campaign }) {
+export default function SessionsView({ sessions, addSession, updateSession, deleteSession, isDM, campaign, npcs = [], locations = [], lore = [], timelineEvents = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
 
@@ -90,6 +90,7 @@ export default function SessionsView({ sessions, addSession, updateSession, dele
           }}
           isDM={isDM}
           campaign={campaign}
+          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         />
       </Modal>
     </div>

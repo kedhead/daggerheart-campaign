@@ -6,7 +6,7 @@ import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import './EncountersView.css';
 
-export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, isDM }) {
+export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,6 +197,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
             setEditingEncounter(null);
           }}
           campaign={campaign}
+          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         />
       </Modal>
 

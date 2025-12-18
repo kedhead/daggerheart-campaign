@@ -6,7 +6,7 @@ import Modal from '../Modal';
 import { LORE_TYPES } from '../../data/daggerheart';
 import './LoreView.css';
 
-export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, campaign }) {
+export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, campaign, npcs = [], locations = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLore, setEditingLore] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -131,6 +131,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
           }}
           isDM={isDM}
           campaign={campaign}
+          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         />
       </Modal>
     </div>

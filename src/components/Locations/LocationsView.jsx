@@ -10,7 +10,7 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateMap } from '../../services/mapGenerator';
 import './LocationsView.css';
 
-export default function LocationsView({ campaign, locations = [], updateCampaign, addLocation, updateLocation, deleteLocation, isDM, userId }) {
+export default function LocationsView({ campaign, locations = [], updateCampaign, addLocation, updateLocation, deleteLocation, isDM, userId, npcs = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -321,6 +321,7 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
             setEditingLocation(null);
           }}
           campaign={campaign}
+          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         />
       </Modal>
 

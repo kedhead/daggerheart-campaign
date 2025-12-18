@@ -197,6 +197,13 @@ function CampaignApp() {
             updateLore={updateLore}
             deleteLore={deleteLore}
             isDM={isDM}
+            campaign={campaign}
+            npcs={npcs}
+            locations={locations}
+            sessions={sessions}
+            timelineEvents={timelineEvents}
+            encounters={encounters}
+            notes={notes}
           />
         );
       case 'sessions':
@@ -207,6 +214,13 @@ function CampaignApp() {
             updateSession={updateSession}
             deleteSession={deleteSession}
             isDM={isDM}
+            campaign={campaign}
+            npcs={npcs}
+            locations={locations}
+            lore={lore}
+            timelineEvents={timelineEvents}
+            encounters={encounters}
+            notes={notes}
           />
         );
       case 'files':
@@ -249,6 +263,12 @@ function CampaignApp() {
             updateEvent={updateTimelineEvent}
             deleteEvent={deleteTimelineEvent}
             isDM={isDM}
+            npcs={npcs}
+            locations={locations}
+            lore={lore}
+            sessions={sessions}
+            encounters={encounters}
+            notes={notes}
           />
         );
       case 'locations':
@@ -262,6 +282,12 @@ function CampaignApp() {
             deleteLocation={deleteLocation}
             isDM={isDM}
             userId={currentUser.uid}
+            npcs={npcs}
+            lore={lore}
+            sessions={sessions}
+            timelineEvents={timelineEvents}
+            encounters={encounters}
+            notes={notes}
           />
         );
       case 'encounters':
@@ -273,6 +299,12 @@ function CampaignApp() {
             updateEncounter={updateEncounter}
             deleteEncounter={deleteEncounter}
             isDM={isDM}
+            npcs={npcs}
+            locations={locations}
+            lore={lore}
+            sessions={sessions}
+            timelineEvents={timelineEvents}
+            notes={notes}
           />
         );
       case 'notes':

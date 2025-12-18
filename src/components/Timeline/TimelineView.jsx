@@ -5,7 +5,7 @@ import TimelineEventForm from './TimelineEventForm';
 import Modal from '../Modal';
 import './TimelineView.css';
 
-export default function TimelineView({ campaign, events = [], addEvent, updateEvent, deleteEvent, isDM }) {
+export default function TimelineView({ campaign, events = [], addEvent, updateEvent, deleteEvent, isDM, npcs = [], locations = [], lore = [], sessions = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -177,6 +177,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
             setEditingEvent(null);
           }}
           campaign={campaign}
+          entities={{ npcs, locations, lore, sessions, timelineEvents: events, encounters, notes }}
         />
       </Modal>
     </div>

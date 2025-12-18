@@ -5,8 +5,8 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LoreForm.css';
 
-export default function LoreForm({ lore, onSave, onCancel, isDM, campaign }) {
-  const { search } = useEntityRegistry(campaign);
+export default function LoreForm({ lore, onSave, onCancel, isDM, campaign, entities }) {
+  const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(lore || {
     title: '',
     type: 'location',

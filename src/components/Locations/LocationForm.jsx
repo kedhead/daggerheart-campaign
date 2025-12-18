@@ -4,8 +4,8 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LocationsView.css';
 
-export default function LocationForm({ location, onSave, onCancel, campaign }) {
-  const { search } = useEntityRegistry(campaign);
+export default function LocationForm({ location, onSave, onCancel, campaign, entities }) {
+  const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(location || {
     name: '',
     type: 'town',

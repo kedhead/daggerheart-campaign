@@ -4,8 +4,8 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionForm.css';
 
-export default function SessionForm({ session, onSave, onCancel, isDM, campaign }) {
-  const { search } = useEntityRegistry(campaign);
+export default function SessionForm({ session, onSave, onCancel, isDM, campaign, entities }) {
+  const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(session || {
     title: '',
     date: new Date().toISOString().split('T')[0],

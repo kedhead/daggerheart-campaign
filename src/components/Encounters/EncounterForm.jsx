@@ -4,8 +4,8 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './EncountersView.css';
 
-export default function EncounterForm({ encounter, onSave, onCancel, campaign }) {
-  const { search } = useEntityRegistry(campaign);
+export default function EncounterForm({ encounter, onSave, onCancel, campaign, entities }) {
+  const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(encounter || {
     name: '',
     difficulty: 'medium',

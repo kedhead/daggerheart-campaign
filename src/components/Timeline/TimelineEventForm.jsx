@@ -4,8 +4,8 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './TimelineView.css';
 
-export default function TimelineEventForm({ event, onSave, onCancel, campaign }) {
-  const { search } = useEntityRegistry(campaign);
+export default function TimelineEventForm({ event, onSave, onCancel, campaign, entities }) {
+  const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(event || {
     title: '',
     date: '',
