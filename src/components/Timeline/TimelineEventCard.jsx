@@ -5,7 +5,7 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './TimelineView.css';
 
-export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campaign }) {
+export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign);
@@ -85,7 +85,7 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campa
             </div>
           )}
 
-          {isDM && (
+          {isDM && !isEmbedded && (
             <div className="event-actions">
               <button className="btn btn-secondary" onClick={onEdit}>
                 <Edit3 size={16} />

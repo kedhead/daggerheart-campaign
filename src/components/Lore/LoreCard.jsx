@@ -15,7 +15,7 @@ const TYPE_ICONS = {
   other: MoreHorizontal
 };
 
-export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign }) {
+export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign);
@@ -68,7 +68,7 @@ export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign }) {
             </div>
           )}
 
-          {isDM && (
+          {isDM && !isEmbedded && (
             <div className="lore-actions">
               <button className="btn btn-secondary" onClick={onEdit}>
                 <Edit3 size={16} />

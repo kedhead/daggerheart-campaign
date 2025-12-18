@@ -5,7 +5,7 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NPCsView.css';
 
-export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign }) {
+export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign);
@@ -97,7 +97,7 @@ export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign }) {
             </div>
           )}
 
-          {isDM && (
+          {isDM && !isEmbedded && (
             <div className="npc-actions">
               <button className="btn btn-secondary" onClick={onEdit}>
                 <Edit3 size={16} />

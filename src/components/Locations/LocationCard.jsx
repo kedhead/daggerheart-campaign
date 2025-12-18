@@ -5,7 +5,7 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LocationsView.css';
 
-export default function LocationCard({ location, onEdit, onDelete, onGenerateMap, isDM, generatingMapFor, campaign }) {
+export default function LocationCard({ location, onEdit, onDelete, onGenerateMap, isDM, generatingMapFor, campaign, isEmbedded = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign);
@@ -107,7 +107,7 @@ export default function LocationCard({ location, onEdit, onDelete, onGenerateMap
             </div>
           )}
 
-          {isDM && (
+          {isDM && !isEmbedded && (
             <div className="location-actions">
               <button className="btn btn-secondary" onClick={onEdit}>
                 <Edit3 size={16} />

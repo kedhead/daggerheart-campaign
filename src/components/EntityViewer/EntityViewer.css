@@ -1,41 +1,38 @@
-.entity-viewer {
-  padding: 1rem;
+.entity-viewer-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.entity-viewer-type-badge {
+.entity-type-badge {
   display: inline-block;
-  padding: 0.375rem 0.75rem;
-  background: linear-gradient(135deg, var(--hope-color), var(--hope-secondary));
-  color: var(--bg-primary);
-  border-radius: 999px;
-  font-size: 0.85rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--hope-color);
+  color: var(--bg-primary);
 }
 
 .entity-viewer-content {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  /* Remove default padding since card components have their own */
+  padding: 0;
 }
 
-.entity-viewer-section h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.entity-viewer-section p {
-  color: var(--text-primary);
-  line-height: 1.6;
-}
-
-/* Hide edit/delete actions in embedded view */
-.entity-viewer .npc-actions,
-.entity-viewer .location-actions,
-.entity-viewer .card-actions {
+/* Hide action buttons in embedded view */
+.entity-viewer-content .card-actions {
   display: none;
+}
+
+.entity-viewer-error {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.entity-viewer-error p {
+  margin: 0;
+  font-size: 1.1rem;
 }

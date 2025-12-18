@@ -5,7 +5,7 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './EncountersView.css';
 
-export default function EncounterCard({ encounter, onEdit, onDelete, isDM, campaign }) {
+export default function EncounterCard({ encounter, onEdit, onDelete, isDM, campaign, isEmbedded = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign);
@@ -116,7 +116,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, isDM, campa
             </div>
           )}
 
-          {isDM && (
+          {isDM && !isEmbedded && (
             <div className="encounter-actions">
               <button className="btn btn-secondary" onClick={onEdit}>
                 <Edit3 size={16} />

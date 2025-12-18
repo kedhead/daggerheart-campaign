@@ -5,7 +5,7 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NotesView.css';
 
-export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, campaign }) {
+export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, campaign, isEmbedded = false }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign);
@@ -68,7 +68,7 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, 
             </div>
           )}
 
-          {canEdit && (
+          {canEdit && !isEmbedded && (
             <div className="note-actions">
               <button className="btn btn-secondary" onClick={onEdit}>
                 <Edit3 size={16} />
