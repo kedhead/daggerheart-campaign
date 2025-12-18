@@ -22,13 +22,23 @@ export default function WikiLinkInput({ value, onChange, searchEntities, placeho
 
   // Detect [[ typing and show autocomplete
   useEffect(() => {
+    console.log('[WikiLinkInput] useEffect triggered', {
+      hasValue: !!value,
+      hasSearchEntities: !!searchEntities,
+      valueLength: value?.length
+    });
+
     if (!value || !searchEntities) {
+      console.log('[WikiLinkInput] Missing value or searchEntities, hiding autocomplete');
       setShowAutocomplete(false);
       return;
     }
 
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea) {
+      console.log('[WikiLinkInput] No textarea ref');
+      return;
+    }
 
     const cursorPos = textarea.selectionStart;
     const textBeforeCursor = value.substring(0, cursorPos);
@@ -37,12 +47,20 @@ export default function WikiLinkInput({ value, onChange, searchEntities, placeho
     const lastOpenBracket = textBeforeCursor.lastIndexOf('[[');
     const lastCloseBracket = textBeforeCursor.lastIndexOf(']]');
 
+    console.log('[WikiLinkInput] Bracket check', {
+      lastOpenBracket,
+      lastCloseBracket,
+      textBeforeCursor
+    });
+
     if (lastOpenBracket > lastCloseBracket && lastOpenBracket !== -1) {
       // We're typing inside [[
       const searchQuery = textBeforeCursor.substring(lastOpenBracket + 2);
+      console.log('[WikiLinkInput] Inside [[, searching for:', searchQuery);
 
       if (searchQuery.length >= 0) {
         const results = searchEntities(searchQuery);
+        console.log('[WikiLinkInput] Search results:', results);
         setAutocompleteResults(results);
         setSelectedIndex(0);
 
@@ -58,8 +76,10 @@ export default function WikiLinkInput({ value, onChange, searchEntities, placeho
             left: rect.left + 10
           });
 
+          console.log('[WikiLinkInput] Showing autocomplete with', results.length, 'results');
           setShowAutocomplete(true);
         } else {
+          console.log('[WikiLinkInput] No results, hiding autocomplete');
           setShowAutocomplete(false);
         }
       }

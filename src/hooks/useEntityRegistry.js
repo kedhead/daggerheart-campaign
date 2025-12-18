@@ -9,7 +9,12 @@ import { useMemo } from 'react';
  */
 export function useEntityRegistry(campaign) {
   const registry = useMemo(() => {
-    if (!campaign) return [];
+    console.log('[useEntityRegistry] Building registry for campaign:', campaign?.name);
+
+    if (!campaign) {
+      console.log('[useEntityRegistry] No campaign, returning empty registry');
+      return [];
+    }
 
     const entities = [];
 
@@ -104,6 +109,16 @@ export function useEntityRegistry(campaign) {
       });
     });
 
+    console.log('[useEntityRegistry] Registry built with', entities.length, 'entities:', {
+      npcs: campaign.npcs?.length || 0,
+      locations: campaign.locations?.length || 0,
+      lore: campaign.lore?.length || 0,
+      sessions: campaign.sessions?.length || 0,
+      timelineEvents: campaign.timelineEvents?.length || 0,
+      encounters: campaign.encounters?.length || 0,
+      notes: campaign.notes?.length || 0
+    });
+
     return entities;
   }, [
     campaign?.npcs,
@@ -121,15 +136,24 @@ export function useEntityRegistry(campaign) {
    * @returns {Array} Array of matching entities (max 10 results)
    */
   const search = (query) => {
+    console.log('[useEntityRegistry] search() called', {
+      query,
+      registrySize: registry.length
+    });
+
     // If no query, return all entities (for autocomplete when typing [[)
     if (!query || query.trim() === '') {
-      return registry.slice(0, 10); // Show first 10 entities
+      const results = registry.slice(0, 10);
+      console.log('[useEntityRegistry] Empty query, returning first 10:', results);
+      return results;
     }
 
     const lowerQuery = query.toLowerCase();
-    return registry
+    const results = registry
       .filter(entity => entity.searchText.includes(lowerQuery))
-      .slice(0, 10); // Limit to 10 results for performance
+      .slice(0, 10);
+    console.log('[useEntityRegistry] Filtered results:', results);
+    return results;
   };
 
   /**
