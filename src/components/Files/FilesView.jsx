@@ -22,6 +22,30 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
   const [selectedLocation, setSelectedLocation] = useState(null);
   const { hasKey, keys } = useAPIKey(userId);
 
+  // Get map type descriptions based on game system
+  const getMapTypeDescriptions = () => {
+    const gameSystem = campaign?.gameSystem || 'daggerheart';
+
+    if (gameSystem === 'starwarsd6') {
+      return {
+        world: 'Galactic Map - Holocron-style overview of star systems and hyperspace routes',
+        regional: 'Sector Map - Holocron-style map of a galactic sector with nearby systems',
+        local: 'Planetary/Location Map - Holocron-style map of a planet or specific location',
+        dungeon: 'Facility/Ship Schematic - Technical blueprint of interior spaces'
+      };
+    }
+
+    // Default fantasy descriptions for Daggerheart, D&D 5e, and generic
+    return {
+      world: 'World Map - Tolkien-esque overview of entire campaign world',
+      regional: 'Regional Map - Tolkien-esque area around a location',
+      local: 'Local Map - Tolkien-esque detailed map of a city/town',
+      dungeon: 'Dungeon Map - Grid-based tactical battle map'
+    };
+  };
+
+  const mapDescriptions = getMapTypeDescriptions();
+
   useEffect(() => {
     loadFiles();
   }, [campaign]);
@@ -378,10 +402,10 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                 disabled={generatingMap}
                 className="form-control"
               >
-                <option value="world">World Map - Tolkien-esque overview of entire campaign world</option>
-                <option value="regional">Regional Map - Tolkien-esque area around a location</option>
-                <option value="local">Local Map - Tolkien-esque detailed map of a city/town</option>
-                <option value="dungeon">Dungeon Map - Grid-based tactical battle map</option>
+                <option value="world">{mapDescriptions.world}</option>
+                <option value="regional">{mapDescriptions.regional}</option>
+                <option value="local">{mapDescriptions.local}</option>
+                <option value="dungeon">{mapDescriptions.dungeon}</option>
               </select>
             </div>
 
