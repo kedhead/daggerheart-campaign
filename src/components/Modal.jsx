@@ -1,10 +1,11 @@
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import './Modal.css';
 
 export default function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div
         className={`modal-content modal-${size}`}
@@ -20,6 +21,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
