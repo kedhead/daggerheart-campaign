@@ -232,6 +232,12 @@ function CampaignApp() {
             updateNPC={updateNPC}
             deleteNPC={deleteNPC}
             isDM={isDM}
+            locations={locations}
+            lore={lore}
+            sessions={sessions}
+            timelineEvents={timelineEvents}
+            encounters={encounters}
+            notes={notes}
           />
         );
       case 'timeline':

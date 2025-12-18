@@ -6,7 +6,7 @@ import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import './NPCsView.css';
 
-export default function NPCsView({ campaign, npcs = [], addNPC, updateNPC, deleteNPC, isDM }) {
+export default function NPCsView({ campaign, npcs = [], addNPC, updateNPC, deleteNPC, isDM, locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNPC, setEditingNPC] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -174,6 +174,7 @@ export default function NPCsView({ campaign, npcs = [], addNPC, updateNPC, delet
             setEditingNPC(null);
           }}
           campaign={campaign}
+          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         />
       </Modal>
 

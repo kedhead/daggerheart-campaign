@@ -4,8 +4,8 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NPCsView.css';
 
-export default function NPCForm({ npc, onSave, onCancel, campaign }) {
-  const { search } = useEntityRegistry(campaign);
+export default function NPCForm({ npc, onSave, onCancel, campaign, entities }) {
+  const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(npc || {
     name: '',
     occupation: '',

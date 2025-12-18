@@ -4,10 +4,11 @@ import { useMemo } from 'react';
  * Creates a searchable registry of all campaign entities
  * Used for wiki-style linking, autocomplete, and relationship graphs
  *
- * @param {Object} campaign - Campaign object with all entities
+ * @param {Object} campaign - Campaign object (can have entities or pass them separately)
+ * @param {Object} separateEntities - Optional object with entity arrays { npcs, locations, lore, sessions, timelineEvents, encounters, notes }
  * @returns {Object} Registry with entities array and search/lookup functions
  */
-export function useEntityRegistry(campaign) {
+export function useEntityRegistry(campaign, separateEntities = null) {
   const registry = useMemo(() => {
     console.log('[useEntityRegistry] Building registry for campaign:', campaign?.name);
 
@@ -16,10 +17,13 @@ export function useEntityRegistry(campaign) {
       return [];
     }
 
+    // Use separate entities if provided, otherwise use campaign's nested entities
+    const source = separateEntities || campaign;
+
     const entities = [];
 
     // NPCs
-    (campaign.npcs || []).forEach(npc => {
+    (source.npcs || []).forEach(npc => {
       entities.push({
         id: npc.id,
         type: 'npc',
@@ -32,7 +36,7 @@ export function useEntityRegistry(campaign) {
     });
 
     // Locations
-    (campaign.locations || []).forEach(location => {
+    (source.locations || []).forEach(location => {
       entities.push({
         id: location.id,
         type: 'location',
@@ -45,7 +49,7 @@ export function useEntityRegistry(campaign) {
     });
 
     // Lore
-    (campaign.lore || []).forEach(lore => {
+    (source.lore || []).forEach(lore => {
       entities.push({
         id: lore.id,
         type: 'lore',
@@ -58,7 +62,7 @@ export function useEntityRegistry(campaign) {
     });
 
     // Sessions
-    (campaign.sessions || []).forEach(session => {
+    (source.sessions || []).forEach(session => {
       entities.push({
         id: session.id,
         type: 'session',
@@ -71,7 +75,7 @@ export function useEntityRegistry(campaign) {
     });
 
     // Timeline Events
-    (campaign.timelineEvents || []).forEach(event => {
+    (source.timelineEvents || []).forEach(event => {
       entities.push({
         id: event.id,
         type: 'timeline',
@@ -84,7 +88,7 @@ export function useEntityRegistry(campaign) {
     });
 
     // Encounters
-    (campaign.encounters || []).forEach(encounter => {
+    (source.encounters || []).forEach(encounter => {
       entities.push({
         id: encounter.id,
         type: 'encounter',
@@ -97,7 +101,7 @@ export function useEntityRegistry(campaign) {
     });
 
     // Notes
-    (campaign.notes || []).forEach(note => {
+    (source.notes || []).forEach(note => {
       entities.push({
         id: note.id,
         type: 'note',
@@ -110,24 +114,25 @@ export function useEntityRegistry(campaign) {
     });
 
     console.log('[useEntityRegistry] Registry built with', entities.length, 'entities:', {
-      npcs: campaign.npcs?.length || 0,
-      locations: campaign.locations?.length || 0,
-      lore: campaign.lore?.length || 0,
-      sessions: campaign.sessions?.length || 0,
-      timelineEvents: campaign.timelineEvents?.length || 0,
-      encounters: campaign.encounters?.length || 0,
-      notes: campaign.notes?.length || 0
+      npcs: source.npcs?.length || 0,
+      locations: source.locations?.length || 0,
+      lore: source.lore?.length || 0,
+      sessions: source.sessions?.length || 0,
+      timelineEvents: source.timelineEvents?.length || 0,
+      encounters: source.encounters?.length || 0,
+      notes: source.notes?.length || 0
     });
 
     return entities;
   }, [
-    campaign?.npcs,
-    campaign?.locations,
-    campaign?.lore,
-    campaign?.sessions,
-    campaign?.timelineEvents,
-    campaign?.encounters,
-    campaign?.notes
+    campaign,
+    separateEntities?.npcs,
+    separateEntities?.locations,
+    separateEntities?.lore,
+    separateEntities?.sessions,
+    separateEntities?.timelineEvents,
+    separateEntities?.encounters,
+    separateEntities?.notes
   ]);
 
   /**
