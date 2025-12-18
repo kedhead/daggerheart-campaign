@@ -196,6 +196,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
             setIsModalOpen(false);
             setEditingEncounter(null);
           }}
+          campaign={campaign}
         />
       </Modal>
 

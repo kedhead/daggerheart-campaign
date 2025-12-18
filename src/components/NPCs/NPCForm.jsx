@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Save, X } from 'lucide-react';
+import WikiLinkInput from '../WikiText/WikiLinkInput';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NPCsView.css';
 
-export default function NPCForm({ npc, onSave, onCancel }) {
+export default function NPCForm({ npc, onSave, onCancel, campaign }) {
+  const { search } = useEntityRegistry(campaign);
   const [formData, setFormData] = useState(npc || {
     name: '',
     occupation: '',
@@ -142,22 +145,26 @@ export default function NPCForm({ npc, onSave, onCancel }) {
 
       <div className="input-group">
         <label>Description</label>
-        <textarea
+        <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          rows="4"
-          placeholder="Physical appearance, personality, mannerisms..."
+          searchEntities={search}
+          placeholder="Physical appearance, personality, mannerisms... Type [[ to link entities"
+          rows={4}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">
         <label>Notes</label>
-        <textarea
+        <WikiLinkInput
           value={formData.notes}
           onChange={(e) => handleChange('notes', e.target.value)}
-          rows="4"
-          placeholder="Important information, quest connections, secrets..."
+          searchEntities={search}
+          placeholder="Important information, quest connections, secrets... Type [[ to link entities"
+          rows={4}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">

@@ -181,6 +181,7 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
             setIsModalOpen(false);
             setEditingNote(null);
           }}
+          campaign={campaign}
         />
       </Modal>
     </div>

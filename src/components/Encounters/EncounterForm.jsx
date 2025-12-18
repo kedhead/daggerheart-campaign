@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Save, X, ExternalLink } from 'lucide-react';
+import WikiLinkInput from '../WikiText/WikiLinkInput';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './EncountersView.css';
 
-export default function EncounterForm({ encounter, onSave, onCancel }) {
+export default function EncounterForm({ encounter, onSave, onCancel, campaign }) {
+  const { search } = useEntityRegistry(campaign);
   const [formData, setFormData] = useState(encounter || {
     name: '',
     difficulty: 'medium',
@@ -70,22 +73,26 @@ export default function EncounterForm({ encounter, onSave, onCancel }) {
 
       <div className="input-group">
         <label>Description</label>
-        <textarea
+        <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          rows="3"
-          placeholder="Brief description of the encounter setup..."
+          searchEntities={search}
+          placeholder="Brief description of the encounter setup... Type [[ to link entities"
+          rows={3}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">
         <label>Enemies</label>
-        <textarea
+        <WikiLinkInput
           value={formData.enemies}
           onChange={(e) => handleChange('enemies', e.target.value)}
-          rows="4"
-          placeholder="List enemies and their quantities, e.g., '3x Goblin Warriors, 1x Goblin Shaman'"
+          searchEntities={search}
+          placeholder="List enemies and their quantities, e.g., '3x Goblin Warriors, 1x Goblin Shaman'... Type [[ to link entities"
+          rows={4}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">
@@ -100,22 +107,26 @@ export default function EncounterForm({ encounter, onSave, onCancel }) {
 
       <div className="input-group">
         <label>Tactics</label>
-        <textarea
+        <WikiLinkInput
           value={formData.tactics}
           onChange={(e) => handleChange('tactics', e.target.value)}
-          rows="3"
-          placeholder="How enemies behave in combat, special strategies..."
+          searchEntities={search}
+          placeholder="How enemies behave in combat, special strategies... Type [[ to link entities"
+          rows={3}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">
         <label>Rewards</label>
-        <textarea
+        <WikiLinkInput
           value={formData.rewards}
           onChange={(e) => handleChange('rewards', e.target.value)}
-          rows="2"
-          placeholder="Loot, experience, story rewards..."
+          searchEntities={search}
+          placeholder="Loot, experience, story rewards... Type [[ to link entities"
+          rows={2}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">

@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Save, X, Link as LinkIcon } from 'lucide-react';
+import WikiLinkInput from '../WikiText/WikiLinkInput';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionForm.css';
 
-export default function SessionForm({ session, onSave, onCancel, isDM }) {
+export default function SessionForm({ session, onSave, onCancel, isDM, campaign }) {
+  const { search } = useEntityRegistry(campaign);
   const [formData, setFormData] = useState(session || {
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -100,13 +103,15 @@ export default function SessionForm({ session, onSave, onCancel, isDM }) {
 
       <div className="input-group">
         <label>Summary {formData.status === 'planned' ? '' : '*'}</label>
-        <textarea
+        <WikiLinkInput
           value={formData.summary}
           onChange={(e) => handleChange('summary', e.target.value)}
-          rows="6"
-          placeholder={formData.status === 'planned' ? 'What do you plan for this session?' : 'What happened in this session?'}
+          searchEntities={search}
+          placeholder={formData.status === 'planned' ? 'What do you plan for this session? Type [[ to link entities' : 'What happened in this session? Type [[ to link entities'}
+          rows={6}
           required={formData.status !== 'planned'}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="highlights-form-section">
@@ -140,12 +145,14 @@ export default function SessionForm({ session, onSave, onCancel, isDM }) {
       {isDM && (
         <div className="input-group">
           <label>DM Notes (DM Only)</label>
-          <textarea
+          <WikiLinkInput
             value={formData.dmNotes}
             onChange={(e) => handleChange('dmNotes', e.target.value)}
-            rows="4"
-            placeholder="Private notes for your eyes only..."
+            searchEntities={search}
+            placeholder="Private notes for your eyes only... Type [[ to link entities"
+            rows={4}
           />
+          <small className="form-hint">Type [[ to link to other entities</small>
         </div>
       )}
 

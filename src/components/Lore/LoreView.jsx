@@ -130,6 +130,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
             setEditingLore(null);
           }}
           isDM={isDM}
+          campaign={campaign}
         />
       </Modal>
     </div>

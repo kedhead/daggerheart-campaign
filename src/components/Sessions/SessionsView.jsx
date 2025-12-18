@@ -89,6 +89,7 @@ export default function SessionsView({ sessions, addSession, updateSession, dele
             setEditingSession(null);
           }}
           isDM={isDM}
+          campaign={campaign}
         />
       </Modal>
     </div>

@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Save, X } from 'lucide-react';
+import WikiLinkInput from '../WikiText/WikiLinkInput';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './TimelineView.css';
 
-export default function TimelineEventForm({ event, onSave, onCancel }) {
+export default function TimelineEventForm({ event, onSave, onCancel, campaign }) {
+  const { search } = useEntityRegistry(campaign);
   const [formData, setFormData] = useState(event || {
     title: '',
     date: '',
@@ -77,12 +80,14 @@ export default function TimelineEventForm({ event, onSave, onCancel }) {
 
       <div className="input-group">
         <label>Description</label>
-        <textarea
+        <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          rows="4"
-          placeholder="What happened during this event?"
+          searchEntities={search}
+          placeholder="What happened during this event? Type [[ to link entities"
+          rows={4}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">
@@ -97,12 +102,14 @@ export default function TimelineEventForm({ event, onSave, onCancel }) {
 
       <div className="input-group">
         <label>Outcome</label>
-        <textarea
+        <WikiLinkInput
           value={formData.outcome}
           onChange={(e) => handleChange('outcome', e.target.value)}
-          rows="3"
-          placeholder="What was the result or consequence?"
+          searchEntities={search}
+          placeholder="What was the result or consequence? Type [[ to link entities"
+          rows={3}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="form-actions">

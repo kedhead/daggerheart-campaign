@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Save, X } from 'lucide-react';
 import { LORE_TYPES } from '../../data/daggerheart';
+import WikiLinkInput from '../WikiText/WikiLinkInput';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LoreForm.css';
 
-export default function LoreForm({ lore, onSave, onCancel, isDM }) {
+export default function LoreForm({ lore, onSave, onCancel, isDM, campaign }) {
+  const { search } = useEntityRegistry(campaign);
   const [formData, setFormData] = useState(lore || {
     title: '',
     type: 'location',
@@ -72,12 +75,15 @@ export default function LoreForm({ lore, onSave, onCancel, isDM }) {
 
       <div className="input-group">
         <label>Content *</label>
-        <textarea
+        <WikiLinkInput
           value={formData.content}
           onChange={(e) => handleChange('content', e.target.value)}
-          rows="8"
+          searchEntities={search}
+          placeholder="Type [[ to link entities"
+          rows={8}
           required
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="tags-form-section">

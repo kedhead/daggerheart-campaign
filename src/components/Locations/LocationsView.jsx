@@ -289,6 +289,7 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
             setIsModalOpen(false);
             setEditingLocation(null);
           }}
+          campaign={campaign}
         />
       </Modal>
 

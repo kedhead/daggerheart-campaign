@@ -173,6 +173,7 @@ export default function NPCsView({ campaign, npcs = [], addNPC, updateNPC, delet
             setIsModalOpen(false);
             setEditingNPC(null);
           }}
+          campaign={campaign}
         />
       </Modal>
 

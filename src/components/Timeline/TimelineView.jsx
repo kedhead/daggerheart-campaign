@@ -176,6 +176,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
             setIsModalOpen(false);
             setEditingEvent(null);
           }}
+          campaign={campaign}
         />
       </Modal>
     </div>

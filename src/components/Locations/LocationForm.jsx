@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Save, X } from 'lucide-react';
+import WikiLinkInput from '../WikiText/WikiLinkInput';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LocationsView.css';
 
-export default function LocationForm({ location, onSave, onCancel }) {
+export default function LocationForm({ location, onSave, onCancel, campaign }) {
+  const { search } = useEntityRegistry(campaign);
   const [formData, setFormData] = useState(location || {
     name: '',
     type: 'town',
@@ -67,22 +70,26 @@ export default function LocationForm({ location, onSave, onCancel }) {
 
       <div className="input-group">
         <label>Description</label>
-        <textarea
+        <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          rows="4"
-          placeholder="General description of the location..."
+          searchEntities={search}
+          placeholder="General description of the location... Type [[ to link entities"
+          rows={4}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">
         <label>Notable Features</label>
-        <textarea
+        <WikiLinkInput
           value={formData.notableFeatures}
           onChange={(e) => handleChange('notableFeatures', e.target.value)}
-          rows="3"
-          placeholder="Important landmarks, buildings, or features..."
+          searchEntities={search}
+          placeholder="Important landmarks, buildings, or features... Type [[ to link entities"
+          rows={3}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="input-group">
@@ -97,12 +104,14 @@ export default function LocationForm({ location, onSave, onCancel }) {
 
       <div className="input-group">
         <label>Secrets</label>
-        <textarea
+        <WikiLinkInput
           value={formData.secrets}
           onChange={(e) => handleChange('secrets', e.target.value)}
-          rows="3"
-          placeholder="Hidden information about this location..."
+          searchEntities={search}
+          placeholder="Hidden information about this location... Type [[ to link entities"
+          rows={3}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="form-actions">

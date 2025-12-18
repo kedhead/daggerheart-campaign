@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Save, X } from 'lucide-react';
+import WikiLinkInput from '../WikiText/WikiLinkInput';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NotesView.css';
 
-export default function NoteForm({ note, onSave, onCancel }) {
+export default function NoteForm({ note, onSave, onCancel, campaign }) {
+  const { search } = useEntityRegistry(campaign);
   const [formData, setFormData] = useState(note || {
     title: '',
     category: 'other',
@@ -51,12 +54,14 @@ export default function NoteForm({ note, onSave, onCancel }) {
 
       <div className="input-group">
         <label>Content</label>
-        <textarea
+        <WikiLinkInput
           value={formData.content}
           onChange={(e) => handleChange('content', e.target.value)}
-          rows="8"
-          placeholder="Write your notes here..."
+          searchEntities={search}
+          placeholder="Write your notes here... Type [[ to link entities"
+          rows={8}
         />
+        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       <div className="form-actions">
