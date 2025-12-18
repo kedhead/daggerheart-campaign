@@ -4,7 +4,40 @@
  * Includes campaign context, existing content, and specific requirements
  */
 
+import { getGameSystem } from '../data/systems/index.js';
+
 export const promptBuilder = {
+  /**
+   * Get game system context for prompts
+   * @param {object} campaign - Campaign object
+   * @returns {object} Game system info for prompts
+   */
+  _getGameSystemContext(campaign) {
+    const systemId = campaign?.gameSystem || 'daggerheart';
+    const system = getGameSystem(systemId);
+
+    return {
+      name: system?.name || 'Daggerheart',
+      id: systemId,
+      // Provide context about the genre/setting
+      genre: this._getGenreContext(systemId)
+    };
+  },
+
+  /**
+   * Get genre-specific context for better AI prompts
+   * @param {string} systemId - Game system ID
+   * @returns {string} Genre context
+   */
+  _getGenreContext(systemId) {
+    const genreMap = {
+      'daggerheart': 'fantasy',
+      'dnd5e': 'fantasy',
+      'starwarsd6': 'science fiction space opera (Star Wars universe)',
+      'generic': 'any genre'
+    };
+    return genreMap[systemId] || 'fantasy';
+  },
   /**
    * Build a prompt for NPC generation
    * @param {object} context - Generation context
@@ -12,11 +45,13 @@ export const promptBuilder = {
    */
   buildNPCPrompt(context) {
     const { campaign, campaignFrame, existingNPCs = [], requirements = {} } = context;
+    const gameSystem = this._getGameSystemContext(campaign);
 
-    let prompt = `You are helping create an NPC for a Daggerheart TTRPG campaign.
+    let prompt = `You are helping create an NPC for a ${gameSystem.name} campaign set in a ${gameSystem.genre} setting.
 
 CAMPAIGN CONTEXT:
-Campaign Name: ${campaign?.name || 'Untitled Campaign'}`;
+Campaign Name: ${campaign?.name || 'Untitled Campaign'}
+Game System: ${gameSystem.name}`;
 
     if (campaign?.description) {
       prompt += `\nCampaign Description: ${campaign.description}`;
@@ -77,11 +112,13 @@ Ensure the NPC fits the campaign's tone and themes. Be creative but consistent w
    */
   buildLocationPrompt(context) {
     const { campaign, campaignFrame, existingLocations = [], requirements = {} } = context;
+    const gameSystem = this._getGameSystemContext(campaign);
 
-    let prompt = `You are helping create a location for a Daggerheart TTRPG campaign.
+    let prompt = `You are helping create a location for a ${gameSystem.name} campaign set in a ${gameSystem.genre} setting.
 
 CAMPAIGN CONTEXT:
-Campaign Name: ${campaign?.name || 'Untitled Campaign'}`;
+Campaign Name: ${campaign?.name || 'Untitled Campaign'}
+Game System: ${gameSystem.name}`;
 
     if (campaign?.description) {
       prompt += `\nCampaign Description: ${campaign.description}`;
@@ -141,11 +178,13 @@ Make sure the location fits the campaign's tone and is geographically consistent
    */
   buildEncounterPrompt(context) {
     const { campaign, campaignFrame, partyLevel = 1, partySize = 4, requirements = {} } = context;
+    const gameSystem = this._getGameSystemContext(campaign);
 
-    let prompt = `You are creating a combat encounter for a Daggerheart TTRPG campaign.
+    let prompt = `You are creating a combat encounter for a ${gameSystem.name} campaign set in a ${gameSystem.genre} setting.
 
 CAMPAIGN CONTEXT:
-Campaign Name: ${campaign?.name || 'Untitled Campaign'}`;
+Campaign Name: ${campaign?.name || 'Untitled Campaign'}
+Game System: ${gameSystem.name}`;
 
     if (campaignFrame) {
       if (campaignFrame.pitch) {
@@ -211,9 +250,13 @@ Balance the encounter for the party level and size. Make it thematically appropr
   // Private helper methods for campaign frame prompts
 
   _buildPitchPrompt(campaign, requirements) {
-    return `Create a compelling 2-3 sentence campaign pitch for a Daggerheart TTRPG campaign named "${campaign?.name || 'Untitled Campaign'}".
+    const gameSystem = this._getGameSystemContext(campaign);
 
-${requirements.genre ? `Genre/Style: ${requirements.genre}` : ''}
+    return `Create a compelling 2-3 sentence campaign pitch for a ${gameSystem.name} campaign named "${campaign?.name || 'Untitled Campaign'}".
+
+SETTING: ${gameSystem.genre}
+Game System: ${gameSystem.name}
+${requirements.genre ? `Additional Genre/Style: ${requirements.genre}` : ''}
 ${requirements.inspiration ? `Inspired by: ${requirements.inspiration}` : ''}
 ${campaign?.description ? `Additional context: ${campaign.description}` : ''}
 
@@ -222,17 +265,23 @@ The pitch should:
 - Clearly state the core conflict or premise
 - Set expectations for tone and scope
 - Make players excited to participate
+- Be appropriate for the ${gameSystem.genre} setting
 
 Respond with just the pitch text, no additional formatting.`;
   },
 
   _buildToneFeelPrompt(campaign, existingData, requirements) {
-    return `Suggest 5-8 descriptive words that capture the tone and feel of this Daggerheart campaign: "${campaign?.name || 'Untitled Campaign'}"
+    const gameSystem = this._getGameSystemContext(campaign);
 
+    return `Suggest 5-8 descriptive words that capture the tone and feel of this ${gameSystem.name} campaign: "${campaign?.name || 'Untitled Campaign'}"
+
+SETTING: ${gameSystem.genre}
 ${existingData.pitch ? `Campaign Pitch: ${existingData.pitch}` : ''}
 ${requirements.preferences ? `Desired feel: ${requirements.preferences}` : ''}
 
 Examples of tone/feel words: Adventurous, Dark, Whimsical, Gritty, Epic, Mysterious, Lighthearted, Tense, Heroic, Tragic, Political, Romantic, Horror
+
+Make sure the tone words are appropriate for a ${gameSystem.genre} setting.
 
 Respond with a JSON array of words:
 \`\`\`json
@@ -241,14 +290,19 @@ Respond with a JSON array of words:
   },
 
   _buildThemesPrompt(campaign, existingData, requirements) {
-    return `Identify 4-6 narrative and emotional themes for this Daggerheart campaign: "${campaign?.name || 'Untitled Campaign'}"
+    const gameSystem = this._getGameSystemContext(campaign);
 
+    return `Identify 4-6 narrative and emotional themes for this ${gameSystem.name} campaign: "${campaign?.name || 'Untitled Campaign'}"
+
+SETTING: ${gameSystem.genre}
 ${existingData.pitch ? `Pitch: ${existingData.pitch}` : ''}
 ${existingData.toneAndFeel ? `Tone: ${existingData.toneAndFeel.join(', ')}` : ''}
 
 Themes are the deeper questions and ideas the campaign explores.
 
 Examples: Duty vs. Ethics, Transformation, Survival, Cultural Clash, Power and Corruption, Redemption, Family, Identity
+
+Make sure themes are appropriate for a ${gameSystem.genre} setting.
 
 Respond with a JSON array:
 \`\`\`json
@@ -257,13 +311,16 @@ Respond with a JSON array:
   },
 
   _buildTouchstonesPrompt(campaign, existingData, requirements) {
-    return `Suggest 3-5 cultural touchstones (films, books, games, shows) that inspire the feel of this campaign: "${campaign?.name || 'Untitled Campaign'}"
+    const gameSystem = this._getGameSystemContext(campaign);
 
+    return `Suggest 3-5 cultural touchstones (films, books, games, shows) that inspire the feel of this ${gameSystem.name} campaign: "${campaign?.name || 'Untitled Campaign'}"
+
+SETTING: ${gameSystem.genre}
 ${existingData.pitch ? `Pitch: ${existingData.pitch}` : ''}
 ${existingData.toneAndFeel ? `Tone: ${existingData.toneAndFeel.join(', ')}` : ''}
 ${existingData.themes ? `Themes: ${existingData.themes.join(', ')}` : ''}
 
-Touchstones help players understand the campaign's vibe.
+Touchstones help players understand the campaign's vibe. Suggest media appropriate for the ${gameSystem.genre} setting.
 
 Respond with a JSON array:
 \`\`\`json
@@ -272,13 +329,16 @@ Respond with a JSON array:
   },
 
   _buildOverviewPrompt(campaign, existingData, requirements) {
-    return `Write a 2-3 paragraph campaign overview for "${campaign?.name || 'Untitled Campaign'}"
+    const gameSystem = this._getGameSystemContext(campaign);
 
+    return `Write a 2-3 paragraph campaign overview for "${campaign?.name || 'Untitled Campaign'}" using ${gameSystem.name}.
+
+SETTING: ${gameSystem.genre}
 ${existingData.pitch ? `Pitch: ${existingData.pitch}` : ''}
 ${existingData.themes ? `Themes: ${existingData.themes.join(', ')}` : ''}
 
 The overview should provide:
-- Background lore and setting details
+- Background lore and setting details appropriate for ${gameSystem.genre}
 - The current state of the world
 - Key factions, locations, or conflicts
 - Enough context for players to create connected characters
@@ -287,8 +347,11 @@ Respond with the overview text.`;
   },
 
   _buildIncitingIncidentPrompt(campaign, existingData, requirements) {
-    return `Create an inciting incident to launch the campaign "${campaign?.name || 'Untitled Campaign'}"
+    const gameSystem = this._getGameSystemContext(campaign);
 
+    return `Create an inciting incident to launch the ${gameSystem.name} campaign "${campaign?.name || 'Untitled Campaign'}"
+
+SETTING: ${gameSystem.genre}
 ${existingData.pitch ? `Pitch: ${existingData.pitch}` : ''}
 ${existingData.overview ? `Overview: ${existingData.overview.substring(0, 300)}...` : ''}
 
@@ -297,13 +360,17 @@ The inciting incident should:
 - Draw all characters into the action
 - Connect to the campaign's core themes
 - Create urgency and investment
+- Be appropriate for a ${gameSystem.genre} setting
 
 Respond with 2-4 sentences describing the incident.`;
   },
 
   _buildPlayerPrinciplesPrompt(campaign, existingData) {
-    return `Create 3-4 player principles for "${campaign?.name || 'Untitled Campaign'}"
+    const gameSystem = this._getGameSystemContext(campaign);
 
+    return `Create 3-4 player principles for the ${gameSystem.name} campaign "${campaign?.name || 'Untitled Campaign'}"
+
+SETTING: ${gameSystem.genre}
 ${existingData.pitch ? `Pitch: ${existingData.pitch}` : ''}
 ${existingData.themes ? `Themes: ${existingData.themes.join(', ')}` : ''}
 
@@ -311,6 +378,7 @@ Player principles guide how players should approach the campaign. They should be
 - Specific to this campaign
 - Actionable and clear
 - Reinforce the themes
+- Appropriate for ${gameSystem.genre}
 
 Examples: "Make it personal", "Embrace vulnerability", "Question authority"
 
@@ -321,8 +389,11 @@ Respond with a JSON array:
   },
 
   _buildGMPrinciplesPrompt(campaign, existingData) {
-    return `Create 3-4 GM principles for running "${campaign?.name || 'Untitled Campaign'}"
+    const gameSystem = this._getGameSystemContext(campaign);
 
+    return `Create 3-4 GM principles for running the ${gameSystem.name} campaign "${campaign?.name || 'Untitled Campaign'}"
+
+SETTING: ${gameSystem.genre}
 ${existingData.pitch ? `Pitch: ${existingData.pitch}` : ''}
 ${existingData.themes ? `Themes: ${existingData.themes.join(', ')}` : ''}
 
@@ -330,6 +401,7 @@ GM principles guide how the GM should run the campaign. They should be:
 - Specific to this campaign
 - Actionable and clear
 - Support the themes and tone
+- Appropriate for ${gameSystem.genre}
 
 Examples: "Show true danger", "Make them choose", "Paint contrast"
 
@@ -340,8 +412,11 @@ Respond with a JSON array:
   },
 
   _buildSessionZeroPrompt(campaign, existingData) {
-    return `Create 5-10 session zero questions for "${campaign?.name || 'Untitled Campaign'}"
+    const gameSystem = this._getGameSystemContext(campaign);
 
+    return `Create 5-10 session zero questions for the ${gameSystem.name} campaign "${campaign?.name || 'Untitled Campaign'}"
+
+SETTING: ${gameSystem.genre}
 ${existingData.pitch ? `Pitch: ${existingData.pitch}` : ''}
 ${existingData.themes ? `Themes: ${existingData.themes.join(', ')}` : ''}
 ${existingData.overview ? `Overview: ${existingData.overview.substring(0, 200)}...` : ''}
@@ -351,6 +426,7 @@ Session zero questions should:
 - Establish shared world details
 - Create personal stakes
 - Build character relationships
+- Be appropriate for ${gameSystem.genre}
 
 Respond with a JSON array:
 \`\`\`json
