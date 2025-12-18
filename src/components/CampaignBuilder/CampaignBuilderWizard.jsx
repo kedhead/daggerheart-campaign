@@ -171,14 +171,16 @@ export default function CampaignBuilderWizard({
 
         // Save map to campaign
         if (updateCampaign) {
+          // Note: Skipping worldMap image save - base64 images exceed Firestore 1MB limit
+          // TODO: Upload image to Firebase Storage instead and save the Storage URL
           await updateCampaign({
-            worldMap: mapData.imageUrl,
+            // worldMap: mapData.imageUrl, // SKIP: Base64 images are too large for Firestore
             mapDescription: mapData.description,
             // Stringify arrays to avoid Firestore nested entity errors
             mapRegions: JSON.stringify(mapData.regions || []),
             mapFeatures: JSON.stringify(mapData.features || [])
           });
-          console.log('World map saved to campaign');
+          console.log('World map description saved to campaign (image skipped due to size limits)');
         }
       } catch (err) {
         console.error('Failed to generate world map (non-critical):', err);

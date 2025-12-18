@@ -48,8 +48,10 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
   const handleMapUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Map image size must be less than 5MB');
+      // Base64 encoding increases size by ~33%, and Firestore has 1MB document limit
+      // Even a 750KB image will exceed the limit when base64-encoded
+      if (file.size > 500 * 1024) {
+        alert('Map image size must be less than 500KB to avoid Firestore size limits.\n\nTIP: Compress your image or use a smaller resolution.\n\nTODO: We will add Firebase Storage support to allow larger images.');
         return;
       }
 
@@ -62,7 +64,16 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
 
       const reader = new FileReader();
       reader.onload = async (e) => {
-        await updateCampaign({ worldMap: e.target.result });
+        const base64String = e.target.result;
+
+        // Check if base64 string is too large for Firestore (1MB document limit)
+        if (base64String.length > 1000000) {
+          alert('Image is too large when encoded. Please use a smaller file (< 500KB).');
+          setUploadingMap(false);
+          return;
+        }
+
+        await updateCampaign({ worldMap: base64String });
         setUploadingMap(false);
       };
       reader.onerror = () => {
