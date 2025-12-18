@@ -158,6 +158,7 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
               onDelete={() => handleDelete(note.id)}
               currentUserId={currentUserId}
               isDM={isDM}
+              campaign={campaign}
             />
           ))}
         </div>

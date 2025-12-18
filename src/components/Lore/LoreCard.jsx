@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, MapPin, UserCircle, Users, Package, BookOpen, Target, MoreHorizontal, EyeOff } from 'lucide-react';
+import WikiText from '../WikiText/WikiText';
+import EntityViewer from '../EntityViewer/EntityViewer';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LoreCard.css';
 
 const TYPE_ICONS = {
@@ -12,8 +15,10 @@ const TYPE_ICONS = {
   other: MoreHorizontal
 };
 
-export default function LoreCard({ lore, onEdit, onDelete, isDM }) {
+export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewingEntity, setViewingEntity] = useState(null);
+  const { getByName } = useEntityRegistry(campaign);
   // Support both 'type' and 'category' for backwards compatibility
   const loreType = lore.type || lore.category || 'other';
   const Icon = TYPE_ICONS[loreType] || MoreHorizontal;
@@ -44,7 +49,15 @@ export default function LoreCard({ lore, onEdit, onDelete, isDM }) {
       {isExpanded && (
         <div className="lore-details">
           <div className="lore-content">
-            {lore.content || 'No content'}
+            {lore.content ? (
+              <WikiText
+                text={lore.content}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
+            ) : (
+              'No content'
+            )}
           </div>
 
           {lore.tags && Array.isArray(lore.tags) && lore.tags.length > 0 && (
@@ -68,6 +81,17 @@ export default function LoreCard({ lore, onEdit, onDelete, isDM }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Entity viewer modal for wiki links */}
+      {viewingEntity && (
+        <EntityViewer
+          entity={viewingEntity}
+          isOpen={!!viewingEntity}
+          onClose={() => setViewingEntity(null)}
+          isDM={isDM}
+          campaign={campaign}
+        />
       )}
     </div>
   );

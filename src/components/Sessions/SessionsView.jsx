@@ -5,7 +5,7 @@ import SessionForm from './SessionForm';
 import Modal from '../Modal';
 import './SessionsView.css';
 
-export default function SessionsView({ sessions, addSession, updateSession, deleteSession, isDM }) {
+export default function SessionsView({ sessions, addSession, updateSession, deleteSession, isDM, campaign }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
 
@@ -66,6 +66,7 @@ export default function SessionsView({ sessions, addSession, updateSession, dele
               onEdit={() => handleEdit(session)}
               onDelete={() => deleteSession(session.id)}
               isDM={isDM}
+              campaign={campaign}
             />
           ))}
         </div>

@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, Calendar, EyeOff, Link as LinkIcon } from 'lucide-react';
+import WikiText from '../WikiText/WikiText';
+import EntityViewer from '../EntityViewer/EntityViewer';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionCard.css';
 
-export default function SessionCard({ session, onEdit, onDelete, isDM }) {
+export default function SessionCard({ session, onEdit, onDelete, isDM, campaign }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewingEntity, setViewingEntity] = useState(null);
+  const { getByName } = useEntityRegistry(campaign);
 
   const formattedDate = new Date(session.date).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -47,7 +52,11 @@ export default function SessionCard({ session, onEdit, onDelete, isDM }) {
         <div className="session-details">
           <div className="session-summary">
             <h4>Summary</h4>
-            <p>{session.summary}</p>
+            <WikiText
+              text={session.summary}
+              onLinkClick={setViewingEntity}
+              getEntity={getByName}
+            />
           </div>
 
           {isDM && session.encounterLinks && (
@@ -89,7 +98,11 @@ export default function SessionCard({ session, onEdit, onDelete, isDM }) {
                 <EyeOff size={16} />
                 DM Notes
               </h4>
-              <p>{session.dmNotes}</p>
+              <WikiText
+                text={session.dmNotes}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
@@ -106,6 +119,17 @@ export default function SessionCard({ session, onEdit, onDelete, isDM }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Entity viewer modal for wiki links */}
+      {viewingEntity && (
+        <EntityViewer
+          entity={viewingEntity}
+          isOpen={!!viewingEntity}
+          onClose={() => setViewingEntity(null)}
+          isDM={isDM}
+          campaign={campaign}
+        />
       )}
     </div>
   );

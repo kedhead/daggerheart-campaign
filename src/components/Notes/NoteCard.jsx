@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2 } from 'lucide-react';
+import WikiText from '../WikiText/WikiText';
+import EntityViewer from '../EntityViewer/EntityViewer';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NotesView.css';
 
-export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM }) {
+export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, campaign }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewingEntity, setViewingEntity] = useState(null);
+  const { getByName } = useEntityRegistry(campaign);
 
   // Only allow editing if user owns the note or is DM
   const canEdit = note.createdBy === currentUserId || isDM;
@@ -55,7 +60,11 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM }
         <div className="note-details">
           {note.content && (
             <div className="note-content">
-              <p>{note.content}</p>
+              <WikiText
+                text={note.content}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
@@ -72,6 +81,17 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM }
             </div>
           )}
         </div>
+      )}
+
+      {/* Entity viewer modal for wiki links */}
+      {viewingEntity && (
+        <EntityViewer
+          entity={viewingEntity}
+          isOpen={!!viewingEntity}
+          onClose={() => setViewingEntity(null)}
+          isDM={isDM}
+          campaign={campaign}
+        />
       )}
     </div>
   );

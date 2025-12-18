@@ -150,6 +150,7 @@ export default function NPCsView({ campaign, npcs = [], addNPC, updateNPC, delet
               onEdit={() => handleEdit(npc)}
               onDelete={() => handleDelete(npc.id)}
               isDM={isDM}
+              campaign={campaign}
             />
           ))}
         </div>

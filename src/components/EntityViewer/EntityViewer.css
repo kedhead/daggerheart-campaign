@@ -1,0 +1,41 @@
+.entity-viewer {
+  padding: 1rem;
+}
+
+.entity-viewer-type-badge {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  background: linear-gradient(135deg, var(--hope-color), var(--hope-secondary));
+  color: var(--bg-primary);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.entity-viewer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.entity-viewer-section h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.entity-viewer-section p {
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+/* Hide edit/delete actions in embedded view */
+.entity-viewer .npc-actions,
+.entity-viewer .location-actions,
+.entity-viewer .card-actions {
+  display: none;
+}

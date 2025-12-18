@@ -153,6 +153,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
               onEdit={() => handleEdit(event)}
               onDelete={() => handleDelete(event.id)}
               isDM={isDM}
+              campaign={campaign}
             />
           ))}
         </div>

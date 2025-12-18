@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, Swords } from 'lucide-react';
+import WikiText from '../WikiText/WikiText';
+import EntityViewer from '../EntityViewer/EntityViewer';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './EncountersView.css';
 
-export default function EncounterCard({ encounter, onEdit, onDelete, isDM }) {
+export default function EncounterCard({ encounter, onEdit, onDelete, isDM, campaign }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewingEntity, setViewingEntity] = useState(null);
+  const { getByName } = useEntityRegistry(campaign);
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
@@ -45,35 +50,55 @@ export default function EncounterCard({ encounter, onEdit, onDelete, isDM }) {
           {encounter.description && (
             <div className="encounter-section">
               <h4>Description</h4>
-              <p>{encounter.description}</p>
+              <WikiText
+                text={encounter.description}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {encounter.enemies && (
             <div className="encounter-section">
               <h4>Enemies</h4>
-              <p>{encounter.enemies}</p>
+              <WikiText
+                text={encounter.enemies}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {encounter.environment && (
             <div className="encounter-section">
               <h4>Environment</h4>
-              <p>{encounter.environment}</p>
+              <WikiText
+                text={encounter.environment}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {encounter.tactics && (
             <div className="encounter-section">
               <h4>Tactics</h4>
-              <p>{encounter.tactics}</p>
+              <WikiText
+                text={encounter.tactics}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {encounter.rewards && (
             <div className="encounter-section">
               <h4>Rewards</h4>
-              <p>{encounter.rewards}</p>
+              <WikiText
+                text={encounter.rewards}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
@@ -104,6 +129,17 @@ export default function EncounterCard({ encounter, onEdit, onDelete, isDM }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Entity viewer modal for wiki links */}
+      {viewingEntity && (
+        <EntityViewer
+          entity={viewingEntity}
+          isOpen={!!viewingEntity}
+          onClose={() => setViewingEntity(null)}
+          isDM={isDM}
+          campaign={campaign}
+        />
       )}
     </div>
   );

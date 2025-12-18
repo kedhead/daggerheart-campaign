@@ -6,7 +6,7 @@ import Modal from '../Modal';
 import { LORE_TYPES } from '../../data/daggerheart';
 import './LoreView.css';
 
-export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM }) {
+export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, campaign }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLore, setEditingLore] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -107,6 +107,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM }
               onEdit={() => handleEdit(entry)}
               onDelete={() => deleteLore(entry.id)}
               isDM={isDM}
+              campaign={campaign}
             />
           ))}
         </div>

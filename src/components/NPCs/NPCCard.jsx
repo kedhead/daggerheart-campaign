@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus } from 'lucide-react';
+import WikiText from '../WikiText/WikiText';
+import EntityViewer from '../EntityViewer/EntityViewer';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NPCsView.css';
 
-export default function NPCCard({ npc, onEdit, onDelete, isDM }) {
+export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewingEntity, setViewingEntity] = useState(null);
+  const { getByName } = useEntityRegistry(campaign);
 
   const getRelationshipIcon = (relationship) => {
     switch (relationship) {
@@ -66,14 +71,22 @@ export default function NPCCard({ npc, onEdit, onDelete, isDM }) {
           {npc.description && (
             <div className="npc-section">
               <h4>Description</h4>
-              <p>{npc.description}</p>
+              <WikiText
+                text={npc.description}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {npc.notes && (
             <div className="npc-section">
               <h4>Notes</h4>
-              <p>{npc.notes}</p>
+              <WikiText
+                text={npc.notes}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
@@ -97,6 +110,17 @@ export default function NPCCard({ npc, onEdit, onDelete, isDM }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Entity viewer modal for wiki links */}
+      {viewingEntity && (
+        <EntityViewer
+          entity={viewingEntity}
+          isOpen={!!viewingEntity}
+          onClose={() => setViewingEntity(null)}
+          isDM={isDM}
+          campaign={campaign}
+        />
       )}
     </div>
   );

@@ -173,6 +173,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
               onEdit={() => handleEdit(encounter)}
               onDelete={() => handleDelete(encounter.id)}
               isDM={isDM}
+              campaign={campaign}
             />
           ))}
         </div>

@@ -266,6 +266,7 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
               onGenerateMap={isDM ? handleGenerateLocationMap : null}
               generatingMapFor={generatingMapFor}
               isDM={isDM}
+              campaign={campaign}
             />
           ))}
         </div>

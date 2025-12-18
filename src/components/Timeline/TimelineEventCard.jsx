@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, MapPin, Calendar as CalendarIcon } from 'lucide-react';
+import WikiText from '../WikiText/WikiText';
+import EntityViewer from '../EntityViewer/EntityViewer';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './TimelineView.css';
 
-export default function TimelineEventCard({ event, onEdit, onDelete, isDM }) {
+export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campaign }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewingEntity, setViewingEntity] = useState(null);
+  const { getByName } = useEntityRegistry(campaign);
 
   const getTypeColor = (type) => {
     switch (type) {
@@ -50,21 +55,33 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM }) {
           {event.description && (
             <div className="event-section">
               <h4>Description</h4>
-              <p>{event.description}</p>
+              <WikiText
+                text={event.description}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {event.participants && (
             <div className="event-section">
               <h4>Participants</h4>
-              <p>{event.participants}</p>
+              <WikiText
+                text={event.participants}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {event.outcome && (
             <div className="event-section">
               <h4>Outcome</h4>
-              <p>{event.outcome}</p>
+              <WikiText
+                text={event.outcome}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
@@ -81,6 +98,17 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM }) {
             </div>
           )}
         </div>
+      )}
+
+      {/* Entity viewer modal for wiki links */}
+      {viewingEntity && (
+        <EntityViewer
+          entity={viewingEntity}
+          isOpen={!!viewingEntity}
+          onClose={() => setViewingEntity(null)}
+          isDM={isDM}
+          campaign={campaign}
+        />
       )}
     </div>
   );

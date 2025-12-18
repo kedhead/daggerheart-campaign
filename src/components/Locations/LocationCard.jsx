@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, MapPin, Map, Loader2 } from 'lucide-react';
+import WikiText from '../WikiText/WikiText';
+import EntityViewer from '../EntityViewer/EntityViewer';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LocationsView.css';
 
-export default function LocationCard({ location, onEdit, onDelete, onGenerateMap, isDM, generatingMapFor }) {
+export default function LocationCard({ location, onEdit, onDelete, onGenerateMap, isDM, generatingMapFor, campaign }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewingEntity, setViewingEntity] = useState(null);
+  const { getByName } = useEntityRegistry(campaign);
   const isGeneratingMap = generatingMapFor === location.id;
 
   const getTypeColor = (type) => {
@@ -46,28 +51,44 @@ export default function LocationCard({ location, onEdit, onDelete, onGenerateMap
           {location.description && (
             <div className="location-section">
               <h4>Description</h4>
-              <p>{location.description}</p>
+              <WikiText
+                text={location.description}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {location.notableFeatures && (
             <div className="location-section">
               <h4>Notable Features</h4>
-              <p>{location.notableFeatures}</p>
+              <WikiText
+                text={location.notableFeatures}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {location.inhabitants && (
             <div className="location-section">
               <h4>Inhabitants</h4>
-              <p>{location.inhabitants}</p>
+              <WikiText
+                text={location.inhabitants}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
           {location.secrets && (
             <div className="location-section">
               <h4>Secrets</h4>
-              <p>{location.secrets}</p>
+              <WikiText
+                text={location.secrets}
+                onLinkClick={setViewingEntity}
+                getEntity={getByName}
+              />
             </div>
           )}
 
@@ -118,6 +139,17 @@ export default function LocationCard({ location, onEdit, onDelete, onGenerateMap
             </div>
           )}
         </div>
+      )}
+
+      {/* Entity viewer modal for wiki links */}
+      {viewingEntity && (
+        <EntityViewer
+          entity={viewingEntity}
+          isOpen={!!viewingEntity}
+          onClose={() => setViewingEntity(null)}
+          isDM={isDM}
+          campaign={campaign}
+        />
       )}
     </div>
   );
