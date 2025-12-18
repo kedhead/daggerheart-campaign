@@ -6,9 +6,11 @@ import { useMemo } from 'react';
  *
  * @param {Object} campaign - Campaign object (can have entities or pass them separately)
  * @param {Object} separateEntities - Optional object with entity arrays { npcs, locations, lore, sessions, timelineEvents, encounters, notes }
+ * @param {boolean} isDM - Whether current user is DM (affects visibility filtering)
+ * @param {string} currentUserId - Current user ID (for note visibility)
  * @returns {Object} Registry with entities array and search/lookup functions
  */
-export function useEntityRegistry(campaign, separateEntities = null) {
+export function useEntityRegistry(campaign, separateEntities = null, isDM = true, currentUserId = null) {
   const registry = useMemo(() => {
     console.log('[useEntityRegistry] Building registry for campaign:', campaign?.name);
 
@@ -24,6 +26,9 @@ export function useEntityRegistry(campaign, separateEntities = null) {
 
     // NPCs
     (source.npcs || []).forEach(npc => {
+      // Visibility filter: skip hidden entities for non-DMs
+      if (!isDM && npc.hidden) return;
+
       entities.push({
         id: npc.id,
         type: 'npc',
@@ -37,6 +42,9 @@ export function useEntityRegistry(campaign, separateEntities = null) {
 
     // Locations
     (source.locations || []).forEach(location => {
+      // Visibility filter: skip hidden entities for non-DMs
+      if (!isDM && location.hidden) return;
+
       entities.push({
         id: location.id,
         type: 'location',
@@ -50,6 +58,9 @@ export function useEntityRegistry(campaign, separateEntities = null) {
 
     // Lore
     (source.lore || []).forEach(lore => {
+      // Visibility filter: skip hidden entities for non-DMs
+      if (!isDM && lore.hidden) return;
+
       entities.push({
         id: lore.id,
         type: 'lore',
@@ -63,6 +74,9 @@ export function useEntityRegistry(campaign, separateEntities = null) {
 
     // Sessions
     (source.sessions || []).forEach(session => {
+      // Visibility filter: skip hidden entities for non-DMs
+      if (!isDM && session.hidden) return;
+
       entities.push({
         id: session.id,
         type: 'session',
@@ -76,6 +90,9 @@ export function useEntityRegistry(campaign, separateEntities = null) {
 
     // Timeline Events
     (source.timelineEvents || []).forEach(event => {
+      // Visibility filter: skip hidden entities for non-DMs
+      if (!isDM && event.hidden) return;
+
       entities.push({
         id: event.id,
         type: 'timeline',
@@ -89,6 +106,9 @@ export function useEntityRegistry(campaign, separateEntities = null) {
 
     // Encounters
     (source.encounters || []).forEach(encounter => {
+      // Visibility filter: skip hidden entities for non-DMs
+      if (!isDM && encounter.hidden) return;
+
       entities.push({
         id: encounter.id,
         type: 'encounter',
@@ -102,6 +122,14 @@ export function useEntityRegistry(campaign, separateEntities = null) {
 
     // Notes
     (source.notes || []).forEach(note => {
+      // Visibility filter for notes
+      if (!isDM) {
+        // Players can see their own notes, shared notes, or DM-overridden notes
+        if (note.hidden && note.createdBy !== currentUserId && !note.visibleToPlayers) {
+          return;
+        }
+      }
+
       entities.push({
         id: note.id,
         type: 'note',
@@ -132,7 +160,9 @@ export function useEntityRegistry(campaign, separateEntities = null) {
     separateEntities?.sessions,
     separateEntities?.timelineEvents,
     separateEntities?.encounters,
-    separateEntities?.notes
+    separateEntities?.notes,
+    isDM,
+    currentUserId
   ]);
 
   /**

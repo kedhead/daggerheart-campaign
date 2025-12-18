@@ -51,6 +51,9 @@ export default function NPCsView({ campaign, npcs = [], addNPC, updateNPC, delet
 
   // Filter NPCs
   const filteredNPCs = npcs.filter(npc => {
+    // Visibility filter
+    if (!isDM && npc.hidden) return false;
+
     const matchesSearch = npc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          npc.occupation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          npc.location?.toLowerCase().includes(searchTerm.toLowerCase());

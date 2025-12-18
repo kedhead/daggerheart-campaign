@@ -46,6 +46,9 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
   // Add events with type marker
   if (showEvents) {
     events.forEach(event => {
+      // Visibility filter
+      if (!isDM && event.hidden) return;
+
       timelineItems.push({
         ...event,
         itemType: 'event',
@@ -58,6 +61,9 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
   // Add sessions with type marker
   if (showSessions) {
     sessions.forEach(session => {
+      // Visibility filter
+      if (!isDM && session.hidden) return;
+
       timelineItems.push({
         ...session,
         itemType: 'session',

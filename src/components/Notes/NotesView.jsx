@@ -13,10 +13,19 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
 
   const allNotes = allNotesEntities.length > 0 ? allNotesEntities : (campaign?.notes || []);
 
-  // Filter notes - players only see their own, DM sees all
+  // Filter notes - visibility logic
   const userNotes = isDM
-    ? allNotes
-    : allNotes.filter(note => note.createdBy === currentUserId);
+    ? allNotes  // DM sees all notes
+    : allNotes.filter(note => {
+        // Player sees notes if:
+        // 1. They created it
+        // 2. It's not hidden (shared with players)
+        // 3. DM has overridden visibility with visibleToPlayers
+        if (note.createdBy === currentUserId) return true;
+        if (!note.hidden) return true;
+        if (note.visibleToPlayers) return true;
+        return false;
+      });
 
   const handleAdd = () => {
     setEditingNote(null);

@@ -163,6 +163,9 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
 
   // Filter locations
   const filteredLocations = locations.filter(location => {
+    // Visibility filter
+    if (!isDM && location.hidden) return false;
+
     return location.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
            location.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
            location.description?.toLowerCase().includes(searchTerm.toLowerCase());
