@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X } from 'lucide-react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import './Sidebar.css';
@@ -65,7 +65,8 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
       icon: FolderUp,
       items: [
         { id: 'files', label: 'Maps & Files', icon: FolderUp },
-        { id: 'tools', label: 'Tools', icon: Wrench }
+        { id: 'tools', label: 'Tools', icon: Wrench },
+        { id: 'help', label: 'Features & Help', icon: HelpCircle }
       ]
     },
     {
