@@ -117,11 +117,15 @@ export function useEntityRegistry(campaign) {
 
   /**
    * Search for entities by query string
-   * @param {string} query - Search query
+   * @param {string} query - Search query (empty query returns all entities)
    * @returns {Array} Array of matching entities (max 10 results)
    */
   const search = (query) => {
-    if (!query) return [];
+    // If no query, return all entities (for autocomplete when typing [[)
+    if (!query || query.trim() === '') {
+      return registry.slice(0, 10); // Show first 10 entities
+    }
+
     const lowerQuery = query.toLowerCase();
     return registry
       .filter(entity => entity.searchText.includes(lowerQuery))
