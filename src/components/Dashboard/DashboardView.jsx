@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Users, BookOpen, ScrollText, ExternalLink, Edit3 } from 'lucide-react';
 import DiceRoller from '../DiceRoller';
 import Modal from '../Modal';
+import RelationshipGraph from '../RelationshipGraph/RelationshipGraph';
 import { getGameSystem } from '../../data/systems/index.js';
 import './DashboardView.css';
 
@@ -13,7 +14,7 @@ const ICON_MAP = {
   'book-open': '📖'
 };
 
-export default function DashboardView({ campaign, updateCampaign, characters, lore, sessions, isDM }) {
+export default function DashboardView({ campaign, updateCampaign, characters, lore, sessions, isDM, npcs, locations, timelineEvents, encounters, notes, currentUserId }) {
   const [isEditingCampaign, setIsEditingCampaign] = useState(false);
   const [campaignForm, setCampaignForm] = useState(campaign);
 
@@ -132,6 +133,16 @@ export default function DashboardView({ campaign, updateCampaign, characters, lo
           </div>
         </div>
       )}
+
+      {/* Relationship Graph */}
+      <div className="dashboard-section">
+        <RelationshipGraph
+          campaign={campaign}
+          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+          isDM={isDM}
+          currentUserId={currentUserId}
+        />
+      </div>
 
       <Modal
         isOpen={isEditingCampaign}

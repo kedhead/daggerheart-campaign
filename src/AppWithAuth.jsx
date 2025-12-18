@@ -176,6 +176,12 @@ function CampaignApp() {
             lore={lore}
             sessions={sessions}
             isDM={isDM}
+            npcs={npcs}
+            locations={locations}
+            timelineEvents={timelineEvents}
+            encounters={encounters}
+            notes={notes}
+            currentUserId={currentUser.uid}
           />
         );
       case 'characters':

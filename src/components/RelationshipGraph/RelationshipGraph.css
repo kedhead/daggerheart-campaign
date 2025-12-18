@@ -1,0 +1,155 @@
+.relationship-graph-container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.relationship-graph-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+}
+
+.relationship-graph-empty svg {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.relationship-graph-empty h3 {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin: 1rem 0 0.5rem 0;
+}
+
+.relationship-graph-empty p {
+  color: var(--text-secondary);
+  margin: 0.5rem 0;
+}
+
+.graph-hint {
+  margin-top: 1.5rem !important;
+  font-size: 0.9rem;
+  color: var(--text-muted) !important;
+}
+
+.graph-hint code {
+  background: var(--bg-tertiary);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  color: var(--hope-color);
+}
+
+/* Header */
+.graph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.graph-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--text-primary);
+}
+
+.graph-header svg {
+  color: var(--hope-color);
+}
+
+.graph-subtitle {
+  margin: 0.5rem 0 0 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.graph-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Legend */
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary);
+}
+
+/* Canvas */
+.graph-canvas {
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.graph-canvas svg {
+  display: block;
+}
+
+/* SVG Elements */
+.node-circle {
+  transition: r 0.2s, stroke-width 0.2s;
+}
+
+.node:hover .node-circle {
+  r: 10;
+  stroke-width: 3;
+  filter: brightness(1.2);
+}
+
+.node-label {
+  pointer-events: none;
+  user-select: none;
+}
+
+.node:hover .node-label {
+  font-weight: 700;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .relationship-graph-container {
+    padding: 1rem;
+  }
+
+  .graph-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .graph-legend {
+    gap: 0.75rem;
+  }
+
+  .legend-item {
+    font-size: 0.85rem;
+  }
+
+  .graph-canvas svg {
+    height: 400px;
+  }
+}
