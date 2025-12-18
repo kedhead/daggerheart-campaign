@@ -7,6 +7,16 @@ import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import './NPCsView.css';
 
 export default function NPCsView({ campaign, npcs = [], addNPC, updateNPC, deleteNPC, isDM, locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
+  console.log('[NPCsView] Received entities:', {
+    npcs: npcs.length,
+    locations: locations.length,
+    lore: lore.length,
+    sessions: sessions.length,
+    timelineEvents: timelineEvents.length,
+    encounters: encounters.length,
+    notes: notes.length
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNPC, setEditingNPC] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');

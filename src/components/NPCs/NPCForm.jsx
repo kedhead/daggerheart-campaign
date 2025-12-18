@@ -5,6 +5,19 @@ import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NPCsView.css';
 
 export default function NPCForm({ npc, onSave, onCancel, campaign, entities }) {
+  console.log('[NPCForm] Received props:', {
+    campaign: campaign?.name,
+    entities: entities ? {
+      npcs: entities.npcs?.length || 0,
+      locations: entities.locations?.length || 0,
+      lore: entities.lore?.length || 0,
+      sessions: entities.sessions?.length || 0,
+      timelineEvents: entities.timelineEvents?.length || 0,
+      encounters: entities.encounters?.length || 0,
+      notes: entities.notes?.length || 0
+    } : 'undefined'
+  });
+
   const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(npc || {
     name: '',
