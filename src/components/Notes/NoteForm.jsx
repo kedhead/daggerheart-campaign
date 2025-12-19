@@ -4,12 +4,14 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NotesView.css';
 
-export default function NoteForm({ note, onSave, onCancel, campaign, entities }) {
+export default function NoteForm({ note, onSave, onCancel, campaign, entities, currentUserId, isDM }) {
   const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(note || {
     title: '',
     category: 'other',
-    content: ''
+    content: '',
+    hidden: true,
+    visibleToPlayers: false
   });
 
   const handleChange = (field, value) => {
@@ -63,6 +65,34 @@ export default function NoteForm({ note, onSave, onCancel, campaign, entities })
         />
         <small className="form-hint">Type [[ to link to other entities</small>
       </div>
+
+      <div className="checkbox-group">
+        <label>
+          <input
+            type="checkbox"
+            checked={!formData.hidden}
+            onChange={(e) => handleChange('hidden', !e.target.checked)}
+          />
+          <span>Share with other players</span>
+        </label>
+        <small className="form-hint">
+          {formData.hidden ? "Only you and the DM can see this note" : "All players can see this note"}
+        </small>
+      </div>
+
+      {isDM && note && note.createdBy !== currentUserId && (
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={formData.visibleToPlayers}
+              onChange={(e) => handleChange('visibleToPlayers', e.target.checked)}
+            />
+            <span>DM Override: Make visible to all players</span>
+          </label>
+          <small className="form-hint">Force this player's note to be visible to everyone</small>
+        </div>
+      )}
 
       <div className="form-actions">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>

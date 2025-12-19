@@ -106,6 +106,22 @@ service cloud.firestore {
         allow read: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
         allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
       }
+
+      // Conversations (messaging)
+      match /conversations/{conversationId} {
+        allow read: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow create: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow update: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow delete: if isAuthenticated() && isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+
+        // Messages subcollection
+        match /messages/{messageId} {
+          allow read: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+          allow create: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+          allow update: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+          allow delete: if isAuthenticated() && isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        }
+      }
     }
   }
 }

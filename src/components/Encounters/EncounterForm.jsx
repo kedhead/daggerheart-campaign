@@ -4,7 +4,7 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './EncountersView.css';
 
-export default function EncounterForm({ encounter, onSave, onCancel, campaign, entities }) {
+export default function EncounterForm({ encounter, onSave, onCancel, campaign, entities, isDM }) {
   const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(encounter || {
     name: '',
@@ -15,7 +15,8 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
     environment: '',
     tactics: '',
     rewards: '',
-    freshcutgrassLink: ''
+    freshcutgrassLink: '',
+    hidden: false
   });
 
   const handleChange = (field, value) => {
@@ -144,6 +145,20 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
           Link to the full encounter on FreshCutGrass for detailed stats
         </small>
       </div>
+
+      {isDM && (
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={formData.hidden}
+              onChange={(e) => handleChange('hidden', e.target.checked)}
+            />
+            <span>Hidden from Players</span>
+          </label>
+          <small className="form-hint">Players won't see this encounter until you reveal it</small>
+        </div>
+      )}
 
       <div className="form-actions">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>

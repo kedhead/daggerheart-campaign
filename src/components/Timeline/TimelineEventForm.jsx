@@ -4,7 +4,7 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './TimelineView.css';
 
-export default function TimelineEventForm({ event, onSave, onCancel, campaign, entities }) {
+export default function TimelineEventForm({ event, onSave, onCancel, campaign, entities, isDM }) {
   const { search } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(event || {
     title: '',
@@ -13,7 +13,8 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
     type: 'event',
     description: '',
     participants: '',
-    outcome: ''
+    outcome: '',
+    hidden: false
   });
 
   const handleChange = (field, value) => {
@@ -111,6 +112,20 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
         />
         <small className="form-hint">Type [[ to link to other entities</small>
       </div>
+
+      {isDM && (
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={formData.hidden}
+              onChange={(e) => handleChange('hidden', e.target.checked)}
+            />
+            <span>Hidden from Players</span>
+          </label>
+          <small className="form-hint">Players won't see this event until you reveal it</small>
+        </div>
+      )}
 
       <div className="form-actions">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>

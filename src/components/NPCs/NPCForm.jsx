@@ -4,7 +4,7 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NPCsView.css';
 
-export default function NPCForm({ npc, onSave, onCancel, campaign, entities }) {
+export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isDM }) {
   console.log('[NPCForm] Received props:', {
     campaign: campaign?.name,
     entities: entities ? {
@@ -27,7 +27,8 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities }) {
     description: '',
     notes: '',
     firstMet: '',
-    avatarUrl: ''
+    avatarUrl: '',
+    hidden: false
   });
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -189,6 +190,20 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities }) {
           placeholder="e.g., Session 3, At the tavern in Riverdale"
         />
       </div>
+
+      {isDM && (
+        <div className="checkbox-group">
+          <label>
+            <input
+              type="checkbox"
+              checked={formData.hidden}
+              onChange={(e) => handleChange('hidden', e.target.checked)}
+            />
+            <span>Hidden from Players</span>
+          </label>
+          <small className="form-hint">Players won't see this NPC until you reveal it</small>
+        </div>
+      )}
 
       <div className="form-actions">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>
