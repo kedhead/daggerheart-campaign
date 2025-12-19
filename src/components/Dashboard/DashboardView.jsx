@@ -168,6 +168,19 @@ export default function DashboardView({ campaign, updateCampaign, characters, lo
               rows="4"
             />
           </div>
+          <div className="input-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={campaignForm.isPublic || false}
+                onChange={(e) => setCampaignForm({ ...campaignForm, isPublic: e.target.checked })}
+              />
+              Allow players to request to join this campaign
+            </label>
+            <p className="help-text">
+              Public campaigns appear in the campaign browser. Players can request to join.
+            </p>
+          </div>
           <div className="form-actions">
             <button
               type="button"

@@ -21,17 +21,28 @@ service cloud.firestore {
 
     // Shared campaigns collection
     match /campaigns/{campaignId} {
-      // Authenticated users can read any campaign (needed to check invites)
-      allow read: if isAuthenticated();
+      // Read: public campaigns OR member/DM/creator
+      allow read: if isAuthenticated() && (
+        resource.data.isPublic == true ||
+        isMember(resource.data) ||
+        isDM(resource.data) ||
+        getUserId() == resource.data.createdBy
+      );
 
-      // Anyone can create a campaign
+      // Create: anyone authenticated
       allow create: if isAuthenticated();
 
-      // Members and invited users can update
-      allow update: if isAuthenticated();
+      // Update: only DM or creator
+      allow update: if isAuthenticated() && (
+        isDM(resource.data) ||
+        getUserId() == resource.data.createdBy
+      );
 
-      // Only DM can delete
-      allow delete: if isAuthenticated() && isDM(resource.data);
+      // Delete: only DM or creator
+      allow delete: if isAuthenticated() && (
+        isDM(resource.data) ||
+        getUserId() == resource.data.createdBy
+      );
 
       // Characters
       match /characters/{characterId} {
