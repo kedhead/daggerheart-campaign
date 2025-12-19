@@ -118,7 +118,6 @@ export default function ConversationList({
             <div className="empty-state-small">
               <p>No new conversations available</p>
             </div>
-          )
           )}
         </div>
       )}
