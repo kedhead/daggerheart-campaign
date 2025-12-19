@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import AuthPage from './components/Auth/AuthPage';
+import TermsOfService from './components/Auth/TermsOfService';
 import CampaignSelector from './components/Campaigns/CampaignSelector';
 import CampaignMembers from './components/Campaigns/CampaignMembers';
 import RoleSelection from './components/RoleSelection/RoleSelection';
@@ -399,10 +400,47 @@ function CampaignApp() {
 }
 
 function AppContent() {
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
+  const [termsAccepted, setTermsAccepted] = useState(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      // Check if user has accepted terms
+      const accepted = localStorage.getItem(`terms_accepted_${currentUser.uid}`);
+      setTermsAccepted(accepted === 'true');
+    }
+  }, [currentUser]);
+
+  const handleAcceptTerms = () => {
+    if (currentUser) {
+      localStorage.setItem(`terms_accepted_${currentUser.uid}`, 'true');
+      localStorage.setItem(`terms_accepted_date_${currentUser.uid}`, new Date().toISOString());
+      setTermsAccepted(true);
+    }
+  };
+
+  const handleDeclineTerms = async () => {
+    // If user declines, log them out
+    await logout();
+  };
 
   if (!currentUser) {
     return <AuthPage />;
+  }
+
+  // Show terms if user hasn't accepted yet
+  if (termsAccepted === false) {
+    return <TermsOfService onAccept={handleAcceptTerms} onDecline={handleDeclineTerms} />;
+  }
+
+  // Show loading while checking terms acceptance
+  if (termsAccepted === null) {
+    return (
+      <div className="loading-view">
+        <div className="loading-spinner"></div>
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   return <CampaignApp />;
