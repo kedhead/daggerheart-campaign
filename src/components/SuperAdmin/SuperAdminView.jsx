@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc, getDocs, clearIndexedDbPersistence } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { Users, Lock, Globe, Calendar, User, Trash2, RefreshCw } from 'lucide-react';
+import { Users, Lock, Globe, Calendar, User, Trash2, RefreshCw, Database } from 'lucide-react';
 import './SuperAdminView.css';
 
 export default function SuperAdminView({ onViewCampaign }) {
@@ -98,6 +98,9 @@ export default function SuperAdminView({ onViewCampaign }) {
         // Remove from local state immediately
         setAllCampaigns(prev => prev.filter(c => c.id !== campaign.id));
 
+        // Force refresh from server to ensure UI is in sync
+        setTimeout(() => handleRefresh(), 500);
+
         alert('Campaign deleted successfully!');
       } catch (error) {
         console.error('Error deleting campaign:', error);
@@ -106,8 +109,50 @@ export default function SuperAdminView({ onViewCampaign }) {
     }
   };
 
-  const handleRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      // Force fetch from server, bypassing cache
+      const q = query(
+        collection(db, 'campaigns'),
+        orderBy('createdAt', 'desc')
+      );
+
+      // Use getDocs with server source to force server fetch
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      setAllCampaigns(data);
+      console.log(`Refreshed campaigns from server. Found ${data.length} campaigns.`);
+    } catch (error) {
+      console.error('Error refreshing campaigns:', error);
+      alert('Failed to refresh campaigns');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearCache = async () => {
+    const confirmed = window.confirm(
+      'This will clear all Firestore offline cache and reload the page. Continue?'
+    );
+
+    if (confirmed) {
+      try {
+        await clearIndexedDbPersistence(db);
+        console.log('Firestore cache cleared');
+        // Reload the page to reinitialize Firestore
+        window.location.reload();
+      } catch (error) {
+        console.error('Error clearing cache:', error);
+        // If clearing fails (e.g., already in use), just reload
+        alert('Could not clear cache automatically. Reloading page...');
+        window.location.reload();
+      }
+    }
   };
 
   const deleteConversationAndMessages = async (campaignId, conversationId) => {
@@ -141,14 +186,24 @@ export default function SuperAdminView({ onViewCampaign }) {
               Monitoring {allCampaigns.length} total campaigns
             </p>
           </div>
-          <button
-            className="btn btn-secondary"
-            onClick={handleRefresh}
-            disabled={loading}
-          >
-            <RefreshCw size={18} />
-            Refresh
-          </button>
+          <div className="header-actions">
+            <button
+              className="btn btn-secondary"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              <RefreshCw size={18} />
+              Refresh
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={handleClearCache}
+              title="Clear Firestore cache and reload"
+            >
+              <Database size={18} />
+              Clear Cache
+            </button>
+          </div>
         </div>
       </div>
 
