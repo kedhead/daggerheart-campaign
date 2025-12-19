@@ -32,10 +32,12 @@ service cloud.firestore {
       // Create: anyone authenticated
       allow create: if isAuthenticated();
 
-      // Update: only DM or creator
+      // Update: DM/creator can update anything, or users can update joinRequests on public campaigns
       allow update: if isAuthenticated() && (
         isDM(resource.data) ||
-        getUserId() == resource.data.createdBy
+        getUserId() == resource.data.createdBy ||
+        (resource.data.isPublic == true &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinRequests', 'updatedAt']))
       );
 
       // Delete: only DM or creator
