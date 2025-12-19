@@ -11,7 +11,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
 
   // Get game system name for title
   const gameSystem = currentCampaign ? getGameSystem(currentCampaign.gameSystem) : null;
-  const systemName = gameSystem?.name || 'Daggerheart';
+  const systemName = gameSystem?.name || 'Lorelich';
 
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>

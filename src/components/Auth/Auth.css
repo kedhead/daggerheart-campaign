@@ -17,6 +17,14 @@
   margin-bottom: 3rem;
 }
 
+.auth-logo {
+  max-width: 100%;
+  height: auto;
+  max-height: 120px;
+  object-fit: contain;
+  filter: brightness(1.1);
+}
+
 .auth-brand h1 {
   font-size: 3rem;
   margin-bottom: 0.5rem;

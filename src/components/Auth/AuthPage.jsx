@@ -11,8 +11,7 @@ export default function AuthPage() {
     <div className="auth-page">
       <div className="auth-container">
         <div className="auth-brand">
-          <h1>Daggerheart</h1>
-          <p>Campaign Manager</p>
+          <img src="/lorelichheader.png" alt="Lorelich" className="auth-logo" />
         </div>
 
         {view === 'login' && (
@@ -31,8 +30,12 @@ export default function AuthPage() {
         )}
 
         <div className="auth-footer-text">
-          <p>Free campaign management for Daggerheart TTRPG</p>
+          <p>Free campaign management for TTRPGs</p>
           <p className="auth-credits">
+            <a href="https://lorelich.com" target="_blank" rel="noopener noreferrer">
+              lorelich.com
+            </a>
+            {' '}•{' '}
             Powered by{' '}
             <a href="https://freshcutgrass.app" target="_blank" rel="noopener noreferrer">
               FreshCutGrass

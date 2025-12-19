@@ -62,7 +62,7 @@ export default function Signup({ onToggleForm }) {
   return (
     <div className="auth-form">
       <h2>Create Account</h2>
-      <p className="auth-subtitle">Start managing your Daggerheart campaigns</p>
+      <p className="auth-subtitle">Start managing your TTRPG campaigns</p>
 
       {error && <div className="auth-error">{error}</div>}
 

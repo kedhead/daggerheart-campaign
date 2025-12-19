@@ -14,7 +14,7 @@ export default function RoleSelection({ onSelectRole }) {
   return (
     <div className="role-selection">
       <div className="role-selection-container">
-        <h1>Welcome to Daggerheart Campaign Manager</h1>
+        <h1>Welcome to Lorelich</h1>
         <p className="role-selection-subtitle">How do you want to use this app?</p>
 
         <div className="role-options">
