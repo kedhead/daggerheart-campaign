@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare } from 'lucide-react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import './Sidebar.css';
 
 export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign }) {
-  const { logout } = useAuth();
+  const { logout, currentUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState(['campaign', 'players', 'world', 'adventure', 'resources', 'settings']);
+  const [expandedGroups, setExpandedGroups] = useState(['superadmin', 'campaign', 'players', 'world', 'adventure', 'resources', 'settings']);
 
   // Get game system name for title
   const gameSystem = currentCampaign ? getGameSystem(currentCampaign.gameSystem) : null;
   const systemName = gameSystem?.name || 'Lorelich';
+
+  // Check if current user is superadmin
+  const isSuperAdmin = currentUser?.uid === 'DnZPlvutotbHwsalwMsBG7kEWCu1';
 
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>
@@ -22,6 +25,15 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
   };
 
   const navGroups = [
+    // SuperAdmin section - only visible to superadmin
+    ...(isSuperAdmin ? [{
+      id: 'superadmin',
+      label: 'SuperAdmin',
+      icon: Shield,
+      items: [
+        { id: 'superadmin', label: 'All Campaigns', icon: Shield }
+      ]
+    }] : []),
     {
       id: 'campaign',
       label: 'Campaign',

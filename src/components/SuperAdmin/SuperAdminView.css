@@ -1,0 +1,245 @@
+.superadmin-view {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.superadmin-header {
+  margin-bottom: 2rem;
+}
+
+.superadmin-header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--danger);
+}
+
+.superadmin-subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.campaigns-table {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+
+.campaigns-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.campaigns-table thead {
+  border-bottom: 2px solid var(--border);
+}
+
+.campaigns-table th {
+  text-align: left;
+  padding: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.campaigns-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.campaigns-table tbody tr:hover {
+  background: var(--bg-tertiary);
+}
+
+.campaign-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.game-system-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.visibility-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.member-count,
+.creator-info,
+.date-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.no-campaigns {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+/* Campaign Details Modal */
+.campaign-details-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.modal-content {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.detail-row {
+  margin-bottom: 1.5rem;
+}
+
+.detail-row strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail-row p {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.members-list,
+.join-requests-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.members-list li,
+.join-requests-list li {
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.role-badge.dm {
+  background: linear-gradient(135deg, var(--fear-color), var(--fear-secondary));
+  color: white;
+}
+
+.role-badge.player {
+  background: linear-gradient(135deg, var(--hope-color), var(--hope-secondary));
+  color: var(--bg-primary);
+}
+
+/* Mobile responsive */
+@media (max-width: 767px) {
+  .superadmin-view {
+    padding: 1rem;
+  }
+
+  .campaigns-table {
+    padding: 1rem;
+  }
+
+  .campaigns-table table {
+    font-size: 0.875rem;
+  }
+
+  .campaigns-table th,
+  .campaigns-table td {
+    padding: 0.5rem;
+  }
+
+  /* Stack table on mobile */
+  .campaigns-table thead {
+    display: none;
+  }
+
+  .campaigns-table tr {
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .campaigns-table td {
+    display: block;
+    padding: 0.5rem 0;
+    border: none;
+  }
+
+  .campaigns-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    display: inline-block;
+    margin-right: 0.5rem;
+    color: var(--text-secondary);
+  }
+}

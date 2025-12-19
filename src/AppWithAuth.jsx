@@ -19,6 +19,7 @@ import EncountersView from './components/Encounters/EncountersView';
 import NotesView from './components/Notes/NotesView';
 import MessagingView from './components/Messaging/MessagingView';
 import CampaignBuilderView from './components/CampaignBuilder/CampaignBuilderView';
+import SuperAdminView from './components/SuperAdmin/SuperAdminView';
 import APISettings from './components/Settings/APISettings';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
@@ -168,6 +169,8 @@ function CampaignApp() {
     }
 
     switch (currentView) {
+      case 'superadmin':
+        return <SuperAdminView />;
       case 'dashboard':
         return (
           <DashboardView
