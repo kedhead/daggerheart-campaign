@@ -1,27 +1,42 @@
 import { useState, useEffect, useRef } from 'react';
-import { Network, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Network, ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
 import EntityViewer from '../EntityViewer/EntityViewer';
+import GraphControls from './GraphControls';
+import {
+  calculateConnectionStrength,
+  calculateNodeImportance,
+  filterGraphByTypes,
+  findConnectedComponent,
+  getNodeColor,
+  getTypeLabel
+} from '../../utils/graphCalculations';
 import './RelationshipGraph.css';
 
 export default function RelationshipGraph({ campaign, entities, isDM, currentUserId }) {
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
+  const [allNodes, setAllNodes] = useState([]);
+  const [allEdges, setAllEdges] = useState([]);
+  const [displayNodes, setDisplayNodes] = useState([]);
+  const [displayEdges, setDisplayEdges] = useState([]);
   const [selectedEntity, setSelectedEntity] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [selectedTypes, setSelectedTypes] = useState([
+    'npc',
+    'location',
+    'lore',
+    'session',
+    'timelineEvent',
+    'encounter',
+    'note'
+  ]);
+  const [focusNode, setFocusNode] = useState(null);
+  const [showLabels, setShowLabels] = useState(true);
+  const [highlightedEdges, setHighlightedEdges] = useState([]);
+  const [draggedNode, setDraggedNode] = useState(null);
+  const [edgeStrengthMap, setEdgeStrengthMap] = useState(new Map());
+
   const svgRef = useRef(null);
   const containerRef = useRef(null);
-
-  // Entity type colors
-  const typeColors = {
-    npc: '#f59e0b',        // Orange
-    location: '#3b82f6',   // Blue
-    lore: '#8b5cf6',       // Purple
-    session: '#22c55e',    // Green
-    timelineEvent: '#ec4899', // Pink
-    encounter: '#ef4444',  // Red
-    note: '#64748b'        // Gray
-  };
 
   useEffect(() => {
     if (!entities) return;
@@ -92,25 +107,51 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           vy: 0
         };
         graphNodes.push(node);
-        nodeMap.set(entity.title || entity.name, node);
+        nodeMap.set((entity.title || entity.name).toLowerCase(), node);
       });
     });
 
     // Create edges based on wiki links
+    const strengthMap = new Map();
     graphNodes.forEach(node => {
       const texts = getEntityTexts(node.data, node.type);
       texts.forEach(text => {
         const links = extractLinks(text);
         links.forEach(linkName => {
-          const targetNode = nodeMap.get(linkName);
+          const targetNode = nodeMap.get(linkName.toLowerCase());
           if (targetNode && targetNode.id !== node.id) {
-            graphEdges.push({
-              source: node.id,
-              target: targetNode.id
-            });
+            const edgeId = [node.id, targetNode.id].sort().join('-');
+
+            // Calculate connection strength
+            const strength = calculateConnectionStrength(node, targetNode, graphNodes);
+            const existingStrength = strengthMap.get(edgeId) || 0;
+            strengthMap.set(edgeId, Math.max(existingStrength, strength));
+
+            // Add edge (avoid duplicates)
+            const exists = graphEdges.some(e =>
+              (e.source === node.id && e.target === targetNode.id) ||
+              (e.source === targetNode.id && e.target === node.id)
+            );
+
+            if (!exists) {
+              graphEdges.push({
+                id: edgeId,
+                source: node.id,
+                target: targetNode.id
+              });
+            }
           }
         });
       });
+    });
+
+    setEdgeStrengthMap(strengthMap);
+
+    // Calculate node importance and set radius
+    graphNodes.forEach(node => {
+      const importance = calculateNodeImportance(node.id, graphEdges);
+      node.importance = importance;
+      node.radius = 8 + Math.min(12, importance * 1.5); // 8-20px based on importance
     });
 
     // Run force simulation
@@ -128,7 +169,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
             const nodeB = graphNodes[j];
             const dx = nodeB.x - nodeA.x;
             const dy = nodeB.y - nodeA.y;
-            const distSq = dx * dx + dy * dy + 0.01; // Avoid division by zero
+            const distSq = dx * dx + dy * dy + 0.01;
             const dist = Math.sqrt(distSq);
             const force = repulsionStrength / distSq;
 
@@ -176,9 +217,24 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     };
 
     simulate();
-    setNodes(graphNodes);
-    setEdges(graphEdges);
+    setAllNodes(graphNodes);
+    setAllEdges(graphEdges);
   }, [entities]);
+
+  // Apply filters whenever selection changes
+  useEffect(() => {
+    let { nodes, edges } = filterGraphByTypes(allNodes, allEdges, selectedTypes);
+
+    // Apply focus mode if a node is selected
+    if (focusNode) {
+      const focused = findConnectedComponent(focusNode, nodes, edges);
+      nodes = focused.nodes;
+      edges = focused.edges;
+    }
+
+    setDisplayNodes(nodes);
+    setDisplayEdges(edges);
+  }, [allNodes, allEdges, selectedTypes, focusNode]);
 
   const handleNodeClick = (node) => {
     setSelectedEntity({
@@ -190,14 +246,67 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     });
   };
 
+  const handleNodeHover = (node) => {
+    const connected = displayEdges.filter(e =>
+      e.source === node.id || e.target === node.id
+    );
+    setHighlightedEdges(connected.map(e => e.id));
+  };
+
+  const handleNodeLeave = () => {
+    setHighlightedEdges([]);
+  };
+
+  const handleNodeMouseDown = (e, node) => {
+    e.stopPropagation();
+    setDraggedNode(node);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!draggedNode || !svgRef.current) return;
+
+    const svg = svgRef.current;
+    const rect = svg.getBoundingClientRect();
+    const scaleX = 800 / rect.width;
+    const scaleY = 600 / rect.height;
+
+    const x = (e.clientX - rect.left) * scaleX / zoom + (pan.x / zoom);
+    const y = (e.clientY - rect.top) * scaleY / zoom + (pan.y / zoom);
+
+    // Update node position
+    setAllNodes(prev => prev.map(n =>
+      n.id === draggedNode.id
+        ? { ...n, x: Math.max(50, Math.min(750, x)), y: Math.max(50, Math.min(550, y)) }
+        : n
+    ));
+  };
+
+  const handleMouseUp = () => {
+    setDraggedNode(null);
+  };
+
   const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 3));
   const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.5));
   const handleReset = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+    setFocusNode(null);
   };
 
-  if (!entities || nodes.length === 0) {
+  const handleExportSVG = () => {
+    if (!svgRef.current) return;
+
+    const svgData = new XMLSerializer().serializeToString(svgRef.current);
+    const blob = new Blob([svgData], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${campaign?.name || 'campaign'}-relationship-graph.svg`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!entities || allNodes.length === 0) {
     return (
       <div className="relationship-graph-empty card">
         <Network size={64} />
@@ -217,10 +326,14 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
             Entity Relationship Graph
           </h2>
           <p className="graph-subtitle">
-            {nodes.length} entities, {edges.length} connections
+            {displayNodes.length} entities, {displayEdges.length} connections
+            {focusNode && ' (focused)'}
           </p>
         </div>
         <div className="graph-controls">
+          <button className="btn btn-icon" onClick={handleExportSVG} title="Export SVG">
+            <Download size={20} />
+          </button>
           <button className="btn btn-icon" onClick={handleZoomOut} title="Zoom out">
             <ZoomOut size={20} />
           </button>
@@ -233,14 +346,14 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         </div>
       </div>
 
-      <div className="graph-legend">
-        {Object.entries(typeColors).map(([type, color]) => (
-          <div key={type} className="legend-item">
-            <span className="legend-color" style={{ background: color }}></span>
-            <span>{type.charAt(0).toUpperCase() + type.slice(1)}</span>
-          </div>
-        ))}
-      </div>
+      <GraphControls
+        selectedTypes={selectedTypes}
+        setSelectedTypes={setSelectedTypes}
+        showLabels={showLabels}
+        setShowLabels={setShowLabels}
+        focusNode={focusNode}
+        setFocusNode={setFocusNode}
+      />
 
       <div className="graph-canvas" ref={containerRef}>
         <svg
@@ -249,24 +362,32 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           height="600"
           viewBox={`${-pan.x} ${-pan.y} ${800 / zoom} ${600 / zoom}`}
           style={{ background: 'var(--bg-tertiary)', borderRadius: '8px' }}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
         >
           {/* Edges */}
           <g className="edges">
-            {edges.map((edge, index) => {
-              const source = nodes.find(n => n.id === edge.source);
-              const target = nodes.find(n => n.id === edge.target);
+            {displayEdges.map((edge) => {
+              const source = displayNodes.find(n => n.id === edge.source);
+              const target = displayNodes.find(n => n.id === edge.target);
               if (!source || !target) return null;
+
+              const strength = edgeStrengthMap.get(edge.id) || 1;
+              const isHighlighted = highlightedEdges.includes(edge.id);
+              const strokeWidth = Math.min(5, 1 + strength * 0.5);
+              const opacity = isHighlighted ? 0.8 : (0.3 + (strength * 0.05));
 
               return (
                 <line
-                  key={index}
+                  key={edge.id}
                   x1={source.x}
                   y1={source.y}
                   x2={target.x}
                   y2={target.y}
-                  stroke="var(--border)"
-                  strokeWidth="1"
-                  opacity="0.3"
+                  stroke={isHighlighted ? 'var(--hope-color)' : 'var(--border)'}
+                  strokeWidth={isHighlighted ? strokeWidth * 2 : strokeWidth}
+                  opacity={opacity}
                 />
               );
             })}
@@ -274,33 +395,52 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
           {/* Nodes */}
           <g className="nodes">
-            {nodes.map((node) => (
+            {displayNodes.map((node) => (
               <g
                 key={node.id}
                 className="node"
                 onClick={() => handleNodeClick(node)}
-                style={{ cursor: 'pointer' }}
+                onMouseDown={(e) => handleNodeMouseDown(e, node)}
+                onMouseEnter={() => handleNodeHover(node)}
+                onMouseLeave={handleNodeLeave}
+                style={{ cursor: draggedNode?.id === node.id ? 'grabbing' : 'grab' }}
               >
                 <circle
                   cx={node.x}
                   cy={node.y}
-                  r="8"
-                  fill={typeColors[node.type] || '#64748b'}
+                  r={node.radius || 8}
+                  fill={getNodeColor(node.type)}
                   stroke="var(--bg-primary)"
                   strokeWidth="2"
                   className="node-circle"
                 />
-                <text
-                  x={node.x}
-                  y={node.y - 12}
-                  textAnchor="middle"
-                  fill="var(--text-primary)"
-                  fontSize="11"
-                  fontWeight="500"
-                  className="node-label"
-                >
-                  {node.name.length > 20 ? node.name.substring(0, 20) + '...' : node.name}
-                </text>
+                {showLabels && (
+                  <>
+                    <text
+                      x={node.x}
+                      y={node.y - (node.radius || 8) - 4}
+                      textAnchor="middle"
+                      fill="var(--text-primary)"
+                      fontSize="11"
+                      fontWeight="500"
+                      className="node-label"
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {node.name.length > 20 ? node.name.substring(0, 20) + '...' : node.name}
+                    </text>
+                    <text
+                      x={node.x}
+                      y={node.y - (node.radius || 8) - 18}
+                      textAnchor="middle"
+                      fill="var(--text-muted)"
+                      fontSize="9"
+                      className="node-type-label"
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {getTypeLabel(node.type)}
+                    </text>
+                  </>
+                )}
               </g>
             ))}
           </g>
@@ -314,6 +454,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           campaign={campaign}
           currentUserId={currentUserId}
           isDM={isDM}
+          entities={entities}
         />
       )}
     </div>
