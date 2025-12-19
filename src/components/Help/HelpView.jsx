@@ -241,17 +241,39 @@ export default function HelpView({ campaign }) {
               <div className="help-step">
                 <span className="step-number">1</span>
                 <div>
-                  <strong>Add API Keys</strong>
-                  <p>Go to Settings → API Settings and add your Anthropic (Claude) or OpenAI keys</p>
+                  <strong>Get API Keys</strong>
+                  <p>Sign up and purchase API credits from AI providers:</p>
+                  <ul>
+                    <li>
+                      <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer">
+                        Anthropic (Claude) <ExternalLink size={14} />
+                      </a> - Text generation, NPC creation, campaign building
+                    </li>
+                    <li>
+                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">
+                        OpenAI <ExternalLink size={14} />
+                      </a> - Image generation for maps and portraits
+                    </li>
+                  </ul>
                 </div>
               </div>
               <div className="help-step">
                 <span className="step-number">2</span>
                 <div>
-                  <strong>Choose Your Provider</strong>
-                  <p>Anthropic (Claude) for text, OpenAI for image generation</p>
+                  <strong>Add Keys to Settings</strong>
+                  <p>Go to Settings → API Settings and paste your API keys</p>
                 </div>
               </div>
+              <div className="help-step">
+                <span className="step-number">3</span>
+                <div>
+                  <strong>Start Generating!</strong>
+                  <p>Look for "Generate with AI" buttons throughout the app</p>
+                </div>
+              </div>
+            </div>
+            <div className="help-tip">
+              <strong>💡 Tip:</strong> API keys are stored locally in your browser and never sent to our servers. You only pay for what you generate.
             </div>
           </div>
         </div>
