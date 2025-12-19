@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { Users, Lock, Globe, Calendar, User } from 'lucide-react';
+import { Users, Lock, Globe, Calendar, User, Trash2 } from 'lucide-react';
 import './SuperAdminView.css';
 
 export default function SuperAdminView({ onViewCampaign }) {
@@ -52,6 +52,22 @@ export default function SuperAdminView({ onViewCampaign }) {
 
   const handleViewCampaign = (campaign) => {
     setSelectedCampaign(campaign);
+  };
+
+  const handleDeleteCampaign = async (campaign) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${campaign.name}"?\n\nThis will permanently delete all characters, lore, and sessions in this campaign. This action cannot be undone.`
+    );
+
+    if (confirmed) {
+      try {
+        await deleteDoc(doc(db, 'campaigns', campaign.id));
+        console.log(`Campaign ${campaign.id} deleted successfully`);
+      } catch (error) {
+        console.error('Error deleting campaign:', error);
+        alert(`Failed to delete campaign: ${error.message}`);
+      }
+    }
   };
 
   if (loading) {
@@ -132,12 +148,21 @@ export default function SuperAdminView({ onViewCampaign }) {
                   </div>
                 </td>
                 <td>
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => handleViewCampaign(campaign)}
-                  >
-                    View Details
-                  </button>
+                  <div className="action-buttons">
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={() => handleViewCampaign(campaign)}
+                    >
+                      View Details
+                    </button>
+                    <button
+                      className="btn btn-sm btn-danger"
+                      onClick={() => handleDeleteCampaign(campaign)}
+                      title="Delete campaign"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
