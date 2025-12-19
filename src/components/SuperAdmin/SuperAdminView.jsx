@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc, getDocs, clearIndexedDbPersistence } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Users, Lock, Globe, Calendar, User, Trash2, RefreshCw, Database } from 'lucide-react';
 import './SuperAdminView.css';
@@ -58,10 +58,14 @@ export default function SuperAdminView({ onViewCampaign }) {
 
   const handleDeleteCampaign = async (campaign) => {
     const confirmed = window.confirm(
-      `Are you sure you want to delete "${campaign.name}"?\n\nThis will permanently delete all characters, lore, and sessions in this campaign. This action cannot be undone.`
+      `Are you sure you want to delete "${campaign.name}"?\n\nCampaign ID: ${campaign.id}\n\nThis will permanently delete all characters, lore, and sessions in this campaign. This action cannot be undone.`
     );
 
     if (confirmed) {
+      console.log(`\n========================================`);
+      console.log(`STARTING DELETE: ${campaign.name} (${campaign.id})`);
+      console.log(`========================================\n`);
+
       try {
         // Delete all subcollections first
         const subcollections = [
@@ -70,30 +74,56 @@ export default function SuperAdminView({ onViewCampaign }) {
           'campaignFrameDraft', 'maps', 'files', 'conversations'
         ];
 
-        console.log(`Deleting campaign ${campaign.id} and all subcollections...`);
+        console.log(`Step 1: Deleting ${subcollections.length} subcollections...`);
 
         // Delete each subcollection
         for (const subcollectionName of subcollections) {
-          const subcollectionRef = collection(db, 'campaigns', campaign.id, subcollectionName);
-          const subcollectionSnapshot = await getDocs(subcollectionRef);
+          try {
+            const subcollectionRef = collection(db, 'campaigns', campaign.id, subcollectionName);
+            const subcollectionSnapshot = await getDocs(subcollectionRef);
 
-          console.log(`Deleting ${subcollectionSnapshot.size} documents from ${subcollectionName}`);
+            console.log(`  - ${subcollectionName}: Found ${subcollectionSnapshot.size} documents`);
 
-          // Delete all documents in the subcollection
-          const deletePromises = subcollectionSnapshot.docs.map(docSnap => {
-            // If it's conversations, also delete messages subcollection
-            if (subcollectionName === 'conversations') {
-              return deleteConversationAndMessages(campaign.id, docSnap.id);
-            }
-            return deleteDoc(docSnap.ref);
-          });
+            // Delete all documents in the subcollection
+            const deletePromises = subcollectionSnapshot.docs.map(async (docSnap) => {
+              // If it's conversations, also delete messages subcollection
+              if (subcollectionName === 'conversations') {
+                await deleteConversationAndMessages(campaign.id, docSnap.id);
+              } else {
+                await deleteDoc(docSnap.ref);
+              }
+              console.log(`    ✓ Deleted ${subcollectionName}/${docSnap.id}`);
+            });
 
-          await Promise.all(deletePromises);
+            await Promise.all(deletePromises);
+            console.log(`  ✓ Completed ${subcollectionName}`);
+          } catch (subError) {
+            console.error(`  ✗ Error deleting ${subcollectionName}:`, subError);
+            throw new Error(`Failed to delete ${subcollectionName}: ${subError.message}`);
+          }
         }
 
         // Finally delete the campaign document itself
-        await deleteDoc(doc(db, 'campaigns', campaign.id));
-        console.log(`Campaign ${campaign.id} deleted successfully`);
+        console.log(`\nStep 2: Deleting campaign document...`);
+        const campaignDocRef = doc(db, 'campaigns', campaign.id);
+        await deleteDoc(campaignDocRef);
+        console.log(`✓ Campaign document deleted`);
+
+        // Verify deletion
+        console.log(`\nStep 3: Verifying deletion...`);
+        const verifySnapshot = await getDocs(query(collection(db, 'campaigns')));
+        const stillExists = verifySnapshot.docs.find(d => d.id === campaign.id);
+
+        if (stillExists) {
+          console.error(`✗ VERIFICATION FAILED: Campaign ${campaign.id} still exists!`);
+          throw new Error('Campaign deletion failed - document still exists after delete');
+        } else {
+          console.log(`✓ Verified: Campaign no longer in database`);
+        }
+
+        console.log(`\n========================================`);
+        console.log(`DELETE SUCCESSFUL: ${campaign.name}`);
+        console.log(`========================================\n`);
 
         // Remove from local state immediately
         setAllCampaigns(prev => prev.filter(c => c.id !== campaign.id));
@@ -103,8 +133,11 @@ export default function SuperAdminView({ onViewCampaign }) {
 
         alert('Campaign deleted successfully!');
       } catch (error) {
-        console.error('Error deleting campaign:', error);
-        alert(`Failed to delete campaign: ${error.message}`);
+        console.error('\n========================================');
+        console.error(`DELETE FAILED: ${campaign.name}`);
+        console.error('========================================');
+        console.error('Error details:', error);
+        alert(`Failed to delete campaign: ${error.message}\n\nCheck the console for details.`);
       }
     }
   };
@@ -135,23 +168,18 @@ export default function SuperAdminView({ onViewCampaign }) {
     }
   };
 
-  const handleClearCache = async () => {
+  const handleClearCache = () => {
     const confirmed = window.confirm(
-      'This will clear all Firestore offline cache and reload the page. Continue?'
+      'This will clear your browser cache and reload the page. Continue?\n\nAfter clicking OK:\n1. Press F12 to open DevTools\n2. Right-click the Reload button\n3. Select "Empty Cache and Hard Reload"'
     );
 
     if (confirmed) {
-      try {
-        await clearIndexedDbPersistence(db);
-        console.log('Firestore cache cleared');
-        // Reload the page to reinitialize Firestore
-        window.location.reload();
-      } catch (error) {
-        console.error('Error clearing cache:', error);
-        // If clearing fails (e.g., already in use), just reload
-        alert('Could not clear cache automatically. Reloading page...');
-        window.location.reload();
-      }
+      // Clear localStorage and sessionStorage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Just reload - user will do hard refresh manually
+      window.location.reload();
     }
   };
 
