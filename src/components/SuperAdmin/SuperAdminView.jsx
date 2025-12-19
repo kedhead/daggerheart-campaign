@@ -192,6 +192,16 @@ export default function SuperAdminView({ onViewCampaign }) {
                 <td>
                   <div className="action-buttons">
                     <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(campaign.id);
+                        alert(`Campaign ID copied: ${campaign.id}`);
+                      }}
+                      title="Copy campaign ID"
+                    >
+                      Copy ID
+                    </button>
+                    <button
                       className="btn btn-sm btn-primary"
                       onClick={() => handleViewCampaign(campaign)}
                     >
