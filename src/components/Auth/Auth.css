@@ -20,7 +20,7 @@
 .auth-logo {
   max-width: 100%;
   height: auto;
-  max-height: 120px;
+  max-height: 180px;
   object-fit: contain;
   filter: brightness(1.1);
 }
