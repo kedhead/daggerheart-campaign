@@ -57,73 +57,73 @@ service cloud.firestore {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
         allow create: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
         allow update: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
-        allow delete: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow delete: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Lore
       match /lore/{loreId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Sessions
       match /sessions/{sessionId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // NPCs
       match /npcs/{npcId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Timeline Events
       match /timelineEvents/{eventId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Locations
       match /locations/{locationId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Encounters
       match /encounters/{encounterId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Notes
       match /notes/{noteId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Campaign Frame
       match /campaignFrame/{frameId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Campaign Frame Draft
       match /campaignFrameDraft/{draftId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Maps
       match /maps/{mapId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Files
       match /files/{fileId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        allow write: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Conversations (messaging)
@@ -131,14 +131,14 @@ service cloud.firestore {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
         allow create: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
         allow update: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
-        allow delete: if isAuthenticated() && isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+        allow delete: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
 
         // Messages subcollection
         match /messages/{messageId} {
           allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
           allow create: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
           allow update: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
-          allow delete: if isAuthenticated() && isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
+          allow delete: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
         }
       }
     }

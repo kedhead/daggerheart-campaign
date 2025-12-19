@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Users, Lock, Globe, Calendar, User, Trash2 } from 'lucide-react';
 import './SuperAdminView.css';
@@ -61,13 +61,55 @@ export default function SuperAdminView({ onViewCampaign }) {
 
     if (confirmed) {
       try {
+        // Delete all subcollections first
+        const subcollections = [
+          'characters', 'lore', 'sessions', 'npcs', 'timelineEvents',
+          'locations', 'encounters', 'notes', 'campaignFrame',
+          'campaignFrameDraft', 'maps', 'files', 'conversations'
+        ];
+
+        console.log(`Deleting campaign ${campaign.id} and all subcollections...`);
+
+        // Delete each subcollection
+        for (const subcollectionName of subcollections) {
+          const subcollectionRef = collection(db, 'campaigns', campaign.id, subcollectionName);
+          const subcollectionSnapshot = await getDocs(subcollectionRef);
+
+          console.log(`Deleting ${subcollectionSnapshot.size} documents from ${subcollectionName}`);
+
+          // Delete all documents in the subcollection
+          const deletePromises = subcollectionSnapshot.docs.map(docSnap => {
+            // If it's conversations, also delete messages subcollection
+            if (subcollectionName === 'conversations') {
+              return deleteConversationAndMessages(campaign.id, docSnap.id);
+            }
+            return deleteDoc(docSnap.ref);
+          });
+
+          await Promise.all(deletePromises);
+        }
+
+        // Finally delete the campaign document itself
         await deleteDoc(doc(db, 'campaigns', campaign.id));
         console.log(`Campaign ${campaign.id} deleted successfully`);
+        alert('Campaign deleted successfully!');
       } catch (error) {
         console.error('Error deleting campaign:', error);
         alert(`Failed to delete campaign: ${error.message}`);
       }
     }
+  };
+
+  const deleteConversationAndMessages = async (campaignId, conversationId) => {
+    // Delete all messages in the conversation
+    const messagesRef = collection(db, 'campaigns', campaignId, 'conversations', conversationId, 'messages');
+    const messagesSnapshot = await getDocs(messagesRef);
+
+    const deletePromises = messagesSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
+    await Promise.all(deletePromises);
+
+    // Delete the conversation document
+    await deleteDoc(doc(db, 'campaigns', campaignId, 'conversations', conversationId));
   };
 
   if (loading) {
