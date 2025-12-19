@@ -45,10 +45,11 @@ service cloud.firestore {
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinRequests', 'updatedAt']))
       );
 
-      // Delete: only DM or creator
+      // Delete: only DM/creator or superadmin
       allow delete: if isAuthenticated() && (
         isDM(resource.data) ||
-        getUserId() == resource.data.createdBy
+        getUserId() == resource.data.createdBy ||
+        isSuperAdmin()
       );
 
       // Characters
