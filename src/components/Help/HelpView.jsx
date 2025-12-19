@@ -1,4 +1,4 @@
-import { BookOpen, Link2, Brain, Users, Map, Wand2, Zap, Database, Keyboard, ExternalLink } from 'lucide-react';
+import { BookOpen, Link2, Brain, Users, Map, Wand2, Zap, Database, Keyboard, ExternalLink, EyeOff, MessageSquare, Network } from 'lucide-react';
 import './HelpView.css';
 
 export default function HelpView({ campaign }) {
@@ -7,10 +7,10 @@ export default function HelpView({ campaign }) {
   return (
     <div className="help-view">
       <div className="help-header">
-        <BookOpen size={48} />
+        <img src="/lorelichheader.png" alt="Lorelich" className="help-logo" />
         <div>
           <h1>Features & Help</h1>
-          <p className="help-subtitle">Discover what you can do with your campaign manager</p>
+          <p className="help-subtitle">Discover what you can do with Lorelich</p>
         </div>
       </div>
 
@@ -52,6 +52,150 @@ export default function HelpView({ campaign }) {
 
           <div className="help-tip">
             <strong>💡 Tip:</strong> Links work in NPCs, Notes, Locations, Lore, Sessions, Timeline Events, and Encounters
+          </div>
+        </div>
+      </section>
+
+      {/* Entity Visibility System */}
+      <section className="help-section card">
+        <div className="help-section-header">
+          <EyeOff size={24} />
+          <h2>Entity Visibility System</h2>
+        </div>
+        <div className="help-content">
+          <p>DMs can control what players see with granular visibility controls.</p>
+
+          <div className="help-feature">
+            <h3>Hiding Entities from Players</h3>
+            <ul>
+              <li><strong>DM Control</strong> - Hide NPCs, Locations, Lore, Timeline Events, and Encounters until the right moment</li>
+              <li><strong>Hidden Badge</strong> - DMs see a "Hidden" badge on entities that are hidden from players</li>
+              <li><strong>Automatic Filtering</strong> - Hidden entities don't appear in player views, searches, or the relationship graph</li>
+            </ul>
+            <div className="help-steps">
+              <div className="help-step">
+                <span className="step-number">1</span>
+                <div>
+                  <strong>Edit any entity as DM</strong>
+                  <p>Open the edit form for an NPC, Location, Lore, etc.</p>
+                </div>
+              </div>
+              <div className="help-step">
+                <span className="step-number">2</span>
+                <div>
+                  <strong>Check "Hidden from Players"</strong>
+                  <p>Toggle the visibility checkbox at the bottom of the form</p>
+                </div>
+              </div>
+              <div className="help-step">
+                <span className="step-number">3</span>
+                <div>
+                  <strong>Entity is hidden immediately</strong>
+                  <p>Players won't see it until you reveal it</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="help-feature">
+            <h3>Player Note Visibility</h3>
+            <p>Players control their own note visibility:</p>
+            <ul>
+              <li><strong>Private by Default</strong> - Notes are hidden from other players unless shared</li>
+              <li><strong>Share with Players</strong> - Players can choose to make notes visible to the group</li>
+              <li><strong>DM Override</strong> - DMs can always see all notes and can reveal player notes if needed</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Real-Time Messaging */}
+      <section className="help-section card">
+        <div className="help-section-header">
+          <MessageSquare size={24} />
+          <h2>Real-Time Messaging</h2>
+        </div>
+        <div className="help-content">
+          <p>Communicate with your group through built-in messaging.</p>
+
+          <div className="help-feature">
+            <h3>1:1 Conversations</h3>
+            <ul>
+              <li><strong>Private Messages</strong> - Any campaign member can message any other member</li>
+              <li><strong>Real-Time Updates</strong> - Messages appear instantly without refreshing</li>
+              <li><strong>Unread Indicators</strong> - See which conversations have new messages</li>
+            </ul>
+            <div className="help-steps">
+              <div className="help-step">
+                <span className="step-number">1</span>
+                <div>
+                  <strong>Go to Messages</strong>
+                  <p>Click the Messages icon in the sidebar</p>
+                </div>
+              </div>
+              <div className="help-step">
+                <span className="step-number">2</span>
+                <div>
+                  <strong>Click the + button</strong>
+                  <p>Select a campaign member to start a conversation</p>
+                </div>
+              </div>
+              <div className="help-step">
+                <span className="step-number">3</span>
+                <div>
+                  <strong>Send messages</strong>
+                  <p>Type and press Enter to send (Shift+Enter for new line)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="help-feature">
+            <h3>Announcements Channel</h3>
+            <p>DM-only broadcast channel for important updates:</p>
+            <ul>
+              <li><strong>DM Posts Only</strong> - Only the DM can post announcements</li>
+              <li><strong>All Members See</strong> - Announcements are visible to all campaign members</li>
+              <li><strong>Pinned to Top</strong> - Announcements channel stays at the top of the list</li>
+            </ul>
+            <div className="help-tip">
+              <strong>💡 Tip:</strong> Use announcements for session reminders, rule updates, or important story reveals!
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Relationship Graph */}
+      <section className="help-section card">
+        <div className="help-section-header">
+          <Network size={24} />
+          <h2>Relationship Graph</h2>
+        </div>
+        <div className="help-content">
+          <p>Visualize connections between entities in your campaign.</p>
+
+          <div className="help-feature">
+            <h3>Interactive Graph Features</h3>
+            <ul>
+              <li><strong>Visual Connections</strong> - See how NPCs, Locations, Lore, and other entities relate</li>
+              <li><strong>Node Sizes</strong> - Larger nodes indicate entities with more connections</li>
+              <li><strong>Edge Thickness</strong> - Thicker lines show stronger relationships (more references)</li>
+              <li><strong>Type Filtering</strong> - Toggle entity types on/off to focus on specific connections</li>
+              <li><strong>Clickable Nodes</strong> - Click any entity to view its details</li>
+            </ul>
+          </div>
+
+          <div className="help-feature">
+            <h3>How Connections Are Created</h3>
+            <p>The graph automatically tracks wiki-style links:</p>
+            <ul>
+              <li>When you link entities with <code>[[Entity Name]]</code>, a connection is created</li>
+              <li>Multiple links between the same entities create stronger connections</li>
+              <li>Hidden entities are automatically filtered from player graphs</li>
+            </ul>
+            <div className="help-tip">
+              <strong>💡 Tip:</strong> The graph reveals patterns you might miss - orphaned entities, key NPCs, and plot connections!
+            </div>
           </div>
         </div>
       </section>

@@ -256,10 +256,20 @@
   border-top: 1px solid var(--border);
 }
 
-.powered-by {
-  font-size: 0.85rem;
-  color: var(--text-muted);
+.sidebar-branding {
   text-align: center;
+  padding: 1rem 0;
+}
+
+.sidebar-logo {
+  max-width: 120px;
+  height: auto;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar-logo:hover {
+  opacity: 1;
 }
 
 .sidebar-footer p {

@@ -191,14 +191,8 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
           Sign Out
         </button>
 
-        <div className="powered-by">
-          <p>Powered by</p>
-          <a href="https://freshcutgrass.app" target="_blank" rel="noopener noreferrer">
-            FreshCutGrass
-          </a>
-          <a href="https://app.demiplane.com/nexus/daggerheart" target="_blank" rel="noopener noreferrer">
-            Demiplane
-          </a>
+        <div className="sidebar-branding">
+          <img src="/lorelichlogo.png" alt="Lorelich" className="sidebar-logo" />
         </div>
       </div>
     </aside>

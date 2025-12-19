@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   collection,
   doc,
@@ -74,7 +74,7 @@ export function useMessaging(campaignId) {
    * Subscribe to messages for a specific conversation
    * @param {string} conversationId - Conversation ID
    */
-  const subscribeToMessages = (conversationId) => {
+  const subscribeToMessages = useCallback((conversationId) => {
     if (!basePath || !conversationId) return () => {};
 
     const q = query(
@@ -104,7 +104,7 @@ export function useMessaging(campaignId) {
     );
 
     return unsubscribe;
-  };
+  }, [basePath]);
 
   /**
    * Send a message to a conversation
