@@ -17,6 +17,7 @@ import TimelineView from './components/Timeline/TimelineView';
 import LocationsView from './components/Locations/LocationsView';
 import EncountersView from './components/Encounters/EncountersView';
 import NotesView from './components/Notes/NotesView';
+import MessagingView from './components/Messaging/MessagingView';
 import CampaignBuilderView from './components/CampaignBuilder/CampaignBuilderView';
 import APISettings from './components/Settings/APISettings';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
@@ -332,6 +333,14 @@ function CampaignApp() {
             timelineEvents={timelineEvents}
             encounters={encounters}
             notes={notes}
+          />
+        );
+      case 'messaging':
+        return (
+          <MessagingView
+            campaign={campaign}
+            currentUserId={currentUser.uid}
+            isDM={isDM}
           />
         );
       case 'campaignBuilder':
