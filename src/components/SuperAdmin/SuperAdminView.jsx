@@ -21,10 +21,16 @@ export default function SuperAdminView({ onViewCampaign }) {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const data = snapshot.docs.map(doc => {
+          const docData = doc.data();
+          // IMPORTANT: Use the actual Firestore document ID, not any 'id' field in the data
+          // The spread operator might overwrite our correct id with a stale one from the data
+          return {
+            ...docData,
+            id: doc.id,  // Force the correct document ID to override any 'id' in data
+            _firestoreId: doc.id  // Backup reference to the true ID
+          };
+        });
         setAllCampaigns(data);
         setLoading(false);
       },
@@ -153,10 +159,15 @@ export default function SuperAdminView({ onViewCampaign }) {
 
       // Use getDocs with server source to force server fetch
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const data = snapshot.docs.map(doc => {
+        const docData = doc.data();
+        // IMPORTANT: Use the actual Firestore document ID, not any 'id' field in the data
+        return {
+          ...docData,
+          id: doc.id,  // Force the correct document ID to override any 'id' in data
+          _firestoreId: doc.id  // Backup reference to the true ID
+        };
+      });
 
       setAllCampaigns(data);
       console.log(`Refreshed campaigns from server. Found ${data.length} campaigns.`);

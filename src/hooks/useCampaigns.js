@@ -35,10 +35,15 @@ export function useCampaigns() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const data = snapshot.docs.map(doc => {
+          const docData = doc.data();
+          // IMPORTANT: Always use the actual Firestore document ID
+          // Don't let any 'id' field in the data override the real document ID
+          return {
+            ...docData,
+            id: doc.id  // This MUST come after the spread to override any stale id in data
+          };
+        });
         setCampaigns(data);
         setLoading(false);
       },
