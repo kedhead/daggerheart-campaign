@@ -188,6 +188,7 @@ export default function NPCsView({ campaign, npcs = [], addNPC, updateNPC, delet
           }}
           campaign={campaign}
           entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+          isDM={isDM}
         />
       </Modal>
 

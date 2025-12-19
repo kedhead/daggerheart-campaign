@@ -96,6 +96,20 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
       const entityType = entityTypeMap[entityKey];
 
       entityArray.forEach(entity => {
+        // Skip hidden entities for non-DMs
+        if (!isDM && entity.hidden) {
+          // Special handling for notes
+          if (entityType === 'note') {
+            // Players can see their own notes, shared notes, or DM-overridden notes
+            if (entity.createdBy !== currentUserId && !entity.visibleToPlayers) {
+              return;
+            }
+          } else {
+            // For all other entity types, skip if hidden
+            return;
+          }
+        }
+
         const node = {
           id: `${entityType}-${entity.id}`,
           name: entity.title || entity.name,

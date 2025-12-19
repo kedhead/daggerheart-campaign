@@ -201,6 +201,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
           }}
           campaign={campaign}
           entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+          isDM={isDM}
         />
       </Modal>
 

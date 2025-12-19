@@ -267,6 +267,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
           }}
           campaign={campaign}
           entities={{ npcs, locations, lore, sessions, timelineEvents: events, encounters, notes }}
+          isDM={isDM}
         />
       </Modal>
     </div>

@@ -168,15 +168,17 @@ export function useMessaging(campaignId) {
   };
 
   /**
-   * Get or create a DM conversation with a player
-   * @param {string} playerId - Player user ID
-   * @param {string} playerName - Player display name
+   * Get or create a conversation between two users
+   * @param {string} otherUserId - Other user ID
+   * @param {string} otherUserName - Other user display name
    * @returns {Promise<string>} Conversation ID
    */
-  const getOrCreateDMConversation = async (playerId, playerName) => {
+  const getOrCreateDMConversation = async (otherUserId, otherUserName) => {
     if (!basePath || !currentUser) return null;
 
-    const conversationId = `dm-${playerId}`;
+    // Create conversation ID from sorted user IDs for consistency
+    const participants = [currentUser.uid, otherUserId].sort();
+    const conversationId = participants.join('-');
 
     // Check if conversation exists
     const existing = conversations.find(c => c.id === conversationId);
@@ -185,10 +187,10 @@ export function useMessaging(campaignId) {
     // Create new conversation
     await setDoc(doc(db, `${basePath}/conversations`, conversationId), {
       type: 'dm-player',
-      participants: [currentUser.uid, playerId],
+      participants: participants,
       participantNames: {
         [currentUser.uid]: currentUser.displayName || currentUser.email,
-        [playerId]: playerName
+        [otherUserId]: otherUserName
       },
       lastMessage: '',
       lastMessageAt: serverTimestamp(),

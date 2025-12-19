@@ -325,6 +325,7 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
           }}
           campaign={campaign}
           entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+          isDM={isDM}
         />
       </Modal>
 

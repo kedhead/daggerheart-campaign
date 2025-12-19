@@ -19,13 +19,19 @@ export default function ConversationList({
   const announcements = conversations.find(c => c.type === 'announcement');
   const dmConversations = conversations.filter(c => c.type === 'dm-player');
 
-  // Get members who don't have conversations yet (for DM)
-  const existingConversationPlayerIds = dmConversations.map(c =>
-    c.id.replace('dm-', '')
-  );
+  // Get members who don't have conversations yet
+  const existingConversationUserIds = new Set();
+  dmConversations.forEach(c => {
+    // Extract other participant's ID from conversation participants
+    const otherUserId = c.participants?.find(id => id !== currentUserId);
+    if (otherUserId) {
+      existingConversationUserIds.add(otherUserId);
+    }
+  });
 
+  // Show all members except current user (both DM and players can message each other)
   const availableMembers = members.filter(
-    m => m.role === 'player' && !existingConversationPlayerIds.includes(m.userId)
+    m => m.userId !== currentUserId && !existingConversationUserIds.has(m.userId)
   );
 
   const handleCreateConversation = async (playerId, playerName) => {
@@ -69,21 +75,19 @@ export default function ConversationList({
             {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
           </p>
         </div>
-        {isDM && (
-          <button
-            className="btn btn-icon"
-            onClick={() => setShowNewConversation(!showNewConversation)}
-            title="New conversation"
-          >
-            <Plus size={20} />
-          </button>
-        )}
+        <button
+          className="btn btn-icon"
+          onClick={() => setShowNewConversation(!showNewConversation)}
+          title="New conversation"
+        >
+          <Plus size={20} />
+        </button>
       </div>
 
-      {/* New conversation menu (DM only) */}
-      {isDM && showNewConversation && (
+      {/* New conversation menu */}
+      {showNewConversation && (
         <div className="new-conversation-menu card">
-          {!announcements && (
+          {isDM && !announcements && (
             <button
               className="new-conversation-option"
               onClick={handleCreateAnnouncements}
@@ -91,7 +95,7 @@ export default function ConversationList({
               <Megaphone size={20} />
               <div>
                 <strong>Create Announcements</strong>
-                <small>Broadcast to all players</small>
+                <small>Broadcast to all members</small>
               </div>
             </button>
           )}
@@ -106,16 +110,15 @@ export default function ConversationList({
                 <User size={20} />
                 <div>
                   <strong>{member.displayName}</strong>
-                  <small>Start private conversation</small>
+                  <small>{member.role === 'dm' ? 'DM' : 'Player'}</small>
                 </div>
               </button>
             ))
           ) : (
-            !announcements && (
-              <div className="empty-state-small">
-                <p>All players have conversations</p>
-              </div>
-            )
+            <div className="empty-state-small">
+              <p>No new conversations available</p>
+            </div>
+          )
           )}
         </div>
       )}
