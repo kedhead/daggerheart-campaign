@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { Users, Lock, Globe, Calendar, User, Trash2 } from 'lucide-react';
+import { Users, Lock, Globe, Calendar, User, Trash2, RefreshCw } from 'lucide-react';
 import './SuperAdminView.css';
 
 export default function SuperAdminView({ onViewCampaign }) {
   const [allCampaigns, setAllCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     // Fetch all campaigns (superadmin can read all)
+    setLoading(true);
     const q = query(
       collection(db, 'campaigns'),
       orderBy('createdAt', 'desc')
@@ -33,7 +35,7 @@ export default function SuperAdminView({ onViewCampaign }) {
     );
 
     return unsubscribe;
-  }, []);
+  }, [refreshTrigger]);
 
   const getMemberCount = (campaign) => {
     if (!campaign.members) return 0;
@@ -92,12 +94,20 @@ export default function SuperAdminView({ onViewCampaign }) {
         // Finally delete the campaign document itself
         await deleteDoc(doc(db, 'campaigns', campaign.id));
         console.log(`Campaign ${campaign.id} deleted successfully`);
+
+        // Remove from local state immediately
+        setAllCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+
         alert('Campaign deleted successfully!');
       } catch (error) {
         console.error('Error deleting campaign:', error);
         alert(`Failed to delete campaign: ${error.message}`);
       }
     }
+  };
+
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => prev + 1);
   };
 
   const deleteConversationAndMessages = async (campaignId, conversationId) => {
@@ -124,10 +134,22 @@ export default function SuperAdminView({ onViewCampaign }) {
   return (
     <div className="superadmin-view">
       <div className="superadmin-header">
-        <h1>SuperAdmin Dashboard</h1>
-        <p className="superadmin-subtitle">
-          Monitoring {allCampaigns.length} total campaigns
-        </p>
+        <div className="header-content">
+          <div>
+            <h1>SuperAdmin Dashboard</h1>
+            <p className="superadmin-subtitle">
+              Monitoring {allCampaigns.length} total campaigns
+            </p>
+          </div>
+          <button
+            className="btn btn-secondary"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RefreshCw size={18} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="campaigns-table">
