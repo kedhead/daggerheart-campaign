@@ -25,6 +25,8 @@ import APISettings from './components/Settings/APISettings';
 import ItemsView from './components/Items/ItemsView';
 import PartyInventoryView from './components/Inventory/PartyInventoryView';
 import InitiativeTracker from './components/Initiative/InitiativeTracker';
+import QuestsView from './components/Quests/QuestsView';
+import { DiceRollerFloat } from './components/DiceRoller/index';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
 import { getGameSystem } from './data/systems/index.js';
@@ -127,6 +129,12 @@ function CampaignApp() {
     updateParticipant,
     reorderParticipants,
     endInitiative,
+    // Quests
+    quests,
+    addQuest,
+    updateQuest,
+    deleteQuest,
+    toggleQuestObjective,
     loading
   } = useFirestoreCampaign(currentCampaignId);
 
@@ -265,6 +273,7 @@ function CampaignApp() {
             timelineEvents={timelineEvents}
             encounters={encounters}
             notes={notes}
+            currentUserId={currentUser.uid}
           />
         );
       case 'files':
@@ -452,6 +461,26 @@ function CampaignApp() {
             isDM={isDM}
           />
         );
+      case 'quests':
+        return (
+          <QuestsView
+            campaign={campaign}
+            quests={quests}
+            addQuest={addQuest}
+            updateQuest={updateQuest}
+            deleteQuest={deleteQuest}
+            toggleQuestObjective={toggleQuestObjective}
+            isDM={isDM}
+            npcs={npcs}
+            locations={locations}
+            items={items}
+            lore={lore}
+            encounters={encounters}
+            sessions={sessions}
+            timelineEvents={timelineEvents}
+            notes={notes}
+          />
+        );
       default:
         return (
           <DashboardView
@@ -479,6 +508,11 @@ function CampaignApp() {
       <main className="main-content">
         {renderView()}
       </main>
+      <DiceRollerFloat
+        campaignId={currentCampaignId}
+        gameSystem={campaign?.gameSystem || 'daggerheart'}
+        isDM={isDM}
+      />
     </div>
   );
 }

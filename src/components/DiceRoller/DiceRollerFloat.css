@@ -1,0 +1,411 @@
+/* Dice Roller Float Container */
+.dice-roller-float {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+/* Floating Action Button */
+.dice-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--hope-color) 0%, var(--fear-color) 100%);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dice-fab:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 3px 6px rgba(0, 0, 0, 0.25);
+}
+
+.dice-fab.rolling {
+  animation: fabPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes fabPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* Panel */
+.dice-panel {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  width: 320px;
+  max-height: calc(100vh - 150px);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dice-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border);
+}
+
+.dice-panel-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+}
+
+.history-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-toggle:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Dice Controls */
+.dice-controls {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.control-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.control-group label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.control-group input[type="number"],
+.control-group select {
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.control-group input[type="number"]:focus,
+.control-group select:focus {
+  outline: none;
+  border-color: var(--hope-color);
+}
+
+/* Roll Mode Buttons (D&D 5e) */
+.roll-mode-group {
+  flex: 2;
+}
+
+.roll-mode-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.5rem 0.25rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-btn:hover {
+  background: var(--bg-primary);
+}
+
+.mode-btn.active {
+  border-color: var(--hope-color);
+  color: var(--text-primary);
+}
+
+.mode-btn.active.adv {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.mode-btn.active.dis {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+/* Private Toggle */
+.private-toggle {
+  flex: 0 0 auto;
+}
+
+.private-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  padding: 0.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.private-toggle label:has(input:checked) {
+  border-color: var(--fear-color);
+  color: var(--fear-color);
+}
+
+.private-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* Roll Label Input */
+.roll-label-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.roll-label-input::placeholder {
+  color: var(--text-muted);
+}
+
+.roll-label-input:focus {
+  outline: none;
+  border-color: var(--hope-color);
+}
+
+/* Roll Button */
+.roll-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--hope-color) 0%, var(--fear-color) 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.roll-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.roll-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.roll-btn .spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Mini Roll Result */
+.roll-result-mini {
+  padding: 0.75rem 1rem;
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.roll-result-mini.hope {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(234, 179, 8, 0.1) 100%);
+}
+
+.roll-result-mini.fear {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(139, 92, 246, 0.1) 100%);
+}
+
+.roll-result-mini.crit {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(34, 197, 94, 0.15) 100%);
+}
+
+.roll-result-mini.critfail {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(239, 68, 68, 0.15) 100%);
+}
+
+.roll-result-mini.complication {
+  background: linear-gradient(135deg, var(--bg-tertiary) 0%, rgba(239, 68, 68, 0.1) 100%);
+}
+
+.mini-dice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.mini-dice .hope-die {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--hope-color);
+}
+
+.mini-dice .fear-die {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--fear-color);
+}
+
+.mini-dice .d20-roll {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.mini-dice .wild-die {
+  color: var(--hope-color);
+  font-weight: 600;
+}
+
+.mini-dice .other-dice {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.mini-total {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--hope-color);
+  line-height: 1;
+}
+
+.mini-outcome {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.mini-outcome.hope {
+  background: rgba(234, 179, 8, 0.2);
+  color: var(--hope-color);
+}
+
+.mini-outcome.fear {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--fear-color);
+}
+
+.mini-outcome.crit {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.mini-outcome.critfail {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.mini-outcome.complication {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+  .dice-roller-float {
+    bottom: 1rem;
+    right: 1rem;
+  }
+
+  .dice-panel {
+    width: calc(100vw - 2rem);
+    max-width: 320px;
+  }
+
+  .dice-fab {
+    width: 48px;
+    height: 48px;
+  }
+}

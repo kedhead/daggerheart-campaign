@@ -6,6 +6,7 @@ import SessionCard from '../Sessions/SessionCard';
 import TimelineEventCard from '../Timeline/TimelineEventCard';
 import EncounterCard from '../Encounters/EncounterCard';
 import NoteCard from '../Notes/NoteCard';
+import QuestCard from '../Quests/QuestCard';
 import './EntityViewer.css';
 
 export default function EntityViewer({ entity, onClose, campaign, currentUserId, isDM, entities }) {
@@ -88,6 +89,15 @@ export default function EntityViewer({ entity, onClose, campaign, currentUserId,
             campaign={campaign}
             isEmbedded={true}
             entities={entities}
+          />
+        );
+
+      case 'quest':
+        return (
+          <QuestCard
+            quest={entity.data}
+            isDM={isDM}
+            entityData={entities}
           />
         );
 

@@ -21,7 +21,11 @@
       "WebFetch(domain:www.yellowmadhouse.com)",
       "WebFetch(domain:www.legendkeeper.com)",
       "Bash(find:*)",
-      "Bash(firebase deploy:*)"
+      "Bash(firebase deploy:*)",
+      "WebFetch(domain:www.daggerheartbrews.com)",
+      "WebSearch",
+      "WebFetch(domain:daggerheart.org)",
+      "Bash(npx firebase:*)"
     ],
     "deny": [],
     "ask": []

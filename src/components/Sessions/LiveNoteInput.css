@@ -1,0 +1,109 @@
+/* Live Note Input */
+.live-note-input {
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+}
+
+.input-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  transition: border-color 0.2s ease;
+}
+
+.input-wrapper:focus-within {
+  border-color: var(--hope-color);
+}
+
+.input-wrapper textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: none;
+  min-height: 24px;
+  max-height: 100px;
+  padding: 0.25rem 0.5rem;
+}
+
+.input-wrapper textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.input-wrapper textarea:focus {
+  outline: none;
+}
+
+.input-actions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.highlight-toggle {
+  padding: 0.5rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.highlight-toggle:hover {
+  background: var(--bg-secondary);
+  color: var(--hope-color);
+}
+
+.highlight-toggle.active {
+  color: var(--hope-color);
+}
+
+.send-btn {
+  padding: 0.5rem;
+  background: var(--hope-color);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.send-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.send-btn .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.input-hint {
+  min-height: 20px;
+  margin-top: 0.25rem;
+}
+
+.highlight-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--hope-color);
+}

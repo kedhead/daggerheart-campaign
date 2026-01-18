@@ -30,6 +30,7 @@ export function useFirestoreCampaign(campaignId) {
   const [items, setItems] = useState([]);
   const [partyInventory, setPartyInventory] = useState([]);
   const [initiative, setInitiative] = useState(null);
+  const [quests, setQuests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Base path for shared campaign
@@ -381,6 +382,28 @@ export function useFirestoreCampaign(campaignId) {
       (error) => {
         console.warn('Initiative subscription error (may be due to pending permissions):', error.code);
         setInitiative(null);
+      }
+    );
+
+    return unsubscribe;
+  }, [basePath]);
+
+  // Subscribe to Quests
+  useEffect(() => {
+    if (!basePath) return;
+
+    const unsubscribe = onSnapshot(
+      collection(db, `${basePath}/quests`),
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setQuests(data);
+      },
+      (error) => {
+        console.warn('Quests subscription error (may be due to pending permissions):', error.code);
+        setQuests([]);
       }
     );
 
@@ -930,6 +953,55 @@ export function useFirestoreCampaign(campaignId) {
     }
   };
 
+  // Quest methods
+  const addQuest = async (questData) => {
+    if (!basePath) return;
+    const docRef = await addDoc(collection(db, `${basePath}/quests`), {
+      ...questData,
+      status: questData.status || 'active',
+      objectives: questData.objectives || [],
+      hidden: questData.hidden || false,
+      createdBy: currentUser.uid,
+      createdByName: currentUser.displayName || currentUser.email,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { id: docRef.id, ...questData };
+  };
+
+  const updateQuest = async (id, updates) => {
+    if (!basePath) return;
+    const updateData = {
+      ...updates,
+      updatedAt: serverTimestamp()
+    };
+    // Add completedAt timestamp when status changes to completed or failed
+    if (updates.status === 'completed' || updates.status === 'failed') {
+      updateData.completedAt = serverTimestamp();
+    }
+    await updateDoc(doc(db, `${basePath}/quests`, id), updateData);
+  };
+
+  const deleteQuest = async (id) => {
+    if (!basePath) return;
+    await deleteDoc(doc(db, `${basePath}/quests`, id));
+  };
+
+  const toggleQuestObjective = async (questId, objectiveId, completed) => {
+    if (!basePath) return;
+    const quest = quests.find(q => q.id === questId);
+    if (!quest || !quest.objectives) return;
+
+    const updatedObjectives = quest.objectives.map(obj =>
+      obj.id === objectiveId ? { ...obj, completed } : obj
+    );
+
+    await updateDoc(doc(db, `${basePath}/quests`, questId), {
+      objectives: updatedObjectives,
+      updatedAt: serverTimestamp()
+    });
+  };
+
   return {
     campaign,
     updateCampaign,
@@ -999,6 +1071,12 @@ export function useFirestoreCampaign(campaignId) {
     updateParticipant,
     reorderParticipants,
     endInitiative,
+    // Quests
+    quests,
+    addQuest,
+    updateQuest,
+    deleteQuest,
+    toggleQuestObjective,
     loading
   };
 }

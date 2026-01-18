@@ -141,6 +141,29 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
       });
     });
 
+    // Quests
+    (source.quests || []).forEach(quest => {
+      // Visibility filter: skip hidden quests for non-DMs
+      if (!isDM && quest.hidden) return;
+
+      const statusLabel = {
+        active: 'Active Quest',
+        completed: 'Completed Quest',
+        failed: 'Failed Quest',
+        'on-hold': 'On Hold Quest'
+      }[quest.status] || 'Quest';
+
+      entities.push({
+        id: quest.id,
+        type: 'quest',
+        name: quest.name,
+        displayName: quest.name,
+        subtitle: statusLabel,
+        searchText: `${quest.name} ${quest.description || ''} ${quest.rewards || ''}`.toLowerCase(),
+        data: quest
+      });
+    });
+
     console.log('[useEntityRegistry] Registry built with', entities.length, 'entities:', {
       npcs: source.npcs?.length || 0,
       locations: source.locations?.length || 0,
@@ -148,7 +171,8 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
       sessions: source.sessions?.length || 0,
       timelineEvents: source.timelineEvents?.length || 0,
       encounters: source.encounters?.length || 0,
-      notes: source.notes?.length || 0
+      notes: source.notes?.length || 0,
+      quests: source.quests?.length || 0
     });
 
     return entities;
@@ -161,6 +185,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     separateEntities?.timelineEvents,
     separateEntities?.encounters,
     separateEntities?.notes,
+    separateEntities?.quests,
     isDM,
     currentUserId
   ]);

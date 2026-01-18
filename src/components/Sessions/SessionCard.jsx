@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit3, Trash2, Calendar, EyeOff, Link as LinkIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit3, Trash2, Calendar, EyeOff, Link as LinkIcon, Radio } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionCard.css';
 
-export default function SessionCard({ session, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
+export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
@@ -30,7 +30,13 @@ export default function SessionCard({ session, onEdit, onDelete, isDM, campaign,
       <div className="session-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="session-number">
           Session {session.number}
-          {session.status && session.status !== 'completed' && (
+          {session.isLive && (
+            <span className="session-live-badge">
+              <Radio size={12} className="pulse" />
+              LIVE
+            </span>
+          )}
+          {session.status && session.status !== 'completed' && !session.isLive && (
             <span className={`session-status-badge ${getStatusColor(session.status)}`}>
               {session.status}
             </span>
@@ -106,16 +112,32 @@ export default function SessionCard({ session, onEdit, onDelete, isDM, campaign,
             </div>
           )}
 
-          {isDM && !isEmbedded && (
+          {!isEmbedded && (
             <div className="session-actions">
-              <button className="btn btn-secondary" onClick={onEdit}>
-                <Edit3 size={16} />
-                Edit
-              </button>
-              <button className="btn btn-danger" onClick={onDelete}>
-                <Trash2 size={16} />
-                Delete
-              </button>
+              {onGoLive && (
+                <button
+                  className={`btn ${session.isLive ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGoLive();
+                  }}
+                >
+                  <Radio size={16} />
+                  {session.isLive ? 'Resume Live' : 'Go Live'}
+                </button>
+              )}
+              {isDM && (
+                <>
+                  <button className="btn btn-secondary" onClick={onEdit}>
+                    <Edit3 size={16} />
+                    Edit
+                  </button>
+                  <button className="btn btn-danger" onClick={onDelete}>
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
