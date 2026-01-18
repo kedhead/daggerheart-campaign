@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Save, X, Plus, Trash2, GripVertical } from 'lucide-react';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './QuestForm.css';
 
 const STATUS_OPTIONS = [
@@ -22,8 +23,11 @@ export default function QuestForm({
   onSave,
   onCancel,
   isDM,
+  campaign,
   entityData = {}
 }) {
+  // Create entity registry for wiki linking
+  const { search: searchEntities } = useEntityRegistry(campaign, entityData, isDM);
   const [formData, setFormData] = useState({
     name: quest?.name || '',
     description: quest?.description || '',
@@ -158,10 +162,10 @@ export default function QuestForm({
         <label>Description</label>
         <WikiLinkInput
           value={formData.description}
-          onChange={(value) => handleChange('description', value)}
+          onChange={(e) => handleChange('description', e.target.value)}
+          searchEntities={searchEntities}
           placeholder="Describe the quest... Use [[entity name]] to link to NPCs, locations, etc."
           rows={4}
-          entities={entityData}
         />
       </div>
 
@@ -228,10 +232,10 @@ export default function QuestForm({
         <label>Rewards</label>
         <WikiLinkInput
           value={formData.rewards}
-          onChange={(value) => handleChange('rewards', value)}
+          onChange={(e) => handleChange('rewards', e.target.value)}
+          searchEntities={searchEntities}
           placeholder="Describe the rewards... Use [[item name]] to link to items."
           rows={2}
-          entities={entityData}
         />
       </div>
 

@@ -154,6 +154,7 @@ export default function QuestsView({
               onSave={editingQuest ? handleEditQuest : handleAddQuest}
               onCancel={() => { setShowForm(false); setEditingQuest(null); }}
               isDM={isDM}
+              campaign={campaign}
               entityData={entityData}
             />
           </div>
