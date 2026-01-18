@@ -107,6 +107,243 @@ const LORE_TYPES = [
 
 const TRAIT_RANGE = [-1, 0, 1, 2, 3];
 
+// Weapon features from Daggerheart SRD
+const WEAPON_FEATURES = [
+  'Powerful',      // Roll additional damage die, discard lowest
+  'Returning',     // Returns to hand after thrown
+  'Massive',       // -1 Evasion, roll additional damage die
+  'Quick',         // Mark stress to target another creature
+  'Scary',         // Target marks stress on hit
+  'Hooked',        // Pull target into melee range on hit
+  'Reliable',      // +1 to attack rolls
+  'Brutal',        // Extra damage on critical
+  'Precise',       // +1 to hit
+  'Versatile',     // Can be used one or two-handed
+  'Reach',         // Extended melee range
+  'Thrown',        // Can be thrown
+  'Ammunition'     // Requires ammunition
+];
+
+// Armor features from Daggerheart SRD
+const ARMOR_FEATURES = [
+  'Deflecting',    // Mark armor slot for Evasion bonus
+  'Sheltering',    // Armor reduces damage for nearby allies too
+  'Barrier',       // +5 Armor Score, -1 Evasion
+  'Resilient',     // Chance to avoid marking last armor slot
+  'Fortified'      // Extra armor slots
+];
+
+// Equipment categories
+const EQUIPMENT_CATEGORIES = [
+  { value: 'utility', label: 'Utility' },
+  { value: 'magical', label: 'Magical Equipment' },
+  { value: 'consumable', label: 'Consumable' },
+  { value: 'enhancement', label: 'Enhancement (Gems/Stones)' },
+  { value: 'relic', label: 'Relic' }
+];
+
+// Item Templates for Daggerheart
+const ITEM_TEMPLATES = {
+  weapon: {
+    label: 'Weapon',
+    icon: 'sword',
+    fields: {
+      classification: {
+        type: 'select',
+        label: 'Classification',
+        options: [
+          { value: 'primary', label: 'Primary' },
+          { value: 'secondary', label: 'Secondary' }
+        ],
+        required: true
+      },
+      damageType: {
+        type: 'select',
+        label: 'Damage Type',
+        options: [
+          { value: 'physical', label: 'Physical' },
+          { value: 'magical', label: 'Magical' }
+        ],
+        required: true
+      },
+      trait: {
+        type: 'select',
+        label: 'Attack Trait',
+        options: [
+          { value: 'agility', label: 'Agility' },
+          { value: 'strength', label: 'Strength' },
+          { value: 'finesse', label: 'Finesse' },
+          { value: 'instinct', label: 'Instinct' },
+          { value: 'presence', label: 'Presence' },
+          { value: 'knowledge', label: 'Knowledge' }
+        ],
+        required: true
+      },
+      range: {
+        type: 'select',
+        label: 'Range',
+        options: [
+          { value: 'melee', label: 'Melee' },
+          { value: 'close', label: 'Close' },
+          { value: 'far', label: 'Far' },
+          { value: 'very far', label: 'Very Far' }
+        ],
+        required: true
+      },
+      burden: {
+        type: 'select',
+        label: 'Burden',
+        options: [
+          { value: 'one-handed', label: 'One-Handed' },
+          { value: 'two-handed', label: 'Two-Handed' }
+        ],
+        required: true
+      },
+      damageTier1Dice: {
+        type: 'select',
+        label: 'Tier 1 Dice',
+        options: ['d4', 'd6', 'd8', 'd10', 'd12'],
+        required: true
+      },
+      damageTier1Modifier: {
+        type: 'number',
+        label: 'Tier 1 Modifier',
+        min: 0,
+        max: 20,
+        default: 0
+      },
+      damageTier2Dice: {
+        type: 'select',
+        label: 'Tier 2 Dice',
+        options: ['d4', 'd6', 'd8', 'd10', 'd12'],
+        required: false
+      },
+      damageTier2Modifier: {
+        type: 'number',
+        label: 'Tier 2 Modifier',
+        min: 0,
+        max: 20,
+        default: 3
+      },
+      damageTier3Dice: {
+        type: 'select',
+        label: 'Tier 3 Dice',
+        options: ['d4', 'd6', 'd8', 'd10', 'd12'],
+        required: false
+      },
+      damageTier3Modifier: {
+        type: 'number',
+        label: 'Tier 3 Modifier',
+        min: 0,
+        max: 20,
+        default: 6
+      },
+      damageTier4Dice: {
+        type: 'select',
+        label: 'Tier 4 Dice',
+        options: ['d4', 'd6', 'd8', 'd10', 'd12'],
+        required: false
+      },
+      damageTier4Modifier: {
+        type: 'number',
+        label: 'Tier 4 Modifier',
+        min: 0,
+        max: 20,
+        default: 9
+      },
+      features: {
+        type: 'multiselect',
+        label: 'Features',
+        options: WEAPON_FEATURES
+      }
+    }
+  },
+  armor: {
+    label: 'Armor',
+    icon: 'shield',
+    fields: {
+      armorScore: {
+        type: 'number',
+        label: 'Armor Score',
+        min: 0,
+        max: 15,
+        required: true,
+        default: 2
+      },
+      armorSlots: {
+        type: 'number',
+        label: 'Armor Slots',
+        min: 1,
+        max: 12,
+        required: true,
+        default: 6
+      },
+      tier: {
+        type: 'select',
+        label: 'Tier',
+        options: [
+          { value: 1, label: 'Tier 1' },
+          { value: 2, label: 'Tier 2' },
+          { value: 3, label: 'Tier 3' },
+          { value: 4, label: 'Tier 4' }
+        ],
+        required: true
+      },
+      features: {
+        type: 'multiselect',
+        label: 'Features',
+        options: ARMOR_FEATURES
+      }
+    }
+  },
+  equipment: {
+    label: 'Equipment',
+    icon: 'backpack',
+    fields: {
+      category: {
+        type: 'select',
+        label: 'Category',
+        options: EQUIPMENT_CATEGORIES,
+        required: true
+      },
+      mechanicalEffect: {
+        type: 'textarea',
+        label: 'Mechanical Effect',
+        placeholder: 'Describe what this item does mechanically...',
+        required: false
+      },
+      activation: {
+        type: 'text',
+        label: 'Activation',
+        placeholder: 'e.g., "Action", "Once per long rest", "Passive"',
+        required: false
+      },
+      uses: {
+        type: 'number',
+        label: 'Uses',
+        min: -1,
+        max: 99,
+        default: -1,
+        helpText: '-1 for unlimited uses'
+      },
+      hopeCost: {
+        type: 'number',
+        label: 'Hope Cost',
+        min: 0,
+        max: 10,
+        default: 0
+      },
+      stressCost: {
+        type: 'number',
+        label: 'Stress Cost',
+        min: 0,
+        max: 10,
+        default: 0
+      }
+    }
+  }
+};
+
 const EXTERNAL_TOOLS = [
   {
     name: 'FreshCutGrass Encounter Manager',
@@ -247,6 +484,12 @@ export default {
   loreTypes: LORE_TYPES,
   traitRange: TRAIT_RANGE,
 
+  // Item system
+  itemTemplates: ITEM_TEMPLATES,
+  weaponFeatures: WEAPON_FEATURES,
+  armorFeatures: ARMOR_FEATURES,
+  equipmentCategories: EQUIPMENT_CATEGORIES,
+
   // External tools
   externalTools: EXTERNAL_TOOLS,
 
@@ -266,5 +509,9 @@ export {
   COMMUNITIES,
   LORE_TYPES,
   TRAIT_RANGE,
-  EXTERNAL_TOOLS
+  EXTERNAL_TOOLS,
+  ITEM_TEMPLATES,
+  WEAPON_FEATURES,
+  ARMOR_FEATURES,
+  EQUIPMENT_CATEGORIES
 };

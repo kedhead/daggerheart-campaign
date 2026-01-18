@@ -27,6 +27,9 @@ export function useFirestoreCampaign(campaignId) {
   const [notes, setNotes] = useState([]);
   const [campaignFrame, setCampaignFrame] = useState(null);
   const [campaignFrameDraft, setCampaignFrameDraft] = useState(null);
+  const [items, setItems] = useState([]);
+  const [partyInventory, setPartyInventory] = useState([]);
+  const [initiative, setInitiative] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Base path for shared campaign
@@ -318,6 +321,72 @@ export function useFirestoreCampaign(campaignId) {
     return unsubscribe;
   }, [basePath]);
 
+  // Subscribe to Items
+  useEffect(() => {
+    if (!basePath) return;
+
+    const unsubscribe = onSnapshot(
+      collection(db, `${basePath}/items`),
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setItems(data);
+      },
+      (error) => {
+        console.warn('Items subscription error (may be due to pending permissions):', error.code);
+        setItems([]);
+      }
+    );
+
+    return unsubscribe;
+  }, [basePath]);
+
+  // Subscribe to Party Inventory
+  useEffect(() => {
+    if (!basePath) return;
+
+    const unsubscribe = onSnapshot(
+      collection(db, `${basePath}/partyInventory`),
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setPartyInventory(data);
+      },
+      (error) => {
+        console.warn('Party Inventory subscription error (may be due to pending permissions):', error.code);
+        setPartyInventory([]);
+      }
+    );
+
+    return unsubscribe;
+  }, [basePath]);
+
+  // Subscribe to Initiative
+  useEffect(() => {
+    if (!basePath) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, `${basePath}/initiative/current`),
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          setInitiative({ id: docSnapshot.id, ...docSnapshot.data() });
+        } else {
+          setInitiative(null);
+        }
+      },
+      (error) => {
+        console.warn('Initiative subscription error (may be due to pending permissions):', error.code);
+        setInitiative(null);
+      }
+    );
+
+    return unsubscribe;
+  }, [basePath]);
+
   // Campaign methods
   const updateCampaign = async (updates) => {
     if (!basePath) return;
@@ -565,6 +634,302 @@ export function useFirestoreCampaign(campaignId) {
     }
   };
 
+  // Item methods
+  const addItem = async (itemData) => {
+    if (!basePath) return;
+    const docRef = await addDoc(collection(db, `${basePath}/items`), {
+      ...itemData,
+      gameSystem: campaign?.gameSystem || 'daggerheart',
+      createdBy: currentUser.uid,
+      createdByName: currentUser.displayName || currentUser.email,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { id: docRef.id, ...itemData };
+  };
+
+  const updateItem = async (id, updates) => {
+    if (!basePath) return;
+    await updateDoc(doc(db, `${basePath}/items`, id), {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const deleteItem = async (id) => {
+    if (!basePath) return;
+    await deleteDoc(doc(db, `${basePath}/items`, id));
+  };
+
+  // Character Inventory methods (updates character document)
+  const addToCharacterInventory = async (characterId, itemId, quantity = 1, notes = '') => {
+    if (!basePath) return;
+    const character = characters.find(c => c.id === characterId);
+    if (!character) return;
+
+    const inventory = character.inventory || [];
+    const newEntry = {
+      itemId,
+      quantity,
+      equipped: false,
+      slot: null,
+      notes,
+      acquiredAt: new Date().toISOString()
+    };
+
+    await updateDoc(doc(db, `${basePath}/characters`, characterId), {
+      inventory: [...inventory, newEntry],
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const removeFromCharacterInventory = async (characterId, inventoryIndex) => {
+    if (!basePath) return;
+    const character = characters.find(c => c.id === characterId);
+    if (!character || !character.inventory) return;
+
+    const inventory = [...character.inventory];
+    inventory.splice(inventoryIndex, 1);
+
+    await updateDoc(doc(db, `${basePath}/characters`, characterId), {
+      inventory,
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const updateCharacterInventoryItem = async (characterId, inventoryIndex, updates) => {
+    if (!basePath) return;
+    const character = characters.find(c => c.id === characterId);
+    if (!character || !character.inventory) return;
+
+    const inventory = [...character.inventory];
+    inventory[inventoryIndex] = { ...inventory[inventoryIndex], ...updates };
+
+    await updateDoc(doc(db, `${basePath}/characters`, characterId), {
+      inventory,
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const toggleEquipped = async (characterId, inventoryIndex, slot = null) => {
+    if (!basePath) return;
+    const character = characters.find(c => c.id === characterId);
+    if (!character || !character.inventory) return;
+
+    const inventory = [...character.inventory];
+    const item = inventory[inventoryIndex];
+    inventory[inventoryIndex] = {
+      ...item,
+      equipped: !item.equipped,
+      slot: !item.equipped ? slot : null
+    };
+
+    await updateDoc(doc(db, `${basePath}/characters`, characterId), {
+      inventory,
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  // Party Inventory methods
+  const addToPartyInventory = async (itemId, quantity = 1, notes = '') => {
+    if (!basePath) return;
+    const docRef = await addDoc(collection(db, `${basePath}/partyInventory`), {
+      itemId,
+      quantity,
+      notes,
+      addedBy: currentUser.uid,
+      addedByName: currentUser.displayName || currentUser.email,
+      addedAt: serverTimestamp()
+    });
+    return { id: docRef.id, itemId, quantity, notes };
+  };
+
+  const removeFromPartyInventory = async (entryId) => {
+    if (!basePath) return;
+    await deleteDoc(doc(db, `${basePath}/partyInventory`, entryId));
+  };
+
+  const updatePartyInventoryItem = async (entryId, updates) => {
+    if (!basePath) return;
+    await updateDoc(doc(db, `${basePath}/partyInventory`, entryId), {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  // Transfer methods
+  const transferToParty = async (characterId, inventoryIndex, quantity = null) => {
+    if (!basePath) return;
+    const character = characters.find(c => c.id === characterId);
+    if (!character || !character.inventory) return;
+
+    const inventoryItem = character.inventory[inventoryIndex];
+    if (!inventoryItem) return;
+
+    const transferQuantity = quantity || inventoryItem.quantity;
+
+    // Add to party inventory
+    await addToPartyInventory(inventoryItem.itemId, transferQuantity, inventoryItem.notes);
+
+    // Remove from or reduce character inventory
+    if (transferQuantity >= inventoryItem.quantity) {
+      await removeFromCharacterInventory(characterId, inventoryIndex);
+    } else {
+      await updateCharacterInventoryItem(characterId, inventoryIndex, {
+        quantity: inventoryItem.quantity - transferQuantity
+      });
+    }
+  };
+
+  const transferToCharacter = async (partyEntryId, characterId, quantity = null) => {
+    if (!basePath) return;
+    const partyItem = partyInventory.find(p => p.id === partyEntryId);
+    if (!partyItem) return;
+
+    const transferQuantity = quantity || partyItem.quantity;
+
+    // Add to character inventory
+    await addToCharacterInventory(characterId, partyItem.itemId, transferQuantity, partyItem.notes);
+
+    // Remove from or reduce party inventory
+    if (transferQuantity >= partyItem.quantity) {
+      await removeFromPartyInventory(partyEntryId);
+    } else {
+      await updatePartyInventoryItem(partyEntryId, {
+        quantity: partyItem.quantity - transferQuantity
+      });
+    }
+  };
+
+  // Initiative methods
+  const startInitiative = async (participants = []) => {
+    if (!basePath) return;
+    const initiativeData = {
+      active: true,
+      currentTurn: 0,
+      round: 1,
+      participants: participants.map((p, index) => ({
+        id: `participant-${Date.now()}-${index}`,
+        name: p.name,
+        type: p.type || 'custom',
+        entityId: p.entityId || null,
+        initiative: p.initiative || 0,
+        hp: p.hp || null,
+        maxHp: p.maxHp || null,
+        conditions: [],
+        isHidden: p.isHidden || false
+      })),
+      linkedEncounterId: null,
+      startedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(doc(db, `${basePath}/initiative`, 'current'), initiativeData);
+    return initiativeData;
+  };
+
+  const updateInitiative = async (updates) => {
+    if (!basePath) return;
+    await setDoc(doc(db, `${basePath}/initiative`, 'current'), {
+      ...updates,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  };
+
+  const nextTurn = async () => {
+    if (!basePath || !initiative) return;
+    const { currentTurn, round, participants } = initiative;
+
+    let newTurn = currentTurn + 1;
+    let newRound = round;
+
+    if (newTurn >= participants.length) {
+      newTurn = 0;
+      newRound = round + 1;
+    }
+
+    await updateInitiative({ currentTurn: newTurn, round: newRound });
+  };
+
+  const previousTurn = async () => {
+    if (!basePath || !initiative) return;
+    const { currentTurn, round, participants } = initiative;
+
+    let newTurn = currentTurn - 1;
+    let newRound = round;
+
+    if (newTurn < 0) {
+      if (round > 1) {
+        newTurn = participants.length - 1;
+        newRound = round - 1;
+      } else {
+        newTurn = 0;
+      }
+    }
+
+    await updateInitiative({ currentTurn: newTurn, round: newRound });
+  };
+
+  const addParticipant = async (participant) => {
+    if (!basePath || !initiative) return;
+    const newParticipant = {
+      id: `participant-${Date.now()}`,
+      name: participant.name,
+      type: participant.type || 'custom',
+      entityId: participant.entityId || null,
+      initiative: participant.initiative || 0,
+      hp: participant.hp || null,
+      maxHp: participant.maxHp || null,
+      conditions: [],
+      isHidden: participant.isHidden || false
+    };
+
+    const participants = [...initiative.participants, newParticipant];
+    // Sort by initiative (descending)
+    participants.sort((a, b) => b.initiative - a.initiative);
+
+    await updateInitiative({ participants });
+  };
+
+  const removeParticipant = async (participantId) => {
+    if (!basePath || !initiative) return;
+    const participants = initiative.participants.filter(p => p.id !== participantId);
+
+    // Adjust currentTurn if needed
+    let currentTurn = initiative.currentTurn;
+    if (currentTurn >= participants.length) {
+      currentTurn = Math.max(0, participants.length - 1);
+    }
+
+    await updateInitiative({ participants, currentTurn });
+  };
+
+  const updateParticipant = async (participantId, updates) => {
+    if (!basePath || !initiative) return;
+    const participants = initiative.participants.map(p =>
+      p.id === participantId ? { ...p, ...updates } : p
+    );
+    await updateInitiative({ participants });
+  };
+
+  const reorderParticipants = async (orderedIds) => {
+    if (!basePath || !initiative) return;
+    const participantMap = {};
+    initiative.participants.forEach(p => { participantMap[p.id] = p; });
+
+    const participants = orderedIds.map(id => participantMap[id]).filter(Boolean);
+    await updateInitiative({ participants, currentTurn: 0 });
+  };
+
+  const endInitiative = async () => {
+    if (!basePath) return;
+    try {
+      await deleteDoc(doc(db, `${basePath}/initiative`, 'current'));
+    } catch (err) {
+      console.log('No initiative to end');
+    }
+  };
+
   return {
     campaign,
     updateCampaign,
@@ -605,6 +970,35 @@ export function useFirestoreCampaign(campaignId) {
     saveCampaignFrameDraft,
     completeCampaignFrame,
     deleteCampaignFrameDraft,
+    // Items
+    items,
+    addItem,
+    updateItem,
+    deleteItem,
+    // Character Inventory
+    addToCharacterInventory,
+    removeFromCharacterInventory,
+    updateCharacterInventoryItem,
+    toggleEquipped,
+    // Party Inventory
+    partyInventory,
+    addToPartyInventory,
+    removeFromPartyInventory,
+    updatePartyInventoryItem,
+    // Transfers
+    transferToParty,
+    transferToCharacter,
+    // Initiative
+    initiative,
+    startInitiative,
+    updateInitiative,
+    nextTurn,
+    previousTurn,
+    addParticipant,
+    removeParticipant,
+    updateParticipant,
+    reorderParticipants,
+    endInitiative,
     loading
   };
 }

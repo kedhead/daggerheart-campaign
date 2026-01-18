@@ -8,6 +8,246 @@ const CLASSES = ['Barbarian', 'Bard', 'Cleric', 'Druid', 'Fighter', 'Monk', 'Pal
 
 const RACES = ['Human', 'Elf', 'Dwarf', 'Halfling', 'Dragonborn', 'Gnome', 'Half-Elf', 'Half-Orc', 'Tiefling'];
 
+// Item rarities
+const RARITIES = [
+  { value: 'common', label: 'Common', color: '#9ca3af' },
+  { value: 'uncommon', label: 'Uncommon', color: '#22c55e' },
+  { value: 'rare', label: 'Rare', color: '#3b82f6' },
+  { value: 'very-rare', label: 'Very Rare', color: '#8b5cf6' },
+  { value: 'legendary', label: 'Legendary', color: '#f59e0b' },
+  { value: 'artifact', label: 'Artifact', color: '#ef4444' }
+];
+
+// Weapon properties
+const WEAPON_PROPERTIES = [
+  'Ammunition', 'Finesse', 'Heavy', 'Light', 'Loading', 'Range',
+  'Reach', 'Special', 'Thrown', 'Two-Handed', 'Versatile'
+];
+
+// Damage types
+const DAMAGE_TYPES = [
+  'Bludgeoning', 'Piercing', 'Slashing', 'Acid', 'Cold', 'Fire',
+  'Force', 'Lightning', 'Necrotic', 'Poison', 'Psychic', 'Radiant', 'Thunder'
+];
+
+// Armor types
+const ARMOR_TYPES = [
+  { value: 'light', label: 'Light Armor' },
+  { value: 'medium', label: 'Medium Armor' },
+  { value: 'heavy', label: 'Heavy Armor' },
+  { value: 'shield', label: 'Shield' }
+];
+
+// Item Templates for D&D 5e
+const ITEM_TEMPLATES = {
+  weapon: {
+    label: 'Weapon',
+    icon: 'sword',
+    fields: {
+      rarity: {
+        type: 'select',
+        label: 'Rarity',
+        options: RARITIES,
+        required: true
+      },
+      weaponType: {
+        type: 'select',
+        label: 'Weapon Type',
+        options: [
+          { value: 'simple-melee', label: 'Simple Melee' },
+          { value: 'simple-ranged', label: 'Simple Ranged' },
+          { value: 'martial-melee', label: 'Martial Melee' },
+          { value: 'martial-ranged', label: 'Martial Ranged' }
+        ],
+        required: true
+      },
+      damageDice: {
+        type: 'text',
+        label: 'Damage',
+        placeholder: '1d8, 2d6, etc.',
+        required: true
+      },
+      damageType: {
+        type: 'select',
+        label: 'Damage Type',
+        options: DAMAGE_TYPES.map(t => ({ value: t.toLowerCase(), label: t })),
+        required: true
+      },
+      properties: {
+        type: 'multiselect',
+        label: 'Properties',
+        options: WEAPON_PROPERTIES
+      },
+      range: {
+        type: 'text',
+        label: 'Range',
+        placeholder: '20/60, 150/600, etc.'
+      },
+      requiresAttunement: {
+        type: 'checkbox',
+        label: 'Requires Attunement',
+        default: false
+      },
+      attunementRequirements: {
+        type: 'text',
+        label: 'Attunement Requirements',
+        placeholder: 'by a spellcaster, by a paladin, etc.'
+      },
+      weight: {
+        type: 'number',
+        label: 'Weight (lb)',
+        min: 0,
+        default: 0
+      },
+      value: {
+        type: 'text',
+        label: 'Value',
+        placeholder: '50 gp'
+      },
+      magicalBonus: {
+        type: 'number',
+        label: 'Magical Bonus (+1, +2, +3)',
+        min: 0,
+        max: 3,
+        default: 0
+      }
+    }
+  },
+  armor: {
+    label: 'Armor',
+    icon: 'shield',
+    fields: {
+      rarity: {
+        type: 'select',
+        label: 'Rarity',
+        options: RARITIES,
+        required: true
+      },
+      armorType: {
+        type: 'select',
+        label: 'Armor Type',
+        options: ARMOR_TYPES,
+        required: true
+      },
+      baseAC: {
+        type: 'number',
+        label: 'Base AC',
+        min: 10,
+        max: 20,
+        required: true,
+        default: 11
+      },
+      maxDexBonus: {
+        type: 'number',
+        label: 'Max Dex Bonus',
+        min: 0,
+        max: 10,
+        helpText: 'Leave 0 for no limit'
+      },
+      strengthRequirement: {
+        type: 'number',
+        label: 'Strength Requirement',
+        min: 0,
+        max: 20,
+        default: 0
+      },
+      stealthDisadvantage: {
+        type: 'checkbox',
+        label: 'Stealth Disadvantage',
+        default: false
+      },
+      requiresAttunement: {
+        type: 'checkbox',
+        label: 'Requires Attunement',
+        default: false
+      },
+      attunementRequirements: {
+        type: 'text',
+        label: 'Attunement Requirements',
+        placeholder: 'by a cleric, by a dwarf, etc.'
+      },
+      weight: {
+        type: 'number',
+        label: 'Weight (lb)',
+        min: 0,
+        default: 0
+      },
+      value: {
+        type: 'text',
+        label: 'Value',
+        placeholder: '500 gp'
+      },
+      magicalBonus: {
+        type: 'number',
+        label: 'Magical Bonus (+1, +2, +3)',
+        min: 0,
+        max: 3,
+        default: 0
+      }
+    }
+  },
+  equipment: {
+    label: 'Equipment',
+    icon: 'backpack',
+    fields: {
+      rarity: {
+        type: 'select',
+        label: 'Rarity',
+        options: RARITIES,
+        required: true
+      },
+      category: {
+        type: 'select',
+        label: 'Category',
+        options: [
+          { value: 'wondrous', label: 'Wondrous Item' },
+          { value: 'potion', label: 'Potion' },
+          { value: 'scroll', label: 'Scroll' },
+          { value: 'ring', label: 'Ring' },
+          { value: 'rod', label: 'Rod' },
+          { value: 'staff', label: 'Staff' },
+          { value: 'wand', label: 'Wand' },
+          { value: 'adventuring-gear', label: 'Adventuring Gear' },
+          { value: 'tool', label: 'Tool' }
+        ],
+        required: true
+      },
+      requiresAttunement: {
+        type: 'checkbox',
+        label: 'Requires Attunement',
+        default: false
+      },
+      attunementRequirements: {
+        type: 'text',
+        label: 'Attunement Requirements',
+        placeholder: 'by a spellcaster, etc.'
+      },
+      charges: {
+        type: 'number',
+        label: 'Charges',
+        min: -1,
+        helpText: '-1 for no charges, 0+ for limited uses'
+      },
+      rechargeRate: {
+        type: 'text',
+        label: 'Recharge',
+        placeholder: '1d6+1 at dawn, etc.'
+      },
+      weight: {
+        type: 'number',
+        label: 'Weight (lb)',
+        min: 0,
+        default: 0
+      },
+      value: {
+        type: 'text',
+        label: 'Value',
+        placeholder: '100 gp'
+      }
+    }
+  }
+};
+
 // Game System Definition
 export default {
   // System metadata
@@ -68,6 +308,13 @@ export default {
   classes: CLASSES,
   races: RACES,
 
+  // Item system
+  itemTemplates: ITEM_TEMPLATES,
+  rarities: RARITIES,
+  weaponProperties: WEAPON_PROPERTIES,
+  damageTypes: DAMAGE_TYPES,
+  armorTypes: ARMOR_TYPES,
+
   // Campaign frame templates
   campaignFrameTemplates: DND5E_CAMPAIGN_FRAMES,
 
@@ -110,5 +357,10 @@ export default {
 // Export individual constants for convenience
 export {
   CLASSES,
-  RACES
+  RACES,
+  ITEM_TEMPLATES,
+  RARITIES,
+  WEAPON_PROPERTIES,
+  DAMAGE_TYPES,
+  ARMOR_TYPES
 };

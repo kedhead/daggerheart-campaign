@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield } from 'lucide-react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import './Sidebar.css';
@@ -48,6 +48,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
       icon: Users,
       items: [
         { id: 'characters', label: 'Characters', icon: Users },
+        { id: 'partyInventory', label: 'Party Stash', icon: Backpack },
         { id: 'notes', label: 'My Notes', icon: StickyNote },
         { id: 'messaging', label: 'Messages', icon: MessageSquare }
       ]
@@ -69,7 +70,10 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
       icon: Scroll,
       items: [
         { id: 'sessions', label: 'Sessions', icon: ScrollText },
-        ...(isDM ? [{ id: 'encounters', label: 'Encounters', icon: Swords }] : [])
+        ...(isDM ? [
+          { id: 'encounters', label: 'Encounters', icon: Swords },
+          { id: 'initiative', label: 'Initiative', icon: Zap }
+        ] : [])
       ]
     },
     {
@@ -77,6 +81,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
       label: 'Resources',
       icon: FolderUp,
       items: [
+        { id: 'items', label: 'Item Catalog', icon: Package },
         { id: 'files', label: 'Maps & Files', icon: FolderUp },
         { id: 'tools', label: 'Tools', icon: Wrench },
         { id: 'help', label: 'Features & Help', icon: HelpCircle }

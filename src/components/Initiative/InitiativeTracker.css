@@ -1,0 +1,308 @@
+/* Initiative Tracker */
+.initiative-tracker {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.initiative-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.round-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.round-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.round-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--hope-color);
+  font-family: 'Cinzel', serif;
+}
+
+/* Participants List */
+.participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.empty-participants {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+  color: var(--text-muted);
+}
+
+/* Participant Card */
+.participant-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.participant-card.current-turn {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: var(--hope-color);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+}
+
+.participant-card.hidden-participant {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.participant-card[draggable="true"] {
+  cursor: grab;
+}
+
+.participant-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.drag-handle {
+  color: var(--text-muted);
+  cursor: grab;
+  padding: 0.25rem;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.turn-indicator {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  flex-shrink: 0;
+}
+
+.turn-number {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.current-marker {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--hope-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(251, 191, 36, 0);
+  }
+}
+
+.participant-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.participant-icon.character {
+  background: linear-gradient(135deg, var(--hope-color), #f59e0b);
+  color: white;
+}
+
+.participant-icon.npc {
+  background: linear-gradient(135deg, var(--fear-color), #a855f7);
+  color: white;
+}
+
+.participant-icon.custom {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+  color: white;
+}
+
+.participant-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.participant-info h4 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.participant-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.type-badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.type-badge.character {
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--hope-color);
+}
+
+.type-badge.npc {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--fear-color);
+}
+
+.type-badge.custom {
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--text-secondary);
+}
+
+.initiative-value {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.participant-actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-danger-hover:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Add Participant Modal */
+.add-participant-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.quick-add-section h4,
+.custom-add-section h4 {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.entity-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.entity-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.entity-button:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--hope-color);
+}
+
+.custom-add-section {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.custom-add-section form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .initiative-controls {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .initiative-controls .btn {
+    width: 100%;
+  }
+
+  .round-display {
+    order: -1;
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .round-number {
+    font-size: 1.5rem;
+  }
+
+  .participant-card {
+    flex-wrap: wrap;
+  }
+
+  .participant-actions {
+    width: 100%;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .drag-handle {
+    display: none;
+  }
+}

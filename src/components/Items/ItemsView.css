@@ -1,0 +1,814 @@
+/* Items View */
+.items-view {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.items-controls {
+  margin-bottom: 2rem;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+/* Item Card */
+.item-card {
+  overflow: hidden;
+  position: relative;
+}
+
+.item-card.hidden-item {
+  opacity: 0.7;
+  border-style: dashed;
+}
+
+.item-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.item-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.5rem;
+}
+
+.item-icon.weapon {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+}
+
+.item-icon.armor {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+}
+
+.item-icon.equipment {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  color: white;
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-info h3 {
+  font-size: 1.15rem;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.item-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.item-type-badge.weapon {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.item-type-badge.armor {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.item-type-badge.equipment {
+  background: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+}
+
+.item-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.item-tag {
+  padding: 0.15rem 0.5rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.item-details {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  margin-top: 1.5rem;
+  animation: slideIn 0.3s ease;
+}
+
+.item-section {
+  margin-bottom: 1.25rem;
+}
+
+.item-section h4 {
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.item-section p {
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.item-actions {
+  display: flex;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.item-actions .btn {
+  flex: 1;
+}
+
+/* Daggerheart Weapon Card Specific */
+.dh-weapon-card {
+  border: 2px solid transparent;
+  background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box,
+              linear-gradient(135deg, var(--hope-color), var(--fear-color)) border-box;
+}
+
+.dh-weapon-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.dh-stat {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+}
+
+.dh-stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.dh-stat-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dh-damage-tiers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.dh-tier {
+  text-align: center;
+  padding: 0.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.dh-tier.current {
+  border-color: var(--hope-color);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.dh-tier-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.dh-tier-damage {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dh-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.dh-feature {
+  padding: 0.25rem 0.75rem;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(251, 191, 36, 0.15));
+  border: 1px solid var(--fear-color);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Daggerheart Armor Card */
+.dh-armor-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dh-armor-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.1));
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  min-width: 80px;
+}
+
+.dh-armor-score .value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #3b82f6;
+  line-height: 1;
+}
+
+.dh-armor-score .label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 0.25rem;
+}
+
+/* Item Form */
+.item-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.item-type-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.type-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem 1rem;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.type-option:hover {
+  border-color: var(--hope-color);
+  background: var(--bg-tertiary);
+}
+
+.type-option.selected {
+  border-color: var(--hope-color);
+  background: rgba(251, 191, 36, 0.1);
+}
+
+.type-option svg {
+  color: var(--text-secondary);
+}
+
+.type-option.selected svg {
+  color: var(--hope-color);
+}
+
+.type-option span {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.tier-damage-section {
+  background: var(--bg-tertiary);
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.tier-damage-section h4 {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.tier-damage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+.tier-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tier-input label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.tier-input .inputs {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tier-input select,
+.tier-input input {
+  width: 50%;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.features-multiselect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.feature-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feature-checkbox:hover {
+  border-color: var(--hope-color);
+}
+
+.feature-checkbox.selected {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: var(--hope-color);
+  color: var(--hope-color);
+}
+
+.feature-checkbox input {
+  display: none;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Dynamic Item Form */
+.dynamic-item-form {
+  max-width: 600px;
+}
+
+.dynamic-item-form .form-header {
+  margin-bottom: 1.5rem;
+}
+
+.dynamic-item-form .form-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.dynamic-item-form .form-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.dynamic-item-form .form-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dynamic-item-form .form-section:last-of-type {
+  border-bottom: none;
+}
+
+.dynamic-item-form .form-section h4 {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.dynamic-item-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.dynamic-item-form .form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.dynamic-item-form .form-group label .required {
+  color: #ef4444;
+  margin-left: 0.25rem;
+}
+
+.dynamic-item-form .form-group input,
+.dynamic-item-form .form-group select,
+.dynamic-item-form .form-group textarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  transition: border-color 0.2s ease;
+}
+
+.dynamic-item-form .form-group input:focus,
+.dynamic-item-form .form-group select:focus,
+.dynamic-item-form .form-group textarea:focus {
+  outline: none;
+  border-color: var(--hope-color);
+}
+
+.dynamic-item-form .form-group input.error,
+.dynamic-item-form .form-group select.error,
+.dynamic-item-form .form-group textarea.error {
+  border-color: #ef4444;
+}
+
+.dynamic-item-form .form-group .help-text {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.dynamic-item-form .form-group .error-text {
+  display: block;
+  font-size: 0.8rem;
+  color: #ef4444;
+  margin-top: 0.25rem;
+}
+
+.dynamic-item-form .checkbox-group {
+  margin-bottom: 0.75rem;
+}
+
+.dynamic-item-form .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.dynamic-item-form .checkbox-label input[type="checkbox"] {
+  width: auto;
+  cursor: pointer;
+}
+
+.dynamic-item-form .multiselect-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dynamic-item-form .checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.dynamic-item-form .checkbox-option:hover {
+  border-color: var(--hope-color);
+}
+
+.dynamic-item-form .checkbox-option input[type="checkbox"]:checked + span {
+  color: var(--hope-color);
+}
+
+.dynamic-item-form .form-actions {
+  display: flex;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.dynamic-item-form .form-actions .btn {
+  flex: 1;
+}
+
+.form-type-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.dynamic-form-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dynamic Item Card */
+.dynamic-item-card {
+  padding: 1.25rem;
+}
+
+.dynamic-item-card .item-card-header {
+  margin-bottom: 1rem;
+}
+
+.dynamic-item-card .item-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.dynamic-item-card .item-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.dynamic-item-card .item-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.dynamic-item-card .item-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dynamic-item-card .item-system {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.dynamic-item-card .item-image {
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 200px;
+}
+
+.dynamic-item-card .item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dynamic-item-card .item-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.dynamic-item-card .primary-stats {
+  background: var(--bg-tertiary);
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.dynamic-item-card .secondary-stats {
+  background: var(--bg-secondary);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.dynamic-item-card .stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.dynamic-item-card .stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dynamic-item-card .stat-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.dynamic-item-card .item-description {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--hope-color);
+}
+
+.dynamic-item-card .item-description p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.dynamic-item-card .hidden-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px dashed #ef4444;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #ef4444;
+  margin-bottom: 1rem;
+}
+
+.dynamic-item-card .item-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.dynamic-item-card .btn-danger:hover {
+  color: #ef4444;
+}
+
+/* Compact card for inventory lists */
+.item-card-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.item-card-compact .item-icon {
+  color: var(--text-muted);
+}
+
+.item-card-compact .item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.item-card-compact .item-name {
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-card-compact .item-type {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.item-card-compact .hidden-badge {
+  color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .item-type-selector {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row,
+  .form-row-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .tier-damage-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dh-damage-tiers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .item-actions {
+    flex-direction: column;
+  }
+
+  .item-actions .btn {
+    width: 100%;
+  }
+
+  .dynamic-item-card .item-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .dynamic-item-form .form-actions {
+    flex-direction: column;
+  }
+}

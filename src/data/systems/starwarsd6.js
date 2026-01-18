@@ -43,6 +43,194 @@ const TEMPLATES = [
   'Entertainer'
 ];
 
+// Scale types for combat
+const SCALES = [
+  { value: 'character', label: 'Character' },
+  { value: 'speeder', label: 'Speeder' },
+  { value: 'walker', label: 'Walker' },
+  { value: 'starfighter', label: 'Starfighter' },
+  { value: 'capital', label: 'Capital Ship' }
+];
+
+// Availability ratings
+const AVAILABILITY_RATINGS = [
+  { value: '1', label: '1 - Readily Available' },
+  { value: '2', label: '2 - Common' },
+  { value: '3', label: '3 - Available' },
+  { value: '4', label: '4 - Scarce' },
+  { value: 'F', label: 'F - Black Market (Illegal)' },
+  { value: 'R', label: 'R - Restricted (Military)' },
+  { value: 'X', label: 'X - Rare/Unique' }
+];
+
+// Weapon categories
+const WEAPON_CATEGORIES = [
+  { value: 'blaster-pistol', label: 'Blaster Pistol' },
+  { value: 'blaster-rifle', label: 'Blaster Rifle' },
+  { value: 'heavy-weapon', label: 'Heavy Weapon' },
+  { value: 'melee', label: 'Melee Weapon' },
+  { value: 'lightsaber', label: 'Lightsaber' },
+  { value: 'explosive', label: 'Explosive/Grenade' },
+  { value: 'vehicle-weapon', label: 'Vehicle Weapon' },
+  { value: 'starship-weapon', label: 'Starship Weapon' }
+];
+
+// Item Templates for Star Wars D6
+const ITEM_TEMPLATES = {
+  weapon: {
+    label: 'Weapon',
+    icon: 'sword',
+    fields: {
+      category: {
+        type: 'select',
+        label: 'Category',
+        options: WEAPON_CATEGORIES,
+        required: true
+      },
+      scale: {
+        type: 'select',
+        label: 'Scale',
+        options: SCALES,
+        required: true,
+        default: 'character'
+      },
+      skill: {
+        type: 'text',
+        label: 'Skill',
+        placeholder: 'Blaster, Melee Combat, Lightsaber, etc.',
+        required: true
+      },
+      damage: {
+        type: 'text',
+        label: 'Damage',
+        placeholder: '4D, 5D+2, 8D, etc.',
+        required: true
+      },
+      range: {
+        type: 'text',
+        label: 'Range',
+        placeholder: '3-10/30/120, etc.'
+      },
+      fireRate: {
+        type: 'text',
+        label: 'Fire Rate',
+        placeholder: '1, 3, etc.'
+      },
+      ammo: {
+        type: 'text',
+        label: 'Ammo/Power Pack',
+        placeholder: '100 shots, etc.'
+      },
+      availability: {
+        type: 'select',
+        label: 'Availability',
+        options: AVAILABILITY_RATINGS,
+        required: true
+      },
+      cost: {
+        type: 'text',
+        label: 'Cost',
+        placeholder: '500 credits'
+      }
+    }
+  },
+  armor: {
+    label: 'Armor',
+    icon: 'shield',
+    fields: {
+      armorType: {
+        type: 'select',
+        label: 'Armor Type',
+        options: [
+          { value: 'light', label: 'Light Armor' },
+          { value: 'medium', label: 'Medium Armor' },
+          { value: 'heavy', label: 'Heavy Armor/Powered' },
+          { value: 'helmet', label: 'Helmet Only' },
+          { value: 'shield', label: 'Personal Shield' }
+        ],
+        required: true
+      },
+      physicalProtection: {
+        type: 'text',
+        label: 'Physical Protection',
+        placeholder: '+1D, +2D, etc.',
+        required: true
+      },
+      energyProtection: {
+        type: 'text',
+        label: 'Energy Protection',
+        placeholder: '+1D, +2D, etc.',
+        required: true
+      },
+      dexPenalty: {
+        type: 'text',
+        label: 'DEX Penalty',
+        placeholder: '-1D, -2, none, etc.'
+      },
+      coverage: {
+        type: 'text',
+        label: 'Coverage',
+        placeholder: 'Full body, Torso only, etc.'
+      },
+      availability: {
+        type: 'select',
+        label: 'Availability',
+        options: AVAILABILITY_RATINGS,
+        required: true
+      },
+      cost: {
+        type: 'text',
+        label: 'Cost',
+        placeholder: '1000 credits'
+      }
+    }
+  },
+  equipment: {
+    label: 'Equipment',
+    icon: 'backpack',
+    fields: {
+      category: {
+        type: 'select',
+        label: 'Category',
+        options: [
+          { value: 'comms', label: 'Communications' },
+          { value: 'sensors', label: 'Sensors & Detection' },
+          { value: 'medical', label: 'Medical' },
+          { value: 'survival', label: 'Survival Gear' },
+          { value: 'tools', label: 'Tools' },
+          { value: 'droid', label: 'Droid/Computer' },
+          { value: 'security', label: 'Security' },
+          { value: 'cybernetic', label: 'Cybernetic' },
+          { value: 'force', label: 'Force-Related' },
+          { value: 'misc', label: 'Miscellaneous' }
+        ],
+        required: true
+      },
+      gameEffect: {
+        type: 'textarea',
+        label: 'Game Effect',
+        placeholder: 'Describe the mechanical effect...'
+      },
+      skillBonus: {
+        type: 'text',
+        label: 'Skill Bonus',
+        placeholder: '+1D to Search, etc.'
+      },
+      availability: {
+        type: 'select',
+        label: 'Availability',
+        options: AVAILABILITY_RATINGS,
+        required: true
+      },
+      cost: {
+        type: 'text',
+        label: 'Cost',
+        placeholder: '200 credits'
+      }
+    }
+  }
+};
+
 // Game System Definition
 export default {
   // System metadata
@@ -112,6 +300,12 @@ export default {
   species: SPECIES,
   templates: TEMPLATES,
 
+  // Item system
+  itemTemplates: ITEM_TEMPLATES,
+  scales: SCALES,
+  availabilityRatings: AVAILABILITY_RATINGS,
+  weaponCategories: WEAPON_CATEGORIES,
+
   // Campaign frame templates
   campaignFrameTemplates: STARWARSD6_CAMPAIGN_FRAMES,
 
@@ -149,5 +343,9 @@ export default {
 export {
   ATTRIBUTES,
   SPECIES,
-  TEMPLATES
+  TEMPLATES,
+  ITEM_TEMPLATES,
+  SCALES,
+  AVAILABILITY_RATINGS,
+  WEAPON_CATEGORIES
 };

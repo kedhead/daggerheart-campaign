@@ -22,6 +22,9 @@ import MessagingView from './components/Messaging/MessagingView';
 import CampaignBuilderView from './components/CampaignBuilder/CampaignBuilderView';
 import SuperAdminView from './components/SuperAdmin/SuperAdminView';
 import APISettings from './components/Settings/APISettings';
+import ItemsView from './components/Items/ItemsView';
+import PartyInventoryView from './components/Inventory/PartyInventoryView';
+import InitiativeTracker from './components/Initiative/InitiativeTracker';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
 import { getGameSystem } from './data/systems/index.js';
@@ -95,6 +98,35 @@ function CampaignApp() {
     saveCampaignFrameDraft,
     completeCampaignFrame,
     deleteCampaignFrameDraft,
+    // Items
+    items,
+    addItem,
+    updateItem,
+    deleteItem,
+    // Character Inventory
+    addToCharacterInventory,
+    removeFromCharacterInventory,
+    updateCharacterInventoryItem,
+    toggleEquipped,
+    // Party Inventory
+    partyInventory,
+    addToPartyInventory,
+    removeFromPartyInventory,
+    updatePartyInventoryItem,
+    // Transfers
+    transferToParty,
+    transferToCharacter,
+    // Initiative
+    initiative,
+    startInitiative,
+    updateInitiative,
+    nextTurn,
+    previousTurn,
+    addParticipant,
+    removeParticipant,
+    updateParticipant,
+    reorderParticipants,
+    endInitiative,
     loading
   } = useFirestoreCampaign(currentCampaignId);
 
@@ -368,6 +400,58 @@ function CampaignApp() {
         );
       case 'apiSettings':
         return <APISettings userId={currentUser.uid} />;
+      case 'items':
+        return (
+          <ItemsView
+            campaign={campaign}
+            items={items}
+            addItem={addItem}
+            updateItem={updateItem}
+            deleteItem={deleteItem}
+            isDM={isDM}
+            npcs={npcs}
+            locations={locations}
+            lore={lore}
+            sessions={sessions}
+            timelineEvents={timelineEvents}
+            encounters={encounters}
+            notes={notes}
+          />
+        );
+      case 'partyInventory':
+        return (
+          <PartyInventoryView
+            campaign={campaign}
+            items={items}
+            partyInventory={partyInventory}
+            addToPartyInventory={addToPartyInventory}
+            removeFromPartyInventory={removeFromPartyInventory}
+            updatePartyInventoryItem={updatePartyInventoryItem}
+            transferToCharacter={transferToCharacter}
+            characters={characters}
+            isDM={isDM}
+            currentUserId={currentUser.uid}
+          />
+        );
+      case 'initiative':
+        return (
+          <InitiativeTracker
+            campaign={campaign}
+            initiative={initiative}
+            startInitiative={startInitiative}
+            updateInitiative={updateInitiative}
+            nextTurn={nextTurn}
+            previousTurn={previousTurn}
+            addParticipant={addParticipant}
+            removeParticipant={removeParticipant}
+            updateParticipant={updateParticipant}
+            reorderParticipants={reorderParticipants}
+            endInitiative={endInitiative}
+            characters={characters}
+            npcs={npcs}
+            isDM={isDM}
+          />
+        );
       default:
         return (
           <DashboardView
