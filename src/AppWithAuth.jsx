@@ -175,9 +175,12 @@ function CampaignApp() {
   }, [campaign?.gameSystem]);
 
   // Determine if current user is DM based on campaign data
-  // Check multiple sources: dmId, createdBy, member role
+  // Check multiple sources: dmId, createdBy, member role, super admin
+  const SUPER_ADMIN_IDS = ['DnZPlvutotbHwsalwMsBG7kEWCu1', 'PdOFs3FvC7WXl1QfB9i2EijyaxI2'];
+  const isSuperAdmin = SUPER_ADMIN_IDS.includes(currentUser?.uid);
   const campaignRole = campaign?.members?.[currentUser?.uid]?.role || 'dm'; // Default to dm for legacy campaigns
-  const isDM = campaign?.dmId === currentUser?.uid ||
+  const isDM = isSuperAdmin ||
+               campaign?.dmId === currentUser?.uid ||
                campaign?.createdBy === currentUser?.uid ||
                campaignRole === 'dm' ||
                (campaign && !campaign.dmId); // If no dmId at all, assume DM for backwards compatibility

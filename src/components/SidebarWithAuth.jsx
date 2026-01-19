@@ -14,7 +14,8 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
   const systemName = gameSystem?.name || 'Lorelich';
 
   // Check if current user is superadmin
-  const isSuperAdmin = currentUser?.uid === 'DnZPlvutotbHwsalwMsBG7kEWCu1';
+  const SUPER_ADMIN_IDS = ['DnZPlvutotbHwsalwMsBG7kEWCu1', 'PdOFs3FvC7WXl1QfB9i2EijyaxI2'];
+  const isSuperAdmin = SUPER_ADMIN_IDS.includes(currentUser?.uid);
 
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>

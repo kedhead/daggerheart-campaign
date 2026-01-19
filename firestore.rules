@@ -20,7 +20,7 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return getUserId() == 'DnZPlvutotbHwsalwMsBG7kEWCu1';
+      return getUserId() == 'DnZPlvutotbHwsalwMsBG7kEWCu1' || getUserId() == 'PdOFs3FvC7WXl1QfB9i2EijyaxI2';
     }
 
     // Shared campaigns collection
