@@ -20,7 +20,8 @@ export default function CampaignBuilderView({
   addLocation,
   addLore,
   addEncounter,
-  addTimelineEvent
+  addTimelineEvent,
+  addQuest
 }) {
   const [wizardStarted, setWizardStarted] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -256,12 +257,135 @@ export default function CampaignBuilderView({
             </div>
           )}
 
-          {/* Session Zero Questions */}
-          {campaignFrame.sessionZeroQuestions && campaignFrame.sessionZeroQuestions.length > 0 && (
+          {/* Starting Quests */}
+          {campaignFrame.startingQuests && campaignFrame.startingQuests.length > 0 && (
+            <div className="card">
+              <h3>Starting Quests</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {campaignFrame.startingQuests.map((quest, i) => (
+                  <div key={i} style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <strong>{quest.name}</strong>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: '4px',
+                        background: quest.priority === 'high' ? 'var(--fear-color)' : quest.priority === 'medium' ? 'var(--hope-color)' : 'var(--text-secondary)',
+                        color: 'white'
+                      }}>
+                        {quest.priority}
+                      </span>
+                      {quest.hidden && <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>(Hidden)</span>}
+                    </div>
+                    {quest.description && <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{quest.description}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Session Zero - Safety Tools */}
+          {campaignFrame.sessionZero?.safetyTools && (
+            (campaignFrame.sessionZero.safetyTools.lines?.length > 0 ||
+             campaignFrame.sessionZero.safetyTools.veils?.length > 0 ||
+             campaignFrame.sessionZero.safetyTools.otherBoundaries) && (
+            <div className="card">
+              <h3>Safety Tools</h3>
+              {campaignFrame.sessionZero.safetyTools.xCardEnabled && (
+                <p style={{ color: 'var(--hope-color)', fontWeight: 500, marginBottom: '0.75rem' }}>X-Card Enabled</p>
+              )}
+              {campaignFrame.sessionZero.safetyTools.lines?.length > 0 && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <strong style={{ color: 'var(--fear-color)' }}>Lines (Hard No):</strong>
+                  <ul style={{ margin: '0.25rem 0 0 1.5rem' }}>
+                    {campaignFrame.sessionZero.safetyTools.lines.map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {campaignFrame.sessionZero.safetyTools.veils?.length > 0 && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <strong style={{ color: 'var(--hope-color)' }}>Veils (Off-Screen):</strong>
+                  <ul style={{ margin: '0.25rem 0 0 1.5rem' }}>
+                    {campaignFrame.sessionZero.safetyTools.veils.map((veil, i) => (
+                      <li key={i}>{veil}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {campaignFrame.sessionZero.safetyTools.otherBoundaries && (
+                <div>
+                  <strong>Other Boundaries:</strong>
+                  <p style={{ margin: '0.25rem 0 0 0', whiteSpace: 'pre-wrap' }}>{campaignFrame.sessionZero.safetyTools.otherBoundaries}</p>
+                </div>
+              )}
+            </div>
+            )
+          )}
+
+          {/* Session Zero - Character Connections */}
+          {campaignFrame.sessionZero?.characterConnections?.length > 0 && (
+            <div className="card">
+              <h3>Character Connections</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {campaignFrame.sessionZero.characterConnections.map((conn, i) => (
+                  <div key={i} style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '4px' }}>
+                    <strong>{conn.question}</strong>
+                    {conn.answer && <p style={{ margin: '0.25rem 0 0 0', fontStyle: 'italic' }}>{conn.answer}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Session Zero - World Facts */}
+          {campaignFrame.sessionZero?.worldFacts?.length > 0 && (
+            <div className="card">
+              <h3>World Facts</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {campaignFrame.sessionZero.worldFacts.map((fact, i) => (
+                  <div key={i} style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-tertiary)', borderRadius: '4px' }}>
+                    <span>{fact.fact}</span>
+                    {(fact.category || fact.establishedBy) && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                        {fact.category && <span className="tag" style={{ marginRight: '0.5rem' }}>{fact.category}</span>}
+                        {fact.establishedBy && <span>by {fact.establishedBy}</span>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Session Zero - Player Locations */}
+          {campaignFrame.sessionZero?.playerLocations?.length > 0 && (
+            <div className="card">
+              <h3>Player Locations</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {campaignFrame.sessionZero.playerLocations.map((loc, i) => (
+                  <div key={i} style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-tertiary)', borderRadius: '4px', border: loc.createAsLocation ? '1px solid var(--hope-color)' : '1px solid transparent' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <strong>{loc.name}</strong>
+                      <span className="tag">{loc.type}</span>
+                      {loc.createAsLocation && <span style={{ fontSize: '0.75rem', color: 'var(--hope-color)' }}>(Created as Location)</span>}
+                    </div>
+                    {loc.description && <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{loc.description}</p>}
+                    {loc.mentionedBy && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Mentioned by {loc.mentionedBy}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Session Zero Questions (Legacy + New) */}
+          {((campaignFrame.sessionZero?.questions?.length > 0) ||
+            (campaignFrame.sessionZeroQuestions?.length > 0)) && (
             <div className="card">
               <h3>Session Zero Questions</h3>
               <ul>
-                {campaignFrame.sessionZeroQuestions.map((question, i) => (
+                {(campaignFrame.sessionZero?.questions || campaignFrame.sessionZeroQuestions || []).map((question, i) => (
                   <li key={i}>{question}</li>
                 ))}
               </ul>
@@ -287,6 +411,7 @@ export default function CampaignBuilderView({
         addEncounter={addEncounter}
         addTimelineEvent={addTimelineEvent}
         updateCampaign={updateCampaign}
+        addQuest={addQuest}
       />
     );
   }
@@ -410,11 +535,11 @@ export default function CampaignBuilderView({
           <li>Pitch, themes, and tone</li>
           <li>World overview and touchstones</li>
           <li>Player and GM principles</li>
-          <li>Inciting incident and campaign mechanics</li>
-          <li>Session zero questions</li>
+          <li>Inciting incident and starting quests</li>
+          <li>Campaign mechanics and session zero tools</li>
         </ul>
         <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-          The wizard will guide you through all 14 steps with AI assistance available at each stage!
+          The wizard will guide you through all 15 steps with AI assistance available at each stage!
         </p>
       </div>
     </div>

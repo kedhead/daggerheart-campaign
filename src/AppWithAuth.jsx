@@ -409,6 +409,7 @@ function CampaignApp() {
             addLore={addLore}
             addEncounter={addEncounter}
             addTimelineEvent={addTimelineEvent}
+            addQuest={addQuest}
           />
         );
       case 'apiSettings':

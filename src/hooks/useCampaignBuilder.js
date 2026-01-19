@@ -21,8 +21,16 @@ export function useCampaignBuilder(campaignId, campaignFrameDraft, saveCampaignF
     gmPrinciples: [],
     distinctions: [],
     incitingIncident: '',
+    startingQuests: [],      // NEW
     campaignMechanics: [],
-    sessionZeroQuestions: []
+    sessionZero: {           // NEW structured format
+      safetyTools: { lines: [], veils: [], xCardEnabled: true, otherBoundaries: '' },
+      characterConnections: [],
+      worldFacts: [],
+      playerLocations: [],
+      questions: []
+    },
+    sessionZeroQuestions: [] // Keep for backward compatibility
   });
   const [templateUsed, setTemplateUsed] = useState(null);
   const [isComplete, setIsComplete] = useState(false);
@@ -33,6 +41,21 @@ export function useCampaignBuilder(campaignId, campaignFrameDraft, saveCampaignF
   // Load from draft on mount
   useEffect(() => {
     if (campaignFrameDraft) {
+      // Migrate legacy sessionZeroQuestions to new sessionZero.questions if needed
+      const legacyQuestions = campaignFrameDraft.sessionZeroQuestions || [];
+      const existingSessionZero = campaignFrameDraft.sessionZero || {};
+
+      const migratedSessionZero = {
+        safetyTools: existingSessionZero.safetyTools || { lines: [], veils: [], xCardEnabled: true, otherBoundaries: '' },
+        characterConnections: existingSessionZero.characterConnections || [],
+        worldFacts: existingSessionZero.worldFacts || [],
+        playerLocations: existingSessionZero.playerLocations || [],
+        // Migrate legacy questions if new format doesn't have them
+        questions: existingSessionZero.questions?.length > 0
+          ? existingSessionZero.questions
+          : legacyQuestions
+      };
+
       setData({
         pitch: campaignFrameDraft.pitch || '',
         toneAndFeel: campaignFrameDraft.toneAndFeel || [],
@@ -46,8 +69,10 @@ export function useCampaignBuilder(campaignId, campaignFrameDraft, saveCampaignF
         gmPrinciples: campaignFrameDraft.gmPrinciples || [],
         distinctions: campaignFrameDraft.distinctions || [],
         incitingIncident: campaignFrameDraft.incitingIncident || '',
+        startingQuests: campaignFrameDraft.startingQuests || [],
         campaignMechanics: campaignFrameDraft.campaignMechanics || [],
-        sessionZeroQuestions: campaignFrameDraft.sessionZeroQuestions || []
+        sessionZero: migratedSessionZero,
+        sessionZeroQuestions: legacyQuestions // Keep for backward compatibility
       });
       setCurrentStep(campaignFrameDraft.currentStep || 0);
       setCompletedSteps(campaignFrameDraft.completedSteps || []);
@@ -116,7 +141,15 @@ export function useCampaignBuilder(campaignId, campaignFrameDraft, saveCampaignF
       gmPrinciples: template.gmPrinciples || [],
       distinctions: template.distinctions || [],
       incitingIncident: template.incitingIncident || '',
+      startingQuests: template.startingQuests || [],
       campaignMechanics: template.campaignMechanics || [],
+      sessionZero: template.sessionZero || {
+        safetyTools: { lines: [], veils: [], xCardEnabled: true, otherBoundaries: '' },
+        characterConnections: [],
+        worldFacts: [],
+        playerLocations: [],
+        questions: template.sessionZeroQuestions || []
+      },
       sessionZeroQuestions: template.sessionZeroQuestions || []
     });
     setTemplateUsed(template.id);
@@ -155,7 +188,7 @@ export function useCampaignBuilder(campaignId, campaignFrameDraft, saveCampaignF
     }
 
     // Move to next step
-    if (currentStep < 14) {
+    if (currentStep < 15) {
       setCurrentStep(currentStep + 1);
     }
   }, [currentStep, completedSteps, data, templateUsed, saveCampaignFrameDraft]);
@@ -278,8 +311,9 @@ function getStepData(stepIndex, data) {
     'gmPrinciples',
     'distinctions',
     'incitingIncident',
-    'campaignMechanics',
-    'sessionZeroQuestions'
+    'startingQuests',     // NEW - step 12
+    'campaignMechanics',  // Was step 12, now 13
+    'sessionZero'         // Changed from sessionZeroQuestions, now step 14
   ];
 
   return data[stepKeys[stepIndex]];

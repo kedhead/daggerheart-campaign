@@ -285,6 +285,152 @@ export const templateService = {
   },
 
   /**
+   * Generate random character connection questions
+   * @param {number} count - Number of questions to generate
+   * @returns {array} Array of connection questions
+   */
+  generateCharacterConnections(count = 3) {
+    const questions = [
+      'How did you first meet another party member?',
+      'Which character do you trust most, and why?',
+      'What shared experience brought two of you closer together?',
+      'Which party member reminds you of someone from your past?',
+      'What secret do you share with another character?',
+      'Who in the party have you saved, or who has saved you?',
+      'What do you admire about another party member?',
+      'Which character challenges your beliefs the most?',
+      'What promise have you made to another party member?',
+      'Who in the party would you go to for advice?',
+      'What do you and another character disagree about?',
+      'Which party member have you traveled with before this adventure?'
+    ];
+
+    return randomChoices(questions, count);
+  },
+
+  /**
+   * Generate a random starting quest
+   * @param {object} context - Optional context with campaign info
+   * @returns {object} Generated quest data
+   */
+  generateStartingQuest(context = {}) {
+    const gameSystem = context.campaign?.gameSystem || context.gameSystem || 'daggerheart';
+
+    const fantasyQuests = [
+      {
+        name: 'The Missing Merchant',
+        description: 'A local merchant has vanished under mysterious circumstances. Their family is offering a reward for information.',
+        priority: 'medium',
+        objectives: [
+          { id: 'obj1', text: 'Investigate the merchant\'s last known location', completed: false },
+          { id: 'obj2', text: 'Question witnesses and associates', completed: false },
+          { id: 'obj3', text: 'Discover the truth behind the disappearance', completed: false }
+        ],
+        rewards: 'Gold and merchant discount'
+      },
+      {
+        name: 'Trouble at the Old Mill',
+        description: 'Strange noises and lights have been reported at the abandoned mill outside town. The villagers fear something sinister.',
+        priority: 'high',
+        objectives: [
+          { id: 'obj1', text: 'Investigate the abandoned mill', completed: false },
+          { id: 'obj2', text: 'Discover the source of the disturbances', completed: false },
+          { id: 'obj3', text: 'Deal with whatever threatens the village', completed: false }
+        ],
+        rewards: 'Local hero status and gold reward'
+      },
+      {
+        name: 'The Ancient Relic',
+        description: 'Rumors speak of an artifact hidden in nearby ruins. Many have sought it, but none have returned.',
+        priority: 'medium',
+        objectives: [
+          { id: 'obj1', text: 'Research the artifact\'s history', completed: false },
+          { id: 'obj2', text: 'Locate the entrance to the ruins', completed: false },
+          { id: 'obj3', text: 'Retrieve the artifact', completed: false }
+        ],
+        rewards: 'The artifact itself or substantial gold'
+      },
+      {
+        name: 'Escort the Caravan',
+        description: 'A merchant caravan needs protection on the dangerous road to the next city.',
+        priority: 'low',
+        objectives: [
+          { id: 'obj1', text: 'Meet the caravan master', completed: false },
+          { id: 'obj2', text: 'Protect the caravan through dangerous territory', completed: false },
+          { id: 'obj3', text: 'Arrive safely at the destination', completed: false }
+        ],
+        rewards: 'Gold and free passage'
+      }
+    ];
+
+    const starwarsQuests = [
+      {
+        name: 'Imperial Entanglements',
+        description: 'An Imperial patrol is searching for Rebel sympathizers in the sector. Help evacuate the endangered locals.',
+        priority: 'high',
+        objectives: [
+          { id: 'obj1', text: 'Contact the underground resistance', completed: false },
+          { id: 'obj2', text: 'Arrange transport for refugees', completed: false },
+          { id: 'obj3', text: 'Evade Imperial patrols', completed: false }
+        ],
+        rewards: 'Alliance contacts and credits'
+      },
+      {
+        name: 'The Smuggler\'s Debt',
+        description: 'A notorious crime lord is calling in debts. Complete a job or face the consequences.',
+        priority: 'high',
+        objectives: [
+          { id: 'obj1', text: 'Meet with the crime lord\'s agent', completed: false },
+          { id: 'obj2', text: 'Complete the assigned task', completed: false },
+          { id: 'obj3', text: 'Deliver payment or face bounty hunters', completed: false }
+        ],
+        rewards: 'Debt cleared and criminal connections'
+      },
+      {
+        name: 'Distress Signal',
+        description: 'A faint distress signal has been detected from a remote system. Someone needs help.',
+        priority: 'medium',
+        objectives: [
+          { id: 'obj1', text: 'Trace the signal to its source', completed: false },
+          { id: 'obj2', text: 'Investigate the stranded vessel', completed: false },
+          { id: 'obj3', text: 'Rescue any survivors', completed: false }
+        ],
+        rewards: 'Salvage rights and grateful allies'
+      }
+    ];
+
+    const quests = gameSystem === 'starwarsd6' ? starwarsQuests : fantasyQuests;
+    return { ...randomChoice(quests), hidden: false };
+  },
+
+  /**
+   * Generate world fact prompts for players
+   * @param {number} count - Number of prompts to generate
+   * @returns {array} Array of world fact prompts
+   */
+  generateWorldFactPrompts(count = 3) {
+    const prompts = [
+      'What is a common superstition in this land?',
+      'Describe a famous landmark everyone knows about.',
+      'What recent event has everyone talking?',
+      'What dangerous creature is rumored to live nearby?',
+      'What festival or holiday is approaching?',
+      'What resource is this region famous for?',
+      'What ancient ruins can be found here?',
+      'Who is the most famous person from this area?',
+      'What is forbidden or taboo in this culture?',
+      'What legend do parents tell their children?',
+      'What unusual custom do travelers find strange?',
+      'What secret society operates in the shadows?',
+      'What natural wonder exists in this world?',
+      'What conflict shapes local politics?',
+      'What magical phenomenon is unique to this region?'
+    ];
+
+    return randomChoices(prompts, count);
+  },
+
+  /**
    * Generate a random inciting incident
    * @param {object} context - Optional context with campaign info
    * @returns {string} Inciting incident

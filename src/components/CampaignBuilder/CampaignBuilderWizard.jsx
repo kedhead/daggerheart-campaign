@@ -15,6 +15,7 @@ import PlayerPrinciplesStep from './wizard/steps/PlayerPrinciplesStep';
 import GMPrinciplesStep from './wizard/steps/GMPrinciplesStep';
 import DistinctionsStep from './wizard/steps/DistinctionsStep';
 import IncitingIncidentStep from './wizard/steps/IncitingIncidentStep';
+import StartingQuestsStep from './wizard/steps/StartingQuestsStep';
 import CampaignMechanicsStep from './wizard/steps/CampaignMechanicsStep';
 import SessionZeroStep from './wizard/steps/SessionZeroStep';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -34,7 +35,8 @@ export default function CampaignBuilderWizard({
   addLore,
   addEncounter,
   addTimelineEvent,
-  updateCampaign
+  updateCampaign,
+  addQuest
 }) {
   const { hasKey, keys } = useAPIKey(userId);
   const {
@@ -146,6 +148,51 @@ export default function CampaignBuilderWizard({
           console.log(`Timeline Event ${i + 1} saved successfully`);
         } catch (err) {
           console.error(`Failed to save Timeline Event ${i + 1}:`, err);
+        }
+      }
+
+      // Save Starting Quests
+      if (data.startingQuests?.length > 0 && addQuest) {
+        setGenerationProgress(`Saving ${data.startingQuests.length} starting quests...`);
+        for (let i = 0; i < data.startingQuests.length; i++) {
+          const quest = data.startingQuests[i];
+          console.log(`Saving Starting Quest ${i + 1}:`, quest);
+          try {
+            await addQuest({
+              name: quest.name,
+              description: quest.description,
+              status: 'active',
+              priority: quest.priority || 'medium',
+              objectives: quest.objectives || [],
+              rewards: quest.rewards || '',
+              hidden: quest.hidden || false
+            });
+            console.log(`Starting Quest ${i + 1} saved successfully`);
+          } catch (err) {
+            console.error(`Failed to save Starting Quest ${i + 1}:`, err);
+          }
+        }
+      }
+
+      // Create Locations from Session Zero
+      const playerLocations = data.sessionZero?.playerLocations?.filter(l => l.createAsLocation && l.name) || [];
+      if (playerLocations.length > 0) {
+        setGenerationProgress(`Creating ${playerLocations.length} player locations...`);
+        for (let i = 0; i < playerLocations.length; i++) {
+          const loc = playerLocations[i];
+          console.log(`Creating Player Location ${i + 1}:`, loc);
+          try {
+            await addLocation({
+              name: loc.name,
+              type: loc.type || 'other',
+              region: loc.region || '',
+              description: loc.description || `Established during session zero${loc.mentionedBy ? ` by ${loc.mentionedBy}` : ''}.`,
+              source: 'session-zero'
+            });
+            console.log(`Player Location ${i + 1} created successfully`);
+          } catch (err) {
+            console.error(`Failed to create Player Location ${i + 1}:`, err);
+          }
         }
       }
 
@@ -311,16 +358,18 @@ export default function CampaignBuilderWizard({
       case 11:
         return <IncitingIncidentStep {...stepProps} />;
       case 12:
-        return <CampaignMechanicsStep {...stepProps} />;
+        return <StartingQuestsStep {...stepProps} campaign={campaign} />;
       case 13:
+        return <CampaignMechanicsStep {...stepProps} />;
+      case 14:
         return <SessionZeroStep {...stepProps} />;
       default:
         return null;
     }
   };
 
-  // Review step (after step 13)
-  if (currentStep === 14) {
+  // Review step (after step 14)
+  if (currentStep === 15) {
     return (
       <div className="campaign-builder-view">
         <WizardProgress
@@ -373,7 +422,7 @@ export default function CampaignBuilderWizard({
 
         <StepNavigation
           currentStep={currentStep}
-          totalSteps={15}
+          totalSteps={16}
           canProceed={true}
           onPrevious={previousStep}
           onNext={handleComplete}
@@ -396,7 +445,7 @@ export default function CampaignBuilderWizard({
 
       <StepNavigation
         currentStep={currentStep}
-        totalSteps={14}
+        totalSteps={15}
         canProceed={canProceed()}
         onPrevious={previousStep}
         onNext={nextStep}
@@ -422,8 +471,9 @@ function getStepKey(stepIndex) {
     'gmPrinciples',
     'distinctions',
     'incitingIncident',
-    'campaignMechanics',
-    'sessionZeroQuestions'
+    'startingQuests',     // NEW - step 12
+    'campaignMechanics',  // Was step 12, now 13
+    'sessionZero'         // Changed from sessionZeroQuestions, now step 14
   ];
   return keys[stepIndex];
 }

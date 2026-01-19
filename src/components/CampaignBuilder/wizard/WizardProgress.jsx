@@ -14,8 +14,9 @@ const STEP_NAMES = [
   'GM Principles',
   'Distinctions',
   'Inciting Incident',
-  'Campaign Mechanics',
-  'Session Zero'
+  'Starting Quests',    // NEW - step 12
+  'Campaign Mechanics', // Was step 12, now 13
+  'Session Zero'        // Was step 13, now 14
 ];
 
 export default function WizardProgress({ currentStep, completedSteps, onStepClick }) {
