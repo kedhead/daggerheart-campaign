@@ -25,7 +25,8 @@
       "WebFetch(domain:www.daggerheartbrews.com)",
       "WebSearch",
       "WebFetch(domain:daggerheart.org)",
-      "Bash(npx firebase:*)"
+      "Bash(npx firebase:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

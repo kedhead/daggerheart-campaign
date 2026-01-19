@@ -142,7 +142,8 @@ export default function ItemsView({
         </div>
         {isDM && (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {(campaign?.gameSystem || 'daggerheart') === 'daggerheart' && (
+            {/* Show Import Official for Daggerheart campaigns (default if not set) */}
+            {(!campaign?.gameSystem || campaign.gameSystem === 'daggerheart') && (
               <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
                 <Download size={20} />
                 Import Official
