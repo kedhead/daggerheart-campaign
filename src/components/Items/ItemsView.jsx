@@ -58,7 +58,8 @@ export default function ItemsView({
 
   // Get items to show in import modal based on category
   const getImportItems = () => {
-    if (campaign?.gameSystem !== 'daggerheart') return [];
+    const system = campaign?.gameSystem || 'daggerheart';
+    if (system !== 'daggerheart') return [];
     switch (importCategory) {
       case 'weapons': return DAGGERHEART_WEAPONS;
       case 'armor': return DAGGERHEART_ARMOR;
@@ -141,7 +142,7 @@ export default function ItemsView({
         </div>
         {isDM && (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {campaign?.gameSystem === 'daggerheart' && (
+            {(campaign?.gameSystem || 'daggerheart') === 'daggerheart' && (
               <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
                 <Download size={20} />
                 Import Official
