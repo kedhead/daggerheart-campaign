@@ -23,6 +23,26 @@ service cloud.firestore {
       return getUserId() == 'DnZPlvutotbHwsalwMsBG7kEWCu1' || getUserId() == 'PdOFs3FvC7WXl1QfB9i2EijyaxI2';
     }
 
+    // App Settings (shared API keys, etc.)
+    match /appSettings/{settingId} {
+      // Super admins can read and write
+      allow read: if isAuthenticated() && isSuperAdmin();
+      allow write: if isAuthenticated() && isSuperAdmin();
+
+      // Regular users can read (for shared API key config)
+      // Note: Keys are exposed to authenticated users - use Firebase Functions proxy for production
+      allow read: if isAuthenticated();
+    }
+
+    // User Usage tracking (for shared API key limits)
+    match /userUsage/{userId} {
+      // Users can read and write their own usage
+      allow read, write: if isAuthenticated() && getUserId() == userId;
+
+      // Super admins can read all usage
+      allow read: if isAuthenticated() && isSuperAdmin();
+    }
+
     // Shared campaigns collection
     match /campaigns/{campaignId} {
       // Read: public campaigns OR member/DM/creator OR superadmin

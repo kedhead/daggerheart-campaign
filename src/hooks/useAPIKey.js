@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { encrypt, decrypt, isEncryptionSupported } from '../utils/encryption';
+import { useSharedAPIKey } from './useSharedAPIKey';
 
 const STORAGE_KEY = 'dh_ai_api_keys';
 
@@ -19,6 +20,18 @@ export function useAPIKey(userId) {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Shared API key support
+  const {
+    sharedConfig,
+    checkUsageLimit,
+    recordUsage,
+    getSharedKey,
+    hasSharedKey,
+    isEnabled: sharedKeysEnabled,
+    userUsage,
+    loading: sharedLoading
+  } = useSharedAPIKey(userId);
 
   // Load keys from localStorage on mount
   useEffect(() => {
@@ -125,17 +138,56 @@ export function useAPIKey(userId) {
   };
 
   /**
-   * Check if a specific provider has a key configured
+   * Check if a specific provider has a key configured (own or shared)
    * @param {string} provider - 'anthropic' or 'openai' (optional)
    * @returns {boolean} - True if the provider (or any provider) has a key
    */
-  const hasKey = (provider) => {
+  const hasKey = useCallback((provider) => {
+    if (provider) {
+      // User's own key takes priority
+      if (keys[provider]) return true;
+      // Fall back to shared key
+      return hasSharedKey(provider);
+    }
+    // If no provider specified, check if any key exists
+    return !!(keys.anthropic || keys.openai || hasSharedKey('anthropic') || hasSharedKey('openai'));
+  }, [keys, hasSharedKey]);
+
+  /**
+   * Check if user has their OWN key (not shared)
+   * @param {string} provider - 'anthropic' or 'openai' (optional)
+   * @returns {boolean}
+   */
+  const hasOwnKey = useCallback((provider) => {
     if (provider) {
       return !!keys[provider];
     }
-    // If no provider specified, check if any key exists
     return !!(keys.anthropic || keys.openai);
-  };
+  }, [keys]);
+
+  /**
+   * Get the effective API key for a provider (own key or shared)
+   * @param {string} provider - 'anthropic' or 'openai'
+   * @returns {{ key: string|null, isShared: boolean, usageCheck?: object }}
+   */
+  const getEffectiveKey = useCallback((provider) => {
+    // User's own key takes priority
+    if (keys[provider]) {
+      return { key: keys[provider], isShared: false };
+    }
+
+    // Try shared key
+    if (sharedKeysEnabled && hasSharedKey(provider)) {
+      const usageCheck = checkUsageLimit();
+      if (!usageCheck.allowed) {
+        return { key: null, isShared: true, usageCheck };
+      }
+      const sharedKey = getSharedKey(provider);
+      return { key: sharedKey, isShared: true, usageCheck };
+    }
+
+    return { key: null, isShared: false };
+  }, [keys, sharedKeysEnabled, hasSharedKey, checkUsageLimit, getSharedKey]);
 
   /**
    * Switch the active provider
@@ -167,13 +219,21 @@ export function useAPIKey(userId) {
   return {
     keys,
     hasKey,
-    loading,
+    hasOwnKey,
+    loading: loading || sharedLoading,
     error,
     saveKey,
     removeKey,
     clearAllKeys,
     setProvider,
     getActiveKey,
-    encryptionSupported: isEncryptionSupported()
+    encryptionSupported: isEncryptionSupported(),
+    // Shared key support
+    getEffectiveKey,
+    recordUsage,
+    sharedKeysEnabled,
+    sharedConfig,
+    userUsage,
+    checkUsageLimit
   };
 }

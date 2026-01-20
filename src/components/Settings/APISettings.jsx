@@ -1,11 +1,24 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Check, X, Key, ExternalLink } from 'lucide-react';
+import { Eye, EyeOff, Check, X, Key, ExternalLink, Zap, Calendar } from 'lucide-react';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { aiService } from '../../services/aiService';
 import './APISettings.css';
 
 export default function APISettings({ userId }) {
-  const { keys, saveKey, removeKey, hasKey, loading, error, encryptionSupported } = useAPIKey(userId);
+  const {
+    keys,
+    saveKey,
+    removeKey,
+    hasKey,
+    hasOwnKey,
+    loading,
+    error,
+    encryptionSupported,
+    sharedKeysEnabled,
+    sharedConfig,
+    userUsage,
+    checkUsageLimit
+  } = useAPIKey(userId);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
   const [anthropicInput, setAnthropicInput] = useState('');
@@ -94,6 +107,91 @@ export default function APISettings({ userId }) {
           <li><strong>Privacy:</strong> Keys are encrypted with your user ID and stored locally only</li>
         </ul>
       </div>
+
+      {/* Shared API Keys Section */}
+      {sharedKeysEnabled && !hasOwnKey() && (
+        <div className="card" style={{ background: 'rgba(34, 197, 94, 0.1)', border: '1px solid var(--hope-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <Zap size={20} style={{ color: 'var(--hope-color)' }} />
+            <h3 style={{ margin: 0, color: 'var(--hope-color)' }}>Shared API Keys Available</h3>
+          </div>
+          <p style={{ marginBottom: '1rem' }}>
+            The site administrator has enabled shared API keys. You can use AI features without your own API key!
+          </p>
+
+          {/* Usage Stats */}
+          {sharedConfig && (
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              <div style={{ padding: '0.75rem', background: 'var(--bg)', borderRadius: '8px', flex: 1, minWidth: '140px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <Calendar size={16} />
+                  <strong>Daily Usage</strong>
+                </div>
+                {(() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const dailyCount = userUsage?.daily?.date === today ? userUsage.daily.count : 0;
+                  const dailyLimit = sharedConfig.dailyLimit || 10;
+                  const percentage = (dailyCount / dailyLimit) * 100;
+                  return (
+                    <>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>
+                        {dailyCount} / {dailyLimit}
+                      </div>
+                      <div style={{ width: '100%', height: '4px', background: 'var(--border)', borderRadius: '2px', marginTop: '0.5rem' }}>
+                        <div style={{
+                          width: `${Math.min(percentage, 100)}%`,
+                          height: '100%',
+                          background: percentage >= 100 ? 'var(--fear-color)' : 'var(--hope-color)',
+                          borderRadius: '2px'
+                        }} />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div style={{ padding: '0.75rem', background: 'var(--bg)', borderRadius: '8px', flex: 1, minWidth: '140px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                  <Calendar size={16} />
+                  <strong>Monthly Usage</strong>
+                </div>
+                {(() => {
+                  const thisMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+                  const monthlyCount = userUsage?.monthly?.month === thisMonth ? userUsage.monthly.count : 0;
+                  const monthlyLimit = sharedConfig.monthlyLimit || 100;
+                  const percentage = (monthlyCount / monthlyLimit) * 100;
+                  return (
+                    <>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 600 }}>
+                        {monthlyCount} / {monthlyLimit}
+                      </div>
+                      <div style={{ width: '100%', height: '4px', background: 'var(--border)', borderRadius: '2px', marginTop: '0.5rem' }}>
+                        <div style={{
+                          width: `${Math.min(percentage, 100)}%`,
+                          height: '100%',
+                          background: percentage >= 100 ? 'var(--fear-color)' : 'var(--hope-color)',
+                          borderRadius: '2px'
+                        }} />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Available Keys */}
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            <strong>Available:</strong>
+            {sharedConfig?.hasAnthropicKey && <span style={{ marginLeft: '0.5rem' }}>Anthropic (Claude)</span>}
+            {sharedConfig?.hasOpenaiKey && <span style={{ marginLeft: '0.5rem' }}>OpenAI (GPT-4 + DALL-E)</span>}
+          </div>
+
+          <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            Want unlimited access? Add your own API keys below.
+          </p>
+        </div>
+      )}
 
       {/* Anthropic API Key */}
       <div className="api-section card">

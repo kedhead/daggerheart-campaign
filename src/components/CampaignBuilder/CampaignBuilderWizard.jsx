@@ -38,7 +38,7 @@ export default function CampaignBuilderWizard({
   updateCampaign,
   addQuest
 }) {
-  const { hasKey, keys } = useAPIKey(userId);
+  const { hasKey, keys, getEffectiveKey, recordUsage, sharedKeysEnabled, checkUsageLimit } = useAPIKey(userId);
   const {
     currentStep,
     completedSteps,
@@ -79,8 +79,35 @@ export default function CampaignBuilderWizard({
 
       // Generate campaign content
       setGenerationProgress('Step 2/6: Generating content...');
-      const apiKey = hasKey('anthropic') ? keys.anthropic : (hasKey('openai') ? keys.openai : null);
-      const provider = hasKey('anthropic') ? 'anthropic' : 'openai';
+
+      // Get effective API key (user's own or shared)
+      const anthropicResult = getEffectiveKey('anthropic');
+      const openaiResult = getEffectiveKey('openai');
+
+      let apiKey = null;
+      let provider = 'anthropic';
+      let isUsingSharedKey = false;
+
+      if (anthropicResult.key) {
+        apiKey = anthropicResult.key;
+        provider = 'anthropic';
+        isUsingSharedKey = anthropicResult.isShared;
+      } else if (openaiResult.key) {
+        apiKey = openaiResult.key;
+        provider = 'openai';
+        isUsingSharedKey = openaiResult.isShared;
+      }
+
+      // Check if we hit usage limits for shared keys
+      if (!apiKey && (anthropicResult.usageCheck || openaiResult.usageCheck)) {
+        const usageCheck = anthropicResult.usageCheck || openaiResult.usageCheck;
+        setGenerationProgress(`Error: ${usageCheck.reason}`);
+        setTimeout(() => {
+          setGenerating(false);
+          if (onComplete) onComplete();
+        }, 3000);
+        return;
+      }
 
       console.log('Starting content generation with API key:', apiKey ? 'Yes' : 'No');
       const generatedContent = await generateCampaignContent(data, campaign, apiKey, provider);
@@ -200,7 +227,9 @@ export default function CampaignBuilderWizard({
       setGenerationProgress('Bonus: Generating world map...');
       try {
         console.log('Generating world map with locations...');
-        const openaiKey = hasKey('openai') ? keys.openai : null;
+        // Get OpenAI key for DALL-E image generation (user's own or shared)
+        const openaiEffective = getEffectiveKey('openai');
+        const openaiKey = openaiEffective.key;
         const generateImage = !!openaiKey; // Only generate image if we have OpenAI key
 
         const mapData = await generateMap(
@@ -259,6 +288,11 @@ export default function CampaignBuilderWizard({
 
       setGenerationProgress('Complete! Campaign content and world map generated.');
       setGenerationComplete(true);
+
+      // Record usage if using shared key
+      if (isUsingSharedKey && recordUsage) {
+        await recordUsage();
+      }
 
       // Give user a moment to see the success message
       setTimeout(() => {

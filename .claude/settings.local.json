@@ -26,7 +26,8 @@
       "WebSearch",
       "WebFetch(domain:daggerheart.org)",
       "Bash(npx firebase:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []

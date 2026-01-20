@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { Users, Lock, Globe, Calendar, User, Trash2, RefreshCw, Database } from 'lucide-react';
+import { Users, Lock, Globe, Calendar, User, Trash2, RefreshCw, Database, Key, LayoutDashboard } from 'lucide-react';
+import SharedAPIKeyManager from './SharedAPIKeyManager';
 import './SuperAdminView.css';
 
 export default function SuperAdminView({ onViewCampaign }) {
+  const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' | 'apiKeys'
   const [allCampaigns, setAllCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
@@ -222,30 +224,85 @@ export default function SuperAdminView({ onViewCampaign }) {
           <div>
             <h1>SuperAdmin Dashboard</h1>
             <p className="superadmin-subtitle">
-              Monitoring {allCampaigns.length} total campaigns
+              {activeTab === 'campaigns'
+                ? `Monitoring ${allCampaigns.length} total campaigns`
+                : 'Manage shared API keys and usage limits'}
             </p>
           </div>
           <div className="header-actions">
-            <button
-              className="btn btn-secondary"
-              onClick={handleRefresh}
-              disabled={loading}
-            >
-              <RefreshCw size={18} />
-              Refresh
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={handleClearCache}
-              title="Clear Firestore cache and reload"
-            >
-              <Database size={18} />
-              Clear Cache
-            </button>
+            {activeTab === 'campaigns' && (
+              <>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleRefresh}
+                  disabled={loading}
+                >
+                  <RefreshCw size={18} />
+                  Refresh
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={handleClearCache}
+                  title="Clear Firestore cache and reload"
+                >
+                  <Database size={18} />
+                  Clear Cache
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="admin-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
+        <button
+          onClick={() => setActiveTab('campaigns')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.75rem 1.5rem',
+            border: 'none',
+            borderRadius: '4px 4px 0 0',
+            background: activeTab === 'campaigns' ? 'var(--bg-tertiary)' : 'transparent',
+            color: activeTab === 'campaigns' ? 'var(--hope-color)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'campaigns' ? 600 : 400,
+            borderBottom: activeTab === 'campaigns' ? '2px solid var(--hope-color)' : '2px solid transparent',
+            marginBottom: '-1px'
+          }}
+        >
+          <LayoutDashboard size={18} />
+          Campaigns
+        </button>
+        <button
+          onClick={() => setActiveTab('apiKeys')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.75rem 1.5rem',
+            border: 'none',
+            borderRadius: '4px 4px 0 0',
+            background: activeTab === 'apiKeys' ? 'var(--bg-tertiary)' : 'transparent',
+            color: activeTab === 'apiKeys' ? 'var(--hope-color)' : 'var(--text-secondary)',
+            cursor: 'pointer',
+            fontWeight: activeTab === 'apiKeys' ? 600 : 400,
+            borderBottom: activeTab === 'apiKeys' ? '2px solid var(--hope-color)' : '2px solid transparent',
+            marginBottom: '-1px'
+          }}
+        >
+          <Key size={18} />
+          Shared API Keys
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'apiKeys' ? (
+        <SharedAPIKeyManager />
+      ) : (
+      <>
       <div className="campaigns-table">
         <table>
           <thead>
@@ -406,6 +463,8 @@ export default function SuperAdminView({ onViewCampaign }) {
             </div>
           </div>
         </div>
+      )}
+      </> /* End campaigns tab content */
       )}
     </div>
   );
