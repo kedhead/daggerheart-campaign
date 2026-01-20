@@ -38,6 +38,77 @@ export const promptBuilder = {
     };
     return genreMap[systemId] || 'fantasy';
   },
+
+  /**
+   * Build session zero context for prompts
+   * @param {object} campaignFrame - Campaign frame data
+   * @returns {string} Session zero context string
+   */
+  _buildSessionZeroContext(campaignFrame) {
+    if (!campaignFrame?.sessionZero) return '';
+
+    const { sessionZero } = campaignFrame;
+    let context = '';
+
+    // World Facts established by players
+    if (sessionZero.worldFacts?.length > 0) {
+      context += '\n\nPLAYER-ESTABLISHED WORLD FACTS:';
+      sessionZero.worldFacts.forEach(fact => {
+        if (fact.fact) {
+          context += `\n- ${fact.fact}`;
+          if (fact.category && fact.category !== 'other') {
+            context += ` (${fact.category})`;
+          }
+        }
+      });
+    }
+
+    // Player locations
+    if (sessionZero.playerLocations?.length > 0) {
+      context += '\n\nPLAYER-MENTIONED LOCATIONS:';
+      sessionZero.playerLocations.forEach(loc => {
+        if (loc.name) {
+          context += `\n- ${loc.name}`;
+          if (loc.type && loc.type !== 'other') context += ` (${loc.type})`;
+          if (loc.region) context += ` in ${loc.region}`;
+          if (loc.description) context += `: ${loc.description}`;
+        }
+      });
+    }
+
+    // Character connections (for relationship context)
+    if (sessionZero.characterConnections?.length > 0) {
+      const answeredConnections = sessionZero.characterConnections.filter(c => c.answer);
+      if (answeredConnections.length > 0) {
+        context += '\n\nCHARACTER CONNECTIONS:';
+        answeredConnections.forEach(conn => {
+          context += `\n- ${conn.question}: ${conn.answer}`;
+        });
+      }
+    }
+
+    return context;
+  },
+
+  /**
+   * Build starting quests context for prompts
+   * @param {object} campaignFrame - Campaign frame data
+   * @returns {string} Starting quests context string
+   */
+  _buildStartingQuestsContext(campaignFrame) {
+    if (!campaignFrame?.startingQuests?.length) return '';
+
+    let context = '\n\nSTARTING QUESTS:';
+    campaignFrame.startingQuests.forEach(quest => {
+      if (quest.name) {
+        context += `\n- ${quest.name}`;
+        if (quest.priority) context += ` [${quest.priority} priority]`;
+        if (quest.description) context += `: ${quest.description}`;
+      }
+    });
+
+    return context;
+  },
   /**
    * Build a prompt for NPC generation
    * @param {object} context - Generation context
@@ -67,6 +138,9 @@ Game System: ${gameSystem.name}`;
       if (campaignFrame.themes && campaignFrame.themes.length > 0) {
         prompt += `\nThemes: ${campaignFrame.themes.join(', ')}`;
       }
+      // Include session zero world-building context
+      prompt += this._buildSessionZeroContext(campaignFrame);
+      prompt += this._buildStartingQuestsContext(campaignFrame);
     }
 
     prompt += `\n\nREQUIREMENTS:`;
@@ -134,6 +208,9 @@ Game System: ${gameSystem.name}`;
       if (campaignFrame.distinctions && campaignFrame.distinctions.length > 0) {
         prompt += `\nSetting Elements: ${campaignFrame.distinctions.map(d => d.name).join(', ')}`;
       }
+      // Include session zero world-building context
+      prompt += this._buildSessionZeroContext(campaignFrame);
+      prompt += this._buildStartingQuestsContext(campaignFrame);
     }
 
     prompt += `\n\nREQUIREMENTS:`;
@@ -193,6 +270,9 @@ Game System: ${gameSystem.name}`;
       if (campaignFrame.themes && campaignFrame.themes.length > 0) {
         prompt += `\nThemes: ${campaignFrame.themes.join(', ')}`;
       }
+      // Include session zero world-building context
+      prompt += this._buildSessionZeroContext(campaignFrame);
+      prompt += this._buildStartingQuestsContext(campaignFrame);
     }
 
     prompt += `\n\nPARTY INFO:

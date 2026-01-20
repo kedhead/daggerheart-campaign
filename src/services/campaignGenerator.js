@@ -143,12 +143,39 @@ async function generateLoreWithAI(context, apiKey, provider, index) {
   const loreTypes = ['history', 'legend', 'faction'];
   const loreType = loreTypes[index % loreTypes.length];
 
+  // Build session zero context
+  let sessionZeroContext = '';
+  if (context.campaignFrame?.sessionZero) {
+    const { sessionZero } = context.campaignFrame;
+    if (sessionZero.worldFacts?.length > 0) {
+      sessionZeroContext += '\n\nPLAYER-ESTABLISHED WORLD FACTS:';
+      sessionZero.worldFacts.forEach(fact => {
+        if (fact.fact) sessionZeroContext += `\n- ${fact.fact}`;
+      });
+    }
+    if (sessionZero.playerLocations?.length > 0) {
+      sessionZeroContext += '\n\nPLAYER-MENTIONED LOCATIONS:';
+      sessionZero.playerLocations.forEach(loc => {
+        if (loc.name) sessionZeroContext += `\n- ${loc.name}${loc.description ? `: ${loc.description}` : ''}`;
+      });
+    }
+  }
+
+  // Build starting quests context
+  let questsContext = '';
+  if (context.campaignFrame?.startingQuests?.length > 0) {
+    questsContext += '\n\nSTARTING QUESTS:';
+    context.campaignFrame.startingQuests.forEach(quest => {
+      if (quest.name) questsContext += `\n- ${quest.name}${quest.description ? `: ${quest.description}` : ''}`;
+    });
+  }
+
   const prompt = `Create a ${loreType} entry for the campaign "${context.campaign.name || 'Untitled Campaign'}".
 
 CAMPAIGN CONTEXT:
 ${context.campaignFrame.pitch ? `Pitch: ${context.campaignFrame.pitch}` : ''}
 ${context.campaignFrame.overview ? `Overview: ${context.campaignFrame.overview}` : ''}
-${context.campaignFrame.themes ? `Themes: ${context.campaignFrame.themes.join(', ')}` : ''}
+${context.campaignFrame.themes ? `Themes: ${context.campaignFrame.themes.join(', ')}` : ''}${sessionZeroContext}${questsContext}
 
 Generate a lore entry with this JSON structure:
 \`\`\`json
@@ -160,7 +187,7 @@ Generate a lore entry with this JSON structure:
 }
 \`\`\`
 
-Make it thematically consistent with the campaign.`;
+Make it thematically consistent with the campaign. Incorporate player-established facts and locations where appropriate.`;
 
   const response = await aiService.generate(prompt, apiKey, provider);
   return responseParser.parse('lore', response);
