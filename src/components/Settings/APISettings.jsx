@@ -5,7 +5,7 @@ import { aiService } from '../../services/aiService';
 import './APISettings.css';
 
 export default function APISettings({ userId }) {
-  const { keys, saveKey, removeKey, hasKey } = useAPIKey(userId);
+  const { keys, saveKey, removeKey, hasKey, loading, error, encryptionSupported } = useAPIKey(userId);
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
   const [anthropicInput, setAnthropicInput] = useState('');
@@ -13,6 +13,12 @@ export default function APISettings({ userId }) {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+
+  // Debug info
+  const storageKey = 'dh_ai_api_keys';
+  const hasStoredData = !!localStorage.getItem(storageKey);
+  const storedDataLength = localStorage.getItem(storageKey)?.length || 0;
 
   const handleSaveAnthropicKey = async () => {
     if (!anthropicInput.trim()) return;
@@ -247,6 +253,66 @@ export default function APISettings({ userId }) {
           )}
         </div>
       )}
+
+      {/* Error Display */}
+      {error && (
+        <div className="card" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--fear-color)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--fear-color)' }}>
+            <X size={20} />
+            <strong>API Key Error</strong>
+          </div>
+          <p style={{ marginTop: '0.5rem' }}>{error}</p>
+        </div>
+      )}
+
+      {/* Debug Info (collapsible) */}
+      <div className="card" style={{ marginTop: '1rem' }}>
+        <button
+          onClick={() => setShowDebug(!showDebug)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}
+        >
+          {showDebug ? '▼' : '▶'} Troubleshooting Info
+        </button>
+        {showDebug && (
+          <div style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '0.25rem 0' }}>User ID:</td>
+                  <td style={{ padding: '0.25rem 0' }}><code>{userId ? `${userId.substring(0, 8)}...` : 'Not logged in'}</code></td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '0.25rem 0' }}>Encryption Supported:</td>
+                  <td style={{ padding: '0.25rem 0' }}>{encryptionSupported ? '✓ Yes' : '✗ No'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '0.25rem 0' }}>Stored Data Exists:</td>
+                  <td style={{ padding: '0.25rem 0' }}>{hasStoredData ? `✓ Yes (${storedDataLength} bytes)` : '✗ No'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '0.25rem 0' }}>Loading:</td>
+                  <td style={{ padding: '0.25rem 0' }}>{loading ? 'Yes' : 'No'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '0.25rem 0' }}>Anthropic Key Loaded:</td>
+                  <td style={{ padding: '0.25rem 0' }}>{hasKey('anthropic') ? '✓ Yes' : '✗ No'}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '0.25rem 0' }}>OpenAI Key Loaded:</td>
+                  <td style={{ padding: '0.25rem 0' }}>{hasKey('openai') ? '✓ Yes' : '✗ No'}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p style={{ marginTop: '1rem', padding: '0.5rem', background: 'var(--bg-tertiary)', borderRadius: '4px' }}>
+              <strong>If keys keep disappearing:</strong><br/>
+              1. Check if your browser clears site data on close<br/>
+              2. Ensure you're not in private/incognito mode<br/>
+              3. Check if any browser extensions block localStorage<br/>
+              4. Try a different browser to test
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
