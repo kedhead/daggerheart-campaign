@@ -29,6 +29,7 @@ import QuestsView from './components/Quests/QuestsView';
 import { DiceRollerFloat } from './components/DiceRoller/index';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
+import ChatWidget from './components/DaggerheartChat/ChatWidget';
 import { getGameSystem } from './data/systems/index.js';
 import './App.css';
 
@@ -146,12 +147,12 @@ function CampaignApp() {
         // Apply CSS variables for theming - map to the actual CSS variables used in the app
         document.documentElement.style.setProperty('--fear-color', gameSystem.theme.primary);
         document.documentElement.style.setProperty('--fear-secondary', gameSystem.theme.primary);
-        
+
         if (gameSystem.theme.secondary) {
           document.documentElement.style.setProperty('--hope-color', gameSystem.theme.secondary);
           document.documentElement.style.setProperty('--hope-secondary', gameSystem.theme.secondary);
         }
-        
+
         // For non-Daggerheart systems, also update background colors for fuller theme
         if (gameSystem.id !== 'daggerheart') {
           // Shift backgrounds to be more neutral/grey
@@ -180,10 +181,10 @@ function CampaignApp() {
   const isSuperAdmin = SUPER_ADMIN_IDS.includes(currentUser?.uid);
   const campaignRole = campaign?.members?.[currentUser?.uid]?.role || 'dm'; // Default to dm for legacy campaigns
   const isDM = isSuperAdmin ||
-               campaign?.dmId === currentUser?.uid ||
-               campaign?.createdBy === currentUser?.uid ||
-               campaignRole === 'dm' ||
-               (campaign && !campaign.dmId); // If no dmId at all, assume DM for backwards compatibility
+    campaign?.dmId === currentUser?.uid ||
+    campaign?.createdBy === currentUser?.uid ||
+    campaignRole === 'dm' ||
+    (campaign && !campaign.dmId); // If no dmId at all, assume DM for backwards compatibility
 
   const handleSelectCampaign = (campaignId) => {
     setCurrentCampaignId(campaignId);
@@ -500,6 +501,9 @@ function CampaignApp() {
     }
   };
 
+  // Check if current campaign is Daggerheart for the chat widget
+  const isDaggerheart = campaign?.gameSystem === 'daggerheart' || (!campaign?.gameSystem && !campaign); // Default to daggerheart
+
   return (
     <div className={`app ${isDM ? 'dm-mode' : 'player-mode'}`}>
       <SidebarWithAuth
@@ -513,6 +517,9 @@ function CampaignApp() {
       <main className="main-content">
         {renderView()}
       </main>
+
+      {isDaggerheart && <ChatWidget userId={currentUser?.uid} />}
+
       <DiceRollerFloat
         campaignId={currentCampaignId}
         gameSystem={campaign?.gameSystem || 'daggerheart'}
