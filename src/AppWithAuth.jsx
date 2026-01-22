@@ -502,7 +502,8 @@ function CampaignApp() {
   };
 
   // Check if current campaign is Daggerheart for the chat widget
-  const isDaggerheart = campaign?.gameSystem === 'daggerheart' || (!campaign?.gameSystem && !campaign); // Default to daggerheart
+  // Default to daggerheart if gameSystem is missing (legacy support)
+  const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
 
   return (
     <div className={`app ${isDM ? 'dm-mode' : 'player-mode'}`}>
