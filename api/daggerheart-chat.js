@@ -122,11 +122,13 @@ ${contextText}
                 const key = (provider === 'anthropic' && apiKey) ? apiKey : process.env.ANTHROPIC_API_KEY;
                 if (!key) throw new Error('Missing Anthropic API Key');
 
+                const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20240620';
+
                 const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
                     body: JSON.stringify({
-                        model: 'claude-3-5-sonnet-20240620',
+                        model: model,
                         max_tokens: 4096,
                         system: systemPrompt,
                         messages: [...history.map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })), { role: 'user', content: message }]
