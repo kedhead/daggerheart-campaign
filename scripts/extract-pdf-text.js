@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 
 const PROJECT_ROOT = path.join(__dirname, '..');
 const PDF_PATH = path.join(PROJECT_ROOT, 'Daggerheart-Core-Rulebook-5-20-2025-1.pdf');
-const OUTPUT_PATH = path.join(PROJECT_ROOT, 'src', 'data', 'daggerheart-rules.json');
+const OUTPUT_PATH = path.join(PROJECT_ROOT, 'api', 'daggerheart-rules.json');
 
 async function extractPdfText() {
   try {

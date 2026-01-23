@@ -1,5 +1,6 @@
 
-import rulesData from '../src/data/daggerheart-rules.json';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Vercel Serverless Function - Daggerheart AI Chat
@@ -33,14 +34,36 @@ export default async function handler(req, res) {
 
         console.log('Received request:', { provider, messageLength: message.length, hasHistory: history.length > 0 });
 
-        if (!rulesData || !rulesData.content) {
-            console.error('Rules data missing or malformed');
-            throw new Error('Rules data invalid');
+        // Load rules data dynamically using fs
+        let rulesContent = '';
+        try {
+            const rulesPath = path.join(process.cwd(), 'api', 'daggerheart-rules.json');
+            console.log('Loading rules from:', rulesPath);
+            if (fs.existsSync(rulesPath)) {
+                const fileData = fs.readFileSync(rulesPath, 'utf8');
+                const rulesJson = JSON.parse(fileData);
+                rulesContent = rulesJson.content || '';
+            } else {
+                console.warn('Warning: daggerheart-rules.json not found at', rulesPath);
+                // Fallback attempt for Vercel's runtime directory structure if process.cwd() is different
+                const altPath = path.join(__dirname, 'daggerheart-rules.json');
+                if (fs.existsSync(altPath)) {
+                    console.log('Found rules at alt path:', altPath);
+                    const fileData = fs.readFileSync(altPath, 'utf8');
+                    const rulesJson = JSON.parse(fileData);
+                    rulesContent = rulesJson.content || '';
+                }
+            }
+        } catch (err) {
+            console.error('Error loading rules file:', err);
+        }
+
+        if (!rulesContent) {
+            console.error('Rules content is empty after loading attempt');
         }
 
         // Prepare system prompt with rules context
         // We truncate the context if it's too large, though Claude 200k+ context should handle it fine.
-        // The PDF text is in rulesData.content
         const systemPrompt = `You are a helpful and knowledgeable AI Game Master assistant for the tabletop roleplaying game "Daggerheart". 
     
 You have access to the full core rulebook content below. Use this information to answer the user's questions accurately.
@@ -51,7 +74,7 @@ Cite the section or page number if possible (though page numbers might be lost i
 Tone: Helpful, encouraging, and thematic. You are speaking to a player or GM of Daggerheart.
 
 === DAGGERHEART CORE RULEBOOK CONTENT ===
-${rulesData.content.substring(0, 150000)} 
+${rulesContent.substring(0, 150000)} 
 === END RULEBOOK CONTENT ===
 (Note: Content may be truncated if too long, but contains the bulk of the rules)
 `;
