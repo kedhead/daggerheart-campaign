@@ -5,7 +5,7 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 const pdfLib = require('pdf-parse');
-const pdf = pdfLib.PDFParse;
+const PDFParse = pdfLib.PDFParse;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,7 +26,9 @@ async function extractPdfText() {
     const dataBuffer = fs.readFileSync(PDF_PATH);
 
     console.log('Parsing PDF...');
-    const data = await pdf(dataBuffer);
+    const parser = new PDFParse({ data: dataBuffer });
+    const data = await parser.getText();
+    await parser.destroy();
 
     // Create the output object
     const output = {
