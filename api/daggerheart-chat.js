@@ -27,7 +27,15 @@ export default async function handler(req, res) {
         const { message, history = [], apiKey, provider = 'anthropic' } = req.body;
 
         if (!message) {
+            console.error('Missing message in request body');
             return res.status(400).json({ error: 'Missing required field: message' });
+        }
+
+        console.log('Received request:', { provider, messageLength: message.length, hasHistory: history.length > 0 });
+
+        if (!rulesData || !rulesData.content) {
+            console.error('Rules data missing or malformed');
+            throw new Error('Rules data invalid');
         }
 
         // Prepare system prompt with rules context
