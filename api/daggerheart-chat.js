@@ -122,15 +122,22 @@ ${contextText}
         let effectiveKey = apiKey;
 
         if (!apiKey || apiKey === '') {
-            // Try Anthropic first (best quality), then OpenAI, then 1min
-            if (process.env.ANTHROPIC_API_KEY) {
-                effectiveProvider = 'anthropic';
-                effectiveKey = process.env.ANTHROPIC_API_KEY;
-                console.log('Fallback: Using server-side Anthropic key');
-            } else if (process.env.OPENAI_API_KEY) {
+            // Log available keys for debugging (without exposing actual keys)
+            console.log('Server keys available:', {
+                anthropic: !!process.env.ANTHROPIC_API_KEY,
+                openai: !!process.env.OPENAI_API_KEY,
+                min_api: !!process.env.min_api
+            });
+
+            // Try OpenAI first (most reliable), then Anthropic, then 1min
+            if (process.env.OPENAI_API_KEY) {
                 effectiveProvider = 'openai';
                 effectiveKey = process.env.OPENAI_API_KEY;
                 console.log('Fallback: Using server-side OpenAI key');
+            } else if (process.env.ANTHROPIC_API_KEY) {
+                effectiveProvider = 'anthropic';
+                effectiveKey = process.env.ANTHROPIC_API_KEY;
+                console.log('Fallback: Using server-side Anthropic key');
             } else if (process.env.min_api || process.env.MIN_API_KEY) {
                 effectiveProvider = '1min';
                 effectiveKey = process.env.min_api || process.env.MIN_API_KEY;
