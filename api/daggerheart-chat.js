@@ -65,8 +65,9 @@ export default async function handler(req, res) {
             console.warn('OpenAI module not found. RAG will be disabled if OpenAI key is present directly.', err);
         }
 
-        // 1. Get Embedding for User Query
-        const embeddingKey = process.env.OPENAI_API_KEY || (apiKey?.startsWith('sk-') ? apiKey : null);
+        // 1. Get Embedding for User Query (requires OpenAI key - not Anthropic)
+        const isOpenAIKey = apiKey?.startsWith('sk-') && !apiKey?.startsWith('sk-ant-');
+        const embeddingKey = process.env.OPENAI_API_KEY || (isOpenAIKey ? apiKey : null);
         const store = loadEmbeddings();
         let contextText = '';
 
