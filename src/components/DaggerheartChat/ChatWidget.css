@@ -145,13 +145,94 @@
   border-radius: 12px;
   font-size: 0.9rem;
   line-height: 1.5;
-  white-space: pre-wrap;
+}
+
+/* Markdown content styling for AI messages */
+.dh-message.ai .dh-message-content p {
+  margin: 0 0 0.75em 0;
+}
+
+.dh-message.ai .dh-message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.dh-message.ai .dh-message-content h1,
+.dh-message.ai .dh-message-content h2,
+.dh-message.ai .dh-message-content h3,
+.dh-message.ai .dh-message-content h4 {
+  margin: 0.75em 0 0.5em 0;
+  font-weight: 600;
+  color: var(--fear-secondary);
+}
+
+.dh-message.ai .dh-message-content h1:first-child,
+.dh-message.ai .dh-message-content h2:first-child,
+.dh-message.ai .dh-message-content h3:first-child {
+  margin-top: 0;
+}
+
+.dh-message.ai .dh-message-content h1 { font-size: 1.1em; }
+.dh-message.ai .dh-message-content h2 { font-size: 1.05em; }
+.dh-message.ai .dh-message-content h3 { font-size: 1em; }
+
+.dh-message.ai .dh-message-content ul,
+.dh-message.ai .dh-message-content ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.dh-message.ai .dh-message-content li {
+  margin: 0.25em 0;
+}
+
+.dh-message.ai .dh-message-content strong {
+  color: var(--fear-secondary);
+  font-weight: 600;
+}
+
+.dh-message.ai .dh-message-content em {
+  font-style: italic;
+}
+
+.dh-message.ai .dh-message-content code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+.dh-message.ai .dh-message-content pre {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.75em;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.dh-message.ai .dh-message-content pre code {
+  background: none;
+  padding: 0;
+}
+
+.dh-message.ai .dh-message-content blockquote {
+  border-left: 3px solid var(--fear-color);
+  margin: 0.5em 0;
+  padding-left: 0.75em;
+  color: var(--text-secondary);
+}
+
+.dh-message.ai .dh-message-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.75em 0;
 }
 
 .dh-message.user .dh-message-content {
   background: var(--fear-color);
   color: white;
   border-bottom-right-radius: 2px;
+  white-space: pre-wrap;
 }
 
 .dh-message.ai .dh-message-content {

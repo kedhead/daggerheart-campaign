@@ -1,6 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, Bot, User, Minimize2, Loader2, BookOpen } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import './ChatWidget.css';
 import { useAPIKey } from '../../hooks/useAPIKey';
 
@@ -137,7 +138,11 @@ export default function ChatWidget({ userId }) {
                                     {msg.role === 'user' ? <User size={16} /> : <BookOpen size={16} />}
                                 </div>
                                 <div className="dh-message-content">
-                                    {msg.content}
+                                    {msg.role === 'user' ? (
+                                        msg.content
+                                    ) : (
+                                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                    )}
                                 </div>
                             </div>
                         ))}
