@@ -194,18 +194,28 @@ ${contextText}
                 const key = effectiveKey || process.env.min_api || process.env.MIN_API_KEY;
                 if (!key) throw new Error('Missing 1min.ai API Key');
 
-                const apiResponse = await fetch('https://api.1min.ai/v1/chat/completions', {
+                // Build the full prompt with system context and history
+                const fullPrompt = `${systemPrompt}\n\n---\nConversation history:\n${history.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nUser: ${message}`;
+
+                const apiResponse = await fetch('https://api.1min.ai/api/features', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'API-KEY': key
+                    },
                     body: JSON.stringify({
-                        model: 'gpt-4-turbo-preview',
-                        messages: [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: message }],
-                        max_tokens: 4096
+                        type: 'CHAT_WITH_AI',
+                        model: 'gpt-4o-mini',
+                        promptObject: {
+                            prompt: fullPrompt,
+                            isMixed: false
+                        }
                     })
                 });
                 if (!apiResponse.ok) throw new Error(`1min.ai: ${await apiResponse.text()}`);
                 const data = await apiResponse.json();
-                responseText = data.choices[0]?.message?.content || '';
+                // 1min.ai returns the response in aiRecord.aiRecordDetail.result
+                responseText = data.aiRecord?.aiRecordDetail?.result || data.result || '';
             } else {
                 return res.status(400).json({ error: 'Invalid provider' });
             }
