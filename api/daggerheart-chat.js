@@ -130,19 +130,20 @@ ${contextText}
                 min_api: !!process.env.min_api
             });
 
-            // Try OpenAI first (most reliable), then Anthropic, then 1min
-            if (process.env.OPENAI_API_KEY) {
-                effectiveProvider = 'openai';
-                effectiveKey = process.env.OPENAI_API_KEY;
-                console.log('Fallback: Using server-side OpenAI key');
+            // Prefer 1min for chat completions (saves OpenAI tokens - OpenAI used for embeddings)
+            // Fallback order: 1min > Anthropic > OpenAI
+            if (process.env.min_api || process.env.MIN_API_KEY) {
+                effectiveProvider = '1min';
+                effectiveKey = process.env.min_api || process.env.MIN_API_KEY;
+                console.log('Fallback: Using server-side 1min key for chat');
             } else if (process.env.ANTHROPIC_API_KEY) {
                 effectiveProvider = 'anthropic';
                 effectiveKey = process.env.ANTHROPIC_API_KEY;
                 console.log('Fallback: Using server-side Anthropic key');
-            } else if (process.env.min_api || process.env.MIN_API_KEY) {
-                effectiveProvider = '1min';
-                effectiveKey = process.env.min_api || process.env.MIN_API_KEY;
-                console.log('Fallback: Using server-side 1min key');
+            } else if (process.env.OPENAI_API_KEY) {
+                effectiveProvider = 'openai';
+                effectiveKey = process.env.OPENAI_API_KEY;
+                console.log('Fallback: Using server-side OpenAI key');
             } else {
                 console.error('No API keys configured on server');
                 return res.status(500).json({
