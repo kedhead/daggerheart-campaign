@@ -117,9 +117,22 @@ ${contextText}
         // 4. Call LLM Provider
         let responseText = '';
 
+        // If client didn't provide a key and is using fallback provider,
+        // try to use server-side Anthropic key first
+        let effectiveProvider = provider;
+        let effectiveKey = apiKey;
+
+        if (!apiKey && (provider === '1min' || !provider)) {
+            if (process.env.ANTHROPIC_API_KEY) {
+                effectiveProvider = 'anthropic';
+                effectiveKey = process.env.ANTHROPIC_API_KEY;
+                console.log('Using server-side Anthropic key as fallback');
+            }
+        }
+
         try {
-            if (provider === 'anthropic' || provider === 'claude') {
-                const key = (provider === 'anthropic' && apiKey) ? apiKey : process.env.ANTHROPIC_API_KEY;
+            if (effectiveProvider === 'anthropic' || effectiveProvider === 'claude') {
+                const key = effectiveKey || process.env.ANTHROPIC_API_KEY;
                 if (!key) throw new Error('Missing Anthropic API Key');
 
                 const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20240620';
@@ -138,8 +151,8 @@ ${contextText}
                 const data = await apiResponse.json();
                 responseText = data.content[0]?.text || '';
 
-            } else if (provider === 'openai') {
-                const key = apiKey || process.env.OPENAI_API_KEY;
+            } else if (effectiveProvider === 'openai') {
+                const key = effectiveKey || process.env.OPENAI_API_KEY;
                 if (!key) throw new Error('Missing OpenAI API Key');
 
                 if (!OpenAI) throw new Error('OpenAI module not installed on server');
@@ -157,8 +170,8 @@ ${contextText}
                 const data = await apiResponse.json();
                 responseText = data.choices[0]?.message?.content || '';
 
-            } else if (provider === '1min') {
-                const key = apiKey || process.env.min_api || process.env.MIN_API_KEY;
+            } else if (effectiveProvider === '1min') {
+                const key = effectiveKey || process.env.min_api || process.env.MIN_API_KEY;
                 if (!key) throw new Error('Missing 1min.ai API Key');
 
                 const apiResponse = await fetch('https://api.1min.ai/v1/chat/completions', {
