@@ -117,16 +117,29 @@ ${contextText}
         // 4. Call LLM Provider
         let responseText = '';
 
-        // If client didn't provide a key and is using fallback provider,
-        // try to use server-side Anthropic key first
+        // If client didn't provide a key, try server-side keys in order of preference
         let effectiveProvider = provider;
         let effectiveKey = apiKey;
 
-        if (!apiKey && (provider === '1min' || !provider)) {
+        if (!apiKey || apiKey === '') {
+            // Try Anthropic first (best quality), then OpenAI, then 1min
             if (process.env.ANTHROPIC_API_KEY) {
                 effectiveProvider = 'anthropic';
                 effectiveKey = process.env.ANTHROPIC_API_KEY;
-                console.log('Using server-side Anthropic key as fallback');
+                console.log('Fallback: Using server-side Anthropic key');
+            } else if (process.env.OPENAI_API_KEY) {
+                effectiveProvider = 'openai';
+                effectiveKey = process.env.OPENAI_API_KEY;
+                console.log('Fallback: Using server-side OpenAI key');
+            } else if (process.env.min_api || process.env.MIN_API_KEY) {
+                effectiveProvider = '1min';
+                effectiveKey = process.env.min_api || process.env.MIN_API_KEY;
+                console.log('Fallback: Using server-side 1min key');
+            } else {
+                console.error('No API keys configured on server');
+                return res.status(500).json({
+                    error: 'No API keys available. Please configure an API key in Settings, or contact the administrator.'
+                });
             }
         }
 
