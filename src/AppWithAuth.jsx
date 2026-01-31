@@ -39,33 +39,16 @@ import { getGameSystem } from './data/systems/index.js';
 import './App.css';
 
 function CampaignApp() {
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const { currentUser } = useAuth();
   const { checking, joinedCampaigns } = usePendingInvites();
   const { success } = useToast();
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || null);
-
-  // Show notification when user joins campaigns
-  useEffect(() => {
-    if (joinedCampaigns.length > 0) {
-      const names = joinedCampaigns.map(c => c.name).join(', ');
-      success(`Welcome! You've been added to: ${names}`);
-    }
-  }, [joinedCampaigns, success]);
-
-  const handleRoleSelection = (role) => {
-    localStorage.setItem('userRole', role);
-    setUserRole(role);
-  };
-
-  // Show role selection if user hasn't chosen yet
-  if (!userRole) {
-    return <RoleSelection onSelectRole={handleRoleSelection} />;
-  }
-
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentCampaignId, setCurrentCampaignId] = useState(
     localStorage.getItem('lastCampaignId') || null
   );
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   const {
     campaign,
@@ -181,21 +164,40 @@ function CampaignApp() {
     };
   }, [campaign?.gameSystem]);
 
-  // Determine if current user is DM based on campaign data
-  // Check multiple sources: dmId, createdBy, member role, super admin
-  const SUPER_ADMIN_IDS = ['DnZPlvutotbHwsalwMsBG7kEWCu1', 'PdOFs3FvC7WXl1QfB9i2EijyaxI2'];
-  const isSuperAdmin = SUPER_ADMIN_IDS.includes(currentUser?.uid);
-  const campaignRole = campaign?.members?.[currentUser?.uid]?.role || 'dm'; // Default to dm for legacy campaigns
-  const isDM = isSuperAdmin ||
-    campaign?.dmId === currentUser?.uid ||
-    campaign?.createdBy === currentUser?.uid ||
-    campaignRole === 'dm' ||
-    (campaign && !campaign.dmId); // If no dmId at all, assume DM for backwards compatibility
+  // Ctrl+/ or Cmd+/ to open command palette (Ctrl+K conflicts with Chrome)
+  useKeyboardShortcut('/', () => setIsCommandPaletteOpen(true), { ctrl: true });
+
+  // Presence tracking
+  const { presenceList } = usePresence(currentCampaignId, currentView);
+
+  // Show notification when user joins campaigns
+  useEffect(() => {
+    if (joinedCampaigns.length > 0) {
+      const names = joinedCampaigns.map(c => c.name).join(', ');
+      success(`Welcome! You've been added to: ${names}`);
+    }
+  }, [joinedCampaigns, success]);
+
+  // Handler functions
+  const handleRoleSelection = (role) => {
+    localStorage.setItem('userRole', role);
+    setUserRole(role);
+  };
 
   const handleSelectCampaign = (campaignId) => {
     setCurrentCampaignId(campaignId);
     localStorage.setItem('lastCampaignId', campaignId);
   };
+
+  const handleCommandNavigate = (view, options = {}) => {
+    setCurrentView(view);
+  };
+
+  // CONDITIONAL RETURNS - these must come AFTER all hooks
+  // Show role selection if user hasn't chosen yet
+  if (!userRole) {
+    return <RoleSelection onSelectRole={handleRoleSelection} />;
+  }
 
   // Show campaign selector if no campaign selected
   if (!currentCampaignId || !campaign) {
@@ -209,6 +211,17 @@ function CampaignApp() {
       </div>
     );
   }
+
+  // Determine if current user is DM based on campaign data
+  // Check multiple sources: dmId, createdBy, member role, super admin
+  const SUPER_ADMIN_IDS = ['DnZPlvutotbHwsalwMsBG7kEWCu1', 'PdOFs3FvC7WXl1QfB9i2EijyaxI2'];
+  const isSuperAdmin = SUPER_ADMIN_IDS.includes(currentUser?.uid);
+  const campaignRole = campaign?.members?.[currentUser?.uid]?.role || 'dm'; // Default to dm for legacy campaigns
+  const isDM = isSuperAdmin ||
+    campaign?.dmId === currentUser?.uid ||
+    campaign?.createdBy === currentUser?.uid ||
+    campaignRole === 'dm' ||
+    (campaign && !campaign.dmId); // If no dmId at all, assume DM for backwards compatibility
 
   const renderView = () => {
     if (loading) {
@@ -510,20 +523,6 @@ function CampaignApp() {
   // Check if current campaign is Daggerheart for the chat widget
   // Default to daggerheart if gameSystem is missing (legacy support)
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
-
-  // Command Palette state
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-
-  // Ctrl+/ or Cmd+/ to open command palette (Ctrl+K conflicts with Chrome)
-  useKeyboardShortcut('/', () => setIsCommandPaletteOpen(true), { ctrl: true });
-
-  // Presence tracking
-  const { presenceList } = usePresence(currentCampaignId, currentView);
-
-  const handleCommandNavigate = (view, options = {}) => {
-    setCurrentView(view);
-    // TODO: Handle highlight option if needed
-  };
 
   return (
     <div className={`app ${isDM ? 'dm-mode' : 'player-mode'}`}>
