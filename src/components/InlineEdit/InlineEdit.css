@@ -1,0 +1,135 @@
+.inline-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.inline-edit:not(.disabled):hover {
+  background: var(--bg-tertiary);
+}
+
+.inline-edit:not(.disabled):focus {
+  outline: none;
+  background: var(--bg-tertiary);
+  box-shadow: 0 0 0 2px var(--hope-color);
+}
+
+.inline-edit.disabled {
+  cursor: default;
+}
+
+.inline-edit-value {
+  margin: 0;
+  line-height: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.inline-edit-placeholder {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.inline-edit-icon {
+  flex-shrink: 0;
+  opacity: 0;
+  color: var(--text-secondary);
+  transition: opacity 0.15s;
+}
+
+.inline-edit:hover .inline-edit-icon {
+  opacity: 1;
+}
+
+/* Editing mode */
+.inline-edit.editing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  cursor: default;
+}
+
+.inline-edit-input {
+  flex: 1;
+  min-width: 100px;
+  padding: 4px 8px;
+  font-size: inherit;
+  font-weight: inherit;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.inline-edit-input:focus {
+  border-color: var(--hope-color);
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.2);
+}
+
+.inline-edit-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.inline-edit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.inline-edit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.inline-edit-btn.save {
+  background: #22c55e;
+  color: white;
+}
+
+.inline-edit-btn.save:hover {
+  background: #16a34a;
+}
+
+.inline-edit-btn.cancel {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.inline-edit-btn.cancel:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.inline-edit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Size variants for different contexts */
+.inline-edit.large .inline-edit-input {
+  padding: 6px 12px;
+  font-size: 1.25rem;
+}
+
+.inline-edit.large .inline-edit-btn {
+  width: 28px;
+  height: 28px;
+}

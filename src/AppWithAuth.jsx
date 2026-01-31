@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider, useToast } from './contexts/ToastContext';
 import AuthPage from './components/Auth/AuthPage';
 import TermsOfService from './components/Auth/TermsOfService';
 import CampaignSelector from './components/Campaigns/CampaignSelector';
@@ -30,21 +31,26 @@ import { DiceRollerFloat } from './components/DiceRoller/index';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
 import ChatWidget from './components/DaggerheartChat/ChatWidget';
+import CommandPalette from './components/CommandPalette/CommandPalette';
+import PresenceIndicator from './components/PresenceIndicator/PresenceIndicator';
+import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
+import { usePresence } from './hooks/usePresence';
 import { getGameSystem } from './data/systems/index.js';
 import './App.css';
 
 function CampaignApp() {
   const { currentUser } = useAuth();
   const { checking, joinedCampaigns } = usePendingInvites();
+  const { success } = useToast();
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || null);
 
   // Show notification when user joins campaigns
   useEffect(() => {
     if (joinedCampaigns.length > 0) {
       const names = joinedCampaigns.map(c => c.name).join(', ');
-      alert(`Welcome! You've been added to: ${names}`);
+      success(`Welcome! You've been added to: ${names}`);
     }
-  }, [joinedCampaigns]);
+  }, [joinedCampaigns, success]);
 
   const handleRoleSelection = (role) => {
     localStorage.setItem('userRole', role);
@@ -505,6 +511,20 @@ function CampaignApp() {
   // Default to daggerheart if gameSystem is missing (legacy support)
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
 
+  // Command Palette state
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Ctrl+/ or Cmd+/ to open command palette (Ctrl+K conflicts with Chrome)
+  useKeyboardShortcut('/', () => setIsCommandPaletteOpen(true), { ctrl: true });
+
+  // Presence tracking
+  const { presenceList } = usePresence(currentCampaignId, currentView);
+
+  const handleCommandNavigate = (view, options = {}) => {
+    setCurrentView(view);
+    // TODO: Handle highlight option if needed
+  };
+
   return (
     <div className={`app ${isDM ? 'dm-mode' : 'player-mode'}`}>
       <SidebarWithAuth
@@ -514,6 +534,12 @@ function CampaignApp() {
         userRole={campaignRole}
         currentCampaign={campaign}
         onSwitchCampaign={() => setCurrentCampaignId(null)}
+        presenceIndicator={
+          <PresenceIndicator
+            presenceList={presenceList}
+            currentUserId={currentUser?.uid}
+          />
+        }
       />
       <main className="main-content">
         {renderView()}
@@ -524,6 +550,17 @@ function CampaignApp() {
       <DiceRollerFloat
         campaignId={currentCampaignId}
         gameSystem={campaign?.gameSystem || 'daggerheart'}
+        isDM={isDM}
+      />
+
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={handleCommandNavigate}
+        npcs={npcs}
+        characters={characters}
+        locations={locations}
+        quests={quests}
         isDM={isDM}
       />
     </div>
@@ -580,7 +617,9 @@ function AppContent() {
 export default function AppWithAuth() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </AuthProvider>
   );
 }

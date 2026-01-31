@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Dices, X, Sun, Moon, Swords, Star, ChevronDown, ChevronUp, Lock } from 'lucide-react';
 import { useDiceRolls } from '../../hooks/useDiceRolls';
 import { useAuth } from '../../contexts/AuthContext';
+import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
 import RollHistory from './RollHistory';
 import './DiceRollerFloat.css';
 
@@ -10,6 +11,9 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
   const { rolls, loading, addRoll, clearHistory } = useDiceRolls(campaignId, isDM);
 
   const [isOpen, setIsOpen] = useState(false);
+
+  // Close on Escape
+  useEscapeKey(() => setIsOpen(false), isOpen);
   const [showHistory, setShowHistory] = useState(false);
   const [isRolling, setIsRolling] = useState(false);
   const [currentRoll, setCurrentRoll] = useState(null);

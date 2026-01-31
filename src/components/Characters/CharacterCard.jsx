@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import InlineEdit from '../InlineEdit/InlineEdit';
+import { useToast } from '../../contexts/ToastContext';
 import './CharacterCard.css';
 
-export default function CharacterCard({ character, onEdit, onDelete, isDM }) {
+export default function CharacterCard({ character, onEdit, onDelete, onUpdate, isDM }) {
+  const { success, error } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const renderSlots = (slots, type) => {
@@ -26,7 +29,23 @@ export default function CharacterCard({ character, onEdit, onDelete, isDM }) {
           )}
         </div>
         <div className="character-info">
-          <h3>{character.name}</h3>
+          <InlineEdit
+            value={character.name}
+            onSave={async (newName) => {
+              if (onUpdate) {
+                try {
+                  await onUpdate(character.id, { ...character, name: newName });
+                  success('Character name updated');
+                } catch (e) {
+                  error('Failed to update character name');
+                  throw e;
+                }
+              }
+            }}
+            disabled={!isDM || !onUpdate}
+            as="h3"
+            className="large"
+          />
           {character.playerName && (
             <p className="player-name">Played by {character.playerName}</p>
           )}

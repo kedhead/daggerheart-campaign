@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import './Sidebar.css';
 
-export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign }) {
+export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign, presenceIndicator }) {
   const { logout, currentUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(['superadmin', 'campaign', 'players', 'world', 'adventure', 'resources', 'settings']);
@@ -143,10 +143,13 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
 
       {currentCampaign && (
         <div className="current-campaign">
-          <button className="campaign-switcher" onClick={onSwitchCampaign}>
-            <FolderOpen size={16} />
-            <span className="campaign-name">{currentCampaign.name}</span>
-          </button>
+          <div className="campaign-header-row">
+            <button className="campaign-switcher" onClick={onSwitchCampaign}>
+              <FolderOpen size={16} />
+              <span className="campaign-name">{currentCampaign.name}</span>
+            </button>
+            {presenceIndicator}
+          </div>
           <div className="user-role-badge">
             {isDM ? (
               <>

@@ -14,6 +14,8 @@ import {
   XCircle
 } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
+import InlineEdit from '../InlineEdit/InlineEdit';
+import { useToast } from '../../contexts/ToastContext';
 import './QuestCard.css';
 
 const STATUS_CONFIG = {
@@ -33,12 +35,14 @@ export default function QuestCard({
   quest,
   onEdit,
   onDelete,
+  onUpdate,
   onToggleObjective,
   onUpdateStatus,
   isDM,
   entityData = {}
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { success, error } = useToast();
 
   const statusConfig = STATUS_CONFIG[quest.status] || STATUS_CONFIG.active;
   const StatusIcon = statusConfig.icon;
@@ -64,10 +68,24 @@ export default function QuestCard({
 
         <div className="quest-info">
           <div className="quest-title-row">
-            <h3>
-              {quest.name}
-              {quest.hidden && <EyeOff size={14} className="hidden-icon" />}
-            </h3>
+            <InlineEdit
+              value={quest.name}
+              onSave={async (newName) => {
+                if (onUpdate) {
+                  try {
+                    await onUpdate(quest.id, { ...quest, name: newName });
+                    success('Quest name updated');
+                  } catch (e) {
+                    error('Failed to update quest name');
+                    throw e;
+                  }
+                }
+              }}
+              disabled={!isDM || !onUpdate}
+              as="h3"
+              className="large"
+            />
+            {quest.hidden && <EyeOff size={14} className="hidden-icon" />}
             {priorityConfig && (
               <span className="priority-badge" style={{ backgroundColor: `${priorityConfig.color}20`, color: priorityConfig.color }}>
                 {priorityConfig.label}

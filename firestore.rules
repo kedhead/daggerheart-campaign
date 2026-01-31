@@ -197,6 +197,15 @@ service cloud.firestore {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
         allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
+
+      // Presence (who's online)
+      match /presence/{presenceId} {
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // Users can only write their own presence
+        allow write: if isAuthenticated() && presenceId == getUserId() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // Users can delete their own presence
+        allow delete: if isAuthenticated() && presenceId == getUserId();
+      }
     }
   }
 }

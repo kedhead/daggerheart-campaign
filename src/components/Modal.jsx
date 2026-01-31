@@ -1,8 +1,11 @@
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useEscapeKey } from '../hooks/useKeyboardShortcut';
 import './Modal.css';
 
 export default function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
+  useEscapeKey(onClose, isOpen);
+
   if (!isOpen) return null;
 
   return createPortal(

@@ -1,4 +1,4 @@
-import { BookOpen, Link2, Brain, Users, Map, Wand2, Zap, Database, Keyboard, ExternalLink, EyeOff, MessageSquare, Network } from 'lucide-react';
+import { BookOpen, Link2, Brain, Users, Map, Wand2, Zap, Database, Keyboard, ExternalLink, EyeOff, MessageSquare, Network, Command, Pencil, Radio, Bell } from 'lucide-react';
 import './HelpView.css';
 
 export default function HelpView({ campaign }) {
@@ -433,34 +433,208 @@ export default function HelpView({ campaign }) {
         </div>
       </section>
 
+      {/* Command Palette */}
+      <section className="help-section card">
+        <div className="help-section-header">
+          <Command size={24} />
+          <h2>Command Palette</h2>
+        </div>
+        <div className="help-content">
+          <p>Quickly navigate and search your campaign with the command palette.</p>
+
+          <div className="help-feature">
+            <h3>How to Use</h3>
+            <div className="help-steps">
+              <div className="help-step">
+                <span className="step-number">1</span>
+                <div>
+                  <strong>Press <code>Ctrl+/</code> (or <code>Cmd+/</code> on Mac)</strong>
+                  <p>The command palette opens as a centered overlay</p>
+                </div>
+              </div>
+              <div className="help-step">
+                <span className="step-number">2</span>
+                <div>
+                  <strong>Start typing to search</strong>
+                  <p>Search for pages, NPCs, locations, characters, or quests</p>
+                </div>
+              </div>
+              <div className="help-step">
+                <span className="step-number">3</span>
+                <div>
+                  <strong>Use arrow keys and Enter to select</strong>
+                  <p>Or click directly on any result</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="help-feature">
+            <h3>What You Can Search</h3>
+            <ul>
+              <li><strong>Navigation</strong> - Go to Dashboard, Characters, NPCs, Locations, etc.</li>
+              <li><strong>NPCs</strong> - Search by name or occupation</li>
+              <li><strong>Characters</strong> - Find player characters by name or class</li>
+              <li><strong>Locations</strong> - Search places by name or type</li>
+              <li><strong>Quests</strong> - Find quests by name or status</li>
+            </ul>
+          </div>
+
+          <div className="help-tip">
+            <strong>💡 Tip:</strong> Recent commands appear at the top when you open the palette!
+          </div>
+        </div>
+      </section>
+
+      {/* Inline Editing */}
+      <section className="help-section card">
+        <div className="help-section-header">
+          <Pencil size={24} />
+          <h2>Inline Editing</h2>
+        </div>
+        <div className="help-content">
+          <p>Quickly edit entity names without opening the full edit form.</p>
+
+          <div className="help-feature">
+            <h3>How to Use (DM Only)</h3>
+            <div className="help-steps">
+              <div className="help-step">
+                <span className="step-number">1</span>
+                <div>
+                  <strong>Click on any entity name</strong>
+                  <p>The name becomes an editable text field</p>
+                </div>
+              </div>
+              <div className="help-step">
+                <span className="step-number">2</span>
+                <div>
+                  <strong>Type your changes</strong>
+                  <p>Edit the name directly inline</p>
+                </div>
+              </div>
+              <div className="help-step">
+                <span className="step-number">3</span>
+                <div>
+                  <strong>Press Enter to save, Escape to cancel</strong>
+                  <p>Changes are saved immediately to the database</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="help-feature">
+            <h3>Where It Works</h3>
+            <ul>
+              <li><strong>NPCs</strong> - Click the NPC name to edit</li>
+              <li><strong>Characters</strong> - Click the character name to edit</li>
+              <li><strong>Locations</strong> - Click the location name to edit</li>
+              <li><strong>Quests</strong> - Click the quest title to edit</li>
+            </ul>
+          </div>
+
+          <div className="help-tip">
+            <strong>💡 Tip:</strong> A pencil icon appears when you hover over editable names
+          </div>
+        </div>
+      </section>
+
+      {/* Presence Indicators */}
+      <section className="help-section card">
+        <div className="help-section-header">
+          <Radio size={24} />
+          <h2>Presence Indicators</h2>
+        </div>
+        <div className="help-content">
+          <p>See who's currently online in your campaign.</p>
+
+          <div className="help-feature">
+            <h3>How It Works</h3>
+            <ul>
+              <li><strong>Avatar Stack</strong> - Other online users appear as avatars in the sidebar header</li>
+              <li><strong>Status Dots</strong> - Green = online, Amber = away (tab not focused)</li>
+              <li><strong>Hover for Details</strong> - See names and which page each user is viewing</li>
+              <li><strong>Automatic Updates</strong> - Presence updates every 60 seconds</li>
+            </ul>
+          </div>
+
+          <div className="help-tip">
+            <strong>💡 Tip:</strong> Look for the avatar circles next to your campaign name in the sidebar!
+          </div>
+        </div>
+      </section>
+
+      {/* Toast Notifications */}
+      <section className="help-section card">
+        <div className="help-section-header">
+          <Bell size={24} />
+          <h2>Notifications</h2>
+        </div>
+        <div className="help-content">
+          <p>Toast notifications appear in the bottom-right corner to confirm actions.</p>
+
+          <div className="help-feature">
+            <h3>Notification Types</h3>
+            <ul>
+              <li><strong>Success (Green)</strong> - Action completed successfully</li>
+              <li><strong>Error (Red)</strong> - Something went wrong</li>
+              <li><strong>Warning (Amber)</strong> - Caution or important info</li>
+              <li><strong>Info (Blue)</strong> - General information</li>
+            </ul>
+          </div>
+
+          <div className="help-feature">
+            <h3>Features</h3>
+            <ul>
+              <li>Auto-dismiss after 4 seconds</li>
+              <li>Click the X to dismiss immediately</li>
+              <li>Up to 3 notifications stack at once</li>
+              <li>Slide-in animation from the right</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* Keyboard Shortcuts */}
       <section className="help-section card">
         <div className="help-section-header">
           <Keyboard size={24} />
-          <h2>Tips & Shortcuts</h2>
+          <h2>Keyboard Shortcuts</h2>
         </div>
         <div className="help-content">
           <div className="shortcuts-grid">
+            <div className="shortcut">
+              <code>Ctrl/Cmd + /</code>
+              <span>Open command palette</span>
+            </div>
+            <div className="shortcut">
+              <code>Escape</code>
+              <span>Close modals, panels, and popups</span>
+            </div>
             <div className="shortcut">
               <code>[[</code>
               <span>Open entity autocomplete</span>
             </div>
             <div className="shortcut">
               <code>↑ ↓</code>
-              <span>Navigate autocomplete results</span>
+              <span>Navigate lists and autocomplete</span>
             </div>
             <div className="shortcut">
               <code>Enter</code>
-              <span>Insert selected entity</span>
-            </div>
-            <div className="shortcut">
-              <code>Esc</code>
-              <span>Close autocomplete</span>
+              <span>Select/confirm</span>
             </div>
           </div>
+        </div>
+      </section>
 
+      {/* Best Practices */}
+      <section className="help-section card">
+        <div className="help-section-header">
+          <BookOpen size={24} />
+          <h2>Best Practices</h2>
+        </div>
+        <div className="help-content">
           <div className="help-feature">
-            <h3>Best Practices</h3>
+            <h3>Tips for Success</h3>
             <ul>
               <li><strong>Link Related Entities</strong> - Connect NPCs to locations, sessions to events, etc.</li>
               <li><strong>Use Categories</strong> - Organize notes and lore with appropriate categories</li>

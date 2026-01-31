@@ -4,9 +4,13 @@ import { MessageSquare, Send, X, Bot, User, Minimize2, Loader2, BookOpen } from 
 import ReactMarkdown from 'react-markdown';
 import './ChatWidget.css';
 import { useAPIKey } from '../../hooks/useAPIKey';
+import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
 
 export default function ChatWidget({ userId }) {
     const [isOpen, setIsOpen] = useState(false);
+
+    // Close on Escape
+    useEscapeKey(() => setIsOpen(false), isOpen);
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([
         {

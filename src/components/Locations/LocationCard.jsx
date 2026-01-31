@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, MapPin, Map, Loader2 } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
+import InlineEdit from '../InlineEdit/InlineEdit';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import { useToast } from '../../contexts/ToastContext';
 import './LocationsView.css';
 
-export default function LocationCard({ location, onEdit, onDelete, onGenerateMap, isDM, generatingMapFor, campaign, isEmbedded = false, entities }) {
+export default function LocationCard({ location, onEdit, onDelete, onUpdate, onGenerateMap, isDM, generatingMapFor, campaign, isEmbedded = false, entities }) {
+  const { success, error } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
@@ -31,7 +34,23 @@ export default function LocationCard({ location, onEdit, onDelete, onGenerateMap
           <MapPin size={24} />
         </div>
         <div className="location-info">
-          <h3>{location.name}</h3>
+          <InlineEdit
+            value={location.name}
+            onSave={async (newName) => {
+              if (onUpdate) {
+                try {
+                  await onUpdate(location.id, { ...location, name: newName });
+                  success('Location name updated');
+                } catch (e) {
+                  error('Failed to update location name');
+                  throw e;
+                }
+              }
+            }}
+            disabled={!isDM || isEmbedded || !onUpdate}
+            as="h3"
+            className="large"
+          />
           {location.type && (
             <span className={`location-type-badge ${getTypeColor(location.type)}`}>
               {location.type}

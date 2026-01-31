@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
+import InlineEdit from '../InlineEdit/InlineEdit';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import { useToast } from '../../contexts/ToastContext';
 import './NPCsView.css';
 
-export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
+export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaign, isEmbedded = false, entities }) {
+  const { success, error } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
@@ -43,7 +46,23 @@ export default function NPCCard({ npc, onEdit, onDelete, isDM, campaign, isEmbed
           )}
         </div>
         <div className="npc-info">
-          <h3>{npc.name}</h3>
+          <InlineEdit
+            value={npc.name}
+            onSave={async (newName) => {
+              if (onUpdate) {
+                try {
+                  await onUpdate(npc.id, { ...npc, name: newName });
+                  success('NPC name updated');
+                } catch (e) {
+                  error('Failed to update NPC name');
+                  throw e;
+                }
+              }
+            }}
+            disabled={!isDM || isEmbedded || !onUpdate}
+            as="h3"
+            className="large"
+          />
           {npc.occupation && (
             <p className="npc-occupation">
               <Briefcase size={14} />
