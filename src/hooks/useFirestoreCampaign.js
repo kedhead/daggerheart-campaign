@@ -322,49 +322,95 @@ export function useFirestoreCampaign(campaignId) {
     return unsubscribe;
   }, [basePath]);
 
-  // Subscribe to Items
+  // Subscribe to Items - wait for campaign to be loaded first (ensures membership is verified)
   useEffect(() => {
-    if (!basePath) return;
+    if (!basePath || !campaign) return;
 
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/items`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setItems(data);
-      },
-      (error) => {
-        console.warn('Items subscription error (may be due to pending permissions):', error.code);
-        setItems([]);
-      }
-    );
+    let retryTimeout;
+    let unsubscribe;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-    return unsubscribe;
-  }, [basePath]);
+    const subscribe = () => {
+      unsubscribe = onSnapshot(
+        collection(db, `${basePath}/items`),
+        (snapshot) => {
+          retryCount = 0; // Reset on success
+          const data = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setItems(data);
+        },
+        (error) => {
+          console.warn('Items subscription error:', error.code);
+          // Only clear items on permanent errors, retry on permission errors
+          if (error.code === 'permission-denied' && retryCount < MAX_RETRIES) {
+            retryCount++;
+            // Retry after a short delay - membership may still be propagating
+            retryTimeout = setTimeout(() => {
+              console.log(`Retrying items subscription (attempt ${retryCount}/${MAX_RETRIES})...`);
+              if (unsubscribe) unsubscribe();
+              subscribe();
+            }, 1000);
+          } else {
+            setItems([]);
+          }
+        }
+      );
+    };
 
-  // Subscribe to Party Inventory
+    subscribe();
+
+    return () => {
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (unsubscribe) unsubscribe();
+    };
+  }, [basePath, campaign]);
+
+  // Subscribe to Party Inventory - wait for campaign to be loaded first
   useEffect(() => {
-    if (!basePath) return;
+    if (!basePath || !campaign) return;
 
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/partyInventory`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setPartyInventory(data);
-      },
-      (error) => {
-        console.warn('Party Inventory subscription error (may be due to pending permissions):', error.code);
-        setPartyInventory([]);
-      }
-    );
+    let retryTimeout;
+    let unsubscribe;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-    return unsubscribe;
-  }, [basePath]);
+    const subscribe = () => {
+      unsubscribe = onSnapshot(
+        collection(db, `${basePath}/partyInventory`),
+        (snapshot) => {
+          retryCount = 0; // Reset on success
+          const data = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setPartyInventory(data);
+        },
+        (error) => {
+          console.warn('Party Inventory subscription error:', error.code);
+          if (error.code === 'permission-denied' && retryCount < MAX_RETRIES) {
+            retryCount++;
+            retryTimeout = setTimeout(() => {
+              console.log(`Retrying party inventory subscription (attempt ${retryCount}/${MAX_RETRIES})...`);
+              if (unsubscribe) unsubscribe();
+              subscribe();
+            }, 1000);
+          } else {
+            setPartyInventory([]);
+          }
+        }
+      );
+    };
+
+    subscribe();
+
+    return () => {
+      if (retryTimeout) clearTimeout(retryTimeout);
+      if (unsubscribe) unsubscribe();
+    };
+  }, [basePath, campaign]);
 
   // Subscribe to Initiative
   useEffect(() => {
