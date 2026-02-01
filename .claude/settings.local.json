@@ -27,7 +27,9 @@
       "WebFetch(domain:daggerheart.org)",
       "Bash(npx firebase:*)",
       "Bash(dir:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "WebFetch(domain:docs.1min.ai)",
+      "Bash(node --check:*)"
     ],
     "deny": [],
     "ask": []
