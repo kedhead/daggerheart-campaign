@@ -31,6 +31,7 @@ export function useFirestoreCampaign(campaignId) {
   const [partyInventory, setPartyInventory] = useState([]);
   const [initiative, setInitiative] = useState(null);
   const [quests, setQuests] = useState([]);
+  const [adversaries, setAdversaries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Base path for shared campaign
@@ -456,6 +457,28 @@ export function useFirestoreCampaign(campaignId) {
     return unsubscribe;
   }, [basePath]);
 
+  // Subscribe to Adversaries
+  useEffect(() => {
+    if (!basePath) return;
+
+    const unsubscribe = onSnapshot(
+      collection(db, `${basePath}/adversaries`),
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setAdversaries(data);
+      },
+      (error) => {
+        console.warn('Adversaries subscription error:', error.code);
+        setAdversaries([]);
+      }
+    );
+
+    return unsubscribe;
+  }, [basePath]);
+
   // Campaign methods
   const updateCampaign = async (updates) => {
     if (!basePath) return;
@@ -728,6 +751,32 @@ export function useFirestoreCampaign(campaignId) {
   const deleteItem = async (id) => {
     if (!basePath) return;
     await deleteDoc(doc(db, `${basePath}/items`, id));
+  };
+
+  // Adversary methods
+  const addAdversary = async (adversaryData) => {
+    if (!basePath) return;
+    const docRef = await addDoc(collection(db, `${basePath}/adversaries`), {
+      ...adversaryData,
+      createdBy: currentUser.uid,
+      createdByName: currentUser.displayName || currentUser.email,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    return { id: docRef.id, ...adversaryData };
+  };
+
+  const updateAdversary = async (id, updates) => {
+    if (!basePath) return;
+    await updateDoc(doc(db, `${basePath}/adversaries`, id), {
+      ...updates,
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const deleteAdversary = async (id) => {
+    if (!basePath) return;
+    await deleteDoc(doc(db, `${basePath}/adversaries`, id));
   };
 
   // Character Inventory methods (updates character document)
@@ -1093,6 +1142,11 @@ export function useFirestoreCampaign(campaignId) {
     addItem,
     updateItem,
     deleteItem,
+    // Adversaries
+    adversaries,
+    addAdversary,
+    updateAdversary,
+    deleteAdversary,
     // Character Inventory
     addToCharacterInventory,
     removeFromCharacterInventory,

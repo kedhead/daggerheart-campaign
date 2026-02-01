@@ -24,6 +24,7 @@ import CampaignBuilderView from './components/CampaignBuilder/CampaignBuilderVie
 import SuperAdminView from './components/SuperAdmin/SuperAdminView';
 import APISettings from './components/Settings/APISettings';
 import ItemsView from './components/Items/ItemsView';
+import AdversariesView from './components/Adversaries/AdversariesView';
 import PartyInventoryView from './components/Inventory/PartyInventoryView';
 import InitiativeTracker from './components/Initiative/InitiativeTracker';
 import QuestsView from './components/Quests/QuestsView';
@@ -97,6 +98,11 @@ function CampaignApp() {
     addItem,
     updateItem,
     deleteItem,
+    // Adversaries
+    adversaries,
+    addAdversary,
+    updateAdversary,
+    deleteAdversary,
     // Character Inventory
     addToCharacterInventory,
     removeFromCharacterInventory,
@@ -452,6 +458,17 @@ function CampaignApp() {
             timelineEvents={timelineEvents}
             encounters={encounters}
             notes={notes}
+          />
+        );
+      case 'adversaries':
+        return (
+          <AdversariesView
+            campaign={campaign}
+            adversaries={adversaries}
+            addAdversary={addAdversary}
+            updateAdversary={updateAdversary}
+            deleteAdversary={deleteAdversary}
+            isDM={isDM}
           />
         );
       case 'partyInventory':

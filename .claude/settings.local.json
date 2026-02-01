@@ -29,7 +29,12 @@
       "Bash(dir:*)",
       "Bash(npx eslint:*)",
       "WebFetch(domain:docs.1min.ai)",
-      "Bash(node --check:*)"
+      "Bash(node --check:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl:*)",
+      "Bash(node scripts/fetch-adversaries.js:*)"
     ],
     "deny": [],
     "ask": []
