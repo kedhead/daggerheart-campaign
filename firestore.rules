@@ -214,6 +214,12 @@ service cloud.firestore {
         // Only DM can write to the display
         allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
+
+      // Generated Images (AI-generated creatures, monsters, etc.)
+      match /generatedImages/{imageId} {
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
     }
   }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -31,6 +31,7 @@ export default function ContentSelector({
   const [activeTab, setActiveTab] = useState('maps');
   const [files, setFiles] = useState([]);
   const [maps, setMaps] = useState([]);
+  const [generatedImages, setGeneratedImages] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // API key for AI generation
@@ -67,6 +68,11 @@ export default function ContentSelector({
         // Load generated maps from subcollection
         const mapsSnapshot = await getDocs(collection(db, `campaigns/${campaignId}/maps`));
         const mapFiles = mapsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+        // Load generated images (creatures, etc.)
+        const generatedSnapshot = await getDocs(collection(db, `campaigns/${campaignId}/generatedImages`));
+        const generatedFiles = generatedSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        setGeneratedImages(generatedFiles);
 
         // Separate maps from other files
         const allFiles = [...regularFiles, ...mapFiles];
@@ -269,6 +275,19 @@ export default function ContentSelector({
 
       console.log('Generated image uploaded:', downloadUrl);
 
+      // Save to Firestore so it appears in Maps & Files
+      const imageRecord = {
+        name: generateName || 'Generated Creature',
+        description: generatePrompt,
+        dataUrl: downloadUrl,
+        isGenerated: true,
+        type: 'creature',
+        createdAt: serverTimestamp()
+      };
+
+      await addDoc(collection(db, `campaigns/${campaignId}/generatedImages`), imageRecord);
+      console.log('Generated image record saved to Firestore');
+
       setGeneratedImage({
         url: downloadUrl,
         name: generateName || 'Generated Image'
@@ -302,6 +321,7 @@ export default function ContentSelector({
 
   const tabs = [
     { id: 'maps', label: 'Maps', icon: Map, count: maps.length },
+    { id: 'creatures', label: 'Creatures', icon: Skull, count: generatedImages.length },
     { id: 'npcs', label: 'NPCs', icon: Users, count: npcsWithImages.length },
     { id: 'locations', label: 'Locations', icon: Map, count: locationsWithImages.length },
     { id: 'files', label: 'Files', icon: FolderOpen, count: files.length },
@@ -529,6 +549,10 @@ export default function ContentSelector({
       case 'maps':
         items = maps;
         type = 'map';
+        break;
+      case 'creatures':
+        items = generatedImages;
+        type = 'creature';
         break;
       case 'npcs':
         items = npcsWithImages;
