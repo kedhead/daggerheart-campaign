@@ -3,6 +3,9 @@
  * Generates character portraits using DALL-E
  */
 
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { storage } from '../config/firebase';
+
 /**
  * Download an image from a URL and convert to data URL
  * Uses backend proxy to avoid CORS issues
@@ -116,13 +119,35 @@ function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
 }
 
 /**
+ * Upload a data URL to Firebase Storage and return the download URL
+ * @param {string} dataUrl - Base64 data URL
+ * @param {string} campaignId - Campaign ID for storage path
+ * @param {string} npcName - NPC name for filename
+ * @returns {Promise<string>} Firebase Storage download URL
+ */
+async function uploadPortraitToStorage(dataUrl, campaignId, npcName) {
+  const timestamp = Date.now();
+  const safeName = (npcName || 'portrait').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+  const storagePath = `campaigns/${campaignId}/portraits/${timestamp}_${safeName}.png`;
+  const storageRef = ref(storage, storagePath);
+
+  console.log('Uploading portrait to Firebase Storage...');
+  await uploadString(storageRef, dataUrl, 'data_url');
+  const downloadUrl = await getDownloadURL(storageRef);
+  console.log('Portrait uploaded to Storage:', downloadUrl);
+
+  return downloadUrl;
+}
+
+/**
  * Generate an NPC portrait
  * @param {object} npc - NPC data
  * @param {string} openaiKey - OpenAI API key for DALL-E
  * @param {string} gameSystem - Game system for style
- * @returns {Promise<string>} Portrait data URL
+ * @param {string} campaignId - Campaign ID for storage (optional, will use data URL if not provided)
+ * @returns {Promise<string>} Portrait URL (Firebase Storage URL if campaignId provided, otherwise data URL)
  */
-export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerheart') {
+export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
   if (!openaiKey) {
     throw new Error('OpenAI API key required for portrait generation');
   }
@@ -132,6 +157,13 @@ export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerhe
   console.log('DALL-E prompt:', prompt);
 
   const dataUrl = await generatePortraitImage(prompt, openaiKey);
+
+  // If campaignId provided, upload to Firebase Storage to avoid Firestore size limits
+  if (campaignId) {
+    const storageUrl = await uploadPortraitToStorage(dataUrl, campaignId, npc.name);
+    return storageUrl;
+  }
+
   return dataUrl;
 }
 

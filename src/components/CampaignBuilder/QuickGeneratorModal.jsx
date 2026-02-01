@@ -87,7 +87,8 @@ export default function QuickGeneratorModal({
 
     try {
       const gameSystem = campaign?.gameSystem || 'daggerheart';
-      const avatarUrl = await generateNPCPortrait(npc, keyInfo.key, gameSystem);
+      const campaignId = campaign?.id;
+      const avatarUrl = await generateNPCPortrait(npc, keyInfo.key, gameSystem, campaignId);
 
       setEditableResult(prev => ({
         ...prev,
