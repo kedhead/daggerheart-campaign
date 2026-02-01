@@ -6,7 +6,8 @@ import PromptGenerator from './generators/PromptGenerator';
 import DirectAPIGenerator from './generators/DirectAPIGenerator';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useAPIKey } from '../../hooks/useAPIKey';
-import { Wand2, AlertCircle } from 'lucide-react';
+import { generateNPCPortrait } from '../../services/portraitGenerator';
+import { Wand2, AlertCircle, ImageIcon, Loader2 } from 'lucide-react';
 import './CampaignBuilder.css';
 
 /**
@@ -25,6 +26,9 @@ export default function QuickGeneratorModal({
 }) {
   const [mode, setMode] = useState('template');
   const [editableResult, setEditableResult] = useState(null);
+  const [generatePortrait, setGeneratePortrait] = useState(false);
+  const [generatingPortrait, setGeneratingPortrait] = useState(false);
+  const [portraitError, setPortraitError] = useState(null);
 
   const {
     generating,
@@ -38,7 +42,11 @@ export default function QuickGeneratorModal({
     clearGeneration
   } = useAIGeneration();
 
-  const { keys, hasKey } = useAPIKey(campaign?.createdBy);
+  const { keys, hasKey, getEffectiveKey } = useAPIKey(campaign?.createdBy);
+
+  // Check if OpenAI key is available (own or shared)
+  const openaiKeyInfo = getEffectiveKey('openai');
+  const hasOpenAIKey = !!openaiKeyInfo?.key;
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -46,6 +54,9 @@ export default function QuickGeneratorModal({
       clearGeneration();
       setEditableResult(null);
       setMode('template');
+      setGeneratePortrait(false);
+      setGeneratingPortrait(false);
+      setPortraitError(null);
     }
   }, [isOpen]);
 
@@ -53,8 +64,42 @@ export default function QuickGeneratorModal({
   useEffect(() => {
     if (result) {
       setEditableResult(result);
+
+      // Auto-generate portrait if enabled and it's an NPC
+      if (type === 'npc' && generatePortrait && hasOpenAIKey && !result.avatarUrl) {
+        handleGeneratePortrait(result);
+      }
     }
   }, [result]);
+
+  // Generate portrait for NPC
+  const handleGeneratePortrait = async (npcData = null) => {
+    const npc = npcData || editableResult;
+    const keyInfo = getEffectiveKey('openai');
+
+    if (!npc || !keyInfo?.key) {
+      setPortraitError('OpenAI API key required for portrait generation');
+      return;
+    }
+
+    setGeneratingPortrait(true);
+    setPortraitError(null);
+
+    try {
+      const gameSystem = campaign?.gameSystem || 'daggerheart';
+      const avatarUrl = await generateNPCPortrait(npc, keyInfo.key, gameSystem);
+
+      setEditableResult(prev => ({
+        ...prev,
+        avatarUrl
+      }));
+    } catch (err) {
+      console.error('Portrait generation failed:', err);
+      setPortraitError(err.message || 'Failed to generate portrait');
+    } finally {
+      setGeneratingPortrait(false);
+    }
+  };
 
   const getTypeLabel = () => {
     const labels = {
@@ -173,6 +218,63 @@ export default function QuickGeneratorModal({
             Generated NPC
           </h3>
           <div className="preview-fields">
+            {/* Portrait Section */}
+            <div className="preview-field portrait-section">
+              <label>Portrait</label>
+              <div className="portrait-container">
+                {editableResult.avatarUrl ? (
+                  <div className="portrait-preview">
+                    <img src={editableResult.avatarUrl} alt={editableResult.name} />
+                    <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => handleGeneratePortrait()}
+                      disabled={generatingPortrait || !hasOpenAIKey}
+                    >
+                      {generatingPortrait ? (
+                        <>
+                          <Loader2 size={14} className="spinner" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        <>
+                          <ImageIcon size={14} />
+                          Regenerate
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : generatingPortrait ? (
+                  <div className="portrait-generating">
+                    <Loader2 size={32} className="spinner" />
+                    <span>Generating portrait...</span>
+                  </div>
+                ) : (
+                  <div className="portrait-empty">
+                    <ImageIcon size={32} />
+                    <span>No portrait</span>
+                    {hasOpenAIKey && (
+                      <button
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => handleGeneratePortrait()}
+                      >
+                        <ImageIcon size={14} />
+                        Generate Portrait
+                      </button>
+                    )}
+                    {!hasOpenAIKey && (
+                      <span className="portrait-hint">OpenAI key required</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              {portraitError && (
+                <div className="portrait-error">
+                  <AlertCircle size={14} />
+                  {portraitError}
+                </div>
+              )}
+            </div>
+
             <div className="preview-field">
               <label>Name *</label>
               <input
@@ -403,6 +505,25 @@ export default function QuickGeneratorModal({
         )}
 
         <div className="generator-content">
+          {/* Portrait generation option for NPCs */}
+          {type === 'npc' && !editableResult && (
+            <div className="portrait-option">
+              <label className="checkbox-control">
+                <input
+                  type="checkbox"
+                  checked={generatePortrait}
+                  onChange={(e) => setGeneratePortrait(e.target.checked)}
+                  disabled={!hasOpenAIKey}
+                />
+                <ImageIcon size={16} />
+                <span>Generate AI Portrait</span>
+                {!hasOpenAIKey && (
+                  <span className="option-hint">(OpenAI key required)</span>
+                )}
+              </label>
+            </div>
+          )}
+
           {renderGenerator()}
           {renderResultsPreview()}
         </div>
