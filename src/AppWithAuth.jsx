@@ -27,6 +27,8 @@ import ItemsView from './components/Items/ItemsView';
 import PartyInventoryView from './components/Inventory/PartyInventoryView';
 import InitiativeTracker from './components/Initiative/InitiativeTracker';
 import QuestsView from './components/Quests/QuestsView';
+import PlayerDisplay from './components/PlayerDisplay/PlayerDisplay';
+import DMDisplayControl from './components/PlayerDisplay/DMDisplayControl';
 import { DiceRollerFloat } from './components/DiceRoller/index';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
@@ -506,6 +508,15 @@ function CampaignApp() {
             notes={notes}
           />
         );
+      case 'playerDisplay':
+        return (
+          <DMDisplayControl
+            campaign={campaign}
+            npcs={npcs}
+            locations={locations}
+            initiative={initiative}
+          />
+        );
       default:
         return (
           <DashboardView
@@ -570,6 +581,11 @@ function AppContent() {
   const { currentUser, logout } = useAuth();
   const [termsAccepted, setTermsAccepted] = useState(null);
 
+  // Check for player display URL parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const viewParam = urlParams.get('view');
+  const campaignIdParam = urlParams.get('campaign');
+
   useEffect(() => {
     if (currentUser) {
       // Check if user has accepted terms
@@ -593,6 +609,11 @@ function AppContent() {
 
   if (!currentUser) {
     return <AuthPage />;
+  }
+
+  // Handle player display window (skip terms check for dedicated display window)
+  if (viewParam === 'playerDisplay' && campaignIdParam) {
+    return <PlayerDisplay campaignId={campaignIdParam} />;
   }
 
   // Show terms if user hasn't accepted yet

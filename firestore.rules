@@ -206,6 +206,14 @@ service cloud.firestore {
         // Users can delete their own presence
         allow delete: if isAuthenticated() && presenceId == getUserId();
       }
+
+      // Player Display (DM-controlled display for TV/monitor)
+      match /playerDisplay/{docId} {
+        // All campaign members can read the display state
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // Only DM can write to the display
+        allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
     }
   }
 }

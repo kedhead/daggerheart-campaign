@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target } from 'lucide-react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target, Monitor } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import './Sidebar.css';
@@ -95,6 +95,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
       icon: Settings,
       items: [
         ...(isDM ? [
+          { id: 'playerDisplay', label: 'Player Display', icon: Monitor },
           { id: 'campaignBuilder', label: 'Campaign Builder', icon: Wand2 },
           { id: 'members', label: 'Members', icon: UserCog }
         ] : []),

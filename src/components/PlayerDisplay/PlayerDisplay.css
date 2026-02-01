@@ -1,0 +1,346 @@
+/* Player Display - Full-screen display for TV/monitor */
+
+.player-display-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #000;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  cursor: none;
+}
+
+.player-display-container.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.player-display-container.loading .loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #8b5cf6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Header with Fear and Initiative */
+.player-display-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
+  position: relative;
+  z-index: 10;
+  min-height: 80px;
+}
+
+/* Fear Counter Display */
+.fear-counter-display {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(139, 92, 246, 0.15);
+  border: 2px solid rgba(139, 92, 246, 0.5);
+  border-radius: 16px;
+  padding: 0.75rem 1.5rem;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.fear-counter-display .fear-label {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #a78bfa;
+}
+
+.fear-counter-display .fear-number {
+  font-size: 3rem;
+  font-weight: 900;
+  color: #8b5cf6;
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  min-width: 2ch;
+  text-align: center;
+  line-height: 1;
+}
+
+/* Fear counter animation */
+.fear-counter-display.animating-up {
+  animation: fearPulseUp 0.5s ease;
+}
+
+.fear-counter-display.animating-down {
+  animation: fearPulseDown 0.5s ease;
+}
+
+@keyframes fearPulseUp {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.15); box-shadow: 0 0 40px rgba(239, 68, 68, 0.6); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fearPulseDown {
+  0% { transform: scale(1); }
+  25% { transform: scale(0.95); box-shadow: 0 0 40px rgba(34, 197, 94, 0.6); }
+  100% { transform: scale(1); }
+}
+
+/* Initiative Display */
+.initiative-display {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.initiative-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #eab308;
+}
+
+.round-badge {
+  font-size: 1.25rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  background: rgba(234, 179, 8, 0.2);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  border-radius: 8px;
+}
+
+.initiative-track {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: 70%;
+}
+
+.initiative-participant {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.initiative-participant.current {
+  background: rgba(234, 179, 8, 0.3);
+  border: 2px solid #eab308;
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.4);
+  transform: scale(1.05);
+}
+
+.initiative-participant.hidden-participant {
+  opacity: 0.5;
+}
+
+.initiative-participant .participant-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.initiative-participant .participant-icon.character {
+  color: #4ade80;
+}
+
+.initiative-participant .participant-icon.npc {
+  color: #ef4444;
+}
+
+.initiative-participant .participant-icon.custom {
+  color: #60a5fa;
+}
+
+.initiative-participant .participant-name {
+  font-weight: 500;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.initiative-participant .hidden-icon {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Main Content Area */
+.player-display-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Content Display */
+.content-display {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.content-display.empty {
+  flex-direction: column;
+  gap: 1rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.content-display.empty p {
+  font-size: 1.5rem;
+}
+
+.content-display .content-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.content-display.loaded .content-image {
+  opacity: 1;
+}
+
+.content-display .content-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2rem;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.9) 0%, transparent 100%);
+  text-align: center;
+}
+
+.content-caption h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+/* Fullscreen Toggle Button */
+.fullscreen-toggle {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.3s ease, background 0.2s ease;
+  z-index: 100;
+}
+
+.fullscreen-toggle.visible {
+  opacity: 1;
+}
+
+.fullscreen-toggle:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Display Hint */
+.display-hint {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 100;
+}
+
+.display-hint.visible {
+  opacity: 1;
+}
+
+/* Responsive adjustments for large TVs */
+@media (min-width: 1920px) {
+  .fear-counter-display .fear-label {
+    font-size: 2rem;
+  }
+
+  .fear-counter-display .fear-number {
+    font-size: 4rem;
+  }
+
+  .initiative-participant {
+    font-size: 1.3rem;
+    padding: 0.75rem 1.25rem;
+  }
+
+  .content-caption h2 {
+    font-size: 3rem;
+  }
+}
+
+/* 4K support */
+@media (min-width: 3840px) {
+  .fear-counter-display .fear-label {
+    font-size: 3rem;
+  }
+
+  .fear-counter-display .fear-number {
+    font-size: 6rem;
+  }
+
+  .initiative-participant {
+    font-size: 2rem;
+    padding: 1rem 2rem;
+  }
+
+  .content-caption h2 {
+    font-size: 4rem;
+  }
+
+  .fullscreen-toggle {
+    width: 72px;
+    height: 72px;
+  }
+}
