@@ -219,7 +219,7 @@ export default function ContentSelector({
 
       console.log('Generating display image with prompt:', fullPrompt);
 
-      // Call DALL-E API
+      // Call DALL-E API - use landscape format for TV/monitor display
       const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
@@ -230,7 +230,7 @@ export default function ContentSelector({
           model: 'dall-e-3',
           prompt: fullPrompt,
           n: 1,
-          size: '1024x1024',
+          size: '1792x1024',
           quality: 'standard',
           style: 'vivid'
         })
