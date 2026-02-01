@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../config/firebase';
-import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play } from 'lucide-react';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../../config/firebase';
+import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2 } from 'lucide-react';
 import './DMDisplayControl.css';
 
 // Extract YouTube video ID for thumbnail
@@ -106,8 +107,8 @@ export default function ContentSelector({
     });
   };
 
-  // Handle quick image upload
-  const handleFileSelect = (e) => {
+  // Handle quick image upload - uploads to Firebase Storage
+  const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -125,20 +126,43 @@ export default function ContentSelector({
 
     setUploading(true);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      setUploadedImage({
-        dataUrl,
-        name: file.name.replace(/\.[^/.]+$/, '') // Remove extension
-      });
+    try {
+      // Read file as base64
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target.result;
+        const fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+
+        try {
+          // Upload to Firebase Storage
+          const timestamp = Date.now();
+          const storagePath = `campaigns/${campaignId}/display/${timestamp}_${file.name}`;
+          const storageRef = ref(storage, storagePath);
+
+          await uploadString(storageRef, dataUrl, 'data_url');
+          const downloadUrl = await getDownloadURL(storageRef);
+
+          setUploadedImage({
+            url: downloadUrl,
+            name: fileName
+          });
+          setUploading(false);
+        } catch (uploadError) {
+          console.error('Upload error:', uploadError);
+          alert('Failed to upload image to storage');
+          setUploading(false);
+        }
+      };
+      reader.onerror = () => {
+        alert('Failed to read file');
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error processing file:', error);
+      alert('Failed to process file');
       setUploading(false);
-    };
-    reader.onerror = () => {
-      alert('Failed to read file');
-      setUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   // Push uploaded image to display
@@ -146,7 +170,7 @@ export default function ContentSelector({
     if (!uploadedImage) return;
 
     onSelectContent('image', {
-      url: uploadedImage.dataUrl,
+      url: uploadedImage.url,
       name: uploadedImage.name,
       type: 'uploaded',
       showName: true
@@ -235,12 +259,12 @@ export default function ContentSelector({
               />
               {uploading ? (
                 <>
-                  <div className="loading-spinner"></div>
-                  <span>Processing...</span>
+                  <Loader2 size={40} className="spinner" />
+                  <span>Uploading to storage...</span>
                 </>
               ) : uploadedImage ? (
                 <div className="uploaded-preview">
-                  <img src={uploadedImage.dataUrl} alt={uploadedImage.name} />
+                  <img src={uploadedImage.url} alt={uploadedImage.name} />
                   <span className="uploaded-name">{uploadedImage.name}</span>
                 </div>
               ) : (

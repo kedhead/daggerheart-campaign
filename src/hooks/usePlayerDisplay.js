@@ -134,14 +134,6 @@ export function usePlayerDisplay(campaignId) {
     showName: displayState.contentShowName !== false
   } : null;
 
-  // Debug logging
-  console.log('PlayerDisplay state:', {
-    contentType: displayState.contentType,
-    contentUrl: displayState.contentUrl,
-    contentName: displayState.contentName,
-    content
-  });
-
   return {
     // State
     displayState,
