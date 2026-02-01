@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Monitor, ExternalLink, X, Eye, EyeOff, Zap, Youtube, Play } from 'lucide-react';
+import { Monitor, ExternalLink, X, Eye, EyeOff, Zap, Youtube, Play, Trash2, Plus, Grid } from 'lucide-react';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearControl from './FearControl';
 import ContentSelector from './ContentSelector';
@@ -36,13 +36,17 @@ export default function DMDisplayControl({
     showInitiative,
     contentType,
     content,
+    contentItems,
     incrementFear,
     decrementFear,
     resetFear,
     toggleFear,
     toggleInitiative,
     setDisplayContent,
-    clearDisplay
+    clearDisplay,
+    addContentItem,
+    removeContentItem,
+    clearAllContent
   } = usePlayerDisplay(campaignId);
 
   const [displayWindow, setDisplayWindow] = useState(null);
@@ -53,12 +57,19 @@ export default function DMDisplayControl({
     setDisplayWindow(win);
   };
 
+  // Add content to display (supports multi-item)
   const handleContentSelect = async (type, contentData) => {
-    await setDisplayContent(type, contentData);
+    await addContentItem(type, contentData);
   };
 
+  // Remove a specific item from display
+  const handleRemoveItem = async (itemId) => {
+    await removeContentItem(itemId);
+  };
+
+  // Clear all content
   const handleClearContent = async () => {
-    await clearDisplay();
+    await clearAllContent();
   };
 
   if (loading) {
@@ -95,6 +106,12 @@ export default function DMDisplayControl({
         <div className="preview-header">
           <Monitor size={20} />
           <span>Preview</span>
+          {contentItems.length > 0 && (
+            <span className="preview-count">
+              <Grid size={14} />
+              {contentItems.length} item{contentItems.length !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
         <div className="preview-content">
           <div className="preview-screen">
@@ -117,8 +134,34 @@ export default function DMDisplayControl({
               </div>
             )}
 
-            {/* Content Preview */}
-            {content?.url ? (
+            {/* Multi-item Grid Preview */}
+            {contentItems.length > 0 ? (
+              <div className={`preview-grid preview-grid-${Math.min(contentItems.length, 6)}`}>
+                {contentItems.map(item => (
+                  <div key={item.id} className="preview-grid-item">
+                    {item.type === 'video' && getYouTubeVideoId(item.url) ? (
+                      <img
+                        src={`https://img.youtube.com/vi/${getYouTubeVideoId(item.url)}/mqdefault.jpg`}
+                        alt={item.name || 'Video'}
+                      />
+                    ) : (
+                      <img src={item.url} alt={item.name || 'Content'} />
+                    )}
+                    <button
+                      className="preview-grid-remove"
+                      onClick={() => handleRemoveItem(item.id)}
+                      title="Remove from display"
+                    >
+                      <X size={12} />
+                    </button>
+                    {item.name && (
+                      <span className="preview-grid-name">{item.name}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : content?.url ? (
+              // Legacy single content display
               contentType === 'video' ? (
                 <div className="preview-image-container preview-video">
                   {getYouTubeVideoId(content.url) ? (
@@ -150,6 +193,7 @@ export default function DMDisplayControl({
               <div className="preview-empty">
                 <Monitor size={32} />
                 <span>No content displayed</span>
+                <span className="preview-hint">Click items below to add to display</span>
               </div>
             )}
           </div>
@@ -199,14 +243,15 @@ export default function DMDisplayControl({
         {/* Content Selector */}
         <div className="control-section card">
           <div className="section-header">
-            <h3>Display Content</h3>
-            {content?.url && (
+            <h3>Add to Display</h3>
+            {(contentItems.length > 0 || content?.url) && (
               <button className="btn btn-ghost btn-sm" onClick={handleClearContent}>
-                <X size={16} />
-                Clear Display
+                <Trash2 size={16} />
+                Clear All
               </button>
             )}
           </div>
+          <p className="section-hint">Click items to add them to the display. Multiple items will show in a grid.</p>
           <ContentSelector
             campaignId={campaignId}
             campaign={campaign}
@@ -214,7 +259,7 @@ export default function DMDisplayControl({
             locations={locations}
             adversaries={adversaries}
             onSelectContent={handleContentSelect}
-            currentContent={content}
+            currentContentItems={contentItems}
           />
         </div>
       </div>

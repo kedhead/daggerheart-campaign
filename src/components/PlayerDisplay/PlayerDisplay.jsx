@@ -5,6 +5,7 @@ import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearCounter from './FearCounter';
 import InitiativeDisplay from './InitiativeDisplay';
 import ContentDisplay from './ContentDisplay';
+import ContentGrid from './ContentGrid';
 import { Maximize, Minimize } from 'lucide-react';
 import './PlayerDisplay.css';
 
@@ -15,7 +16,8 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
     showFear,
     showInitiative,
     contentType,
-    content
+    content,
+    contentItems
   } = usePlayerDisplay(campaignId);
 
   const [initiative, setInitiative] = useState(null);
@@ -129,7 +131,11 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
 
       {/* Main Content Area */}
       <div className="player-display-content">
-        <ContentDisplay contentType={contentType} content={content} />
+        {contentItems && contentItems.length > 0 ? (
+          <ContentGrid items={contentItems} />
+        ) : (
+          <ContentDisplay contentType={contentType} content={content} />
+        )}
       </div>
 
       {/* Fullscreen Control */}

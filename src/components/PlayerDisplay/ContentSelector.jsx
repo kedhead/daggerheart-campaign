@@ -3,7 +3,7 @@ import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { useAPIKey } from '../../hooks/useAPIKey';
-import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2, Wand2, Skull } from 'lucide-react';
+import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2, Wand2, Skull, Plus } from 'lucide-react';
 import './DMDisplayControl.css';
 
 // Extract YouTube video ID for thumbnail
@@ -27,7 +27,7 @@ export default function ContentSelector({
   locations = [],
   adversaries = [],
   onSelectContent,
-  currentContent
+  currentContentItems = []
 }) {
   const [activeTab, setActiveTab] = useState('maps');
   const [files, setFiles] = useState([]);
@@ -104,10 +104,11 @@ export default function ContentSelector({
     });
   };
 
-  const isSelected = (item, type) => {
-    if (!currentContent) return false;
+  // Check if an item is already on the display
+  const isOnDisplay = (item) => {
+    if (!currentContentItems || currentContentItems.length === 0) return false;
     const itemUrl = item.dataUrl || item.avatarUrl || item.imageUrl;
-    return currentContent.url === itemUrl;
+    return currentContentItems.some(ci => ci.url === itemUrl);
   };
 
   // Handle YouTube submit
@@ -381,8 +382,8 @@ export default function ContentSelector({
               className="btn btn-primary"
               disabled={!youtubeUrl}
             >
-              <Youtube size={16} />
-              Play on Display
+              <Plus size={16} />
+              Add to Display
             </button>
           </form>
         </div>
@@ -468,8 +469,8 @@ export default function ContentSelector({
                   className="btn btn-primary"
                   onClick={handlePushGeneratedImage}
                 >
-                  <ImageIcon size={16} />
-                  Push to Display
+                  <Plus size={16} />
+                  Add to Display
                 </button>
               </div>
             </div>
@@ -525,8 +526,8 @@ export default function ContentSelector({
                 className="btn btn-primary"
                 onClick={handlePushUploadedImage}
               >
-                <ImageIcon size={16} />
-                Push to Display
+                <Plus size={16} />
+                Add to Display
               </button>
             </div>
           )}
@@ -590,13 +591,14 @@ export default function ContentSelector({
       <div className="content-grid">
         {items.map((item) => {
           const imageUrl = item.dataUrl || item.avatarUrl || item.imageUrl;
-          const selected = isSelected(item, type);
+          const onDisplay = isOnDisplay(item);
 
           return (
             <button
               key={item.id}
-              className={`content-item ${selected ? 'selected' : ''}`}
+              className={`content-item ${onDisplay ? 'on-display' : ''}`}
               onClick={() => handleSelectItem(type, item)}
+              title={onDisplay ? 'Already on display - click to add again' : 'Click to add to display'}
             >
               <div className="content-thumbnail">
                 {imageUrl ? (
@@ -604,11 +606,14 @@ export default function ContentSelector({
                 ) : (
                   <ImageIcon size={24} />
                 )}
-                {selected && (
-                  <div className="selected-indicator">
-                    <Check size={16} />
+                {onDisplay && (
+                  <div className="on-display-indicator">
+                    <Check size={14} />
                   </div>
                 )}
+                <div className="add-indicator">
+                  <Plus size={16} />
+                </div>
               </div>
               <span className="content-name">{item.name}</span>
             </button>

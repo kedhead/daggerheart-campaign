@@ -11,7 +11,8 @@ export function usePlayerDisplay(campaignId) {
     contentType: 'none',
     contentUrl: '',
     contentName: '',
-    contentShowName: true
+    contentShowName: true,
+    contentItems: [] // Array of content items for multi-display
   });
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +29,12 @@ export function usePlayerDisplay(campaignId) {
       doc(db, basePath),
       (docSnapshot) => {
         if (docSnapshot.exists()) {
-          setDisplayState({ id: docSnapshot.id, ...docSnapshot.data() });
+          const data = docSnapshot.data();
+          setDisplayState({
+            id: docSnapshot.id,
+            ...data,
+            contentItems: data.contentItems || [] // Ensure array exists
+          });
         } else {
           // Initialize with defaults if document doesn't exist
           setDisplayState({
@@ -39,7 +45,8 @@ export function usePlayerDisplay(campaignId) {
             contentType: 'none',
             contentUrl: '',
             contentName: '',
-            contentShowName: true
+            contentShowName: true,
+            contentItems: []
           });
         }
         setLoading(false);
@@ -67,6 +74,7 @@ export function usePlayerDisplay(campaignId) {
         contentUrl: updates.contentUrl ?? displayState.contentUrl ?? '',
         contentName: updates.contentName ?? displayState.contentName ?? '',
         contentShowName: updates.contentShowName ?? displayState.contentShowName ?? true,
+        contentItems: updates.contentItems ?? displayState.contentItems ?? [],
         updatedAt: serverTimestamp()
       };
 
@@ -123,6 +131,40 @@ export function usePlayerDisplay(campaignId) {
       contentType: 'none',
       contentUrl: '',
       contentName: '',
+      contentShowName: true,
+      contentItems: []
+    });
+  };
+
+  // Multi-content methods
+  const addContentItem = async (contentType, content) => {
+    const newItem = {
+      id: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: contentType,
+      url: content.url || '',
+      name: content.name || '',
+      showName: content.showName !== false,
+      addedAt: Date.now()
+    };
+    const currentItems = displayState.contentItems || [];
+    await updateDisplayState({
+      contentItems: [...currentItems, newItem]
+    });
+  };
+
+  const removeContentItem = async (itemId) => {
+    const currentItems = displayState.contentItems || [];
+    await updateDisplayState({
+      contentItems: currentItems.filter(item => item.id !== itemId)
+    });
+  };
+
+  const clearAllContent = async () => {
+    await updateDisplayState({
+      contentItems: [],
+      contentType: 'none',
+      contentUrl: '',
+      contentName: '',
       contentShowName: true
     });
   };
@@ -144,6 +186,7 @@ export function usePlayerDisplay(campaignId) {
     showInitiative: displayState.showInitiative !== false,
     contentType: displayState.contentType || 'none',
     content,
+    contentItems: displayState.contentItems || [],
 
     // Fear methods
     incrementFear,
@@ -156,9 +199,14 @@ export function usePlayerDisplay(campaignId) {
     toggleInitiative,
     toggleEnabled,
 
-    // Content methods
+    // Content methods (single - legacy)
     setDisplayContent,
     clearDisplay,
+
+    // Content methods (multi)
+    addContentItem,
+    removeContentItem,
+    clearAllContent,
 
     // Generic update
     updateDisplayState
