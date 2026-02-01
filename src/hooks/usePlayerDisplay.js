@@ -1,6 +1,23 @@
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { db } from '../config/firebase';
+
+// Helper to remove undefined values and prepare for Firestore
+function sanitizeForFirestore(obj) {
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    // Skip undefined values and internal fields
+    if (value === undefined || key === 'id') continue;
+
+    // Handle nested objects
+    if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      result[key] = sanitizeForFirestore(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
 
 export function usePlayerDisplay(campaignId) {
   const [displayState, setDisplayState] = useState({
@@ -9,8 +26,7 @@ export function usePlayerDisplay(campaignId) {
     showFear: true,
     showInitiative: true,
     contentType: 'none',
-    content: null,
-    updatedAt: null
+    content: null
   });
   const [loading, setLoading] = useState(true);
 
@@ -36,8 +52,7 @@ export function usePlayerDisplay(campaignId) {
             showFear: true,
             showInitiative: true,
             contentType: 'none',
-            content: null,
-            updatedAt: null
+            content: null
           });
         }
         setLoading(false);
@@ -55,11 +70,31 @@ export function usePlayerDisplay(campaignId) {
   const updateDisplayState = async (updates) => {
     if (!basePath) return;
     try {
-      await setDoc(doc(db, basePath), {
-        ...displayState,
+      // Build clean data object
+      const data = {
+        enabled: displayState.enabled ?? false,
+        fearCount: displayState.fearCount ?? 0,
+        showFear: displayState.showFear ?? true,
+        showInitiative: displayState.showInitiative ?? true,
+        contentType: displayState.contentType ?? 'none',
         ...updates,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      };
+
+      // Handle content field specially - use deleteField() if null
+      if (data.content === null) {
+        data.content = deleteField();
+      } else if (data.content) {
+        // Ensure content is a clean object
+        data.content = {
+          url: data.content.url || '',
+          name: data.content.name || '',
+          type: data.content.type || '',
+          showName: data.content.showName !== false
+        };
+      }
+
+      await setDoc(doc(db, basePath), data, { merge: true });
     } catch (error) {
       console.error('Error updating player display:', error);
       throw error;
@@ -105,7 +140,7 @@ export function usePlayerDisplay(campaignId) {
         url: content.url || '',
         name: content.name || '',
         type: content.type || '',
-        showName: content.showName !== undefined ? content.showName : true
+        showName: content.showName !== false
       }
     });
   };
