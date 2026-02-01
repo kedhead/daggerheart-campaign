@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
-import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2 } from 'lucide-react';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2, Wand2, Skull } from 'lucide-react';
 import './DMDisplayControl.css';
 
 // Extract YouTube video ID for thumbnail
@@ -32,6 +33,11 @@ export default function ContentSelector({
   const [maps, setMaps] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // API key for AI generation
+  const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
+  const openaiKeyInfo = getEffectiveKey('openai');
+  const hasOpenAIKey = !!openaiKeyInfo?.key;
+
   // YouTube state
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
@@ -39,6 +45,13 @@ export default function ContentSelector({
   // Upload state
   const [uploading, setUploading] = useState(false);
   const [uploadedImage, setUploadedImage] = useState(null);
+
+  // AI Generate state
+  const [generatePrompt, setGeneratePrompt] = useState('');
+  const [generateName, setGenerateName] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generatedImage, setGeneratedImage] = useState(null);
+  const [generateError, setGenerateError] = useState(null);
 
   // Load files and maps
   useEffect(() => {
@@ -177,6 +190,110 @@ export default function ContentSelector({
     });
   };
 
+  // Generate AI image
+  const handleGenerateImage = async () => {
+    if (!hasOpenAIKey) {
+      setGenerateError('OpenAI API key required');
+      return;
+    }
+
+    if (!generatePrompt.trim()) {
+      setGenerateError('Please enter a description');
+      return;
+    }
+
+    setGenerating(true);
+    setGenerateError(null);
+
+    try {
+      // Build the DALL-E prompt based on game system
+      const gameSystem = campaign?.gameSystem || 'daggerheart';
+      let stylePrefix = '';
+      if (gameSystem === 'starwarsd6') {
+        stylePrefix = 'Star Wars sci-fi creature or character, dramatic cinematic lighting, detailed sci-fi art style';
+      } else {
+        stylePrefix = 'Fantasy RPG creature or monster, dramatic lighting, detailed fantasy art style, painterly quality';
+      }
+
+      const fullPrompt = `${stylePrefix}. ${generatePrompt.trim()}. Full body or portrait view, dynamic pose, high quality, no text or labels.`;
+
+      console.log('Generating display image with prompt:', fullPrompt);
+
+      // Call DALL-E API
+      const response = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKeyInfo.key}`
+        },
+        body: JSON.stringify({
+          model: 'dall-e-3',
+          prompt: fullPrompt,
+          n: 1,
+          size: '1024x1024',
+          quality: 'standard',
+          style: 'vivid'
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Failed to generate image');
+      }
+
+      const data = await response.json();
+      const imageUrl = data.data[0].url;
+
+      // Download via proxy and upload to Firebase Storage
+      console.log('Downloading generated image...');
+      const proxyResponse = await fetch('/api/download-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl })
+      });
+
+      if (!proxyResponse.ok) {
+        throw new Error('Failed to download generated image');
+      }
+
+      const { dataUrl } = await proxyResponse.json();
+
+      // Upload to Firebase Storage
+      const timestamp = Date.now();
+      const safeName = (generateName || 'creature').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+      const storagePath = `campaigns/${campaignId}/display/${timestamp}_${safeName}.png`;
+      const storageRef = ref(storage, storagePath);
+
+      await uploadString(storageRef, dataUrl, 'data_url');
+      const downloadUrl = await getDownloadURL(storageRef);
+
+      console.log('Generated image uploaded:', downloadUrl);
+
+      setGeneratedImage({
+        url: downloadUrl,
+        name: generateName || 'Generated Image'
+      });
+
+    } catch (err) {
+      console.error('Image generation failed:', err);
+      setGenerateError(err.message || 'Failed to generate image');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Push generated image to display
+  const handlePushGeneratedImage = () => {
+    if (!generatedImage) return;
+
+    onSelectContent('image', {
+      url: generatedImage.url,
+      name: generatedImage.name,
+      type: 'generated',
+      showName: !!generateName
+    });
+  };
+
   // Get NPCs with images
   const npcsWithImages = npcs.filter(npc => npc.avatarUrl);
 
@@ -188,6 +305,7 @@ export default function ContentSelector({
     { id: 'npcs', label: 'NPCs', icon: Users, count: npcsWithImages.length },
     { id: 'locations', label: 'Locations', icon: Map, count: locationsWithImages.length },
     { id: 'files', label: 'Files', icon: FolderOpen, count: files.length },
+    { id: 'generate', label: 'Generate', icon: Wand2 },
     { id: 'youtube', label: 'YouTube', icon: Youtube },
     { id: 'upload', label: 'Quick Upload', icon: Upload }
   ];
@@ -242,6 +360,99 @@ export default function ContentSelector({
               Play on Display
             </button>
           </form>
+        </div>
+      );
+    }
+
+    if (activeTab === 'generate') {
+      return (
+        <div className="generate-section">
+          <div className="generate-form">
+            <div className="input-group">
+              <label>
+                <Skull size={16} />
+                Creature/Monster Description
+              </label>
+              <textarea
+                value={generatePrompt}
+                onChange={(e) => setGeneratePrompt(e.target.value)}
+                placeholder="e.g., A fearsome goblin war chief with tribal tattoos and a jagged sword, or A massive shadow dragon emerging from darkness..."
+                rows={3}
+                disabled={generating}
+              />
+            </div>
+            <div className="input-group">
+              <label>Name (optional, shown on display)</label>
+              <input
+                type="text"
+                value={generateName}
+                onChange={(e) => setGenerateName(e.target.value)}
+                placeholder="e.g., Goblin War Chief"
+                disabled={generating}
+              />
+            </div>
+
+            {generateError && (
+              <div className="generate-error">
+                {generateError}
+              </div>
+            )}
+
+            {!hasOpenAIKey && (
+              <div className="generate-warning">
+                OpenAI API key required for AI image generation. Add your key in Settings.
+              </div>
+            )}
+
+            <button
+              className="btn btn-primary"
+              onClick={handleGenerateImage}
+              disabled={generating || !hasOpenAIKey || !generatePrompt.trim()}
+            >
+              {generating ? (
+                <>
+                  <Loader2 size={16} className="spinner" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Wand2 size={16} />
+                  Generate Image
+                </>
+              )}
+            </button>
+          </div>
+
+          {generatedImage && (
+            <div className="generated-result">
+              <div className="generated-preview">
+                <img src={generatedImage.url} alt={generatedImage.name} />
+              </div>
+              <div className="generated-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setGeneratedImage(null);
+                    setGeneratePrompt('');
+                    setGenerateName('');
+                  }}
+                >
+                  Clear
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handlePushGeneratedImage}
+                >
+                  <ImageIcon size={16} />
+                  Push to Display
+                </button>
+              </div>
+            </div>
+          )}
+
+          <p className="generate-note">
+            Generate monsters, creatures, or scene images on the fly using AI. Images are saved to your campaign.
+          </p>
         </div>
       );
     }
