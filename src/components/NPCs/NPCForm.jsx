@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Save, X } from 'lucide-react';
+import { Save, X, Wand2, Loader2 } from 'lucide-react';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { generateNPCPortrait } from '../../services/portraitGenerator';
 import './NPCsView.css';
 
 export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isDM }) {
@@ -19,6 +21,8 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
   });
 
   const { search } = useEntityRegistry(campaign, entities);
+  const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
+
   const [formData, setFormData] = useState(npc || {
     name: '',
     occupation: '',
@@ -32,12 +36,49 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
   });
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [generatingPortrait, setGeneratingPortrait] = useState(false);
+  const [portraitError, setPortraitError] = useState(null);
+
+  // Check if OpenAI key is available
+  const openaiKeyInfo = getEffectiveKey('openai');
+  const hasOpenAIKey = !!openaiKeyInfo?.key;
 
   const handleChange = (field, value) => {
     setFormData({
       ...formData,
       [field]: value
     });
+  };
+
+  const handleGeneratePortrait = async () => {
+    if (!hasOpenAIKey) {
+      setPortraitError('OpenAI API key required for portrait generation');
+      return;
+    }
+
+    if (!formData.name) {
+      setPortraitError('Please enter an NPC name first');
+      return;
+    }
+
+    setGeneratingPortrait(true);
+    setPortraitError(null);
+
+    try {
+      const gameSystem = campaign?.gameSystem || 'daggerheart';
+      const campaignId = campaign?.id;
+      const avatarUrl = await generateNPCPortrait(formData, openaiKeyInfo.key, gameSystem, campaignId);
+
+      setFormData({
+        ...formData,
+        avatarUrl
+      });
+    } catch (err) {
+      console.error('Portrait generation failed:', err);
+      setPortraitError(err.message || 'Failed to generate portrait');
+    } finally {
+      setGeneratingPortrait(false);
+    }
   };
 
   const handleAvatarUpload = (e) => {
@@ -96,20 +137,47 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
               type="file"
               accept="image/*"
               onChange={handleAvatarUpload}
-              disabled={uploadingAvatar}
+              disabled={uploadingAvatar || generatingPortrait}
               style={{ display: 'none' }}
             />
           </label>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleGeneratePortrait}
+            disabled={generatingPortrait || !hasOpenAIKey}
+            title={!hasOpenAIKey ? 'OpenAI API key required' : 'Generate AI portrait'}
+          >
+            {generatingPortrait ? (
+              <>
+                <Loader2 size={16} className="spinner" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Wand2 size={16} />
+                Generate AI
+              </>
+            )}
+          </button>
           {formData.avatarUrl && (
             <button
               type="button"
               className="btn btn-secondary"
               onClick={() => handleChange('avatarUrl', '')}
+              disabled={generatingPortrait}
             >
               Remove
             </button>
           )}
-          <small className="form-hint">Max 1MB, square images work best</small>
+          <small className="form-hint">
+            {hasOpenAIKey
+              ? 'Upload an image or generate with AI'
+              : 'Upload an image (add OpenAI key for AI generation)'}
+          </small>
+          {portraitError && (
+            <small className="form-error">{portraitError}</small>
+          )}
         </div>
       </div>
 
