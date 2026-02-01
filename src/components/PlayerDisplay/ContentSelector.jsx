@@ -25,6 +25,7 @@ export default function ContentSelector({
   campaign,
   npcs = [],
   locations = [],
+  adversaries = [],
   onSelectContent,
   currentContent
 }) {
@@ -319,9 +320,13 @@ export default function ContentSelector({
   // Get locations with images
   const locationsWithImages = locations.filter(loc => loc.imageUrl);
 
+  // Get adversaries with images
+  const adversariesWithImages = adversaries.filter(adv => adv.imageUrl);
+
   const tabs = [
     { id: 'maps', label: 'Maps', icon: Map, count: maps.length },
     { id: 'creatures', label: 'Creatures', icon: Skull, count: generatedImages.length },
+    { id: 'adversaries', label: 'Adversaries', icon: Skull, count: adversariesWithImages.length },
     { id: 'npcs', label: 'NPCs', icon: Users, count: npcsWithImages.length },
     { id: 'locations', label: 'Locations', icon: Map, count: locationsWithImages.length },
     { id: 'files', label: 'Files', icon: FolderOpen, count: files.length },
@@ -553,6 +558,10 @@ export default function ContentSelector({
       case 'creatures':
         items = generatedImages;
         type = 'creature';
+        break;
+      case 'adversaries':
+        items = adversariesWithImages;
+        type = 'adversary';
         break;
       case 'npcs':
         items = npcsWithImages;

@@ -531,6 +531,7 @@ function CampaignApp() {
             campaign={campaign}
             npcs={npcs}
             locations={locations}
+            adversaries={adversaries}
             initiative={initiative}
           />
         );

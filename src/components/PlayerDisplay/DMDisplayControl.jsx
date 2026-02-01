@@ -23,6 +23,7 @@ export default function DMDisplayControl({
   campaign,
   npcs = [],
   locations = [],
+  adversaries = [],
   initiative
 }) {
   const campaignId = campaign?.id;
@@ -211,6 +212,7 @@ export default function DMDisplayControl({
             campaign={campaign}
             npcs={npcs}
             locations={locations}
+            adversaries={adversaries}
             onSelectContent={handleContentSelect}
             currentContent={content}
           />
