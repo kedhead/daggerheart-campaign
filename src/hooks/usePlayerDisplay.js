@@ -1,23 +1,6 @@
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot, setDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
-
-// Helper to remove undefined values and prepare for Firestore
-function sanitizeForFirestore(obj) {
-  const result = {};
-  for (const [key, value] of Object.entries(obj)) {
-    // Skip undefined values and internal fields
-    if (value === undefined || key === 'id') continue;
-
-    // Handle nested objects
-    if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
-      result[key] = sanitizeForFirestore(value);
-    } else {
-      result[key] = value;
-    }
-  }
-  return result;
-}
 
 export function usePlayerDisplay(campaignId) {
   const [displayState, setDisplayState] = useState({
@@ -26,7 +9,9 @@ export function usePlayerDisplay(campaignId) {
     showFear: true,
     showInitiative: true,
     contentType: 'none',
-    content: null
+    contentUrl: '',
+    contentName: '',
+    contentShowName: true
   });
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +37,9 @@ export function usePlayerDisplay(campaignId) {
             showFear: true,
             showInitiative: true,
             contentType: 'none',
-            content: null
+            contentUrl: '',
+            contentName: '',
+            contentShowName: true
           });
         }
         setLoading(false);
@@ -70,31 +57,20 @@ export function usePlayerDisplay(campaignId) {
   const updateDisplayState = async (updates) => {
     if (!basePath) return;
     try {
-      // Build clean data object
+      // Build clean data object with only primitive values (no nested objects)
       const data = {
-        enabled: displayState.enabled ?? false,
-        fearCount: displayState.fearCount ?? 0,
-        showFear: displayState.showFear ?? true,
-        showInitiative: displayState.showInitiative ?? true,
-        contentType: displayState.contentType ?? 'none',
-        ...updates,
+        enabled: updates.enabled ?? displayState.enabled ?? false,
+        fearCount: updates.fearCount ?? displayState.fearCount ?? 0,
+        showFear: updates.showFear ?? displayState.showFear ?? true,
+        showInitiative: updates.showInitiative ?? displayState.showInitiative ?? true,
+        contentType: updates.contentType ?? displayState.contentType ?? 'none',
+        contentUrl: updates.contentUrl ?? displayState.contentUrl ?? '',
+        contentName: updates.contentName ?? displayState.contentName ?? '',
+        contentShowName: updates.contentShowName ?? displayState.contentShowName ?? true,
         updatedAt: serverTimestamp()
       };
 
-      // Handle content field specially - use deleteField() if null
-      if (data.content === null) {
-        data.content = deleteField();
-      } else if (data.content) {
-        // Ensure content is a clean object
-        data.content = {
-          url: data.content.url || '',
-          name: data.content.name || '',
-          type: data.content.type || '',
-          showName: data.content.showName !== false
-        };
-      }
-
-      await setDoc(doc(db, basePath), data, { merge: true });
+      await setDoc(doc(db, basePath), data);
     } catch (error) {
       console.error('Error updating player display:', error);
       throw error;
@@ -136,21 +112,27 @@ export function usePlayerDisplay(campaignId) {
   const setDisplayContent = async (contentType, content) => {
     await updateDisplayState({
       contentType,
-      content: {
-        url: content.url || '',
-        name: content.name || '',
-        type: content.type || '',
-        showName: content.showName !== false
-      }
+      contentUrl: content.url || '',
+      contentName: content.name || '',
+      contentShowName: content.showName !== false
     });
   };
 
   const clearDisplay = async () => {
     await updateDisplayState({
       contentType: 'none',
-      content: null
+      contentUrl: '',
+      contentName: '',
+      contentShowName: true
     });
   };
+
+  // Reconstruct content object for component compatibility
+  const content = displayState.contentUrl ? {
+    url: displayState.contentUrl,
+    name: displayState.contentName || '',
+    showName: displayState.contentShowName !== false
+  } : null;
 
   return {
     // State
@@ -161,7 +143,7 @@ export function usePlayerDisplay(campaignId) {
     showFear: displayState.showFear !== false,
     showInitiative: displayState.showInitiative !== false,
     contentType: displayState.contentType || 'none',
-    content: displayState.content,
+    content,
 
     // Fear methods
     incrementFear,
