@@ -1,9 +1,23 @@
 import { useState } from 'react';
-import { Monitor, ExternalLink, X, Eye, EyeOff, Zap } from 'lucide-react';
+import { Monitor, ExternalLink, X, Eye, EyeOff, Zap, Youtube, Play } from 'lucide-react';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearControl from './FearControl';
 import ContentSelector from './ContentSelector';
 import './DMDisplayControl.css';
+
+// Extract YouTube video ID for thumbnail
+function getYouTubeVideoId(url) {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
+    /^([a-zA-Z0-9_-]{11})$/
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
 
 export default function DMDisplayControl({
   campaign,
@@ -104,12 +118,33 @@ export default function DMDisplayControl({
 
             {/* Content Preview */}
             {content?.url ? (
-              <div className="preview-image-container">
-                <img src={content.url} alt={content.name || 'Display content'} />
-                {content.showName && content.name && (
-                  <div className="preview-caption">{content.name}</div>
-                )}
-              </div>
+              contentType === 'video' ? (
+                <div className="preview-image-container preview-video">
+                  {getYouTubeVideoId(content.url) ? (
+                    <>
+                      <img
+                        src={`https://img.youtube.com/vi/${getYouTubeVideoId(content.url)}/mqdefault.jpg`}
+                        alt={content.name || 'YouTube video'}
+                      />
+                      <div className="preview-play-overlay">
+                        <Play size={24} />
+                      </div>
+                    </>
+                  ) : (
+                    <Youtube size={32} />
+                  )}
+                  {content.showName && content.name && (
+                    <div className="preview-caption">{content.name}</div>
+                  )}
+                </div>
+              ) : (
+                <div className="preview-image-container">
+                  <img src={content.url} alt={content.name || 'Display content'} />
+                  {content.showName && content.name && (
+                    <div className="preview-caption">{content.name}</div>
+                  )}
+                </div>
+              )
             ) : (
               <div className="preview-empty">
                 <Monitor size={32} />
