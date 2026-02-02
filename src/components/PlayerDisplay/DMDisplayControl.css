@@ -400,6 +400,13 @@
   border: 1px solid var(--border-color);
 }
 
+.toggle-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0;
+  font-style: italic;
+}
+
 /* Content Selector */
 .content-selector {
   display: flex;

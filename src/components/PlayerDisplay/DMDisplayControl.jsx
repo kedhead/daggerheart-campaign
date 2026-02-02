@@ -34,6 +34,7 @@ export default function DMDisplayControl({
     fearCount,
     showFear,
     showInitiative,
+    showNames,
     contentType,
     content,
     contentItems,
@@ -42,6 +43,7 @@ export default function DMDisplayControl({
     resetFear,
     toggleFear,
     toggleInitiative,
+    toggleNames,
     setDisplayContent,
     clearDisplay,
     addContentItem,
@@ -237,6 +239,35 @@ export default function DMDisplayControl({
             ) : (
               <span className="status-badge inactive">No active combat</span>
             )}
+          </div>
+        </div>
+
+        {/* Show Names Toggle */}
+        <div className="control-section card">
+          <h3>Creature Names</h3>
+          <div className="toggle-control">
+            <label className="checkbox-control">
+              <input
+                type="checkbox"
+                checked={showNames}
+                onChange={toggleNames}
+              />
+              <span>Show Names on Display</span>
+            </label>
+            <span className={`status-badge ${showNames ? 'active' : 'inactive'}`}>
+              {showNames ? (
+                <>
+                  <Eye size={14} />
+                  Names Visible
+                </>
+              ) : (
+                <>
+                  <EyeOff size={14} />
+                  Names Hidden
+                </>
+              )}
+            </span>
+            <p className="toggle-hint">Hide names until players identify the creatures</p>
           </div>
         </div>
 

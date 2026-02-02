@@ -8,6 +8,7 @@ export function usePlayerDisplay(campaignId) {
     fearCount: 0,
     showFear: true,
     showInitiative: true,
+    showNames: false, // Global toggle for showing names/captions
     contentType: 'none',
     contentUrl: '',
     contentName: '',
@@ -42,6 +43,7 @@ export function usePlayerDisplay(campaignId) {
             fearCount: 0,
             showFear: true,
             showInitiative: true,
+            showNames: false,
             contentType: 'none',
             contentUrl: '',
             contentName: '',
@@ -70,6 +72,7 @@ export function usePlayerDisplay(campaignId) {
         fearCount: updates.fearCount ?? displayState.fearCount ?? 0,
         showFear: updates.showFear ?? displayState.showFear ?? true,
         showInitiative: updates.showInitiative ?? displayState.showInitiative ?? true,
+        showNames: updates.showNames ?? displayState.showNames ?? false,
         contentType: updates.contentType ?? displayState.contentType ?? 'none',
         contentUrl: updates.contentUrl ?? displayState.contentUrl ?? '',
         contentName: updates.contentName ?? displayState.contentName ?? '',
@@ -110,6 +113,10 @@ export function usePlayerDisplay(campaignId) {
 
   const toggleInitiative = async () => {
     await updateDisplayState({ showInitiative: !displayState.showInitiative });
+  };
+
+  const toggleNames = async () => {
+    await updateDisplayState({ showNames: !displayState.showNames });
   };
 
   const toggleEnabled = async () => {
@@ -184,6 +191,7 @@ export function usePlayerDisplay(campaignId) {
     fearCount: displayState.fearCount || 0,
     showFear: displayState.showFear !== false,
     showInitiative: displayState.showInitiative !== false,
+    showNames: displayState.showNames === true,
     contentType: displayState.contentType || 'none',
     content,
     contentItems: displayState.contentItems || [],
@@ -197,6 +205,7 @@ export function usePlayerDisplay(campaignId) {
     // Toggle methods
     toggleFear,
     toggleInitiative,
+    toggleNames,
     toggleEnabled,
 
     // Content methods (single - legacy)

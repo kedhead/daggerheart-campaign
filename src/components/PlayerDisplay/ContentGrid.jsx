@@ -20,7 +20,7 @@ function getYouTubeVideoId(url) {
 }
 
 // Single grid item component
-function GridItem({ item }) {
+function GridItem({ item, showNames }) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ function GridItem({ item }) {
             allowFullScreen
           />
         </div>
-        {item.showName && item.name && (
+        {showNames && item.name && (
           <div className="grid-item-caption">{item.name}</div>
         )}
       </div>
@@ -75,14 +75,14 @@ function GridItem({ item }) {
           className="grid-item-image"
         />
       )}
-      {item.showName && item.name && (
+      {showNames && item.name && (
         <div className="grid-item-caption">{item.name}</div>
       )}
     </div>
   );
 }
 
-export default function ContentGrid({ items }) {
+export default function ContentGrid({ items, showNames = false }) {
   if (!items || items.length === 0) {
     return (
       <div className="content-display empty">
@@ -106,7 +106,7 @@ export default function ContentGrid({ items }) {
   return (
     <div className={`content-grid ${getGridClass(items.length)}`}>
       {items.map(item => (
-        <GridItem key={item.id} item={item} />
+        <GridItem key={item.id} item={item} showNames={showNames} />
       ))}
     </div>
   );

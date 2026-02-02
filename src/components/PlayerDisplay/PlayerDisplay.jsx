@@ -15,6 +15,7 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
     fearCount,
     showFear,
     showInitiative,
+    showNames,
     contentType,
     content,
     contentItems
@@ -132,9 +133,9 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
       {/* Main Content Area */}
       <div className="player-display-content">
         {contentItems && contentItems.length > 0 ? (
-          <ContentGrid items={contentItems} />
+          <ContentGrid items={contentItems} showNames={showNames} />
         ) : (
-          <ContentDisplay contentType={contentType} content={content} />
+          <ContentDisplay contentType={contentType} content={content} showNames={showNames} />
         )}
       </div>
 

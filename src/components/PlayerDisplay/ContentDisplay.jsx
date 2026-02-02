@@ -20,7 +20,7 @@ function getYouTubeVideoId(url) {
   return null;
 }
 
-export default function ContentDisplay({ contentType, content }) {
+export default function ContentDisplay({ contentType, content, showNames = false }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [prevUrl, setPrevUrl] = useState(null);
 
@@ -73,7 +73,7 @@ export default function ContentDisplay({ contentType, content }) {
             allowFullScreen
           />
         </div>
-        {content.showName && content.name && (
+        {showNames && content.name && (
           <div className="content-caption">
             <h2>{content.name}</h2>
           </div>
@@ -93,7 +93,7 @@ export default function ContentDisplay({ contentType, content }) {
           className="content-image"
         />
       )}
-      {content.showName && content.name && (
+      {showNames && content.name && (
         <div className="content-caption">
           <h2>{content.name}</h2>
         </div>
