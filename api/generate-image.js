@@ -1,6 +1,7 @@
 /**
  * Vercel Serverless Function - AI Image Generation
- * Uses 1min.ai API with Magic Art 7.0 for battle map generation
+ * Uses 1min.ai API for battle map generation
+ * Supports: dall-e-3, flux-dev, stable-diffusion-3, magic-art_7_0
  */
 
 export default async function handler(req, res) {
@@ -17,7 +18,7 @@ export default async function handler(req, res) {
     const {
       prompt,
       type = 'battle-map',
-      model = 'magic-art_7_0',
+      model = 'dall-e-3',  // Default to DALL-E 3 (more widely available)
       size = '1024x1024',
       animated = false
     } = req.body;
@@ -33,58 +34,73 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Image generation API not configured' });
     }
 
-    console.log('Generating image with 1min.ai Magic Art 7.0:', { type, model, size, animated });
+    console.log('Generating image with 1min.ai:', { type, model, size, animated });
 
     // Build the enhanced prompt based on type - emphasizing overhead/orthographic D&D battle map style
     let enhancedPrompt = prompt;
 
     if (type === 'battle-map' || type === 'special') {
-      enhancedPrompt = `Overhead orthographic top-down view D&D battle map, tabletop RPG gaming mat style, ${prompt}, flat perspective looking straight down, no horizon visible, suitable for miniature placement, high detail fantasy illustration, square grid compatible, professional VTT map, no text or labels, clean crisp edges, 8K resolution`;
+      enhancedPrompt = `Overhead orthographic top-down view D&D battle map, tabletop RPG gaming mat style, ${prompt}, flat perspective looking straight down, no horizon visible, suitable for miniature placement, high detail fantasy illustration, square grid compatible, professional VTT map, no text or labels, clean crisp edges`;
     } else if (type === 'dungeon') {
-      enhancedPrompt = `Overhead orthographic top-down view dungeon battle map for D&D, ${prompt}, stone floor tiles, walls visible from above, flat perspective looking straight down, dark fantasy torchlit atmosphere, suitable for miniature combat, VTT ready, no text labels, clean edges, 8K resolution`;
+      enhancedPrompt = `Overhead orthographic top-down view dungeon battle map for D&D, ${prompt}, stone floor tiles, walls visible from above, flat perspective looking straight down, dark fantasy torchlit atmosphere, suitable for miniature combat, VTT ready, no text labels, clean edges`;
     } else if (type === 'outdoor') {
-      enhancedPrompt = `Overhead orthographic top-down view outdoor battle map for D&D, ${prompt}, flat perspective looking straight down from above, natural terrain visible from bird's eye view, fantasy RPG style, grid-compatible layout, VTT ready, no text or labels, 8K resolution`;
+      enhancedPrompt = `Overhead orthographic top-down view outdoor battle map for D&D, ${prompt}, flat perspective looking straight down from above, natural terrain visible from bird's eye view, fantasy RPG style, grid-compatible layout, VTT ready, no text or labels`;
     } else if (type === 'city') {
-      enhancedPrompt = `Overhead orthographic top-down view city street battle map for D&D, ${prompt}, medieval fantasy buildings from above, flat perspective looking straight down, cobblestone streets, suitable for miniature combat, VTT ready, no text or labels, 8K resolution`;
+      enhancedPrompt = `Overhead orthographic top-down view city street battle map for D&D, ${prompt}, medieval fantasy buildings from above, flat perspective looking straight down, cobblestone streets, suitable for miniature combat, VTT ready, no text or labels`;
     } else if (type === 'asset') {
       enhancedPrompt = `${prompt}, top-down view token for D&D VTT, transparent background, isolated object, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
     }
 
-    // Determine aspect ratio from size
-    const [width, height] = size.split('x').map(Number);
-    let aspectWidth = 1;
-    let aspectHeight = 1;
+    // Build request based on model
+    let requestBody;
+    const selectedModel = model || 'dall-e-3';
 
-    if (width > height) {
-      // Wide format like 1792x1024
-      aspectWidth = 7;
-      aspectHeight = 4;
-    } else if (height > width) {
-      // Tall format
-      aspectWidth = 4;
-      aspectHeight = 7;
+    if (selectedModel === 'magic-art_7_0') {
+      // Magic Art 7.0 (Midjourney-style) - may require higher tier
+      const [width, height] = size.split('x').map(Number);
+      let aspectWidth = 1, aspectHeight = 1;
+      if (width > height) { aspectWidth = 7; aspectHeight = 4; }
+      else if (height > width) { aspectWidth = 4; aspectHeight = 7; }
+
+      requestBody = {
+        type: 'IMAGE_GENERATOR',
+        model: 'magic-art_7_0',
+        promptObject: {
+          prompt: enhancedPrompt,
+          mode: 'fast',
+          n: 1,
+          isNiji6: false,
+          aspect_width: aspectWidth,
+          aspect_height: aspectHeight,
+          stylize: 100,
+          chaos: 10,
+          maintainModeration: true
+        }
+      };
+    } else if (selectedModel === 'flux-dev' || selectedModel === 'flux-schnell') {
+      // Flux models
+      requestBody = {
+        type: 'IMAGE_GENERATOR',
+        model: selectedModel,
+        promptObject: {
+          prompt: enhancedPrompt,
+          num_outputs: 1,
+          aspect_ratio: size === '1792x1024' ? '16:9' : size === '1024x1792' ? '9:16' : '1:1'
+        }
+      };
     } else {
-      // Square
-      aspectWidth = 1;
-      aspectHeight = 1;
+      // DALL-E 3 (default) and Stable Diffusion
+      requestBody = {
+        type: 'IMAGE_GENERATOR',
+        model: selectedModel,
+        promptObject: {
+          prompt: enhancedPrompt,
+          n: 1,
+          size: size,
+          quality: 'hd'
+        }
+      };
     }
-
-    // Use 1min.ai API with Magic Art 7.0
-    const requestBody = {
-      type: 'IMAGE_GENERATOR',
-      model: 'magic-art_7_0',
-      promptObject: {
-        prompt: enhancedPrompt,
-        mode: 'fast',
-        n: 1,
-        isNiji6: false,
-        aspect_width: aspectWidth,
-        aspect_height: aspectHeight,
-        stylize: 100,
-        chaos: 10,
-        maintainModeration: true
-      }
-    };
 
     console.log('1min.ai request:', JSON.stringify(requestBody));
 
@@ -151,7 +167,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       imageUrl,
       prompt: enhancedPrompt,
-      model: 'magic-art_7_0',
+      model: selectedModel,
       animated
     });
 

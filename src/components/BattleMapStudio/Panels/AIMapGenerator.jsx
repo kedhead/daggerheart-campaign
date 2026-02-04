@@ -153,9 +153,11 @@ export default function AIMapGenerator({ campaignId }) {
             <div className="option-row">
               <label>Model</label>
               <select value={model} onChange={(e) => setModel(e.target.value)}>
-                <option value="dall-e-3">DALL-E 3 (Best)</option>
-                <option value="dall-e-2">DALL-E 2 (Faster)</option>
-                <option value="stable-diffusion-xl">Stable Diffusion XL</option>
+                <option value="dall-e-3">DALL-E 3 (Recommended)</option>
+                <option value="flux-dev">Flux Dev (High Quality)</option>
+                <option value="flux-schnell">Flux Schnell (Fast)</option>
+                <option value="stable-diffusion-3">Stable Diffusion 3</option>
+                <option value="magic-art_7_0">Magic Art 7 (Premium)</option>
               </select>
             </div>
 
