@@ -157,7 +157,12 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log('1min.ai full response:', JSON.stringify(data));
+    console.log('1min.ai full response keys:', Object.keys(data));
+    console.log('1min.ai aiRecord keys:', data.aiRecord ? Object.keys(data.aiRecord) : 'no aiRecord');
+    console.log('1min.ai aiRecordDetail keys:', data.aiRecord?.aiRecordDetail ? Object.keys(data.aiRecord.aiRecordDetail) : 'no aiRecordDetail');
+    console.log('1min.ai resultObject:', JSON.stringify(data.aiRecord?.aiRecordDetail?.resultObject));
+    console.log('1min.ai result:', JSON.stringify(data.aiRecord?.aiRecordDetail?.result));
+    console.log('1min.ai resultUrl:', data.aiRecord?.aiRecordDetail?.resultUrl);
 
     // Extract image URL from 1min.ai response - handle many possible formats
     let imageUrl = null;
