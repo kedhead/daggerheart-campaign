@@ -244,8 +244,8 @@ export default async function handler(req, res) {
 
     // Convert relative URLs to full URLs (1min.ai returns relative paths)
     if (imageUrl && !imageUrl.startsWith('http')) {
-      // 1min.ai CDN base URL
-      imageUrl = `https://cdn.1min.ai/${imageUrl}`;
+      // 1min.ai uses S3 for image storage
+      imageUrl = `https://s3.us-east-1.amazonaws.com/asset.1min.ai/development/${imageUrl}`;
       console.log('Converted relative URL to:', imageUrl);
     }
 
