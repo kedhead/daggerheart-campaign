@@ -27,14 +27,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required field: prompt' });
     }
 
-    // Get API key from environment
-    const apiKey = process.env.min_api || process.env.MIN_API_KEY;
+    // Get API key from environment - try multiple variable names
+    const apiKey = process.env.min_api || process.env.MIN_API_KEY || process.env.MIN_API || process.env.ONEMIN_API_KEY;
 
     if (!apiKey) {
-      return res.status(500).json({ error: 'Image generation API not configured' });
+      console.error('No API key found. Checked: min_api, MIN_API_KEY, MIN_API, ONEMIN_API_KEY');
+      return res.status(500).json({
+        error: 'Image generation API not configured',
+        hint: 'Set min_api environment variable in Vercel'
+      });
     }
 
-    console.log('Generating image with 1min.ai:', { type, model, size, animated });
+    // Log API key prefix for debugging (first 8 chars only)
+    console.log('Generating image with 1min.ai:', {
+      type,
+      model,
+      size,
+      animated,
+      apiKeyPrefix: apiKey.substring(0, 8) + '...'
+    });
 
     // Build the enhanced prompt based on type - emphasizing overhead/orthographic D&D battle map style
     let enhancedPrompt = prompt;
@@ -115,10 +126,27 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('1min.ai API error:', errorText);
+      console.error('1min.ai API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+
+      // Try to parse as JSON for better error message
+      let errorDetails = errorText;
+      let errorMessage = response.statusText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorJson.error || response.statusText;
+        errorDetails = errorJson;
+      } catch (e) {
+        // Keep as text
+      }
+
       return res.status(response.status).json({
-        error: `Image generation failed: ${response.statusText}`,
-        details: errorText
+        error: `Image generation failed: ${errorMessage}`,
+        status: response.status,
+        details: errorDetails
       });
     }
 
