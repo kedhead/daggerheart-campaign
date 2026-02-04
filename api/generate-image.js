@@ -76,8 +76,22 @@ export default async function handler(req, res) {
       // Magic Art 7.0 (Midjourney-style) - matches exact format from 1min.ai docs
       const [width, height] = size.split('x').map(Number);
       let aspectWidth = 1, aspectHeight = 1;
-      if (width > height) { aspectWidth = 7; aspectHeight = 4; }
-      else if (height > width) { aspectWidth = 4; aspectHeight = 7; }
+
+      // Calculate aspect ratio
+      const ratio = width / height;
+      if (Math.abs(ratio - 16/9) < 0.1) {
+        // 16:9 (2560x1440, etc.)
+        aspectWidth = 16; aspectHeight = 9;
+      } else if (Math.abs(ratio - 9/16) < 0.1) {
+        // 9:16 (vertical)
+        aspectWidth = 9; aspectHeight = 16;
+      } else if (width > height) {
+        // Other wide formats (1792x1024 ≈ 7:4)
+        aspectWidth = 7; aspectHeight = 4;
+      } else if (height > width) {
+        // Other tall formats
+        aspectWidth = 4; aspectHeight = 7;
+      }
 
       requestBody = {
         type: 'IMAGE_GENERATOR',

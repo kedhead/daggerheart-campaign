@@ -167,6 +167,7 @@ export default function AIMapGenerator({ campaignId }) {
                 <option value="1024x1024">1024×1024 (Square)</option>
                 <option value="1792x1024">1792×1024 (Wide)</option>
                 <option value="1024x1792">1024×1792 (Tall)</option>
+                <option value="2560x1440">2560×1440 (QHD Wide)</option>
               </select>
             </div>
 
