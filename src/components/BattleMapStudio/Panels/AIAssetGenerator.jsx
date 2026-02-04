@@ -18,7 +18,7 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
   const [generatedAssets, setGeneratedAssets] = useState([]); // Session-generated
   const [savedAssets, setSavedAssets] = useState([]); // From Firestore
 
-  const { addToken, gridSize } = useBattleMapStore();
+  const { addToken, gridSize, mapImage, stageSize, zoom, panOffset } = useBattleMapStore();
 
   // Load saved assets from Firestore
   useEffect(() => {
@@ -109,11 +109,24 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
   };
 
   const handleAddToMap = (asset) => {
+    if (!mapImage) {
+      alert('Please load a map first before adding tokens');
+      return;
+    }
+
+    // Calculate center of visible area
+    const centerX = (-panOffset.x + stageSize.width / 2) / zoom;
+    const centerY = (-panOffset.y + stageSize.height / 2) / zoom;
+
+    // Snap to grid
+    const snappedX = Math.round(centerX / gridSize) * gridSize + gridSize / 2;
+    const snappedY = Math.round(centerY / gridSize) * gridSize + gridSize / 2;
+
     addToken({
       src: asset.url,
-      name: asset.name,
-      x: 100,
-      y: 100,
+      name: asset.name || 'AI Asset',
+      x: snappedX,
+      y: snappedY,
       width: gridSize,
       height: gridSize
     });
@@ -125,6 +138,11 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
 
   const handleDeleteSavedAsset = async (assetId) => {
     if (!campaignId) return;
+
+    if (!confirm('Are you sure you want to permanently delete this asset?')) {
+      return;
+    }
+
     try {
       await deleteDoc(doc(db, `campaigns/${campaignId}/battleMapAssets`, assetId));
       setSavedAssets(prev => prev.filter(a => a.id !== assetId));
