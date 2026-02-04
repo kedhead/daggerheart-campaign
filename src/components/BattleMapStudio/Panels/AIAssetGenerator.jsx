@@ -10,6 +10,7 @@ import { useBattleMapStore } from '../../../stores/battleMapStore';
 export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
   const [prompt, setPrompt] = useState('');
   const [category, setCategory] = useState('creatures');
+  const [removeBackground, setRemoveBackground] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [generatedAssets, setGeneratedAssets] = useState([]);
@@ -32,7 +33,8 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
     try {
       const result = await generateMapAsset({
         prompt: prompt.trim(),
-        category
+        category,
+        removeBackground
       });
 
       // Save to Firebase for persistence
@@ -130,6 +132,19 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
           className="prompt-input"
           onKeyDown={(e) => e.key === 'Enter' && !isGenerating && handleGenerate()}
         />
+      </div>
+
+      {/* Background Removal Toggle */}
+      <div className="generator-section">
+        <label className="bg-remove-toggle">
+          <input
+            type="checkbox"
+            checked={removeBackground}
+            onChange={(e) => setRemoveBackground(e.target.checked)}
+          />
+          <span>Remove background (for tokens)</span>
+        </label>
+        <p className="toggle-hint">Creates transparent PNG for clean token placement</p>
       </div>
 
       {/* Error Display */}
@@ -365,6 +380,27 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
         .remove-btn {
           background: var(--danger);
           color: white;
+        }
+
+        .bg-remove-toggle {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.85rem;
+          color: var(--text-primary);
+          cursor: pointer;
+        }
+
+        .bg-remove-toggle input[type="checkbox"] {
+          width: 16px;
+          height: 16px;
+          accent-color: var(--hope-color);
+        }
+
+        .toggle-hint {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          margin: 0.25rem 0 0 0;
         }
       `}</style>
     </div>

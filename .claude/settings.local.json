@@ -34,7 +34,8 @@
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(curl:*)",
-      "Bash(node scripts/fetch-adversaries.js:*)"
+      "Bash(node scripts/fetch-adversaries.js:*)",
+      "WebFetch(domain:1min.ai)"
     ],
     "deny": [],
     "ask": []

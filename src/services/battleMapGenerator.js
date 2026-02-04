@@ -67,15 +67,17 @@ export async function generateBattleMap(options) {
  * @param {object} options - Generation options
  * @param {string} options.prompt - Description of the asset
  * @param {string} options.category - Asset category
+ * @param {boolean} options.removeBackground - Whether to remove background after generation
  * @returns {Promise<object>} Generated asset data
  */
 export async function generateMapAsset(options) {
-  const { prompt, category = 'object' } = options;
+  const { prompt, category = 'object', removeBackground = false } = options;
 
   if (!prompt) {
     throw new Error('Prompt is required');
   }
 
+  // Generate the asset image
   const response = await fetch('/api/generate-image', {
     method: 'POST',
     headers: {
@@ -95,12 +97,40 @@ export async function generateMapAsset(options) {
   }
 
   const data = await response.json();
+  let finalUrl = data.imageUrl;
+
+  // Optionally remove background
+  if (removeBackground && finalUrl) {
+    console.log('Removing background from generated asset...');
+    try {
+      const bgResponse = await fetch('/api/remove-background', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ imageUrl: finalUrl })
+      });
+
+      if (bgResponse.ok) {
+        const bgData = await bgResponse.json();
+        finalUrl = bgData.imageUrl;
+        console.log('Background removed successfully');
+      } else {
+        console.warn('Background removal failed, using original image');
+      }
+    } catch (bgError) {
+      console.warn('Background removal error:', bgError);
+      // Continue with original image if background removal fails
+    }
+  }
+
   return {
     id: `ai_asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name: prompt.substring(0, 50),
-    url: data.imageUrl,
+    url: finalUrl,
     category,
     prompt: data.prompt,
+    backgroundRemoved: removeBackground,
     generatedAt: new Date().toISOString()
   };
 }
