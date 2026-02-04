@@ -31,6 +31,7 @@ import QuestsView from './components/Quests/QuestsView';
 import PlayerDisplay from './components/PlayerDisplay/PlayerDisplay';
 import DMDisplayControl from './components/PlayerDisplay/DMDisplayControl';
 import BattleMapStudio from './components/BattleMapStudio/BattleMapStudio';
+import BattleMapDisplayWindow from './components/BattleMapDisplay/BattleMapDisplayWindow';
 import { DiceRollerFloat } from './components/DiceRoller/index';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
@@ -640,6 +641,11 @@ function AppContent() {
   // Handle player display window (skip terms check for dedicated display window)
   if (viewParam === 'playerDisplay' && campaignIdParam) {
     return <PlayerDisplay campaignId={campaignIdParam} />;
+  }
+
+  // Handle battle map display window (separate screen for battle maps)
+  if (viewParam === 'battleMapDisplay' && campaignIdParam) {
+    return <BattleMapDisplayWindow campaignId={campaignIdParam} />;
   }
 
   // Show terms if user hasn't accepted yet

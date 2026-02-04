@@ -6,7 +6,8 @@ import {
   Monitor,
   Upload,
   Wand2,
-  Layers
+  Layers,
+  ExternalLink
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -118,6 +119,16 @@ export default function BattleMapStudio({ campaign, isDM }) {
     setTimeout(() => setShowBroadcastConfirm(false), 2000);
   };
 
+  // Open battle map display in new window (for second monitor)
+  const openBattleMapDisplay = useCallback(() => {
+    const displayUrl = `${window.location.origin}?view=battleMapDisplay&campaign=${campaignId}`;
+    window.open(
+      displayUrl,
+      'BattleMapDisplay',
+      'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no'
+    );
+  }, [campaignId]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -197,10 +208,14 @@ export default function BattleMapStudio({ campaign, isDM }) {
             <Save size={18} />
             Save
           </button>
-          <button className="btn btn-primary broadcast-btn" onClick={handleBroadcast} title="Broadcast to Player Display">
+          <button className="btn btn-primary broadcast-btn" onClick={handleBroadcast} title="Broadcast to Battle Map Display">
             <Monitor size={18} />
             Broadcast
             {showBroadcastConfirm && <span className="broadcast-confirm">Sent!</span>}
+          </button>
+          <button className="btn btn-secondary" onClick={openBattleMapDisplay} title="Open Battle Map Display Window">
+            <ExternalLink size={18} />
+            Open Display
           </button>
         </div>
       </div>

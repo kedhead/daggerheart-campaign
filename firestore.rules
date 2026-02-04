@@ -215,6 +215,14 @@ service cloud.firestore {
         allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
+      // Battle Map Display (separate screen for battle maps)
+      match /battleMapDisplay/{docId} {
+        // All campaign members can read the battle map display state
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // Only DM can write to the battle map display
+        allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
+
       // Generated Images (AI-generated creatures, monsters, etc.)
       match /generatedImages/{imageId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());

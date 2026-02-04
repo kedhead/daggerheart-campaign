@@ -17,7 +17,8 @@ export function useBattleMap(campaignId) {
   const [loading, setLoading] = useState(true);
 
   const basePath = campaignId ? `campaigns/${campaignId}/battleMaps` : null;
-  const displayPath = campaignId ? `campaigns/${campaignId}/playerDisplay/current` : null;
+  // Use separate battleMapDisplay path (not playerDisplay) for dedicated battle map screen
+  const displayPath = campaignId ? `campaigns/${campaignId}/battleMapDisplay/current` : null;
 
   // Subscribe to saved maps list
   useEffect(() => {
@@ -101,7 +102,7 @@ export function useBattleMap(campaignId) {
     }
   };
 
-  // Broadcast current map state to player display
+  // Broadcast current map state to battle map display (separate from player display)
   const broadcastToPlayers = async () => {
     if (!displayPath) return;
 
@@ -109,30 +110,26 @@ export function useBattleMap(campaignId) {
       const playerViewState = useBattleMapStore.getState().getPlayerViewState();
       const displayRef = doc(db, displayPath);
 
+      // Store the full map state directly for the dedicated battle map display
       await setDoc(displayRef, {
-        showBattleMap: true,
-        battleMapState: playerViewState,
+        ...playerViewState,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      });
     } catch (error) {
-      console.error('Error broadcasting to players:', error);
+      console.error('Error broadcasting to battle map display:', error);
       throw error;
     }
   };
 
-  // Stop broadcasting (hide battle map from player display)
+  // Clear the battle map display
   const stopBroadcast = async () => {
     if (!displayPath) return;
 
     try {
       const displayRef = doc(db, displayPath);
-      await setDoc(displayRef, {
-        showBattleMap: false,
-        battleMapState: null,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      await deleteDoc(displayRef);
     } catch (error) {
-      console.error('Error stopping broadcast:', error);
+      console.error('Error clearing battle map display:', error);
       throw error;
     }
   };
