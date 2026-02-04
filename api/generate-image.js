@@ -91,7 +91,7 @@ export default async function handler(req, res) {
           aspect_height: aspectHeight,
           stylize: 200,
           chaos: 25,
-          maintainModeration: true
+          maintainModeration: false  // Disabled - "battle map" triggers false positives
         }
       };
     } else if (selectedModel === 'flux-dev' || selectedModel === 'flux-schnell') {
