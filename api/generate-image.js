@@ -123,44 +123,83 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log('1min.ai response:', JSON.stringify(data).substring(0, 1500));
+    console.log('1min.ai full response:', JSON.stringify(data));
 
-    // Extract image URL from 1min.ai response
+    // Extract image URL from 1min.ai response - handle many possible formats
     let imageUrl = null;
 
-    // Try different response structures
+    // Format 1: aiRecord.aiRecordDetail.resultUrl
     if (data.aiRecord?.aiRecordDetail?.resultUrl) {
       imageUrl = data.aiRecord.aiRecordDetail.resultUrl;
-    } else if (data.aiRecord?.aiRecordDetail?.result) {
+    }
+    // Format 2: aiRecord.aiRecordDetail.result (string or array)
+    else if (data.aiRecord?.aiRecordDetail?.result) {
       const result = data.aiRecord.aiRecordDetail.result;
       if (Array.isArray(result)) {
-        imageUrl = result[0];
+        imageUrl = result[0]?.url || result[0];
       } else if (typeof result === 'string') {
         imageUrl = result;
+      } else if (result?.url) {
+        imageUrl = result.url;
       }
-    } else if (data.resultUrl) {
+    }
+    // Format 3: aiRecord.aiRecordDetail.resultObject (for DALL-E)
+    else if (data.aiRecord?.aiRecordDetail?.resultObject) {
+      const resultObj = data.aiRecord.aiRecordDetail.resultObject;
+      if (resultObj.data?.[0]?.url) {
+        imageUrl = resultObj.data[0].url;
+      } else if (resultObj.url) {
+        imageUrl = resultObj.url;
+      }
+    }
+    // Format 4: OpenAI-style data.data[].url
+    else if (data.data?.[0]?.url) {
+      imageUrl = data.data[0].url;
+    }
+    // Format 5: Direct resultUrl
+    else if (data.resultUrl) {
       imageUrl = data.resultUrl;
-    } else if (data.result) {
+    }
+    // Format 6: Direct result
+    else if (data.result) {
       if (Array.isArray(data.result)) {
-        imageUrl = data.result[0];
-      } else {
+        imageUrl = data.result[0]?.url || data.result[0];
+      } else if (typeof data.result === 'string') {
         imageUrl = data.result;
+      } else if (data.result?.url) {
+        imageUrl = data.result.url;
       }
-    } else if (Array.isArray(data.images) && data.images[0]) {
-      imageUrl = data.images[0];
-    } else if (data.output) {
+    }
+    // Format 7: images array
+    else if (Array.isArray(data.images) && data.images[0]) {
+      imageUrl = data.images[0]?.url || data.images[0];
+    }
+    // Format 8: output
+    else if (data.output) {
       if (Array.isArray(data.output)) {
-        imageUrl = data.output[0];
-      } else {
+        imageUrl = data.output[0]?.url || data.output[0];
+      } else if (typeof data.output === 'string') {
         imageUrl = data.output;
+      } else if (data.output?.url) {
+        imageUrl = data.output.url;
       }
+    }
+    // Format 9: url directly on data
+    else if (data.url) {
+      imageUrl = data.url;
+    }
+    // Format 10: image_url
+    else if (data.image_url) {
+      imageUrl = data.image_url;
     }
 
     if (!imageUrl) {
-      console.error('Could not find image URL in response:', JSON.stringify(data));
+      console.error('Could not find image URL in response. Full response:', JSON.stringify(data));
       return res.status(500).json({
         error: 'Could not extract image URL from API response',
-        response: data
+        details: 'Check Vercel logs for full response',
+        responseKeys: Object.keys(data),
+        hasAiRecord: !!data.aiRecord
       });
     }
 
