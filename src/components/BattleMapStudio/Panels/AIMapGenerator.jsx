@@ -15,7 +15,7 @@ export default function AIMapGenerator({ campaignId }) {
   const [error, setError] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [animated, setAnimated] = useState(false);
-  const [model, setModel] = useState('dall-e-3');
+  const [model, setModel] = useState('magic-art_7_0');
   const [size, setSize] = useState('1024x1024');
 
   const { setMapImage, setMapName } = useBattleMapStore();
@@ -153,11 +153,11 @@ export default function AIMapGenerator({ campaignId }) {
             <div className="option-row">
               <label>Model</label>
               <select value={model} onChange={(e) => setModel(e.target.value)}>
-                <option value="dall-e-3">DALL-E 3 (Recommended)</option>
-                <option value="flux-dev">Flux Dev (High Quality)</option>
+                <option value="magic-art_7_0">Magic Art 7.0 (Best Quality)</option>
+                <option value="dall-e-3">DALL-E 3</option>
+                <option value="flux-dev">Flux Dev</option>
                 <option value="flux-schnell">Flux Schnell (Fast)</option>
                 <option value="stable-diffusion-3">Stable Diffusion 3</option>
-                <option value="magic-art_7_0">Magic Art 7 (Premium)</option>
               </select>
             </div>
 

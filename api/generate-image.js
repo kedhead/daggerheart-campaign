@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const {
       prompt,
       type = 'battle-map',
-      model = 'dall-e-3',  // Default to DALL-E 3 (more widely available)
+      model = 'magic-art_7_0',  // Default to Magic Art 7.0
       size = '1024x1024',
       animated = false
     } = req.body;
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     const selectedModel = model || 'dall-e-3';
 
     if (selectedModel === 'magic-art_7_0') {
-      // Magic Art 7.0 (Midjourney-style) - may require higher tier
+      // Magic Art 7.0 (Midjourney-style) - matches exact format from 1min.ai docs
       const [width, height] = size.split('x').map(Number);
       let aspectWidth = 1, aspectHeight = 1;
       if (width > height) { aspectWidth = 7; aspectHeight = 4; }
@@ -67,13 +67,13 @@ export default async function handler(req, res) {
         model: 'magic-art_7_0',
         promptObject: {
           prompt: enhancedPrompt,
-          mode: 'fast',
-          n: 1,
+          mode: 'relax',  // 'relax' is standard, 'fast' costs 2x
+          n: 4,           // Magic Art 7.0 generates 4 images
           isNiji6: false,
           aspect_width: aspectWidth,
           aspect_height: aspectHeight,
-          stylize: 100,
-          chaos: 10,
+          stylize: 200,
+          chaos: 25,
           maintainModeration: true
         }
       };
@@ -143,13 +143,18 @@ export default async function handler(req, res) {
         imageUrl = result.url;
       }
     }
-    // Format 3: aiRecord.aiRecordDetail.resultObject (for DALL-E)
+    // Format 3: aiRecord.aiRecordDetail.resultObject (Magic Art 7.0 returns array of URLs)
     else if (data.aiRecord?.aiRecordDetail?.resultObject) {
       const resultObj = data.aiRecord.aiRecordDetail.resultObject;
-      if (resultObj.data?.[0]?.url) {
+      // Magic Art 7.0 returns array of image URLs directly
+      if (Array.isArray(resultObj) && resultObj.length > 0) {
+        imageUrl = resultObj[0];
+      } else if (resultObj.data?.[0]?.url) {
         imageUrl = resultObj.data[0].url;
       } else if (resultObj.url) {
         imageUrl = resultObj.url;
+      } else if (typeof resultObj === 'string') {
+        imageUrl = resultObj;
       }
     }
     // Format 4: OpenAI-style data.data[].url

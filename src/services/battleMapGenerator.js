@@ -84,8 +84,8 @@ export async function generateMapAsset(options) {
     body: JSON.stringify({
       prompt,
       type: 'asset',
-      model: 'dall-e-3',
-      size: '512x512'
+      model: 'magic-art_7_0',
+      size: '1024x1024'
     })
   });
 
