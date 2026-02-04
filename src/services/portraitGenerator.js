@@ -75,6 +75,47 @@ async function generatePortraitImage(prompt, apiKey) {
 }
 
 /**
+ * Build a DALL-E prompt for a player character portrait
+ * @param {object} character - Character data with name, class, ancestry, appearanceDescription, etc.
+ * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
+ * @returns {string} DALL-E prompt
+ */
+function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
+  const { name, class: charClass, ancestry, appearanceDescription, backstory } = character;
+
+  // Base style based on game system - more heroic for player characters
+  let styleBase = '';
+  if (gameSystem === 'starwarsd6') {
+    styleBase = 'Star Wars hero character portrait, sci-fi aesthetic, heroic lighting, cinematic quality, protagonist vibes';
+  } else if (gameSystem === 'dnd5e') {
+    styleBase = 'Dungeons and Dragons hero portrait, detailed fantasy art style, heroic and adventurous lighting, painterly quality';
+  } else {
+    styleBase = 'Fantasy RPG hero portrait, detailed fantasy art style, heroic and adventurous lighting, painterly quality, protagonist vibes';
+  }
+
+  // Use appearance description if provided, fall back to backstory excerpt
+  let appearance = appearanceDescription || '';
+  if (!appearance && backstory) {
+    // Extract first 200 chars of backstory for context
+    appearance = backstory.substring(0, 200);
+  }
+
+  // Build character context
+  let characterContext = name || 'an adventurer';
+  if (charClass) {
+    characterContext += `, a ${charClass}`;
+  }
+  if (ancestry) {
+    characterContext += ` of ${ancestry} ancestry`;
+  }
+
+  // Construct the full prompt
+  const prompt = `${styleBase}. Portrait of ${characterContext}. ${appearance}. Heroic and determined expression. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
+
+  return prompt;
+}
+
+/**
  * Build a DALL-E prompt for an NPC portrait
  * @param {object} npc - NPC data with name, description, occupation, etc.
  * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
@@ -167,8 +208,38 @@ export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerhe
   return dataUrl;
 }
 
+/**
+ * Generate a player character portrait
+ * @param {object} character - Character data
+ * @param {string} openaiKey - OpenAI API key for DALL-E
+ * @param {string} gameSystem - Game system for style
+ * @param {string} campaignId - Campaign ID for storage (optional, will use data URL if not provided)
+ * @returns {Promise<string>} Portrait URL (Firebase Storage URL if campaignId provided, otherwise data URL)
+ */
+export async function generateCharacterPortrait(character, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
+  if (!openaiKey) {
+    throw new Error('OpenAI API key required for portrait generation');
+  }
+
+  console.log('Building portrait prompt for character:', character.name);
+  const prompt = buildCharacterPortraitPrompt(character, gameSystem);
+  console.log('DALL-E prompt:', prompt);
+
+  const dataUrl = await generatePortraitImage(prompt, openaiKey);
+
+  // If campaignId provided, upload to Firebase Storage to avoid Firestore size limits
+  if (campaignId) {
+    const storageUrl = await uploadPortraitToStorage(dataUrl, campaignId, character.name);
+    return storageUrl;
+  }
+
+  return dataUrl;
+}
+
 export const portraitGeneratorService = {
   generateNPCPortrait,
+  generateCharacterPortrait,
   buildNPCPortraitPrompt,
+  buildCharacterPortraitPrompt,
   generatePortraitImage
 };

@@ -135,6 +135,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
             setEditingCharacter(null);
           }}
           isDM={isDM}
+          campaign={campaign}
         />
       </Modal>
     </div>

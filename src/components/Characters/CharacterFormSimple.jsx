@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Save, X, ExternalLink } from 'lucide-react';
+import { Save, X, ExternalLink, Wand2, Loader2 } from 'lucide-react';
+import { generateCharacterPortrait } from '../../services/portraitGenerator';
+import { useAPIKey } from '../../hooks/useAPIKey';
 import './CharacterForm.css';
 
-export default function CharacterFormSimple({ character, onSave, onCancel, isDM }) {
+export default function CharacterFormSimple({ character, onSave, onCancel, isDM, campaign }) {
   const [formData, setFormData] = useState(character || {
     name: '',
     playerName: '',
@@ -10,10 +12,48 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM 
     demiplaneLink: '',
     playerNotes: '',
     backstory: '',
-    dmNotes: ''
+    dmNotes: '',
+    appearanceDescription: ''
   });
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [generatingAvatar, setGeneratingAvatar] = useState(false);
+
+  // Get OpenAI API key for AI avatar generation
+  const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
+  const openaiKeyInfo = getEffectiveKey('openai');
+  const hasOpenAIKey = !!openaiKeyInfo?.key;
+
+  const handleGenerateAvatar = async () => {
+    if (!hasOpenAIKey) {
+      alert('OpenAI API key required for AI avatar generation. Add one in API Settings.');
+      return;
+    }
+
+    if (!formData.appearanceDescription?.trim()) {
+      alert('Please add an appearance description first to generate an avatar.');
+      return;
+    }
+
+    setGeneratingAvatar(true);
+    try {
+      const imageUrl = await generateCharacterPortrait(
+        formData,
+        openaiKeyInfo.key,
+        campaign?.gameSystem || 'daggerheart',
+        campaign?.id
+      );
+      setFormData({
+        ...formData,
+        avatarUrl: imageUrl
+      });
+    } catch (err) {
+      console.error('Avatar generation failed:', err);
+      alert('Failed to generate avatar: ' + err.message);
+    } finally {
+      setGeneratingAvatar(false);
+    }
+  };
 
   const handleChange = (field, value) => {
     setFormData({
@@ -84,6 +124,18 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM 
               style={{ display: 'none' }}
             />
           </label>
+          {hasOpenAIKey && (
+            <button
+              type="button"
+              className="btn btn-secondary ai-generate-btn"
+              onClick={handleGenerateAvatar}
+              disabled={generatingAvatar || !formData.appearanceDescription?.trim()}
+              title={!formData.appearanceDescription?.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
+            >
+              {generatingAvatar ? <Loader2 size={16} className="spinner" /> : <Wand2 size={16} />}
+              {generatingAvatar ? 'Generating...' : 'AI Generate'}
+            </button>
+          )}
           {formData.avatarUrl && (
             <button
               type="button"
@@ -93,8 +145,21 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM 
               Remove
             </button>
           )}
-          <small className="form-hint">Max 1MB, square images work best</small>
+          <small className="form-hint">Max 1MB for upload, or use AI generation below</small>
         </div>
+      </div>
+
+      <div className="input-group">
+        <label>Appearance Description (for AI Avatar)</label>
+        <textarea
+          value={formData.appearanceDescription}
+          onChange={(e) => handleChange('appearanceDescription', e.target.value)}
+          rows="3"
+          placeholder="Describe your character's physical appearance: hair color, eye color, build, distinguishing features, typical attire..."
+        />
+        <small className="input-hint">
+          Used to generate an AI portrait. Be descriptive! Include physical features, clothing, and any unique characteristics.
+        </small>
       </div>
 
       <div className="input-group">
