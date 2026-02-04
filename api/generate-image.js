@@ -4,6 +4,11 @@
  * Supports: dall-e-3, flux-dev, stable-diffusion-3, magic-art_7_0
  */
 
+// Extend timeout to maximum allowed (60s hobby, 300s pro)
+export const config = {
+  maxDuration: 60
+};
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -78,7 +83,7 @@ export default async function handler(req, res) {
         model: 'magic-art_7_0',
         promptObject: {
           prompt: enhancedPrompt,
-          mode: 'relax',  // 'relax' is standard, 'fast' costs 2x
+          mode: 'fast',   // 'fast' ~45sec (2x credits), 'relax' 1-8min (times out on Vercel)
           n: 4,           // Magic Art 7.0 generates 4 images
           isNiji6: false,
           aspect_width: aspectWidth,
