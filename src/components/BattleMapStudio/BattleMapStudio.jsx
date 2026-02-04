@@ -3,12 +3,10 @@ import {
   Save,
   FolderOpen,
   Plus,
-  Trash2,
-  Download,
+  Monitor,
   Upload,
-  Undo,
-  Redo,
-  Monitor
+  Wand2,
+  Layers
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -20,11 +18,14 @@ import AssetLibrary from './Panels/AssetLibrary';
 import MapImporter from './Panels/MapImporter';
 import GridCalibrator from './Panels/GridCalibrator';
 import MapBrowser from './Panels/MapBrowser';
+import AIMapGenerator from './Panels/AIMapGenerator';
+import AIAssetGenerator from './Panels/AIAssetGenerator';
 import './BattleMapStudio.css';
 
 export default function BattleMapStudio({ campaign, isDM }) {
   const campaignId = campaign?.id;
-  const [activePanel, setActivePanel] = useState('assets'); // 'assets' | 'maps' | 'grid' | null
+  const [activePanel, setActivePanel] = useState('assets'); // 'assets' | 'ai-assets' | 'maps' | 'grid'
+  const [canvasMode, setCanvasMode] = useState('import'); // 'import' | 'ai-generate'
   const [showBroadcastConfirm, setShowBroadcastConfirm] = useState(false);
   const containerRef = useRef(null);
 
@@ -151,6 +152,23 @@ export default function BattleMapStudio({ campaign, isDM }) {
     );
   }
 
+  // Render canvas content based on mode
+  const renderCanvasContent = () => {
+    if (mapImage) {
+      return <MapCanvas />;
+    }
+
+    if (canvasMode === 'ai-generate') {
+      return (
+        <div className="canvas-mode-panel">
+          <AIMapGenerator campaignId={campaignId} />
+        </div>
+      );
+    }
+
+    return <MapImporter />;
+  };
+
   return (
     <div className="battle-map-studio">
       {/* Header */}
@@ -199,12 +217,29 @@ export default function BattleMapStudio({ campaign, isDM }) {
         </div>
 
         {/* Canvas area */}
-        <div className="studio-canvas-container" ref={containerRef}>
-          {!mapImage ? (
-            <MapImporter />
-          ) : (
-            <MapCanvas />
+        <div className="studio-canvas-area">
+          {/* Mode selector - only show when no map loaded */}
+          {!mapImage && (
+            <div className="canvas-mode-selector">
+              <button
+                className={`mode-btn ${canvasMode === 'import' ? 'active' : ''}`}
+                onClick={() => setCanvasMode('import')}
+              >
+                <Upload size={18} />
+                Import Map
+              </button>
+              <button
+                className={`mode-btn ${canvasMode === 'ai-generate' ? 'active' : ''}`}
+                onClick={() => setCanvasMode('ai-generate')}
+              >
+                <Wand2 size={18} />
+                AI Generate
+              </button>
+            </div>
           )}
+          <div className="studio-canvas-container" ref={containerRef}>
+            {renderCanvasContent()}
+          </div>
         </div>
 
         {/* Right panel */}
@@ -213,18 +248,30 @@ export default function BattleMapStudio({ campaign, isDM }) {
             <button
               className={`panel-tab ${activePanel === 'assets' ? 'active' : ''}`}
               onClick={() => setActivePanel('assets')}
+              title="Token Library"
             >
-              Assets
+              <Layers size={14} />
+              Tokens
+            </button>
+            <button
+              className={`panel-tab ${activePanel === 'ai-assets' ? 'active' : ''}`}
+              onClick={() => setActivePanel('ai-assets')}
+              title="AI Asset Generator"
+            >
+              <Wand2 size={14} />
+              AI Assets
             </button>
             <button
               className={`panel-tab ${activePanel === 'grid' ? 'active' : ''}`}
               onClick={() => setActivePanel('grid')}
+              title="Grid Settings"
             >
               Grid
             </button>
             <button
               className={`panel-tab ${activePanel === 'maps' ? 'active' : ''}`}
               onClick={() => setActivePanel('maps')}
+              title="Saved Maps"
             >
               Maps
             </button>
@@ -232,6 +279,9 @@ export default function BattleMapStudio({ campaign, isDM }) {
           <div className="panel-content">
             {activePanel === 'assets' && (
               <AssetLibrary campaignId={campaignId} />
+            )}
+            {activePanel === 'ai-assets' && (
+              <AIAssetGenerator campaignId={campaignId} />
             )}
             {activePanel === 'grid' && (
               <GridCalibrator />
