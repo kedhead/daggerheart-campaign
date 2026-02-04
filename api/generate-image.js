@@ -159,15 +159,28 @@ export default async function handler(req, res) {
     const data = await response.json();
     console.log('1min.ai full response keys:', Object.keys(data));
     console.log('1min.ai aiRecord keys:', data.aiRecord ? Object.keys(data.aiRecord) : 'no aiRecord');
-    console.log('1min.ai aiRecordDetail keys:', data.aiRecord?.aiRecordDetail ? Object.keys(data.aiRecord.aiRecordDetail) : 'no aiRecordDetail');
+    console.log('1min.ai temporaryUrl:', data.aiRecord?.temporaryUrl);
     console.log('1min.ai resultObject:', JSON.stringify(data.aiRecord?.aiRecordDetail?.resultObject));
-    console.log('1min.ai result:', JSON.stringify(data.aiRecord?.aiRecordDetail?.result));
-    console.log('1min.ai resultUrl:', data.aiRecord?.aiRecordDetail?.resultUrl);
 
     // Extract image URL from 1min.ai response - handle many possible formats
     let imageUrl = null;
+    let baseUrl = null;
 
-    // Format 1: aiRecord.aiRecordDetail.resultUrl
+    // Check for temporaryUrl on aiRecord - might be full URL or base URL
+    if (data.aiRecord?.temporaryUrl) {
+      const tempUrl = data.aiRecord.temporaryUrl;
+      console.log('Found temporaryUrl:', tempUrl);
+
+      // If temporaryUrl is a full URL to an image, use it directly
+      if (tempUrl.startsWith('http') && /\.(png|jpg|jpeg|gif|webp)/i.test(tempUrl)) {
+        imageUrl = tempUrl;
+        console.log('Using temporaryUrl directly as image URL');
+      } else {
+        baseUrl = tempUrl;
+      }
+    }
+
+    // Format 1: aiRecord.aiRecordDetail.resultUrl (full URL)
     if (data.aiRecord?.aiRecordDetail?.resultUrl) {
       imageUrl = data.aiRecord.aiRecordDetail.resultUrl;
     }
@@ -182,10 +195,10 @@ export default async function handler(req, res) {
         imageUrl = result.url;
       }
     }
-    // Format 3: aiRecord.aiRecordDetail.resultObject (Magic Art 7.0 returns array of URLs)
+    // Format 3: aiRecord.aiRecordDetail.resultObject (Magic Art 7.0 returns array of paths)
     else if (data.aiRecord?.aiRecordDetail?.resultObject) {
       const resultObj = data.aiRecord.aiRecordDetail.resultObject;
-      // Magic Art 7.0 returns array of image URLs directly
+      // Magic Art 7.0 returns array of image paths
       if (Array.isArray(resultObj) && resultObj.length > 0) {
         imageUrl = resultObj[0];
       } else if (resultObj.data?.[0]?.url) {
@@ -249,15 +262,29 @@ export default async function handler(req, res) {
 
     // Log the raw extracted URL before any modification
     console.log('Raw extracted imageUrl:', imageUrl);
-    console.log('URL starts with http:', imageUrl?.startsWith('http'));
+    console.log('Base URL from temporaryUrl:', baseUrl);
 
-    // Only convert if it's a relative URL (doesn't start with http)
-    // 1min.ai should return full signed S3 URLs - if we get relative paths, something is wrong
+    // If we have a relative URL, we need to make it absolute
     if (imageUrl && !imageUrl.startsWith('http')) {
-      console.log('WARNING: Got relative URL, attempting to convert...');
-      // Try common 1min.ai CDN patterns
-      imageUrl = `https://asset.1min.ai/${imageUrl}`;
-      console.log('Converted to:', imageUrl);
+      if (baseUrl) {
+        // Use the temporaryUrl as the base - it should be the signed S3 URL base
+        // temporaryUrl might be a full URL to one image, extract the base path
+        const baseMatch = baseUrl.match(/^(https?:\/\/[^?]+\/)/);
+        if (baseMatch) {
+          const basePath = baseMatch[1];
+          // Remove the filename from base if present
+          const baseDir = basePath.replace(/[^/]+\.(png|jpg|jpeg|gif|webp)$/i, '');
+          imageUrl = baseDir + imageUrl;
+        } else {
+          // temporaryUrl might already be just the base
+          imageUrl = baseUrl.replace(/\/$/, '') + '/' + imageUrl;
+        }
+        console.log('Constructed URL from temporaryUrl:', imageUrl);
+      } else {
+        // Fallback: try the 1min.ai asset CDN
+        imageUrl = `https://asset.1min.ai/${imageUrl}`;
+        console.log('Fallback URL:', imageUrl);
+      }
     }
 
     return res.status(200).json({
