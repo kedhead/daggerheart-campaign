@@ -242,6 +242,13 @@ export default async function handler(req, res) {
       });
     }
 
+    // Convert relative URLs to full URLs (1min.ai returns relative paths)
+    if (imageUrl && !imageUrl.startsWith('http')) {
+      // 1min.ai CDN base URL
+      imageUrl = `https://cdn.1min.ai/${imageUrl}`;
+      console.log('Converted relative URL to:', imageUrl);
+    }
+
     return res.status(200).json({
       imageUrl,
       prompt: enhancedPrompt,
