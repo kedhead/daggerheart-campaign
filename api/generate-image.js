@@ -64,7 +64,8 @@ export default async function handler(req, res) {
     } else if (type === 'city') {
       enhancedPrompt = `Overhead orthographic top-down view city street battle map for D&D, ${prompt}, medieval fantasy buildings from above, flat perspective looking straight down, cobblestone streets, suitable for miniature combat, VTT ready, no text or labels`;
     } else if (type === 'asset') {
-      enhancedPrompt = `${prompt}, top-down view token for D&D VTT, transparent background, isolated object, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
+      // Note: Magic Art 7.0 doesn't allow "transparent" - use "plain background" instead
+      enhancedPrompt = `${prompt}, top-down view token for D&D VTT, plain solid color background, isolated object, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
     }
 
     // Build request based on model
