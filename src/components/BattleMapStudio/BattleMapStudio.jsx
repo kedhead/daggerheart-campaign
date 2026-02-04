@@ -7,7 +7,8 @@ import {
   Upload,
   Wand2,
   Layers,
-  ExternalLink
+  ExternalLink,
+  Radio
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -28,12 +29,20 @@ export default function BattleMapStudio({ campaign, isDM }) {
   const [activePanel, setActivePanel] = useState('assets'); // 'assets' | 'ai-assets' | 'maps' | 'grid'
   const [canvasMode, setCanvasMode] = useState('import'); // 'import' | 'ai-generate'
   const [showBroadcastConfirm, setShowBroadcastConfirm] = useState(false);
+  const [isLive, setIsLive] = useState(false); // Live broadcast mode
   const containerRef = useRef(null);
+  const lastBroadcastRef = useRef(null); // Track last broadcast to debounce
 
   const {
     mapId,
     mapName,
     mapImage,
+    tokens,
+    fogRevealed,
+    gridSize,
+    gridVisible,
+    gridColor,
+    fogEnabled,
     isDirty,
     setMapName,
     resetMap,
@@ -67,6 +76,18 @@ export default function BattleMapStudio({ campaign, isDM }) {
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
+
+  // Auto-broadcast when live mode is enabled and map state changes
+  useEffect(() => {
+    if (!isLive || !mapImage) return;
+
+    // Debounce broadcasts to avoid overwhelming Firestore
+    const timeoutId = setTimeout(() => {
+      broadcastToPlayers();
+    }, 100); // 100ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [isLive, mapImage, tokens, fogRevealed, gridSize, gridVisible, gridColor, fogEnabled, broadcastToPlayers]);
 
   // Save current map
   const handleSave = async () => {
@@ -208,7 +229,15 @@ export default function BattleMapStudio({ campaign, isDM }) {
             <Save size={18} />
             Save
           </button>
-          <button className="btn btn-primary broadcast-btn" onClick={handleBroadcast} title="Broadcast to Battle Map Display">
+          <button
+            className={`btn ${isLive ? 'btn-live active' : 'btn-secondary'}`}
+            onClick={() => setIsLive(!isLive)}
+            title={isLive ? 'Stop Live Broadcast' : 'Start Live Broadcast'}
+          >
+            <Radio size={18} />
+            {isLive ? 'Live' : 'Go Live'}
+          </button>
+          <button className="btn btn-primary broadcast-btn" onClick={handleBroadcast} title="Broadcast to Battle Map Display" disabled={isLive}>
             <Monitor size={18} />
             Broadcast
             {showBroadcastConfirm && <span className="broadcast-confirm">Sent!</span>}

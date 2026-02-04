@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
 import useImage from 'use-image';
 import { Maximize, Minimize, Grid } from 'lucide-react';
 import './BattleMapDisplayWindow.css';
@@ -92,6 +92,49 @@ function GridOverlay({ width, height, gridSize, gridColor }) {
 }
 
 /**
+ * Fog of War layer - shows unexplored areas as black
+ */
+function FogOfWarLayer({ width, height, revealed }) {
+  const drawFog = (context, shape) => {
+    // Fill entire area with fog
+    context.fillStyle = 'rgba(0, 0, 0, 0.95)';
+    context.fillRect(0, 0, width, height);
+
+    // Use destination-out to cut holes for revealed areas
+    context.globalCompositeOperation = 'destination-out';
+
+    revealed.forEach(area => {
+      if (area.type === 'circle') {
+        context.beginPath();
+        context.arc(area.x, area.y, area.radius, 0, Math.PI * 2);
+        context.fill();
+      } else if (area.type === 'rect') {
+        context.fillRect(area.x, area.y, area.width, area.height);
+      } else if (area.type === 'polygon' && area.points) {
+        context.beginPath();
+        context.moveTo(area.points[0].x, area.points[0].y);
+        for (let i = 1; i < area.points.length; i++) {
+          context.lineTo(area.points[i].x, area.points[i].y);
+        }
+        context.closePath();
+        context.fill();
+      }
+    });
+
+    // Reset composite operation
+    context.globalCompositeOperation = 'source-over';
+    context.fillStrokeShape(shape);
+  };
+
+  return (
+    <Shape
+      sceneFunc={drawFog}
+      listening={false}
+    />
+  );
+}
+
+/**
  * Main map canvas component
  */
 function MapCanvas({ mapState }) {
@@ -107,7 +150,18 @@ function MapCanvas({ mapState }) {
     );
   }
 
-  const { mapImage: mapData, tokens = [], gridSize = 50, gridVisible = true, gridColor = 'rgba(255,255,255,0.3)' } = mapState;
+  const {
+    mapImage: mapData,
+    tokens = [],
+    gridSize = 50,
+    gridVisible = true,
+    gridColor = 'rgba(255,255,255,0.3)',
+    fogRevealed = [],
+    fogEnabled = true
+  } = mapState;
+
+  // Check if fog should be shown (enabled and not fully revealed)
+  const showFog = fogEnabled && fogRevealed.length > 0;
 
   return (
     <Stage
@@ -139,6 +193,15 @@ function MapCanvas({ mapState }) {
         {tokens.map(token => (
           <DisplayToken key={token.id} token={token} gridSize={gridSize} />
         ))}
+
+        {/* Fog of War - rendered on top */}
+        {showFog && (
+          <FogOfWarLayer
+            width={mapData.width}
+            height={mapData.height}
+            revealed={fogRevealed}
+          />
+        )}
       </Layer>
     </Stage>
   );

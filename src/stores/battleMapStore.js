@@ -178,6 +178,7 @@ export const useBattleMapStore = create((set, get) => ({
       gridColor: state.gridColor,
       gridVisible: state.gridVisible,
       tokens: state.tokens.filter(t => state.layers[t.layer]?.visible !== false),
+      fogEnabled: state.fogEnabled,
       fogRevealed: state.fogRevealed
     };
   }
