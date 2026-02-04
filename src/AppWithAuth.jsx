@@ -25,6 +25,7 @@ import SuperAdminView from './components/SuperAdmin/SuperAdminView';
 import APISettings from './components/Settings/APISettings';
 import ItemsView from './components/Items/ItemsView';
 import AdversariesView from './components/Adversaries/AdversariesView';
+import EnvironmentsView from './components/Environments/EnvironmentsView';
 import PartyInventoryView from './components/Inventory/PartyInventoryView';
 import InitiativeTracker from './components/Initiative/InitiativeTracker';
 import QuestsView from './components/Quests/QuestsView';
@@ -105,6 +106,11 @@ function CampaignApp() {
     addAdversary,
     updateAdversary,
     deleteAdversary,
+    // Environments
+    environments,
+    addEnvironment,
+    updateEnvironment,
+    deleteEnvironment,
     // Character Inventory
     addToCharacterInventory,
     removeFromCharacterInventory,
@@ -394,6 +400,9 @@ function CampaignApp() {
             sessions={sessions}
             timelineEvents={timelineEvents}
             notes={notes}
+            adversaries={adversaries}
+            environments={environments}
+            characters={characters}
           />
         );
       case 'notes':
@@ -470,6 +479,17 @@ function CampaignApp() {
             addAdversary={addAdversary}
             updateAdversary={updateAdversary}
             deleteAdversary={deleteAdversary}
+            isDM={isDM}
+          />
+        );
+      case 'environments':
+        return (
+          <EnvironmentsView
+            campaign={campaign}
+            environments={environments}
+            addEnvironment={addEnvironment}
+            updateEnvironment={updateEnvironment}
+            deleteEnvironment={deleteEnvironment}
             isDM={isDM}
           />
         );

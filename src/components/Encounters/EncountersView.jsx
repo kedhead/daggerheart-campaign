@@ -1,17 +1,23 @@
 import { useState } from 'react';
-import { Plus, Search, Swords, ExternalLink, Wand2 } from 'lucide-react';
+import { Plus, Search, Swords, ExternalLink, Wand2, ToggleLeft, ToggleRight } from 'lucide-react';
 import EncounterCard from './EncounterCard';
 import EncounterForm from './EncounterForm';
+import EncounterBuilder from './EncounterBuilder';
 import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import './EncountersView.css';
+import './EncounterBuilder.css';
 
-export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [] }) {
+export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [quickGenOpen, setQuickGenOpen] = useState(false);
+  const [useBuilder, setUseBuilder] = useState(true); // Use new BP builder by default
+
+  // Check if this is a Daggerheart campaign (BP builder is Daggerheart-specific)
+  const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
 
   const handleAdd = () => {
     setEditingEncounter(null);
@@ -175,8 +181,11 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
               encounter={encounter}
               onEdit={() => handleEdit(encounter)}
               onDelete={() => handleDelete(encounter.id)}
+              onRun={encounter.adversarySlots?.length > 0 ? () => {/* TODO: Phase 4 - Live Tracker */} : null}
               isDM={isDM}
               campaign={campaign}
+              adversaries={adversaries}
+              environments={environments}
             />
           ))}
         </div>
@@ -190,19 +199,56 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
           setEditingEncounter(null);
         }}
         title={editingEncounter ? 'Edit Encounter' : 'Add Encounter'}
-        size="medium"
+        size={useBuilder && isDaggerheart ? 'large' : 'medium'}
       >
-        <EncounterForm
-          encounter={editingEncounter}
-          onSave={handleSave}
-          onCancel={() => {
-            setIsModalOpen(false);
-            setEditingEncounter(null);
-          }}
-          campaign={campaign}
-          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
-          isDM={isDM}
-        />
+        {/* Builder Mode Toggle for Daggerheart */}
+        {isDaggerheart && (
+          <div className="builder-mode-toggle">
+            <button
+              type="button"
+              className={`mode-btn ${!useBuilder ? 'active' : ''}`}
+              onClick={() => setUseBuilder(false)}
+            >
+              Simple
+            </button>
+            <button
+              type="button"
+              className={`mode-btn ${useBuilder ? 'active' : ''}`}
+              onClick={() => setUseBuilder(true)}
+            >
+              BP Builder
+            </button>
+          </div>
+        )}
+
+        {useBuilder && isDaggerheart ? (
+          <EncounterBuilder
+            encounter={editingEncounter}
+            onSave={handleSave}
+            onCancel={() => {
+              setIsModalOpen(false);
+              setEditingEncounter(null);
+            }}
+            campaign={campaign}
+            adversaries={adversaries}
+            environments={environments}
+            characters={characters}
+            entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+            isDM={isDM}
+          />
+        ) : (
+          <EncounterForm
+            encounter={editingEncounter}
+            onSave={handleSave}
+            onCancel={() => {
+              setIsModalOpen(false);
+              setEditingEncounter(null);
+            }}
+            campaign={campaign}
+            entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+            isDM={isDM}
+          />
+        )}
       </Modal>
 
       {/* Quick Generator Modal */}

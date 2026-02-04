@@ -196,3 +196,130 @@
     transform: translateY(0);
   }
 }
+
+/* Builder Mode Toggle */
+.builder-mode-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.builder-mode-toggle .mode-btn {
+  flex: 1;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.builder-mode-toggle .mode-btn:hover {
+  color: var(--text-primary);
+}
+
+.builder-mode-toggle .mode-btn.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* BP Encounter Cards */
+.encounter-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.bp-badge, .party-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.bp-badge {
+  color: var(--fear-color);
+}
+
+.party-badge {
+  color: var(--hope-color);
+}
+
+/* Environment Summary in Card */
+.environment-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.environment-summary .env-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.environment-summary .env-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.env-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Adversary Slots in Card */
+.adversary-slots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.adversary-slot-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+.adversary-slot-item .slot-qty {
+  font-weight: 600;
+  color: var(--fear-color);
+  min-width: 30px;
+}
+
+.adversary-slot-item .slot-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.adversary-slot-item .slot-role {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.adversary-slot-item .slot-tier {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.35rem;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  color: var(--text-muted);
+}
