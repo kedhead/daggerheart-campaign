@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { MousePointer, Hand, Crosshair, Eraser, Trash2 } from 'lucide-react';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
 
@@ -11,28 +12,35 @@ const tools = [
 export default function CanvasToolbar() {
   const { selectedTool, setSelectedTool, selectedTokenIds, deleteSelectedTokens } = useBattleMapStore();
 
-  const handleKeyDown = (e) => {
-    switch (e.key.toLowerCase()) {
-      case 'v':
-        setSelectedTool('select');
-        break;
-      case ' ':
-        e.preventDefault();
-        setSelectedTool('pan');
-        break;
-      case 'delete':
-      case 'backspace':
-        if (selectedTokenIds.length > 0) {
-          deleteSelectedTokens();
-        }
-        break;
-    }
-  };
-
   // Set up keyboard shortcuts
-  if (typeof window !== 'undefined') {
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't handle shortcuts when typing in input fields
+      const tagName = e.target.tagName.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea' || e.target.isContentEditable) {
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 'v':
+          setSelectedTool('select');
+          break;
+        case ' ':
+          e.preventDefault();
+          setSelectedTool('pan');
+          break;
+        case 'delete':
+        case 'backspace':
+          if (selectedTokenIds.length > 0) {
+            deleteSelectedTokens();
+          }
+          break;
+      }
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-  }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setSelectedTool, selectedTokenIds, deleteSelectedTokens]);
 
   return (
     <div className="canvas-toolbar">
