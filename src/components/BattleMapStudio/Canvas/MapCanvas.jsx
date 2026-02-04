@@ -31,9 +31,11 @@ export default function MapCanvas() {
     fogBrushSize,
     tokens,
     selectedTokenIds,
+    snapToGrid,
     setZoom,
     setPanOffset,
     addFogReveal,
+    addToken,
     selectToken,
     deselectAll,
     updateToken
@@ -135,31 +137,74 @@ export default function MapCanvas() {
     lastPos.current = null;
   }, []);
 
+  // Handle drag-and-drop of tokens from asset library
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+
+    try {
+      const data = e.dataTransfer.getData('application/json');
+      if (!data) return;
+
+      const tokenData = JSON.parse(data);
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      // Get drop position relative to stage
+      const stageRect = stage.container().getBoundingClientRect();
+      let x = (e.clientX - stageRect.left - panOffset.x) / zoom;
+      let y = (e.clientY - stageRect.top - panOffset.y) / zoom;
+
+      // Snap to grid if enabled
+      if (snapToGrid) {
+        x = Math.round(x / gridSize) * gridSize + gridSize / 2;
+        y = Math.round(y / gridSize) * gridSize + gridSize / 2;
+      }
+
+      addToken({
+        ...tokenData,
+        x,
+        y
+      });
+    } catch (err) {
+      console.error('Error handling token drop:', err);
+    }
+  }, [panOffset, zoom, gridSize, snapToGrid, addToken]);
+
   // Determine if stage is draggable
   const isDraggable = selectedTool === 'pan';
 
   if (!mapImage) return null;
 
   return (
-    <Stage
-      ref={stageRef}
-      width={stageSize.width}
-      height={stageSize.height}
-      scaleX={zoom}
-      scaleY={zoom}
-      x={panOffset.x}
-      y={panOffset.y}
-      draggable={isDraggable}
-      onWheel={handleWheel}
-      onDragEnd={handleDragEnd}
-      onClick={handleStageClick}
-      onTap={handleStageClick}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      style={{ cursor: selectedTool === 'pan' ? 'grab' : 'default' }}
+    <div
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      style={{ width: '100%', height: '100%' }}
     >
+      <Stage
+        ref={stageRef}
+        width={stageSize.width}
+        height={stageSize.height}
+        scaleX={zoom}
+        scaleY={zoom}
+        x={panOffset.x}
+        y={panOffset.y}
+        draggable={isDraggable}
+        onWheel={handleWheel}
+        onDragEnd={handleDragEnd}
+        onClick={handleStageClick}
+        onTap={handleStageClick}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ cursor: selectedTool === 'pan' ? 'grab' : 'default' }}
+      >
       {/* Background layer */}
       {layers.background.visible && (
         <Layer>
@@ -189,7 +234,7 @@ export default function MapCanvas() {
             onSelect={selectToken}
             onUpdate={updateToken}
             gridSize={gridSize}
-            snapToGrid={useBattleMapStore.getState().snapToGrid}
+            snapToGrid={snapToGrid}
             isSelectable={selectedTool === 'select'}
           />
         </Layer>
@@ -206,5 +251,6 @@ export default function MapCanvas() {
         </Layer>
       )}
     </Stage>
+    </div>
   );
 }
