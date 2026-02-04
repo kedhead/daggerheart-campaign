@@ -247,11 +247,17 @@ export default async function handler(req, res) {
       });
     }
 
-    // Convert relative URLs to full URLs (1min.ai returns relative paths)
+    // Log the raw extracted URL before any modification
+    console.log('Raw extracted imageUrl:', imageUrl);
+    console.log('URL starts with http:', imageUrl?.startsWith('http'));
+
+    // Only convert if it's a relative URL (doesn't start with http)
+    // 1min.ai should return full signed S3 URLs - if we get relative paths, something is wrong
     if (imageUrl && !imageUrl.startsWith('http')) {
-      // 1min.ai uses S3 for image storage
-      imageUrl = `https://s3.us-east-1.amazonaws.com/asset.1min.ai/development/${imageUrl}`;
-      console.log('Converted relative URL to:', imageUrl);
+      console.log('WARNING: Got relative URL, attempting to convert...');
+      // Try common 1min.ai CDN patterns
+      imageUrl = `https://asset.1min.ai/${imageUrl}`;
+      console.log('Converted to:', imageUrl);
     }
 
     return res.status(200).json({
