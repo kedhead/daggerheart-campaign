@@ -40,50 +40,49 @@ export default async function handler(req, res) {
     // Build the enhanced prompt based on type
     let enhancedPrompt = prompt;
 
-    if (type === 'battle-map') {
-      enhancedPrompt = `Top-down battle map for tabletop RPG, bird's eye view, ${prompt}.
-        Grid-friendly layout, clear paths and rooms, suitable for miniature placement,
-        high detail, fantasy RPG style, no text or labels, clean edges.`;
+    if (type === 'battle-map' || type === 'special') {
+      enhancedPrompt = `Top-down battle map for tabletop RPG, bird's eye view, ${prompt}. Grid-friendly layout, clear paths and rooms, suitable for miniature placement, high detail, fantasy RPG style, no text or labels, clean edges.`;
     } else if (type === 'dungeon') {
-      enhancedPrompt = `Top-down dungeon map for D&D/tabletop RPG, bird's eye view, ${prompt}.
-        Stone walls, corridors, chambers, grid-compatible layout, dark fantasy style,
-        torchlit atmosphere, suitable for VTT, no text.`;
+      enhancedPrompt = `Top-down dungeon map for D&D/tabletop RPG, bird's eye view, ${prompt}. Stone walls, corridors, chambers, grid-compatible layout, dark fantasy style, torchlit atmosphere, suitable for VTT, no text.`;
     } else if (type === 'outdoor') {
-      enhancedPrompt = `Top-down outdoor battle map for tabletop RPG, bird's eye view, ${prompt}.
-        Natural terrain, paths, vegetation, water features if appropriate,
-        fantasy RPG style, grid-friendly, no text or labels.`;
+      enhancedPrompt = `Top-down outdoor battle map for tabletop RPG, bird's eye view, ${prompt}. Natural terrain, paths, vegetation, water features if appropriate, fantasy RPG style, grid-friendly, no text or labels.`;
     } else if (type === 'city') {
-      enhancedPrompt = `Top-down city/town map for tabletop RPG, bird's eye view, ${prompt}.
-        Buildings, streets, market squares, fantasy medieval style,
-        suitable for miniature combat, no text or labels.`;
+      enhancedPrompt = `Top-down city/town map for tabletop RPG, bird's eye view, ${prompt}. Buildings, streets, market squares, fantasy medieval style, suitable for miniature combat, no text or labels.`;
     } else if (type === 'asset') {
-      enhancedPrompt = `${prompt}. Transparent background, top-down view,
-        suitable for tabletop RPG battle map, high detail, clean edges,
-        fantasy style, isolated object.`;
+      enhancedPrompt = `${prompt}. Transparent background, top-down view, suitable for tabletop RPG battle map, high detail, clean edges, fantasy style, isolated object.`;
     }
 
     let imageUrl;
 
-    // Use 1min.ai API
+    // Determine aspect ratio from size
+    const [width, height] = size.split('x').map(Number);
+    let aspectRatio = '1:1';
+    if (width > height) {
+      aspectRatio = '16:9';
+    } else if (height > width) {
+      aspectRatio = '9:16';
+    }
+
+    // Use 1min.ai API with IMAGE_GENERATOR type
+    const requestBody = {
+      type: 'IMAGE_GENERATOR',
+      model: model,
+      promptObject: {
+        prompt: enhancedPrompt,
+        num_outputs: 1,
+        aspect_ratio: aspectRatio
+      }
+    };
+
+    console.log('1min.ai request:', JSON.stringify(requestBody));
+
     const response = await fetch('https://api.1min.ai/api/features', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'API-KEY': apiKey
       },
-      body: JSON.stringify({
-        type: animated ? 'TEXT_TO_VIDEO' : 'TEXT_TO_IMAGE',
-        model: model,
-        promptObject: {
-          prompt: enhancedPrompt,
-          negativePrompt: 'blurry, low quality, text, labels, watermark, signature, distorted, deformed',
-          width: parseInt(size.split('x')[0]) || 1024,
-          height: parseInt(size.split('x')[1]) || 1024,
-          style: style,
-          quality: quality,
-          numOutputs: 1
-        }
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
@@ -96,25 +95,41 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log('1min.ai response:', JSON.stringify(data).substring(0, 500));
+    console.log('1min.ai response:', JSON.stringify(data).substring(0, 1000));
 
     // Extract image URL from 1min.ai response
     // The response structure may vary based on the model used
     if (data.aiRecord?.aiRecordDetail?.resultUrl) {
       imageUrl = data.aiRecord.aiRecordDetail.resultUrl;
     } else if (data.aiRecord?.aiRecordDetail?.result) {
-      imageUrl = data.aiRecord.aiRecordDetail.result;
+      // Result might be a URL string or an array of URLs
+      const result = data.aiRecord.aiRecordDetail.result;
+      if (Array.isArray(result)) {
+        imageUrl = result[0];
+      } else if (typeof result === 'string') {
+        imageUrl = result;
+      }
     } else if (data.resultUrl) {
       imageUrl = data.resultUrl;
     } else if (data.result) {
-      imageUrl = data.result;
+      if (Array.isArray(data.result)) {
+        imageUrl = data.result[0];
+      } else {
+        imageUrl = data.result;
+      }
     } else if (Array.isArray(data.images) && data.images[0]) {
       imageUrl = data.images[0];
+    } else if (data.output) {
+      if (Array.isArray(data.output)) {
+        imageUrl = data.output[0];
+      } else {
+        imageUrl = data.output;
+      }
     } else {
-      console.error('Unexpected response structure:', data);
+      console.error('Unexpected response structure:', JSON.stringify(data));
       return res.status(500).json({
         error: 'Unexpected response from image generation API',
-        data: data
+        response: data
       });
     }
 
