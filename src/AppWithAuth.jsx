@@ -30,6 +30,7 @@ import InitiativeTracker from './components/Initiative/InitiativeTracker';
 import QuestsView from './components/Quests/QuestsView';
 import PlayerDisplay from './components/PlayerDisplay/PlayerDisplay';
 import DMDisplayControl from './components/PlayerDisplay/DMDisplayControl';
+import BattleMapStudio from './components/BattleMapStudio/BattleMapStudio';
 import { DiceRollerFloat } from './components/DiceRoller/index';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
@@ -533,6 +534,13 @@ function CampaignApp() {
             locations={locations}
             adversaries={adversaries}
             initiative={initiative}
+          />
+        );
+      case 'battleMapStudio':
+        return (
+          <BattleMapStudio
+            campaign={campaign}
+            isDM={isDM}
           />
         );
       default:

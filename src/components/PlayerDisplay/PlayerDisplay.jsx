@@ -6,6 +6,7 @@ import FearCounter from './FearCounter';
 import InitiativeDisplay from './InitiativeDisplay';
 import ContentDisplay from './ContentDisplay';
 import ContentGrid from './ContentGrid';
+import BattleMapDisplay from './BattleMapDisplay';
 import { Maximize, Minimize } from 'lucide-react';
 import './PlayerDisplay.css';
 
@@ -18,7 +19,9 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
     showNames,
     contentType,
     content,
-    contentItems
+    contentItems,
+    showBattleMap,
+    battleMapState
   } = usePlayerDisplay(campaignId);
 
   const [initiative, setInitiative] = useState(null);
@@ -132,7 +135,9 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
 
       {/* Main Content Area */}
       <div className="player-display-content">
-        {contentItems && contentItems.length > 0 ? (
+        {showBattleMap && battleMapState ? (
+          <BattleMapDisplay mapState={battleMapState} />
+        ) : contentItems && contentItems.length > 0 ? (
           <ContentGrid items={contentItems} showNames={showNames} />
         ) : (
           <ContentDisplay contentType={contentType} content={content} showNames={showNames} />

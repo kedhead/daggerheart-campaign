@@ -13,7 +13,9 @@ export function usePlayerDisplay(campaignId) {
     contentUrl: '',
     contentName: '',
     contentShowName: true,
-    contentItems: [] // Array of content items for multi-display
+    contentItems: [], // Array of content items for multi-display
+    showBattleMap: false,
+    battleMapState: null
   });
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +50,9 @@ export function usePlayerDisplay(campaignId) {
             contentUrl: '',
             contentName: '',
             contentShowName: true,
-            contentItems: []
+            contentItems: [],
+            showBattleMap: false,
+            battleMapState: null
           });
         }
         setLoading(false);
@@ -195,6 +199,8 @@ export function usePlayerDisplay(campaignId) {
     contentType: displayState.contentType || 'none',
     content,
     contentItems: displayState.contentItems || [],
+    showBattleMap: displayState.showBattleMap === true,
+    battleMapState: displayState.battleMapState || null,
 
     // Fear methods
     incrementFear,
