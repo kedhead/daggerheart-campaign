@@ -221,6 +221,20 @@ service cloud.firestore {
         allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
+      // Battle Maps (Battle Map Studio)
+      match /battleMaps/{mapId} {
+        // All members can read maps (for player display)
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // Only DM can create/edit/delete maps
+        allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
+
+      // Battle Map Assets (custom tokens/tiles)
+      match /battleMapAssets/{assetId} {
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
+
       // Adversaries (monster/enemy catalog)
       match /adversaries/{adversaryId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
