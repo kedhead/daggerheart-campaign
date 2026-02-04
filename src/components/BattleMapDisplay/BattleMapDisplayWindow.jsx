@@ -160,17 +160,17 @@ function MapCanvas({ mapState }) {
     fogEnabled = true
   } = mapState;
 
-  // Check if fog should be shown (enabled and not fully revealed)
+  // Check if fog should be shown (enabled and has revealed areas to cut)
   const showFog = fogEnabled && fogRevealed.length > 0;
 
   return (
     <Stage
       width={mapData.width}
       height={mapData.height}
-      style={{ background: '#111' }}
+      style={{ background: '#000' }}
     >
+      {/* Background layer - map image */}
       <Layer>
-        {/* Map background */}
         {mapImage && (
           <KonvaImage
             image={mapImage}
@@ -178,31 +178,37 @@ function MapCanvas({ mapState }) {
             height={mapData.height}
           />
         )}
+      </Layer>
 
-        {/* Grid overlay */}
-        {gridVisible && (
+      {/* Grid layer */}
+      {gridVisible && (
+        <Layer listening={false}>
           <GridOverlay
             width={mapData.width}
             height={mapData.height}
             gridSize={gridSize}
             gridColor={gridColor}
           />
-        )}
+        </Layer>
+      )}
 
-        {/* Tokens */}
+      {/* Tokens layer */}
+      <Layer>
         {tokens.map(token => (
           <DisplayToken key={token.id} token={token} gridSize={gridSize} />
         ))}
+      </Layer>
 
-        {/* Fog of War - rendered on top */}
-        {showFog && (
+      {/* Fog of War layer - on top of everything */}
+      {showFog && (
+        <Layer listening={false}>
           <FogOfWarLayer
             width={mapData.width}
             height={mapData.height}
             revealed={fogRevealed}
           />
-        )}
-      </Layer>
+        </Layer>
+      )}
     </Stage>
   );
 }
