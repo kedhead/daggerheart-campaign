@@ -1,6 +1,6 @@
 /**
  * Vercel Serverless Function - AI Image Generation
- * Uses 1min.ai API for image generation (supports multiple models)
+ * Uses 1min.ai API with Magic Art 7.0 for battle map generation
  */
 
 export default async function handler(req, res) {
@@ -17,10 +17,8 @@ export default async function handler(req, res) {
     const {
       prompt,
       type = 'battle-map',
-      model = 'dall-e-3',
+      model = 'magic-art_7_0',
       size = '1024x1024',
-      style = 'vivid',
-      quality = 'standard',
       animated = false
     } = req.body;
 
@@ -35,42 +33,56 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Image generation API not configured' });
     }
 
-    console.log('Generating image with 1min.ai:', { type, model, size, animated });
+    console.log('Generating image with 1min.ai Magic Art 7.0:', { type, model, size, animated });
 
-    // Build the enhanced prompt based on type
+    // Build the enhanced prompt based on type - emphasizing overhead/orthographic D&D battle map style
     let enhancedPrompt = prompt;
 
     if (type === 'battle-map' || type === 'special') {
-      enhancedPrompt = `Top-down battle map for tabletop RPG, bird's eye view, ${prompt}. Grid-friendly layout, clear paths and rooms, suitable for miniature placement, high detail, fantasy RPG style, no text or labels, clean edges.`;
+      enhancedPrompt = `Overhead orthographic top-down view D&D battle map, tabletop RPG gaming mat style, ${prompt}, flat perspective looking straight down, no horizon visible, suitable for miniature placement, high detail fantasy illustration, square grid compatible, professional VTT map, no text or labels, clean crisp edges, 8K resolution`;
     } else if (type === 'dungeon') {
-      enhancedPrompt = `Top-down dungeon map for D&D/tabletop RPG, bird's eye view, ${prompt}. Stone walls, corridors, chambers, grid-compatible layout, dark fantasy style, torchlit atmosphere, suitable for VTT, no text.`;
+      enhancedPrompt = `Overhead orthographic top-down view dungeon battle map for D&D, ${prompt}, stone floor tiles, walls visible from above, flat perspective looking straight down, dark fantasy torchlit atmosphere, suitable for miniature combat, VTT ready, no text labels, clean edges, 8K resolution`;
     } else if (type === 'outdoor') {
-      enhancedPrompt = `Top-down outdoor battle map for tabletop RPG, bird's eye view, ${prompt}. Natural terrain, paths, vegetation, water features if appropriate, fantasy RPG style, grid-friendly, no text or labels.`;
+      enhancedPrompt = `Overhead orthographic top-down view outdoor battle map for D&D, ${prompt}, flat perspective looking straight down from above, natural terrain visible from bird's eye view, fantasy RPG style, grid-compatible layout, VTT ready, no text or labels, 8K resolution`;
     } else if (type === 'city') {
-      enhancedPrompt = `Top-down city/town map for tabletop RPG, bird's eye view, ${prompt}. Buildings, streets, market squares, fantasy medieval style, suitable for miniature combat, no text or labels.`;
+      enhancedPrompt = `Overhead orthographic top-down view city street battle map for D&D, ${prompt}, medieval fantasy buildings from above, flat perspective looking straight down, cobblestone streets, suitable for miniature combat, VTT ready, no text or labels, 8K resolution`;
     } else if (type === 'asset') {
-      enhancedPrompt = `${prompt}. Transparent background, top-down view, suitable for tabletop RPG battle map, high detail, clean edges, fantasy style, isolated object.`;
+      enhancedPrompt = `${prompt}, top-down view token for D&D VTT, transparent background, isolated object, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
     }
-
-    let imageUrl;
 
     // Determine aspect ratio from size
     const [width, height] = size.split('x').map(Number);
-    let aspectRatio = '1:1';
+    let aspectWidth = 1;
+    let aspectHeight = 1;
+
     if (width > height) {
-      aspectRatio = '16:9';
+      // Wide format like 1792x1024
+      aspectWidth = 7;
+      aspectHeight = 4;
     } else if (height > width) {
-      aspectRatio = '9:16';
+      // Tall format
+      aspectWidth = 4;
+      aspectHeight = 7;
+    } else {
+      // Square
+      aspectWidth = 1;
+      aspectHeight = 1;
     }
 
-    // Use 1min.ai API with IMAGE_GENERATOR type
+    // Use 1min.ai API with Magic Art 7.0
     const requestBody = {
       type: 'IMAGE_GENERATOR',
-      model: model,
+      model: 'magic-art_7_0',
       promptObject: {
         prompt: enhancedPrompt,
-        num_outputs: 1,
-        aspect_ratio: aspectRatio
+        mode: 'fast',
+        n: 1,
+        isNiji6: false,
+        aspect_width: aspectWidth,
+        aspect_height: aspectHeight,
+        stylize: 100,
+        chaos: 10,
+        maintainModeration: true
       }
     };
 
@@ -95,14 +107,15 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log('1min.ai response:', JSON.stringify(data).substring(0, 1000));
+    console.log('1min.ai response:', JSON.stringify(data).substring(0, 1500));
 
     // Extract image URL from 1min.ai response
-    // The response structure may vary based on the model used
+    let imageUrl = null;
+
+    // Try different response structures
     if (data.aiRecord?.aiRecordDetail?.resultUrl) {
       imageUrl = data.aiRecord.aiRecordDetail.resultUrl;
     } else if (data.aiRecord?.aiRecordDetail?.result) {
-      // Result might be a URL string or an array of URLs
       const result = data.aiRecord.aiRecordDetail.result;
       if (Array.isArray(result)) {
         imageUrl = result[0];
@@ -125,10 +138,12 @@ export default async function handler(req, res) {
       } else {
         imageUrl = data.output;
       }
-    } else {
-      console.error('Unexpected response structure:', JSON.stringify(data));
+    }
+
+    if (!imageUrl) {
+      console.error('Could not find image URL in response:', JSON.stringify(data));
       return res.status(500).json({
-        error: 'Unexpected response from image generation API',
+        error: 'Could not extract image URL from API response',
         response: data
       });
     }
@@ -136,7 +151,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       imageUrl,
       prompt: enhancedPrompt,
-      model,
+      model: 'magic-art_7_0',
       animated
     });
 
