@@ -53,45 +53,54 @@ export function useActiveEncounter(campaignId) {
       const adversary = adversaries.find(a => a.id === slot.adversaryId);
       if (!adversary) continue;
 
+      const hp = adversary.hp || 10;
+      const stress = adversary.stress || 3;
+
       for (let i = 0; i < (slot.quantity || 1); i++) {
         participantIndex++;
-        participants.push({
+
+        // Build participant with only defined values
+        const participant = {
           id: `p_${Date.now()}_${participantIndex}`,
           type: 'adversary',
           sourceId: adversary.id,
           name: slot.quantity > 1 ? `${adversary.name} ${i + 1}` : adversary.name,
-          currentHP: adversary.hp || 10,
-          maxHP: adversary.hp || 10,
+          currentHP: hp,
+          maxHP: hp,
           currentStress: 0,
-          maxStress: adversary.stress || 3,
+          maxStress: stress,
           conditions: [],
           isDefeated: false,
           thresholds: {
-            minor: adversary.thresholds?.minor || Math.floor((adversary.hp || 10) / 3),
-            major: adversary.thresholds?.major || Math.floor((adversary.hp || 10) * 2 / 3),
-            severe: adversary.thresholds?.severe || (adversary.hp || 10)
+            minor: adversary.thresholds?.minor || Math.floor(hp / 3),
+            major: adversary.thresholds?.major || Math.floor(hp * 2 / 3),
+            severe: adversary.thresholds?.severe || hp
           },
           features: adversary.features || [],
-          role: adversary.role,
-          tier: adversary.tier,
-          difficulty: adversary.difficulty,
-          evasion: adversary.evasion,
-          attack: adversary.attack,
-          damage: adversary.damage
-        });
+          role: adversary.role || 'standard',
+          tier: adversary.tier || 1
+        };
+
+        // Only add optional fields if they have values
+        if (adversary.difficulty !== undefined) participant.difficulty = adversary.difficulty;
+        if (adversary.evasion !== undefined) participant.evasion = adversary.evasion;
+        if (adversary.attack !== undefined) participant.attack = adversary.attack;
+        if (adversary.damage !== undefined) participant.damage = adversary.damage;
+
+        participants.push(participant);
       }
     }
 
     const encounterData = {
-      encounterId: encounter.id,
-      encounterName: encounter.name,
+      encounterId: encounter.id || null,
+      encounterName: encounter.name || 'Unnamed Encounter',
       environmentId: encounter.environmentId || null,
       environment: environment ? {
-        name: environment.name,
-        tier: environment.tier,
-        type: environment.type,
-        difficulty: environment.difficulty,
-        description: environment.description,
+        name: environment.name || '',
+        tier: environment.tier || 1,
+        type: environment.type || 'combat',
+        difficulty: environment.difficulty || 0,
+        description: environment.description || '',
         features: environment.features || [],
         impulses: environment.impulses || []
       } : null,
