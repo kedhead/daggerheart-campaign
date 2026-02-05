@@ -84,7 +84,7 @@ export default function ParticipantCard({
   };
 
   return (
-    <div className={`participant-card ${isDefeated ? 'defeated' : ''}`}>
+    <div className={`participant-card ${isDefeated ? 'defeated' : ''} ${isExpanded ? 'expanded' : ''}`}>
       <div className="participant-header" onClick={onToggleExpand}>
         <div className="participant-info">
           <div className="participant-name-row">
