@@ -1,12 +1,15 @@
 import { useState } from 'react';
-import { Plus, Search, Swords, ExternalLink, Wand2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Search, Swords, ExternalLink, Wand2, Play } from 'lucide-react';
 import EncounterCard from './EncounterCard';
 import EncounterForm from './EncounterForm';
 import EncounterBuilder from './EncounterBuilder';
+import LiveEncounterTracker from './LiveEncounterTracker';
 import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
+import { useActiveEncounter } from '../../hooks/useActiveEncounter';
 import './EncountersView.css';
 import './EncounterBuilder.css';
+import './LiveEncounterTracker.css';
 
 export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,9 +18,25 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [useBuilder, setUseBuilder] = useState(true); // Use new BP builder by default
+  const [showTracker, setShowTracker] = useState(false);
+
+  // Active encounter hook
+  const { activeEncounter, startEncounter } = useActiveEncounter(campaign?.id);
 
   // Check if this is a Daggerheart campaign (BP builder is Daggerheart-specific)
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
+
+  // Handle running an encounter
+  const handleRunEncounter = async (encounter) => {
+    if (!isDM) return;
+
+    const environment = encounter.environmentId
+      ? environments.find(e => e.id === encounter.environmentId)
+      : null;
+
+    await startEncounter(encounter, adversaries, environment);
+    setShowTracker(true);
+  };
 
   const handleAdd = () => {
     setEditingEncounter(null);
@@ -68,6 +87,17 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     deadly: encounters.filter(e => e.difficulty === 'deadly').length
   };
 
+  // Show tracker if there's an active encounter or user clicked "Run"
+  if (showTracker || activeEncounter) {
+    return (
+      <LiveEncounterTracker
+        campaignId={campaign?.id}
+        isDM={isDM}
+        onClose={() => setShowTracker(false)}
+      />
+    );
+  }
+
   return (
     <div className="encounters-view">
       <div className="view-header">
@@ -77,6 +107,12 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
         </div>
         {isDM && (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {activeEncounter && (
+              <button className="btn btn-primary" onClick={() => setShowTracker(true)}>
+                <Play size={20} />
+                Resume Tracker
+              </button>
+            )}
             <button className="btn btn-secondary" onClick={() => setQuickGenOpen(true)}>
               <Wand2 size={20} />
               Generate with AI
@@ -181,7 +217,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
               encounter={encounter}
               onEdit={() => handleEdit(encounter)}
               onDelete={() => handleDelete(encounter.id)}
-              onRun={encounter.adversarySlots?.length > 0 ? () => {/* TODO: Phase 4 - Live Tracker */} : null}
+              onRun={encounter.adversarySlots?.length > 0 ? () => handleRunEncounter(encounter) : null}
               isDM={isDM}
               campaign={campaign}
               adversaries={adversaries}
