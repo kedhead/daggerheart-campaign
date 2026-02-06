@@ -302,7 +302,7 @@ export default function AIAssetPackGenerator({ campaignId }) {
 
       try {
         // Build the full prompt with style
-        const fullPrompt = `${asset.prompt}, ${style.prompt}, top-down token view, transparent background, game asset`;
+        const fullPrompt = `${asset.prompt}, ${style.prompt}, top-down token view, isolated on solid background, game asset`;
 
         const result = await generateMapAsset({
           prompt: fullPrompt,
