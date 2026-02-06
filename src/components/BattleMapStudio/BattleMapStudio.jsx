@@ -9,7 +9,8 @@ import {
   Layers,
   ExternalLink,
   Radio,
-  Sparkles
+  Sparkles,
+  Grid
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -24,6 +25,7 @@ import MapBrowser from './Panels/MapBrowser';
 import AIMapGenerator from './Panels/AIMapGenerator';
 import AIAssetGenerator from './Panels/AIAssetGenerator';
 import AnimationControls from './Panels/AnimationControls';
+import TileLibrary from './Panels/TileLibrary';
 import './BattleMapStudio.css';
 
 export default function BattleMapStudio({ campaign, isDM }) {
@@ -300,6 +302,14 @@ export default function BattleMapStudio({ campaign, isDM }) {
               Tokens
             </button>
             <button
+              className={`panel-tab ${activePanel === 'tiles' ? 'active' : ''}`}
+              onClick={() => setActivePanel('tiles')}
+              title="Map Tiles"
+            >
+              <Grid size={14} />
+              Tiles
+            </button>
+            <button
               className={`panel-tab ${activePanel === 'ai-assets' ? 'active' : ''}`}
               onClick={() => setActivePanel('ai-assets')}
               title="AI Asset Generator"
@@ -333,6 +343,9 @@ export default function BattleMapStudio({ campaign, isDM }) {
           <div className="panel-content">
             {activePanel === 'assets' && (
               <AssetLibrary campaignId={campaignId} />
+            )}
+            {activePanel === 'tiles' && (
+              <TileLibrary />
             )}
             {activePanel === 'ai-assets' && (
               <AIAssetGenerator campaignId={campaignId} />
