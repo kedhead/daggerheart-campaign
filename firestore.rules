@@ -43,6 +43,16 @@ service cloud.firestore {
       allow read: if isAuthenticated() && isSuperAdmin();
     }
 
+    // Shared Assets Library (cross-campaign asset sharing)
+    match /sharedAssets/{assetId} {
+      // Any authenticated user can read shared assets
+      allow read: if isAuthenticated();
+      // Any authenticated user can share (create) assets
+      allow create: if isAuthenticated();
+      // Only super admins can update or delete shared assets
+      allow update, delete: if isAuthenticated() && isSuperAdmin();
+    }
+
     // Shared campaigns collection
     match /campaigns/{campaignId} {
       // Read: public campaigns OR member/DM/creator OR superadmin

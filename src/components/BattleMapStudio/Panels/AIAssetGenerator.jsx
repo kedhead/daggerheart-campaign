@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Loader2, Plus, X } from 'lucide-react';
-import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { Sparkles, Loader2, Plus, X, Share2, Check } from 'lucide-react';
+import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, orderBy, getDoc } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
 import {
   generateMapAsset,
@@ -17,6 +17,8 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
   const [error, setError] = useState(null);
   const [generatedAssets, setGeneratedAssets] = useState([]); // Session-generated
   const [savedAssets, setSavedAssets] = useState([]); // From Firestore
+  const [sharingAssetId, setSharingAssetId] = useState(null);
+  const [sharedAssetIds, setSharedAssetIds] = useState(new Set()); // Track which assets are already shared
 
   const { addToken, gridSize, mapImage, stageSize, zoom, panOffset } = useBattleMapStore();
 
@@ -148,6 +150,42 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
       setSavedAssets(prev => prev.filter(a => a.id !== assetId));
     } catch (err) {
       console.error('Error deleting asset:', err);
+    }
+  };
+
+  // Share asset to global shared library
+  const handleShareAsset = async (asset) => {
+    setSharingAssetId(asset.id);
+
+    try {
+      // Check if already shared (by URL)
+      const sharedRef = collection(db, 'sharedAssets');
+      const existingQuery = query(sharedRef);
+      const existingSnapshot = await getDocs(existingQuery);
+      const alreadyShared = existingSnapshot.docs.some(doc => doc.data().url === asset.url);
+
+      if (alreadyShared) {
+        setSharedAssetIds(prev => new Set([...prev, asset.id]));
+        return;
+      }
+
+      // Add to shared library
+      const sharedAssetDoc = {
+        name: asset.name,
+        url: asset.url,
+        category: asset.category || category,
+        prompt: asset.prompt,
+        backgroundRemoved: asset.backgroundRemoved ?? removeBackground,
+        sharedAt: serverTimestamp(),
+        sharedFrom: campaignId
+      };
+
+      await addDoc(sharedRef, sharedAssetDoc);
+      setSharedAssetIds(prev => new Set([...prev, asset.id]));
+    } catch (err) {
+      console.error('Error sharing asset:', err);
+    } finally {
+      setSharingAssetId(null);
     }
   };
 
@@ -287,6 +325,14 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
                     title="Add to map"
                   >
                     <Plus size={16} />
+                  </button>
+                  <button
+                    className={`share-btn ${sharedAssetIds.has(asset.id) ? 'shared' : ''}`}
+                    onClick={() => handleShareAsset(asset)}
+                    disabled={sharingAssetId === asset.id || sharedAssetIds.has(asset.id)}
+                    title={sharedAssetIds.has(asset.id) ? 'Already shared' : 'Share to library'}
+                  >
+                    {sharedAssetIds.has(asset.id) ? <Check size={16} /> : <Share2 size={16} />}
                   </button>
                   <button
                     className="remove-btn"
@@ -474,6 +520,20 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
         .add-btn {
           background: var(--hope-color);
           color: var(--bg-primary);
+        }
+
+        .share-btn {
+          background: #3b82f6;
+          color: white;
+        }
+
+        .share-btn.shared {
+          background: #22c55e;
+        }
+
+        .share-btn:disabled {
+          opacity: 0.7;
+          cursor: default;
         }
 
         .remove-btn {
