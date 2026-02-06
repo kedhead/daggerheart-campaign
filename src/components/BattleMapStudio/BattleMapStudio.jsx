@@ -12,7 +12,8 @@ import {
   Sparkles,
   Grid,
   Route,
-  Package
+  Package,
+  Boxes
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -26,6 +27,7 @@ import GridCalibrator from './Panels/GridCalibrator';
 import MapBrowser from './Panels/MapBrowser';
 import AIMapGenerator from './Panels/AIMapGenerator';
 import AIAssetGenerator from './Panels/AIAssetGenerator';
+import AIAssetPackGenerator from './Panels/AIAssetPackGenerator';
 import AnimationControls from './Panels/AnimationControls';
 import TileLibrary from './Panels/TileLibrary';
 import OverlayLibrary from './Panels/OverlayLibrary';
@@ -338,6 +340,14 @@ export default function BattleMapStudio({ campaign, isDM }) {
               AI
             </button>
             <button
+              className={`panel-tab ${activePanel === 'ai-packs' ? 'active' : ''}`}
+              onClick={() => setActivePanel('ai-packs')}
+              title="AI Asset Pack Generator"
+            >
+              <Boxes size={14} />
+              Packs
+            </button>
+            <button
               className={`panel-tab ${activePanel === 'grid' ? 'active' : ''}`}
               onClick={() => setActivePanel('grid')}
               title="Grid Settings"
@@ -375,6 +385,9 @@ export default function BattleMapStudio({ campaign, isDM }) {
             )}
             {activePanel === 'ai-assets' && (
               <AIAssetGenerator campaignId={campaignId} />
+            )}
+            {activePanel === 'ai-packs' && (
+              <AIAssetPackGenerator campaignId={campaignId} />
             )}
             {activePanel === 'grid' && (
               <GridCalibrator />
