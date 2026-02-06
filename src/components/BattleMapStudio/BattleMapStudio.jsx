@@ -10,7 +10,9 @@ import {
   ExternalLink,
   Radio,
   Sparkles,
-  Grid
+  Grid,
+  Route,
+  Package
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -26,6 +28,8 @@ import AIMapGenerator from './Panels/AIMapGenerator';
 import AIAssetGenerator from './Panels/AIAssetGenerator';
 import AnimationControls from './Panels/AnimationControls';
 import TileLibrary from './Panels/TileLibrary';
+import OverlayLibrary from './Panels/OverlayLibrary';
+import AssetPackImporter from './Panels/AssetPackImporter';
 import './BattleMapStudio.css';
 
 export default function BattleMapStudio({ campaign, isDM }) {
@@ -310,12 +314,28 @@ export default function BattleMapStudio({ campaign, isDM }) {
               Tiles
             </button>
             <button
+              className={`panel-tab ${activePanel === 'overlays' ? 'active' : ''}`}
+              onClick={() => setActivePanel('overlays')}
+              title="Overlay Tiles (Roads, Rivers)"
+            >
+              <Route size={14} />
+              Overlays
+            </button>
+            <button
+              className={`panel-tab ${activePanel === 'import' ? 'active' : ''}`}
+              onClick={() => setActivePanel('import')}
+              title="Import Asset Packs"
+            >
+              <Package size={14} />
+              Import
+            </button>
+            <button
               className={`panel-tab ${activePanel === 'ai-assets' ? 'active' : ''}`}
               onClick={() => setActivePanel('ai-assets')}
               title="AI Asset Generator"
             >
               <Wand2 size={14} />
-              AI Assets
+              AI
             </button>
             <button
               className={`panel-tab ${activePanel === 'grid' ? 'active' : ''}`}
@@ -330,7 +350,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
               title="Map Animations"
             >
               <Sparkles size={14} />
-              Animate
+              FX
             </button>
             <button
               className={`panel-tab ${activePanel === 'maps' ? 'active' : ''}`}
@@ -346,6 +366,12 @@ export default function BattleMapStudio({ campaign, isDM }) {
             )}
             {activePanel === 'tiles' && (
               <TileLibrary />
+            )}
+            {activePanel === 'overlays' && (
+              <OverlayLibrary />
+            )}
+            {activePanel === 'import' && (
+              <AssetPackImporter campaignId={campaignId} />
             )}
             {activePanel === 'ai-assets' && (
               <AIAssetGenerator campaignId={campaignId} />
