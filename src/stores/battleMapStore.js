@@ -35,6 +35,11 @@ const initialState = {
     fog: { visible: true }
   },
 
+  // Animation effects
+  animationEffects: [],     // Array of effect IDs: ['rain', 'fog', etc.]
+  animationIntensity: 1,    // 0-2 multiplier
+  animationEnabled: false,  // Global toggle
+
   // Saved maps list (for the map browser)
   savedMaps: [],
 
@@ -140,6 +145,35 @@ export const useBattleMapStore = create((set, get) => ({
     }
   })),
 
+  // Animation actions
+  toggleAnimationEnabled: () => set((state) => ({
+    animationEnabled: !state.animationEnabled,
+    isDirty: true
+  })),
+
+  setAnimationEffects: (effects) => set({
+    animationEffects: effects,
+    isDirty: true
+  }),
+
+  toggleAnimationEffect: (effectId) => set((state) => ({
+    animationEffects: state.animationEffects.includes(effectId)
+      ? state.animationEffects.filter(e => e !== effectId)
+      : [...state.animationEffects, effectId],
+    isDirty: true
+  })),
+
+  setAnimationIntensity: (intensity) => set({
+    animationIntensity: Math.max(0, Math.min(2, intensity)),
+    isDirty: true
+  }),
+
+  clearAnimationEffects: () => set({
+    animationEffects: [],
+    animationEnabled: false,
+    isDirty: true
+  }),
+
   // Load/Save state
   loadMapState: (mapState) => set({
     ...mapState,
@@ -164,7 +198,10 @@ export const useBattleMapStore = create((set, get) => ({
       tokens: state.tokens,
       fogEnabled: state.fogEnabled,
       fogRevealed: state.fogRevealed,
-      layers: state.layers
+      layers: state.layers,
+      animationEffects: state.animationEffects,
+      animationIntensity: state.animationIntensity,
+      animationEnabled: state.animationEnabled
     };
   },
 
@@ -179,7 +216,10 @@ export const useBattleMapStore = create((set, get) => ({
       gridVisible: state.gridVisible,
       tokens: state.tokens.filter(t => state.layers[t.layer]?.visible !== false),
       fogEnabled: state.fogEnabled,
-      fogRevealed: state.fogRevealed
+      fogRevealed: state.fogRevealed,
+      animationEffects: state.animationEffects,
+      animationIntensity: state.animationIntensity,
+      animationEnabled: state.animationEnabled
     };
   }
 }));

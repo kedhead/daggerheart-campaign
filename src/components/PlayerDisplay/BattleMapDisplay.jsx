@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Stage, Layer, Image as KonvaImage, Shape, Group, Circle, Text } from 'react-konva';
 import useImage from 'use-image';
+import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 
 function MapBackground({ url }) {
   const [image] = useImage(url, 'anonymous');
@@ -203,14 +204,25 @@ export default function BattleMapDisplay({ mapState }) {
     );
   }
 
-  const { mapImage, gridType, gridSize, gridColor, gridVisible, tokens, fogRevealed } = mapState;
+  const {
+    mapImage,
+    gridType,
+    gridSize,
+    gridColor,
+    gridVisible,
+    tokens,
+    fogRevealed,
+    animationEffects = [],
+    animationIntensity = 1,
+    animationEnabled = false
+  } = mapState;
 
   // Calculate centering offset
   const offsetX = (dimensions.width - mapImage.width * scale) / 2;
   const offsetY = (dimensions.height - mapImage.height * scale) / 2;
 
   return (
-    <div ref={containerRef} className="battle-map-display">
+    <div ref={containerRef} className="battle-map-display" style={{ position: 'relative' }}>
       <Stage
         width={dimensions.width}
         height={dimensions.height}
@@ -250,6 +262,40 @@ export default function BattleMapDisplay({ mapState }) {
           )}
         </Layer>
       </Stage>
+
+      {/* Animation overlay */}
+      {animationEnabled && animationEffects.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: dimensions.width,
+            height: dimensions.height,
+            overflow: 'hidden',
+            pointerEvents: 'none'
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              left: offsetX,
+              top: offsetY,
+              width: mapImage.width * scale,
+              height: mapImage.height * scale,
+              overflow: 'hidden'
+            }}
+          >
+            <MapAnimationOverlay
+              width={mapImage.width * scale}
+              height={mapImage.height * scale}
+              effects={animationEffects}
+              intensity={animationIntensity}
+              enabled={animationEnabled}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useBattleMapStore } from '../../../stores/battleMapStore';
 import GridOverlay from './GridOverlay';
 import TokenLayer from './TokenLayer';
 import FogOfWarLayer from './FogOfWarLayer';
+import MapAnimationOverlay from './MapAnimationOverlay';
 
 function MapBackground({ url }) {
   const [image] = useImage(url, 'anonymous');
@@ -32,6 +33,9 @@ export default function MapCanvas() {
     tokens,
     selectedTokenIds,
     snapToGrid,
+    animationEffects,
+    animationIntensity,
+    animationEnabled,
     setZoom,
     setPanOffset,
     addFogReveal,
@@ -184,7 +188,7 @@ export default function MapCanvas() {
     <div
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: '100%', height: '100%', position: 'relative' }}
     >
       <Stage
         ref={stageRef}
@@ -251,6 +255,39 @@ export default function MapCanvas() {
         </Layer>
       )}
     </Stage>
+
+      {/* Animation overlay - rendered on top of canvas */}
+      {animationEnabled && animationEffects.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: stageSize.width,
+            height: stageSize.height,
+            overflow: 'hidden',
+            pointerEvents: 'none'
+          }}
+        >
+          <div
+            style={{
+              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+              transformOrigin: '0 0',
+              width: mapImage.width,
+              height: mapImage.height,
+              position: 'relative'
+            }}
+          >
+            <MapAnimationOverlay
+              width={mapImage.width}
+              height={mapImage.height}
+              effects={animationEffects}
+              intensity={animationIntensity}
+              enabled={animationEnabled}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -551,6 +551,7 @@ function CampaignApp() {
         return (
           <DMDisplayControl
             campaign={campaign}
+            characters={characters}
             npcs={npcs}
             locations={locations}
             adversaries={adversaries}

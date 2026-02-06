@@ -8,7 +8,8 @@ import {
   Wand2,
   Layers,
   ExternalLink,
-  Radio
+  Radio,
+  Sparkles
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -22,6 +23,7 @@ import GridCalibrator from './Panels/GridCalibrator';
 import MapBrowser from './Panels/MapBrowser';
 import AIMapGenerator from './Panels/AIMapGenerator';
 import AIAssetGenerator from './Panels/AIAssetGenerator';
+import AnimationControls from './Panels/AnimationControls';
 import './BattleMapStudio.css';
 
 export default function BattleMapStudio({ campaign, isDM }) {
@@ -313,6 +315,14 @@ export default function BattleMapStudio({ campaign, isDM }) {
               Grid
             </button>
             <button
+              className={`panel-tab ${activePanel === 'animate' ? 'active' : ''}`}
+              onClick={() => setActivePanel('animate')}
+              title="Map Animations"
+            >
+              <Sparkles size={14} />
+              Animate
+            </button>
+            <button
               className={`panel-tab ${activePanel === 'maps' ? 'active' : ''}`}
               onClick={() => setActivePanel('maps')}
               title="Saved Maps"
@@ -329,6 +339,9 @@ export default function BattleMapStudio({ campaign, isDM }) {
             )}
             {activePanel === 'grid' && (
               <GridCalibrator />
+            )}
+            {activePanel === 'animate' && (
+              <AnimationControls />
             )}
             {activePanel === 'maps' && (
               <MapBrowser

@@ -4,6 +4,7 @@ import { db } from '../../config/firebase';
 import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
 import useImage from 'use-image';
 import { Maximize, Minimize, Grid } from 'lucide-react';
+import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 import './BattleMapDisplayWindow.css';
 
 /**
@@ -157,59 +158,75 @@ function MapCanvas({ mapState }) {
     gridVisible = true,
     gridColor = 'rgba(255,255,255,0.3)',
     fogRevealed = [],
-    fogEnabled = true
+    fogEnabled = true,
+    animationEffects = [],
+    animationIntensity = 1,
+    animationEnabled = false
   } = mapState;
 
   // Check if fog should be shown (enabled and has revealed areas to cut)
   const showFog = fogEnabled && fogRevealed.length > 0;
 
   return (
-    <Stage
-      width={mapData.width}
-      height={mapData.height}
-      style={{ background: '#000' }}
-    >
-      {/* Background layer - map image */}
-      <Layer>
-        {mapImage && (
-          <KonvaImage
-            image={mapImage}
-            width={mapData.width}
-            height={mapData.height}
-          />
+    <div style={{ position: 'relative', width: mapData.width, height: mapData.height }}>
+      <Stage
+        width={mapData.width}
+        height={mapData.height}
+        style={{ background: '#000' }}
+      >
+        {/* Background layer - map image */}
+        <Layer>
+          {mapImage && (
+            <KonvaImage
+              image={mapImage}
+              width={mapData.width}
+              height={mapData.height}
+            />
+          )}
+        </Layer>
+
+        {/* Grid layer */}
+        {gridVisible && (
+          <Layer listening={false}>
+            <GridOverlay
+              width={mapData.width}
+              height={mapData.height}
+              gridSize={gridSize}
+              gridColor={gridColor}
+            />
+          </Layer>
         )}
-      </Layer>
 
-      {/* Grid layer */}
-      {gridVisible && (
-        <Layer listening={false}>
-          <GridOverlay
-            width={mapData.width}
-            height={mapData.height}
-            gridSize={gridSize}
-            gridColor={gridColor}
-          />
+        {/* Tokens layer */}
+        <Layer>
+          {tokens.map(token => (
+            <DisplayToken key={token.id} token={token} gridSize={gridSize} />
+          ))}
         </Layer>
-      )}
 
-      {/* Tokens layer */}
-      <Layer>
-        {tokens.map(token => (
-          <DisplayToken key={token.id} token={token} gridSize={gridSize} />
-        ))}
-      </Layer>
+        {/* Fog of War layer - on top of everything */}
+        {showFog && (
+          <Layer listening={false}>
+            <FogOfWarLayer
+              width={mapData.width}
+              height={mapData.height}
+              revealed={fogRevealed}
+            />
+          </Layer>
+        )}
+      </Stage>
 
-      {/* Fog of War layer - on top of everything */}
-      {showFog && (
-        <Layer listening={false}>
-          <FogOfWarLayer
-            width={mapData.width}
-            height={mapData.height}
-            revealed={fogRevealed}
-          />
-        </Layer>
+      {/* Animation overlay */}
+      {animationEnabled && animationEffects.length > 0 && (
+        <MapAnimationOverlay
+          width={mapData.width}
+          height={mapData.height}
+          effects={animationEffects}
+          intensity={animationIntensity}
+          enabled={animationEnabled}
+        />
       )}
-    </Stage>
+    </div>
   );
 }
 

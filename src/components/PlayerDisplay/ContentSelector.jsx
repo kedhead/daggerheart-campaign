@@ -23,6 +23,7 @@ function getYouTubeVideoId(url) {
 export default function ContentSelector({
   campaignId,
   campaign,
+  characters = [],
   npcs = [],
   locations = [],
   adversaries = [],
@@ -315,6 +316,9 @@ export default function ContentSelector({
     });
   };
 
+  // Get characters with avatars (party members)
+  const charactersWithAvatars = characters.filter(char => char.avatarUrl);
+
   // Get NPCs with images
   const npcsWithImages = npcs.filter(npc => npc.avatarUrl);
 
@@ -326,6 +330,7 @@ export default function ContentSelector({
 
   const tabs = [
     { id: 'maps', label: 'Maps', icon: Map, count: maps.length },
+    { id: 'party', label: 'Party', icon: Users, count: charactersWithAvatars.length },
     { id: 'creatures', label: 'Creatures', icon: Skull, count: generatedImages.length },
     { id: 'adversaries', label: 'Adversaries', icon: Skull, count: adversariesWithImages.length },
     { id: 'npcs', label: 'NPCs', icon: Users, count: npcsWithImages.length },
@@ -555,6 +560,10 @@ export default function ContentSelector({
       case 'maps':
         items = maps;
         type = 'map';
+        break;
+      case 'party':
+        items = charactersWithAvatars;
+        type = 'character';
         break;
       case 'creatures':
         items = generatedImages;

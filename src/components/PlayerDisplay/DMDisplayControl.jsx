@@ -21,6 +21,7 @@ function getYouTubeVideoId(url) {
 
 export default function DMDisplayControl({
   campaign,
+  characters = [],
   npcs = [],
   locations = [],
   adversaries = [],
@@ -286,6 +287,7 @@ export default function DMDisplayControl({
           <ContentSelector
             campaignId={campaignId}
             campaign={campaign}
+            characters={characters}
             npcs={npcs}
             locations={locations}
             adversaries={adversaries}

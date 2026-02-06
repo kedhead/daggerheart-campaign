@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Wand2, Sparkles, Loader2, ChevronDown, ChevronUp, Video, Image as ImageIcon } from 'lucide-react';
+import { Wand2, Sparkles, Loader2, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
 import {
   generateBattleMap,
@@ -14,7 +14,6 @@ export default function AIMapGenerator({ campaignId }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [animated, setAnimated] = useState(false);
   const [model, setModel] = useState('magic-art_7_0');
   const [size, setSize] = useState('1024x1024');
 
@@ -40,8 +39,7 @@ export default function AIMapGenerator({ campaignId }) {
         prompt: prompt.trim(),
         type: mapType,
         model,
-        size,
-        animated
+        size
       });
 
       // Save to Firebase for persistence
@@ -170,18 +168,6 @@ export default function AIMapGenerator({ campaignId }) {
                 <option value="2560x1440">2560×1440 (QHD Wide)</option>
               </select>
             </div>
-
-            <div className="option-row">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={animated}
-                  onChange={(e) => setAnimated(e.target.checked)}
-                />
-                <Video size={14} style={{ marginLeft: 4 }} />
-                Animated Map (Beta)
-              </label>
-            </div>
           </div>
         )}
       </div>
@@ -206,7 +192,7 @@ export default function AIMapGenerator({ campaignId }) {
           </>
         ) : (
           <>
-            {animated ? <Video size={18} /> : <ImageIcon size={18} />}
+            <ImageIcon size={18} />
             Generate Map
           </>
         )}
