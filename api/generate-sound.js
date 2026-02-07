@@ -138,104 +138,106 @@ export default async function handler(req, res) {
       urlsToTry.push(`https://asset.1min.ai/${cleanPath}`);
     }
 
-    // Try the records endpoint to get a presigned URL
-    // The initial response has temporaryUrl: "" but fetching the record
-    // separately may return a populated presigned URL
+    // Track all attempts for debug output
+    const debug = [];
+    let audioData = null;
+    let audioUrl = assetPath ? `https://asset.1min.ai/${assetPath}` : null;
     const recordUuid = data.aiRecord?.uuid;
-    if (recordUuid && !hasTemporaryUrl) {
-      // Wait briefly for S3 presigned URL generation (may be async)
-      await new Promise(resolve => setTimeout(resolve, 1500));
 
+    // Strategy 1: Try records endpoint (may have presigned URL)
+    if (recordUuid) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
       try {
-        console.log('Fetching record for presigned URL, UUID:', recordUuid);
         const recordResponse = await fetch(`https://api.1min.ai/api/records/${recordUuid}`, {
           headers: { 'API-KEY': apiKey }
         });
-        console.log('Record endpoint status:', recordResponse.status);
-
-        if (recordResponse.ok) {
-          const recordData = await recordResponse.json();
-          // Log the full record response to understand its structure
-          console.log('Record response full:', JSON.stringify(recordData, null, 2));
-
-          // Check temporaryUrl at various paths
-          const recTempUrl = recordData.temporaryUrl
-            || recordData.aiRecord?.temporaryUrl
-            || recordData.data?.temporaryUrl;
-
-          if (recTempUrl && recTempUrl.length > 10) {
-            console.log('Found presigned URL from records endpoint!');
-            urlsToTry.unshift(recTempUrl);
-          } else {
-            console.warn('Records endpoint temporaryUrl is empty/missing');
+        const status = recordResponse.status;
+        const ct = recordResponse.headers.get('content-type') || '';
+        if (recordResponse.ok && ct.includes('json')) {
+          const rd = await recordResponse.json();
+          const tempUrl = rd.temporaryUrl || rd.aiRecord?.temporaryUrl || '';
+          debug.push({ endpoint: `/api/records/${recordUuid}`, status, temporaryUrl: tempUrl.substring(0, 80) || '(empty)', keys: Object.keys(rd) });
+          if (tempUrl && tempUrl.length > 10) {
+            urlsToTry.unshift(tempUrl);
           }
         } else {
-          const errText = await recordResponse.text();
-          console.warn('Record endpoint error:', recordResponse.status, errText.substring(0, 200));
+          debug.push({ endpoint: `/api/records/${recordUuid}`, status, note: 'non-json or error' });
         }
       } catch (e) {
-        console.warn('Record fetch failed:', e.message);
+        debug.push({ endpoint: `/api/records/${recordUuid}`, error: e.message });
       }
     }
 
-    console.log('URLs to try:', urlsToTry.map(u => u.substring(0, 80)));
+    // Strategy 2: Try 1min.ai assets endpoint as file proxy
+    if (assetPath) {
+      const cleanPath = assetPath.replace(/^\//, '');
+      const assetsEndpoints = [
+        { url: `https://api.1min.ai/api/assets/${cleanPath}`, label: 'assets/path' },
+        { url: `https://api.1min.ai/api/assets?path=${encodeURIComponent(cleanPath)}`, label: 'assets?path=' },
+      ];
+      for (const ep of assetsEndpoints) {
+        try {
+          const resp = await fetch(ep.url, { headers: { 'API-KEY': apiKey } });
+          const ct = resp.headers.get('content-type') || '';
+          debug.push({ endpoint: ep.label, status: resp.status, contentType: ct.substring(0, 50) });
 
-    if (urlsToTry.length === 0) {
-      console.error('No URLs to try for audio download');
-      return res.status(500).json({
-        error: 'Could not extract audio URL from API response',
-        responseKeys: Object.keys(data)
-      });
+          if (resp.ok && (ct.includes('audio') || ct.includes('octet-stream'))) {
+            const ab = await resp.arrayBuffer();
+            if (ab.byteLength > 100) {
+              const buf = Buffer.from(ab);
+              audioData = `data:audio/mpeg;base64,${buf.toString('base64')}`;
+              debug.push({ endpoint: ep.label, result: 'SUCCESS', bytes: ab.byteLength });
+              break;
+            }
+          } else if (resp.ok && ct.includes('json')) {
+            const jsonBody = await resp.json();
+            debug.push({ endpoint: ep.label, jsonKeys: Object.keys(jsonBody), tempUrl: (jsonBody.temporaryUrl || jsonBody.url || '').substring(0, 80) });
+            const foundUrl = jsonBody.temporaryUrl || jsonBody.url || jsonBody.downloadUrl;
+            if (foundUrl && foundUrl.length > 10 && foundUrl.startsWith('http')) {
+              urlsToTry.unshift(foundUrl);
+            }
+          }
+        } catch (e) {
+          debug.push({ endpoint: ep.label, error: e.message });
+        }
+      }
     }
 
-    // The URL we'll report to the client (prefer presigned > S3 > asset.1min.ai)
-    let audioUrl = urlsToTry[0];
+    // Strategy 3: Try all collected URLs (presigned, S3, CNAME)
+    if (!audioData) {
+      for (const tryUrl of urlsToTry) {
+        try {
+          const audioResponse = await fetch(tryUrl);
+          const status = audioResponse.status;
+          const ct = audioResponse.headers.get('content-type') || '';
+          const label = tryUrl.substring(0, 80);
 
-    // Try each URL to fetch audio bytes and convert to base64
-    let audioData = null;
-    for (const tryUrl of urlsToTry) {
-      try {
-        console.log('Trying to fetch audio from:', tryUrl.substring(0, 100));
-        const audioResponse = await fetch(tryUrl);
-        console.log('Fetch result:', audioResponse.status, audioResponse.headers.get('content-type'));
-
-        if (audioResponse.ok) {
-          const ct = audioResponse.headers.get('content-type') || 'audio/mpeg';
-          // Reject HTML/XML error pages
-          if (ct.includes('html') || ct.includes('xml')) {
-            console.warn('Got HTML/XML instead of audio from:', tryUrl.substring(0, 60));
-            continue;
+          if (audioResponse.ok && !ct.includes('html') && !ct.includes('xml')) {
+            const ab = await audioResponse.arrayBuffer();
+            if (ab.byteLength > 100) {
+              const buf = Buffer.from(ab);
+              const mimeType = ct.includes('audio') ? ct : 'audio/mpeg';
+              audioData = `data:${mimeType};base64,${buf.toString('base64')}`;
+              audioUrl = tryUrl;
+              debug.push({ url: label, status, result: 'SUCCESS', bytes: ab.byteLength });
+              break;
+            }
           }
-
-          const arrayBuffer = await audioResponse.arrayBuffer();
-          console.log('Downloaded bytes:', arrayBuffer.byteLength);
-
-          if (arrayBuffer.byteLength > 100) {
-            const buffer = Buffer.from(arrayBuffer);
-            const base64 = buffer.toString('base64');
-            const mimeType = ct.includes('audio') ? ct : 'audio/mpeg';
-            audioData = `data:${mimeType};base64,${base64}`;
-            audioUrl = tryUrl; // Use the URL that actually worked
-            console.log('Audio converted to base64, size:', audioData.length);
-            break;
-          } else {
-            console.warn('Response too small to be audio:', arrayBuffer.byteLength, 'bytes');
-          }
-        } else {
-          console.warn('Fetch failed:', audioResponse.status, audioResponse.statusText);
+          debug.push({ url: label, status, contentType: ct.substring(0, 30) });
+        } catch (e) {
+          debug.push({ url: tryUrl.substring(0, 60), error: e.message });
         }
-      } catch (fetchError) {
-        console.warn('Fetch error for', tryUrl.substring(0, 60), ':', fetchError.message);
       }
     }
 
     if (!audioData) {
-      console.warn('All audio fetch attempts failed. Returning without audioData.');
+      console.warn('All audio fetch attempts failed:', JSON.stringify(debug));
     }
 
     return res.status(200).json({
       audioUrl,
       audioData,
+      debug,
       prompt,
       duration
     });
