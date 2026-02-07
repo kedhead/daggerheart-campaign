@@ -4,7 +4,7 @@ import {
   Trees, Castle, Skull, Heart, Upload, Wand2, Search, Trash2,
   ChevronDown, ChevronUp, Radio, Loader2, Download, RefreshCw
 } from 'lucide-react';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { generateSoundEffect, SOUND_PRESETS } from '../../services/audioGenerator';
 import './DMSoundboard.css';
@@ -150,29 +150,10 @@ export default function DMSoundboard({ campaignId }) {
   const [generatingSound, setGeneratingSound] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [playingSound, setPlayingSound] = useState(null);
-  const [apiKey, setApiKey] = useState(null);
   const [activeMusicTheme, setActiveMusicTheme] = useState(null);
 
   const effectsAudioRef = useRef(new Audio());
   const musicAudioRef = useRef(new Audio());
-
-  // Load API key from Firestore
-  useEffect(() => {
-    async function loadApiKey() {
-      try {
-        const configDoc = await getDoc(doc(db, 'appSettings/sharedApiKeys'));
-        if (configDoc.exists()) {
-          const data = configDoc.data();
-          if (data.oneMinAiKey) {
-            setApiKey(data.oneMinAiKey);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load API key:', err);
-      }
-    }
-    loadApiKey();
-  }, []);
 
   // Load custom sounds and cached sounds from localStorage
   useEffect(() => {
@@ -210,11 +191,6 @@ export default function DMSoundboard({ campaignId }) {
 
   // Generate a sound effect using AI
   const generateAndPlaySound = async (sound) => {
-    if (!apiKey) {
-      alert('No 1min.ai API key configured. Please add your API key in Super Admin > Shared API Keys.');
-      return;
-    }
-
     // Check if we have a cached version
     if (cachedSounds[sound.id]) {
       playAudioUrl(cachedSounds[sound.id], sound.name);
@@ -224,7 +200,7 @@ export default function DMSoundboard({ campaignId }) {
     setGeneratingSound(sound.id);
 
     try {
-      const audioUrl = await generateSoundEffect(sound.prompt, apiKey, {
+      const audioUrl = await generateSoundEffect(sound.prompt, null, {
         duration: sound.duration || 5,
         promptInfluence: 0.4
       });
@@ -356,15 +332,11 @@ export default function DMSoundboard({ campaignId }) {
   // Generate custom AI sound
   const generateCustomSound = async () => {
     if (!aiPrompt.trim()) return;
-    if (!apiKey) {
-      alert('No 1min.ai API key configured. Please add your API key in Super Admin > Shared API Keys.');
-      return;
-    }
 
     setAiGenerating(true);
 
     try {
-      const audioUrl = await generateSoundEffect(aiPrompt, apiKey, {
+      const audioUrl = await generateSoundEffect(aiPrompt, null, {
         duration: aiDuration,
         promptInfluence: 0.4
       });
@@ -412,7 +384,6 @@ export default function DMSoundboard({ campaignId }) {
   };
 
   const filteredSounds = getFilteredSounds();
-  const hasApiKey = !!apiKey;
 
   return (
     <div className="dm-soundboard">
@@ -421,7 +392,7 @@ export default function DMSoundboard({ campaignId }) {
         <div className="soundboard-title">
           <Volume2 size={20} />
           <span>DM Soundboard</span>
-          {hasApiKey && <span className="ai-badge">AI</span>}
+          <span className="ai-badge">AI</span>
         </div>
         <div className="soundboard-controls">
           <button
@@ -443,14 +414,6 @@ export default function DMSoundboard({ campaignId }) {
           </button>
         </div>
       </div>
-
-      {/* API Key Warning */}
-      {!hasApiKey && (
-        <div className="api-warning">
-          <Wand2 size={14} />
-          <span>Add 1min.ai API key in Super Admin to enable AI sound generation</span>
-        </div>
-      )}
 
       {/* Volume Controls */}
       <div className="volume-controls">
@@ -519,8 +482,8 @@ export default function DMSoundboard({ campaignId }) {
             <button
               key={sound.id}
               className={`sound-btn ${playingSound === sound.name ? 'playing' : ''} ${isCached ? 'cached' : ''}`}
-              onClick={() => hasApiKey ? generateAndPlaySound(sound) : alert('API key required')}
-              disabled={isGenerating || !hasApiKey}
+              onClick={() => generateAndPlaySound(sound)}
+              disabled={isGenerating}
               style={{ '--sound-color': SOUND_CATEGORIES[activeCategory]?.color || '#6366f1' }}
               title={sound.prompt}
             >
@@ -589,8 +552,7 @@ export default function DMSoundboard({ campaignId }) {
       </div>
 
       {/* AI Generation Panel */}
-      {hasApiKey && (
-        <div className="ai-section">
+      <div className="ai-section">
           <button
             className="ai-toggle"
             onClick={() => setShowAIPanel(!showAIPanel)}
@@ -637,7 +599,6 @@ export default function DMSoundboard({ campaignId }) {
             </div>
           )}
         </div>
-      )}
 
       {/* Background Music Panel */}
       <div className="music-section">

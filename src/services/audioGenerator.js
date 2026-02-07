@@ -1,68 +1,49 @@
 /**
  * Audio Generation Service
- * Uses 1min.ai API (ElevenLabs) for AI-generated sound effects and music
+ * Uses Vercel API route which connects to 1min.ai (ElevenLabs) for sound effects
  */
-
-const ONEMIN_API_URL = 'https://api.1min.ai/api/features';
 
 /**
  * Generate a sound effect using ElevenLabs via 1min.ai
  * @param {string} prompt - Description of the sound to generate
- * @param {string} apiKey - 1min.ai API key
+ * @param {string} _apiKey - Unused (API key is in Vercel env)
  * @param {object} options - Generation options
- * @returns {Promise<string>} URL or base64 of the generated audio
+ * @returns {Promise<string>} URL of the generated audio
  */
-export async function generateSoundEffect(prompt, apiKey, options = {}) {
+export async function generateSoundEffect(prompt, _apiKey, options = {}) {
   const {
     duration = 5,
     promptInfluence = 0.3,
     outputFormat = 'mp3_44100_128'
   } = options;
 
-  if (!apiKey) {
-    throw new Error('API key is required for audio generation');
-  }
-
   if (!prompt || prompt.trim().length === 0) {
     throw new Error('Sound description is required');
   }
 
   try {
-    const response = await fetch(ONEMIN_API_URL, {
+    const response = await fetch('/api/generate-sound', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'API-KEY': apiKey
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        type: 'TEXT_TO_SOUND',
-        model: 'elevenlabs-text-to-sound',
-        conversationId: `sound-${Date.now()}`,
-        promptObject: {
-          text: prompt,
-          duration_seconds: Math.min(Math.max(duration, 0.5), 30), // Clamp between 0.5-30
-          prompt_influence: promptInfluence,
-          output_format: outputFormat,
-          loop: false
-        }
+        prompt,
+        duration,
+        promptInfluence,
+        outputFormat
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `API request failed with status ${response.status}`);
+      throw new Error(errorData.error || `API request failed with status ${response.status}`);
     }
 
     const data = await response.json();
 
-    // Extract the audio URL from the response
-    if (data.aiRecord?.aiRecordDetail?.resultObject?.[0]) {
-      return data.aiRecord.aiRecordDetail.resultObject[0];
-    }
-
-    // Some responses might have a different structure
-    if (data.result || data.url || data.audio_url) {
-      return data.result || data.url || data.audio_url;
+    if (data.audioUrl) {
+      return data.audioUrl;
     }
 
     throw new Error('No audio URL in response');
