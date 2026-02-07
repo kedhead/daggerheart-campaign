@@ -2,75 +2,64 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Volume2, VolumeX, Play, Pause, Square, Music, Swords, Sparkles,
   Trees, Castle, Skull, Heart, Upload, Wand2, Search, Trash2,
-  ChevronDown, ChevronUp, Radio, Loader2, Download, RefreshCw
+  ChevronDown, ChevronUp, Radio, Loader2, Download, RefreshCw, Gem
 } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { generateSoundEffect, SOUND_PRESETS } from '../../services/audioGenerator';
+import { generateSoundEffect, generateBackgroundMusic, SOUND_PRESETS } from '../../services/audioGenerator';
+import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
 import './DMSoundboard.css';
 
-// Curated royalty-free music from Free Music Archive and similar sources
-// These are direct links to freely-usable music
-const CURATED_MUSIC = {
+// Background music themes
+const MUSIC_THEMES = {
   battle: {
     name: 'Epic Battle',
     icon: Swords,
     color: '#ef4444',
-    tracks: [
-      { id: 'battle-drums', name: 'Battle Drums', description: 'Intense percussion for combat', duration: 'Loop' },
-      { id: 'epic-orchestral', name: 'Epic Orchestral', description: 'Dramatic orchestra swells', duration: 'Loop' },
-      { id: 'boss-fight', name: 'Boss Fight', description: 'Intense boss encounter music', duration: 'Loop' },
-    ]
+    description: 'Intense combat music',
+    prompt: 'epic intense battle, war drums, dramatic orchestral, fast-paced combat'
   },
   exploration: {
     name: 'Exploration',
     icon: Trees,
     color: '#22c55e',
-    tracks: [
-      { id: 'peaceful-journey', name: 'Peaceful Journey', description: 'Calm traveling music', duration: 'Loop' },
-      { id: 'forest-walk', name: 'Forest Walk', description: 'Nature-inspired melody', duration: 'Loop' },
-      { id: 'mountain-vista', name: 'Mountain Vista', description: 'Majestic exploration theme', duration: 'Loop' },
-    ]
+    description: 'Calm adventure music',
+    prompt: 'peaceful exploration, gentle adventure, nature sounds, wandering melody'
   },
   mystery: {
     name: 'Mystery',
     icon: Sparkles,
     color: '#8b5cf6',
-    tracks: [
-      { id: 'dark-secrets', name: 'Dark Secrets', description: 'Suspenseful investigation', duration: 'Loop' },
-      { id: 'ancient-ruins', name: 'Ancient Ruins', description: 'Mysterious discovery', duration: 'Loop' },
-      { id: 'whispers', name: 'Whispers', description: 'Eerie ambient tones', duration: 'Loop' },
-    ]
+    description: 'Suspenseful atmosphere',
+    prompt: 'mysterious suspenseful, dark ambient, eerie investigation, haunting melody'
   },
   tavern: {
     name: 'Tavern',
     icon: Castle,
     color: '#f59e0b',
-    tracks: [
-      { id: 'merry-inn', name: 'The Merry Inn', description: 'Cheerful tavern music', duration: 'Loop' },
-      { id: 'bard-song', name: 'Bard\'s Song', description: 'Medieval lute melody', duration: 'Loop' },
-      { id: 'celebration', name: 'Celebration', description: 'Festive party music', duration: 'Loop' },
-    ]
+    description: 'Cheerful inn music',
+    prompt: 'cheerful medieval tavern, festive lute and fiddle, merry celebration, folk music'
   },
   tension: {
     name: 'Tension',
     icon: Skull,
     color: '#64748b',
-    tracks: [
-      { id: 'approaching-danger', name: 'Approaching Danger', description: 'Building suspense', duration: 'Loop' },
-      { id: 'stealth', name: 'Stealth Mission', description: 'Quiet, tense atmosphere', duration: 'Loop' },
-      { id: 'horror', name: 'Horror Ambience', description: 'Scary background', duration: 'Loop' },
-    ]
+    description: 'Building dread',
+    prompt: 'ominous tension building, dark brooding, approaching danger, suspenseful drone'
   },
   victory: {
     name: 'Victory',
     icon: Heart,
     color: '#ec4899',
-    tracks: [
-      { id: 'triumphant', name: 'Triumphant Heroes', description: 'Heroic victory fanfare', duration: '0:45' },
-      { id: 'level-up-theme', name: 'Level Up', description: 'Achievement celebration', duration: '0:30' },
-      { id: 'quest-complete', name: 'Quest Complete', description: 'Success music', duration: '0:40' },
-    ]
+    description: 'Triumphant fanfare',
+    prompt: 'triumphant heroic victory, celebratory fanfare, uplifting orchestral, achievement'
+  },
+  mystical: {
+    name: 'Mystical',
+    icon: Gem,
+    color: '#06b6d4',
+    description: 'Arcane & ethereal',
+    prompt: 'mystical ethereal, arcane energy, magical ambience, otherworldly fantasy'
   }
 };
 
@@ -138,7 +127,7 @@ export default function DMSoundboard({ campaignId }) {
   const [effectsVolume, setEffectsVolume] = useState(70);
   const [musicVolume, setMusicVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
-  const [currentMusic, setCurrentMusic] = useState(null);
+  const [currentMusic, setCurrentMusic] = useState(null); // { themeKey, trackId, source: 'curated'|'ai' } or null
   const [showMusicPanel, setShowMusicPanel] = useState(false);
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [broadcastEnabled, setBroadcastEnabled] = useState(true);
@@ -150,7 +139,9 @@ export default function DMSoundboard({ campaignId }) {
   const [generatingSound, setGeneratingSound] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [playingSound, setPlayingSound] = useState(null);
-  const [activeMusicTheme, setActiveMusicTheme] = useState(null);
+  const [generatingMusic, setGeneratingMusic] = useState(null);
+  const [cachedMusic, setCachedMusic] = useState({});
+  const [expandedTheme, setExpandedTheme] = useState(null);
 
   const effectsAudioRef = useRef(new Audio());
   const musicAudioRef = useRef(new Audio());
@@ -174,6 +165,15 @@ export default function DMSoundboard({ campaignId }) {
         console.error('Failed to load cached sounds:', e);
       }
     }
+
+    const savedMusic = localStorage.getItem('dm_cached_music');
+    if (savedMusic) {
+      try {
+        setCachedMusic(JSON.parse(savedMusic));
+      } catch (e) {
+        console.error('Failed to load cached music:', e);
+      }
+    }
   }, []);
 
   // Save custom sounds
@@ -193,8 +193,11 @@ export default function DMSoundboard({ campaignId }) {
   const generateAndPlaySound = async (sound) => {
     // Check if we have a cached version
     if (cachedSounds[sound.id]) {
-      playAudioUrl(cachedSounds[sound.id], sound.name);
-      return;
+      const played = await playAudioUrl(cachedSounds[sound.id], sound.name);
+      if (played) return;
+      // Cached URL expired/broken - clear it and regenerate
+      console.warn('Cached sound expired, regenerating:', sound.id);
+      clearCachedSound(sound.id);
     }
 
     setGeneratingSound(sound.id);
@@ -209,7 +212,7 @@ export default function DMSoundboard({ campaignId }) {
       saveCachedSound(sound.id, audioUrl);
 
       // Play the sound
-      playAudioUrl(audioUrl, sound.name);
+      await playAudioUrl(audioUrl, sound.name);
     } catch (error) {
       console.error('Failed to generate sound:', error);
       alert(`Failed to generate sound: ${error.message}`);
@@ -218,7 +221,7 @@ export default function DMSoundboard({ campaignId }) {
     }
   };
 
-  // Play an audio URL
+  // Play an audio URL - returns true if successful, false if failed
   const playAudioUrl = async (url, name) => {
     const audio = effectsAudioRef.current;
     audio.src = url;
@@ -239,8 +242,10 @@ export default function DMSoundboard({ campaignId }) {
           volume: effectsVolume
         });
       }
+      return true;
     } catch (error) {
       console.error('Failed to play audio:', error);
+      return false;
     }
   };
 
@@ -279,6 +284,136 @@ export default function DMSoundboard({ campaignId }) {
 
     if (broadcastEnabled && campaignId) {
       broadcastAudioState({ type: 'all', action: 'stop' });
+    }
+  };
+
+  // Play a curated track from the CDN
+  const playCuratedTrack = async (themeKey, trackId) => {
+    const music = musicAudioRef.current;
+
+    // If this exact track is already playing, stop it
+    if (currentMusic && currentMusic.source === 'curated' && currentMusic.trackId === trackId) {
+      stopMusic();
+      return;
+    }
+
+    const url = getTrackUrl(trackId);
+    const displayName = getTrackDisplayName(trackId);
+    const theme = MUSIC_THEMES[themeKey];
+
+    music.src = url;
+    music.volume = isMuted ? 0 : musicVolume / 100;
+    music.loop = true;
+
+    try {
+      await music.play();
+      setCurrentMusic({ themeKey, trackId, source: 'curated' });
+
+      if (broadcastEnabled && campaignId) {
+        broadcastAudioState({
+          type: 'music',
+          action: 'play',
+          url,
+          name: `${theme.name} - ${displayName}`,
+          volume: musicVolume,
+          loop: true
+        });
+      }
+    } catch (error) {
+      console.error('Failed to play curated track:', error);
+    }
+  };
+
+  // Generate and play background music for a theme (AI)
+  const generateAndPlayMusic = async (themeKey) => {
+    const theme = MUSIC_THEMES[themeKey];
+    if (!theme) return;
+
+    // If AI music for this theme is already playing, stop it
+    if (currentMusic && currentMusic.source === 'ai' && currentMusic.themeKey === themeKey) {
+      stopMusic();
+      return;
+    }
+
+    const music = musicAudioRef.current;
+
+    // Check if we have a cached version
+    if (cachedMusic[themeKey]) {
+      music.src = cachedMusic[themeKey];
+      music.volume = isMuted ? 0 : musicVolume / 100;
+      music.loop = true;
+
+      try {
+        await music.play();
+        setCurrentMusic({ themeKey, trackId: null, source: 'ai' });
+        if (broadcastEnabled && campaignId) {
+          broadcastAudioState({
+            type: 'music',
+            action: 'play',
+            url: cachedMusic[themeKey],
+            name: `${theme.name} (AI)`,
+            volume: musicVolume,
+            loop: true
+          });
+        }
+        return;
+      } catch (error) {
+        // Cached URL expired, clear and regenerate
+        console.warn('Cached music expired, regenerating:', themeKey);
+        const updated = { ...cachedMusic };
+        delete updated[themeKey];
+        setCachedMusic(updated);
+        localStorage.setItem('dm_cached_music', JSON.stringify(updated));
+      }
+    }
+
+    // Generate new music
+    setGeneratingMusic(themeKey);
+
+    try {
+      const audioUrl = await generateBackgroundMusic(theme.prompt, null, {
+        duration: 30,
+        promptInfluence: 0.5
+      });
+
+      // Cache it
+      const updated = { ...cachedMusic, [themeKey]: audioUrl };
+      setCachedMusic(updated);
+      localStorage.setItem('dm_cached_music', JSON.stringify(updated));
+
+      // Play it
+      music.src = audioUrl;
+      music.volume = isMuted ? 0 : musicVolume / 100;
+      music.loop = true;
+      await music.play();
+      setCurrentMusic({ themeKey, trackId: null, source: 'ai' });
+
+      if (broadcastEnabled && campaignId) {
+        broadcastAudioState({
+          type: 'music',
+          action: 'play',
+          url: audioUrl,
+          name: `${theme.name} (AI)`,
+          volume: musicVolume,
+          loop: true
+        });
+      }
+    } catch (error) {
+      console.error('Failed to generate music:', error);
+      alert(`Failed to generate music: ${error.message}`);
+    } finally {
+      setGeneratingMusic(null);
+    }
+  };
+
+  // Stop background music
+  const stopMusic = () => {
+    musicAudioRef.current.pause();
+    musicAudioRef.current.currentTime = 0;
+    setCurrentMusic(null);
+
+    if (broadcastEnabled && campaignId) {
+      broadcastAudioState({ type: 'music', action: 'stop' });
     }
   };
 
@@ -381,6 +516,16 @@ export default function DMSoundboard({ campaignId }) {
     });
 
     return allSounds;
+  };
+
+  // Get the "Now Playing" display string
+  const getNowPlayingLabel = () => {
+    if (!currentMusic) return null;
+    const theme = MUSIC_THEMES[currentMusic.themeKey];
+    if (currentMusic.source === 'curated') {
+      return `${theme.name} - ${getTrackDisplayName(currentMusic.trackId)}`;
+    }
+    return `${theme.name} (AI Generated)`;
   };
 
   const filteredSounds = getFilteredSounds();
@@ -614,44 +759,91 @@ export default function DMSoundboard({ campaignId }) {
 
         {showMusicPanel && (
           <div className="music-panel">
-            <div className="music-themes">
-              {Object.entries(CURATED_MUSIC).map(([key, theme]) => {
+            {currentMusic && (
+              <div className="music-now-playing">
+                <Music size={14} className="pulse-icon" />
+                <span>Now playing: {getNowPlayingLabel()}</span>
+                <button className="stop-music-btn" onClick={stopMusic} title="Stop Music">
+                  <Square size={12} />
+                </button>
+              </div>
+            )}
+            <div className="theme-accordion-list">
+              {Object.entries(MUSIC_THEMES).map(([key, theme]) => {
                 const Icon = theme.icon;
-                const isActive = activeMusicTheme === key;
+                const isExpanded = expandedTheme === key;
+                const isThemePlaying = currentMusic && currentMusic.themeKey === key;
+                const tracks = MUSIC_LIBRARY[key] || [];
+                const isGenerating = generatingMusic === key;
+                const isCached = !!cachedMusic[key];
 
                 return (
-                  <div key={key} className={`music-theme ${isActive ? 'active' : ''}`}>
+                  <div key={key} className="theme-accordion">
                     <button
-                      className="music-theme-header"
-                      onClick={() => setActiveMusicTheme(isActive ? null : key)}
+                      className={`theme-accordion-header ${isThemePlaying ? 'playing' : ''}`}
+                      onClick={() => setExpandedTheme(isExpanded ? null : key)}
                       style={{ '--theme-color': theme.color }}
                     >
                       <Icon size={16} />
-                      <span>{theme.name}</span>
-                      {isActive ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      <div className="theme-info">
+                        <span className="theme-name">{theme.name}</span>
+                        <span className="theme-desc">
+                          {theme.description} &middot; {tracks.length} tracks
+                        </span>
+                      </div>
+                      {isThemePlaying && <span className="theme-playing-dot" />}
+                      {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     </button>
 
-                    {isActive && (
-                      <div className="music-tracks">
-                        {theme.tracks.map(track => (
-                          <button
-                            key={track.id}
-                            className={`music-track ${currentMusic === track.id ? 'playing' : ''}`}
-                            onClick={() => {
-                              // For now, show that music is selected
-                              // In a full implementation, this would play actual music files
-                              setCurrentMusic(track.id);
-                              alert(`${track.name} selected!\n\nTo play actual music, upload your own tracks or wait for the full music integration.`);
-                            }}
-                          >
-                            {currentMusic === track.id ? <Pause size={12} /> : <Play size={12} />}
-                            <div className="track-info">
-                              <span className="track-name">{track.name}</span>
-                              <span className="track-desc">{track.description}</span>
-                            </div>
-                            <span className="track-duration">{track.duration}</span>
-                          </button>
-                        ))}
+                    {isExpanded && (
+                      <div className="theme-track-list">
+                        {tracks.map(trackId => {
+                          const isTrackPlaying = currentMusic
+                            && currentMusic.source === 'curated'
+                            && currentMusic.trackId === trackId;
+
+                          return (
+                            <button
+                              key={trackId}
+                              className={`track-btn ${isTrackPlaying ? 'playing' : ''}`}
+                              onClick={() => playCuratedTrack(key, trackId)}
+                              style={{ '--theme-color': theme.color }}
+                            >
+                              {isTrackPlaying ? <Pause size={12} /> : <Play size={12} />}
+                              <span>{getTrackDisplayName(trackId)}</span>
+                            </button>
+                          );
+                        })}
+
+                        {/* AI Generate button at bottom of each theme */}
+                        <button
+                          className={`track-btn ai-generate-track ${currentMusic && currentMusic.source === 'ai' && currentMusic.themeKey === key ? 'playing' : ''} ${isCached ? 'cached' : ''}`}
+                          onClick={() => generateAndPlayMusic(key)}
+                          disabled={isGenerating}
+                          style={{ '--theme-color': '#8b5cf6' }}
+                        >
+                          {isGenerating ? (
+                            <Loader2 size={12} className="spinning" />
+                          ) : (
+                            <Wand2 size={12} />
+                          )}
+                          <span>{isGenerating ? 'Generating...' : 'AI Generate'}</span>
+                          {isCached && !isGenerating && (
+                            <button
+                              className="refresh-cache-inline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const updated = { ...cachedMusic };
+                                delete updated[key];
+                                setCachedMusic(updated);
+                                localStorage.setItem('dm_cached_music', JSON.stringify(updated));
+                              }}
+                              title="Regenerate AI music"
+                            >
+                              <RefreshCw size={10} />
+                            </button>
+                          )}
+                        </button>
                       </div>
                     )}
                   </div>
@@ -659,7 +851,7 @@ export default function DMSoundboard({ campaignId }) {
               })}
             </div>
             <p className="music-hint">
-              Upload your own royalty-free music or use AI to generate custom tracks.
+              Click a theme to browse curated tracks. Use "AI Generate" for custom music (~30s wait).
             </p>
           </div>
         )}
