@@ -1,8 +1,27 @@
-import { useState } from 'react';
-import { Sun, Moon, Dices, Swords, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sun, Moon, Dices, Swords, Star, Palette, Monitor } from 'lucide-react';
+import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { useAuth } from '../contexts/AuthContext';
 import './DiceRoller.css';
 
-export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
+const PLAYER_COLORS = [
+  { id: 'red', color: '#ef4444', name: 'Red' },
+  { id: 'orange', color: '#f97316', name: 'Orange' },
+  { id: 'amber', color: '#f59e0b', name: 'Amber' },
+  { id: 'lime', color: '#84cc16', name: 'Lime' },
+  { id: 'green', color: '#22c55e', name: 'Green' },
+  { id: 'teal', color: '#14b8a6', name: 'Teal' },
+  { id: 'cyan', color: '#06b6d4', name: 'Cyan' },
+  { id: 'blue', color: '#3b82f6', name: 'Blue' },
+  { id: 'indigo', color: '#6366f1', name: 'Indigo' },
+  { id: 'purple', color: '#a855f7', name: 'Purple' },
+  { id: 'pink', color: '#ec4899', name: 'Pink' },
+  { id: 'white', color: '#ffffff', name: 'White' },
+];
+
+export default function DiceRoller({ isDM, gameSystem = 'daggerheart', campaignId, characters = [], currentUserId }) {
+  const { currentUser } = useAuth();
   const [modifier, setModifier] = useState(0);
   const [numDice, setNumDice] = useState(3); // For Star Wars D6
   const [selectedDie, setSelectedDie] = useState(20); // For Generic polyhedral
@@ -10,6 +29,43 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
   const [isRolling, setIsRolling] = useState(false);
   const [currentRoll, setCurrentRoll] = useState(null);
   const [rollHistory, setRollHistory] = useState([]);
+  const [broadcastEnabled, setBroadcastEnabled] = useState(false);
+  const [playerColor, setPlayerColor] = useState('#3b82f6');
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [playerName, setPlayerName] = useState('');
+
+  // Auto-detect player name from character or user profile
+  useEffect(() => {
+    // First, try to get the player's character name
+    const myCharacter = characters.find(c => c.playerId === currentUserId || c.playerId === currentUser?.uid);
+    if (myCharacter?.name) {
+      setPlayerName(myCharacter.name);
+      return;
+    }
+
+    // Fall back to user display name
+    if (currentUser?.displayName) {
+      setPlayerName(currentUser.displayName);
+      return;
+    }
+
+    // Fall back to email prefix
+    if (currentUser?.email) {
+      setPlayerName(currentUser.email.split('@')[0]);
+    }
+  }, [characters, currentUserId, currentUser]);
+
+  // Load saved color preference
+  useEffect(() => {
+    const savedColor = localStorage.getItem('daggerheart_dice_color');
+    if (savedColor) setPlayerColor(savedColor);
+  }, []);
+
+  const handleColorChange = (color) => {
+    setPlayerColor(color);
+    localStorage.setItem('daggerheart_dice_color', color);
+    setShowColorPicker(false);
+  };
 
   const rollDaggerheart = () => {
     const hopeDie = Math.floor(Math.random() * 12) + 1;
@@ -111,13 +167,13 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
     };
   };
 
-  const rollDice = () => {
+  const rollDice = async () => {
     if (isRolling) return;
 
     setIsRolling(true);
 
     // Simulate dice rolling animation
-    setTimeout(() => {
+    setTimeout(async () => {
       let roll;
 
       switch (gameSystem) {
@@ -139,6 +195,30 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
       setCurrentRoll(roll);
       setRollHistory([roll, ...rollHistory.slice(0, 9)]); // Keep last 10 rolls
       setIsRolling(false);
+
+      // Broadcast to Battle Map Display if enabled
+      if (broadcastEnabled && campaignId) {
+        try {
+          const rollData = {
+            ...roll,
+            playerName: playerName || 'Player',
+            playerColor,
+            playerId: currentUser?.uid,
+            timestamp: serverTimestamp(),
+            rollId: Date.now().toString()
+          };
+
+          // Broadcast to display
+          const rollDoc = doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`);
+          await setDoc(rollDoc, rollData);
+
+          // Also add to history
+          const historyRef = collection(db, `campaigns/${campaignId}/battleMapDisplay/rolls/history`);
+          await addDoc(historyRef, rollData);
+        } catch (error) {
+          console.error('Failed to broadcast dice roll:', error);
+        }
+      }
     }, 1000);
   };
 
@@ -172,7 +252,52 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart' }) {
 
   return (
     <div className="dice-roller">
-      <h3>{getTitle()}</h3>
+      <div className="dice-roller-header">
+        <h3>{getTitle()}</h3>
+        {campaignId && (
+          <button
+            className={`broadcast-toggle ${broadcastEnabled ? 'active' : ''}`}
+            onClick={() => setBroadcastEnabled(!broadcastEnabled)}
+            title={broadcastEnabled ? 'Broadcasting to Display' : 'Click to broadcast rolls to display'}
+          >
+            <Monitor size={16} />
+            {broadcastEnabled ? 'Broadcasting' : 'Broadcast'}
+          </button>
+        )}
+      </div>
+
+      {/* Player Identity - show when broadcasting */}
+      {broadcastEnabled && campaignId && (
+        <div className="player-identity-bar">
+          <div className="player-name-display">
+            <span className="player-label">Rolling as:</span>
+            <span className="player-name" style={{ color: playerColor }}>{playerName || 'Player'}</span>
+          </div>
+          <button
+            className="color-picker-btn"
+            onClick={() => setShowColorPicker(!showColorPicker)}
+            style={{ backgroundColor: playerColor }}
+            title="Change dice color"
+          >
+            <Palette size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Color Picker */}
+      {showColorPicker && (
+        <div className="color-picker-grid">
+          {PLAYER_COLORS.map(c => (
+            <button
+              key={c.id}
+              className={`color-swatch ${playerColor === c.color ? 'active' : ''}`}
+              style={{ backgroundColor: c.color }}
+              onClick={() => handleColorChange(c.color)}
+              title={c.name}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="dice-controls">
         {gameSystem === 'generic' && (
