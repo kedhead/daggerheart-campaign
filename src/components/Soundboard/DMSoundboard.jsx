@@ -8,19 +8,20 @@ import { doc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import './DMSoundboard.css';
 
-// Free sound effect URLs (using freesound.org and other royalty-free sources)
+// Free sound effect URLs from Pixabay (CC0 license, CORS-friendly)
+// Note: These are direct MP3 links that work in browsers
 const SOUND_CATEGORIES = {
   combat: {
     name: 'Combat',
     icon: Swords,
     color: '#ef4444',
     sounds: [
-      { id: 'sword-clash', name: 'Sword Clash', url: 'https://cdn.freesound.org/previews/320/320181_5260872-lq.mp3' },
-      { id: 'sword-swing', name: 'Sword Swing', url: 'https://cdn.freesound.org/previews/588/588383_7724675-lq.mp3' },
-      { id: 'arrow-fire', name: 'Arrow Fire', url: 'https://cdn.freesound.org/previews/321/321105_5488813-lq.mp3' },
-      { id: 'shield-block', name: 'Shield Block', url: 'https://cdn.freesound.org/previews/319/319590_5436764-lq.mp3' },
-      { id: 'punch', name: 'Punch Hit', url: 'https://cdn.freesound.org/previews/118/118513_2136023-lq.mp3' },
-      { id: 'battle-cry', name: 'Battle Cry', url: 'https://cdn.freesound.org/previews/156/156031_2538033-lq.mp3' },
+      { id: 'sword-clash', name: 'Sword Clash', url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_115b9d5a7e.mp3' },
+      { id: 'sword-swing', name: 'Sword Swing', url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_e984e63e19.mp3' },
+      { id: 'arrow-hit', name: 'Arrow Hit', url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3' },
+      { id: 'punch', name: 'Punch Hit', url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_6ed65c5d45.mp3' },
+      { id: 'explosion', name: 'Explosion', url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_dc39bba008.mp3' },
+      { id: 'scream', name: 'Battle Scream', url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3' },
     ]
   },
   magic: {
@@ -28,12 +29,12 @@ const SOUND_CATEGORIES = {
     icon: Sparkles,
     color: '#8b5cf6',
     sounds: [
-      { id: 'spell-cast', name: 'Spell Cast', url: 'https://cdn.freesound.org/previews/219/219566_4082826-lq.mp3' },
-      { id: 'magic-hit', name: 'Magic Hit', url: 'https://cdn.freesound.org/previews/249/249300_3756348-lq.mp3' },
-      { id: 'fireball', name: 'Fireball', url: 'https://cdn.freesound.org/previews/156/156031_2538033-lq.mp3' },
-      { id: 'heal', name: 'Healing', url: 'https://cdn.freesound.org/previews/220/220173_1676145-lq.mp3' },
-      { id: 'portal', name: 'Portal Open', url: 'https://cdn.freesound.org/previews/220/220184_1676145-lq.mp3' },
-      { id: 'thunder-spell', name: 'Thunder Spell', url: 'https://cdn.freesound.org/previews/368/368691_4939433-lq.mp3' },
+      { id: 'spell-cast', name: 'Spell Cast', url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_8cb749a945.mp3' },
+      { id: 'magic-whoosh', name: 'Magic Whoosh', url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_c518b18b99.mp3' },
+      { id: 'power-up', name: 'Power Up', url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3' },
+      { id: 'heal', name: 'Healing', url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_8cb749a945.mp3' },
+      { id: 'teleport', name: 'Teleport', url: 'https://cdn.pixabay.com/audio/2022/10/30/audio_a6de6cc1af.mp3' },
+      { id: 'electric', name: 'Electric Zap', url: 'https://cdn.pixabay.com/audio/2022/03/24/audio_c6ccf3232f.mp3' },
     ]
   },
   nature: {
@@ -41,12 +42,12 @@ const SOUND_CATEGORIES = {
     icon: Trees,
     color: '#22c55e',
     sounds: [
-      { id: 'rain', name: 'Rain', url: 'https://cdn.freesound.org/previews/531/531947_6891782-lq.mp3', loop: true },
-      { id: 'thunder', name: 'Thunder', url: 'https://cdn.freesound.org/previews/368/368691_4939433-lq.mp3' },
-      { id: 'wind', name: 'Wind', url: 'https://cdn.freesound.org/previews/244/244944_4284968-lq.mp3', loop: true },
-      { id: 'forest', name: 'Forest Ambience', url: 'https://cdn.freesound.org/previews/462/462087_9497060-lq.mp3', loop: true },
-      { id: 'ocean', name: 'Ocean Waves', url: 'https://cdn.freesound.org/previews/527/527409_2074966-lq.mp3', loop: true },
-      { id: 'fire-crackle', name: 'Fire Crackle', url: 'https://cdn.freesound.org/previews/346/346228_6267717-lq.mp3', loop: true },
+      { id: 'rain', name: 'Rain', url: 'https://cdn.pixabay.com/audio/2022/05/16/audio_1808fbf07a.mp3', loop: true },
+      { id: 'thunder', name: 'Thunder', url: 'https://cdn.pixabay.com/audio/2022/03/24/audio_a6d2c0aa6f.mp3' },
+      { id: 'wind', name: 'Wind', url: 'https://cdn.pixabay.com/audio/2022/01/18/audio_d0c25d4c51.mp3', loop: true },
+      { id: 'forest', name: 'Forest Birds', url: 'https://cdn.pixabay.com/audio/2022/08/04/audio_2dde668d05.mp3', loop: true },
+      { id: 'ocean', name: 'Ocean Waves', url: 'https://cdn.pixabay.com/audio/2022/06/07/audio_b9bd4170e4.mp3', loop: true },
+      { id: 'fire-crackle', name: 'Fire Crackle', url: 'https://cdn.pixabay.com/audio/2021/08/09/audio_dc39a71a9a.mp3', loop: true },
     ]
   },
   ambient: {
@@ -54,12 +55,12 @@ const SOUND_CATEGORIES = {
     icon: Castle,
     color: '#f59e0b',
     sounds: [
-      { id: 'tavern', name: 'Tavern', url: 'https://cdn.freesound.org/previews/462/462405_7874866-lq.mp3', loop: true },
-      { id: 'dungeon', name: 'Dungeon Drips', url: 'https://cdn.freesound.org/previews/467/467550_6565828-lq.mp3', loop: true },
-      { id: 'city', name: 'City Streets', url: 'https://cdn.freesound.org/previews/571/571063_7037-lq.mp3', loop: true },
-      { id: 'cave', name: 'Cave Echo', url: 'https://cdn.freesound.org/previews/352/352651_6549369-lq.mp3', loop: true },
-      { id: 'crowd', name: 'Crowd Murmur', url: 'https://cdn.freesound.org/previews/398/398032_3429025-lq.mp3', loop: true },
-      { id: 'creepy', name: 'Creepy Ambience', url: 'https://cdn.freesound.org/previews/474/474519_6891782-lq.mp3', loop: true },
+      { id: 'crowd', name: 'Crowd Chatter', url: 'https://cdn.pixabay.com/audio/2022/10/16/audio_a7f547c518.mp3', loop: true },
+      { id: 'church-bell', name: 'Church Bell', url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_48d6c9a6d4.mp3' },
+      { id: 'clock-tick', name: 'Clock Tick', url: 'https://cdn.pixabay.com/audio/2022/01/18/audio_ea4098d11e.mp3', loop: true },
+      { id: 'footsteps', name: 'Footsteps', url: 'https://cdn.pixabay.com/audio/2022/03/19/audio_b4268d9ec5.mp3' },
+      { id: 'door-creak', name: 'Door Creak', url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_82faad216d.mp3' },
+      { id: 'heartbeat', name: 'Heartbeat', url: 'https://cdn.pixabay.com/audio/2022/07/25/audio_3c48e2b0de.mp3', loop: true },
     ]
   },
   creatures: {
@@ -67,12 +68,12 @@ const SOUND_CATEGORIES = {
     icon: Skull,
     color: '#64748b',
     sounds: [
-      { id: 'dragon-roar', name: 'Dragon Roar', url: 'https://cdn.freesound.org/previews/275/275154_5123451-lq.mp3' },
-      { id: 'wolf-howl', name: 'Wolf Howl', url: 'https://cdn.freesound.org/previews/398/398032_3429025-lq.mp3' },
-      { id: 'monster-growl', name: 'Monster Growl', url: 'https://cdn.freesound.org/previews/431/431174_8904933-lq.mp3' },
-      { id: 'ghost-wail', name: 'Ghost Wail', url: 'https://cdn.freesound.org/previews/368/368692_4939433-lq.mp3' },
-      { id: 'goblin-laugh', name: 'Goblin Laugh', url: 'https://cdn.freesound.org/previews/183/183635_3411227-lq.mp3' },
-      { id: 'horse-neigh', name: 'Horse Neigh', url: 'https://cdn.freesound.org/previews/322/322889_5508598-lq.mp3' },
+      { id: 'wolf-howl', name: 'Wolf Howl', url: 'https://cdn.pixabay.com/audio/2022/01/18/audio_6dfaf42e82.mp3' },
+      { id: 'crow', name: 'Crow Caw', url: 'https://cdn.pixabay.com/audio/2022/03/09/audio_3d13c970bd.mp3' },
+      { id: 'horse', name: 'Horse Whinny', url: 'https://cdn.pixabay.com/audio/2022/03/17/audio_86f37f3e3c.mp3' },
+      { id: 'dog-bark', name: 'Dog Bark', url: 'https://cdn.pixabay.com/audio/2022/03/24/audio_e8ff6e7a39.mp3' },
+      { id: 'owl', name: 'Owl Hoot', url: 'https://cdn.pixabay.com/audio/2022/10/30/audio_946dd47ed9.mp3' },
+      { id: 'monster', name: 'Monster Growl', url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_f60bcf93d4.mp3' },
     ]
   },
   ui: {
@@ -80,12 +81,12 @@ const SOUND_CATEGORIES = {
     icon: Heart,
     color: '#ec4899',
     sounds: [
-      { id: 'level-up', name: 'Level Up', url: 'https://cdn.freesound.org/previews/270/270404_5123451-lq.mp3' },
-      { id: 'coin', name: 'Coin Drop', url: 'https://cdn.freesound.org/previews/341/341695_5858296-lq.mp3' },
-      { id: 'door-open', name: 'Door Open', url: 'https://cdn.freesound.org/previews/411/411461_5121236-lq.mp3' },
-      { id: 'chest-open', name: 'Chest Open', url: 'https://cdn.freesound.org/previews/411/411089_5121236-lq.mp3' },
-      { id: 'success', name: 'Success Fanfare', url: 'https://cdn.freesound.org/previews/270/270528_5123451-lq.mp3' },
-      { id: 'fail', name: 'Failure Sound', url: 'https://cdn.freesound.org/previews/277/277021_5386447-lq.mp3' },
+      { id: 'level-up', name: 'Level Up', url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3' },
+      { id: 'coin', name: 'Coin Collect', url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_29af4db75e.mp3' },
+      { id: 'notification', name: 'Notification', url: 'https://cdn.pixabay.com/audio/2022/03/24/audio_88d527c77f.mp3' },
+      { id: 'success', name: 'Success', url: 'https://cdn.pixabay.com/audio/2021/08/04/audio_c6ccf3232f.mp3' },
+      { id: 'fail', name: 'Failure', url: 'https://cdn.pixabay.com/audio/2022/03/15/audio_06b25e6384.mp3' },
+      { id: 'click', name: 'UI Click', url: 'https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a73467.mp3' },
     ]
   }
 };
