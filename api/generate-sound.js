@@ -96,187 +96,126 @@ export default async function handler(req, res) {
     const data = await response.json();
     console.log('1min.ai full response:', JSON.stringify(data, null, 2));
 
-    // Extract audio URL from response - need a presigned S3 URL to access the file
-    let audioUrl = null;
-    let relativeAssetPath = null;
+    // Extract the relative asset path from the response
+    let assetPath = null;
 
-    // Check various response formats for the asset path
     if (data.aiRecord?.aiRecordDetail?.resultObject?.[0]) {
-      relativeAssetPath = data.aiRecord.aiRecordDetail.resultObject[0];
+      assetPath = data.aiRecord.aiRecordDetail.resultObject[0];
     } else if (data.aiRecord?.aiRecordDetail?.result) {
       const result = data.aiRecord.aiRecordDetail.result;
-      if (Array.isArray(result)) {
-        relativeAssetPath = result[0];
-      } else if (typeof result === 'string') {
-        relativeAssetPath = result;
-      }
+      assetPath = Array.isArray(result) ? result[0] : result;
     } else if (data.result) {
-      relativeAssetPath = Array.isArray(data.result) ? data.result[0] : data.result;
+      assetPath = Array.isArray(data.result) ? data.result[0] : data.result;
     } else if (data.url || data.audio_url) {
-      relativeAssetPath = data.url || data.audio_url;
+      assetPath = data.url || data.audio_url;
     }
 
-    // Search for a presigned/signed URL anywhere in the response
-    // The 1min.ai API stores files on S3 at s3.us-east-1.amazonaws.com/asset.1min.ai
-    // and provides presigned URLs via temporaryUrl or other fields
-    function findSignedUrl(obj, depth = 0) {
-      if (depth > 5 || !obj) return null;
-      if (typeof obj === 'string') {
-        // Look for S3 presigned URLs or any signed URL with auth params
-        if (obj.includes('X-Amz-') || obj.includes('s3.') || obj.includes('amazonaws.com')) {
-          return obj;
-        }
-        // Also check for temporaryUrl-style signed URLs
-        if (obj.startsWith('http') && obj.includes('?') && obj.length > 200) {
-          return obj;
-        }
-      }
-      if (Array.isArray(obj)) {
-        for (const item of obj) {
-          const found = findSignedUrl(item, depth + 1);
-          if (found) return found;
-        }
-      }
-      if (typeof obj === 'object') {
-        // Check known fields first
-        for (const key of ['temporaryUrl', 'signedUrl', 'downloadUrl', 'presignedUrl', 'url']) {
-          if (obj[key] && typeof obj[key] === 'string' && obj[key].startsWith('http')) {
-            // Prefer presigned URLs over plain URLs
-            if (obj[key].includes('X-Amz-') || obj[key].includes('amazonaws.com')) {
-              return obj[key];
+    // Check for presigned URL (temporaryUrl) - may be empty string for TEXT_TO_SOUND
+    const temporaryUrl = data.aiRecord?.temporaryUrl;
+    const hasTemporaryUrl = temporaryUrl && temporaryUrl.length > 10;
+
+    // Build list of URLs to try fetching audio from (in priority order)
+    // 1min.ai stores files on S3 bucket "asset.1min.ai" in us-east-1
+    // The asset.1min.ai domain doesn't serve files directly (private S3 bucket)
+    // Need either a presigned URL or the S3 path-style URL
+    const urlsToTry = [];
+
+    if (hasTemporaryUrl) {
+      urlsToTry.push(temporaryUrl);
+    }
+
+    if (assetPath) {
+      // Strip leading slash or http prefix if present
+      const cleanPath = assetPath.startsWith('http')
+        ? assetPath.replace(/^https?:\/\/asset\.1min\.ai\//, '')
+        : assetPath.replace(/^\//, '');
+
+      // S3 path-style URL (most reliable for server-side fetch)
+      urlsToTry.push(`https://s3.us-east-1.amazonaws.com/asset.1min.ai/${cleanPath}`);
+      // S3 virtual-hosted-style URL
+      urlsToTry.push(`https://asset.1min.ai.s3.us-east-1.amazonaws.com/${cleanPath}`);
+      // Direct asset.1min.ai URL (CNAME, may not work)
+      urlsToTry.push(`https://asset.1min.ai/${cleanPath}`);
+    }
+
+    // Also try the record endpoint to get a presigned URL
+    const recordUuid = data.aiRecord?.uuid;
+    if (recordUuid && !hasTemporaryUrl) {
+      try {
+        console.log('Fetching record to get download URL, UUID:', recordUuid);
+        const recordResponse = await fetch(`https://api.1min.ai/api/records/${recordUuid}`, {
+          headers: { 'API-KEY': apiKey }
+        });
+        if (recordResponse.ok) {
+          const contentType = recordResponse.headers.get('content-type') || '';
+          if (contentType.includes('json')) {
+            const recordData = await recordResponse.json();
+            console.log('Record response temporaryUrl:', recordData.temporaryUrl?.substring(0, 80));
+            if (recordData.temporaryUrl && recordData.temporaryUrl.length > 10) {
+              urlsToTry.unshift(recordData.temporaryUrl);
             }
           }
+        } else {
+          console.warn('Record endpoint returned:', recordResponse.status);
         }
-        // Then search all values
-        for (const val of Object.values(obj)) {
-          const found = findSignedUrl(val, depth + 1);
-          if (found) return found;
-        }
+      } catch (e) {
+        console.warn('Record fetch failed:', e.message);
       }
-      return null;
     }
 
-    // First try to find a presigned S3 URL in the response
-    const signedUrl = findSignedUrl(data);
-    if (signedUrl) {
-      audioUrl = signedUrl;
-      console.log('Found presigned URL in response');
-    } else if (data.aiRecord?.temporaryUrl) {
-      audioUrl = data.aiRecord.temporaryUrl;
-      console.log('Using temporaryUrl from response');
-    } else if (relativeAssetPath && relativeAssetPath.startsWith('http')) {
-      audioUrl = relativeAssetPath;
-    } else if (relativeAssetPath) {
-      audioUrl = `https://asset.1min.ai/${relativeAssetPath}`;
-    }
+    console.log('URLs to try:', urlsToTry.map(u => u.substring(0, 80)));
 
-    if (!audioUrl) {
-      console.error('Could not find audio URL in response:', JSON.stringify(data));
+    if (urlsToTry.length === 0) {
+      console.error('No URLs to try for audio download');
       return res.status(500).json({
         error: 'Could not extract audio URL from API response',
         responseKeys: Object.keys(data)
       });
     }
 
-    console.log('Resolved audio URL:', audioUrl.substring(0, 120));
+    // The URL we'll report to the client (prefer presigned > S3 > asset.1min.ai)
+    let audioUrl = urlsToTry[0];
 
-    // Fetch audio bytes and convert to base64 data URL
-    // This is critical because asset.1min.ai URLs require presigned access
+    // Try each URL to fetch audio bytes and convert to base64
     let audioData = null;
-    const urlsToTry = [audioUrl];
+    for (const tryUrl of urlsToTry) {
+      try {
+        console.log('Trying to fetch audio from:', tryUrl.substring(0, 100));
+        const audioResponse = await fetch(tryUrl);
+        console.log('Fetch result:', audioResponse.status, audioResponse.headers.get('content-type'));
 
-    // If we don't have a presigned URL, try 1min.ai API endpoints to get a download link
-    if (!audioUrl.includes('X-Amz-') && !audioUrl.includes('amazonaws.com')) {
-      const recordUuid = data.aiRecord?.uuid;
-      console.log('No presigned URL found. Record UUID:', recordUuid, 'Asset path:', relativeAssetPath);
-
-      if (recordUuid) {
-        // Try multiple 1min.ai API endpoints to get a presigned download URL
-        const endpoints = [
-          `https://api.1min.ai/api/records/${recordUuid}`,
-          `https://api.1min.ai/api/records/${recordUuid}/download`,
-          `https://api.1min.ai/api/features/${recordUuid}/download`,
-        ];
-
-        for (const endpoint of endpoints) {
-          try {
-            console.log('Trying endpoint:', endpoint);
-            const recordResponse = await fetch(endpoint, {
-              headers: {
-                'API-KEY': apiKey,
-                'Content-Type': 'application/json'
-              }
-            });
-            console.log('Endpoint response:', recordResponse.status, recordResponse.headers.get('content-type'));
-
-            if (recordResponse.ok) {
-              const ct = recordResponse.headers.get('content-type') || '';
-
-              // If the endpoint returns the audio file directly
-              if (ct.includes('audio') || ct.includes('octet-stream')) {
-                console.log('Endpoint returned audio directly');
-                const arrayBuffer = await recordResponse.arrayBuffer();
-                if (arrayBuffer.byteLength > 100) {
-                  const buffer = Buffer.from(arrayBuffer);
-                  const base64 = buffer.toString('base64');
-                  audioData = `data:audio/mpeg;base64,${base64}`;
-                  console.log('Audio from endpoint, base64 size:', audioData.length);
-                  break;
-                }
-              }
-
-              // If the endpoint returns JSON with a URL
-              if (ct.includes('json')) {
-                const recordData = await recordResponse.json();
-                console.log('Endpoint JSON keys:', Object.keys(recordData));
-                const recordSignedUrl = findSignedUrl(recordData);
-                if (recordSignedUrl) {
-                  console.log('Found presigned URL from endpoint');
-                  urlsToTry.unshift(recordSignedUrl);
-                  audioUrl = recordSignedUrl;
-                  break;
-                }
-                // Check if there's a temporaryUrl in this response
-                if (recordData.temporaryUrl && recordData.temporaryUrl.length > 10) {
-                  console.log('Found temporaryUrl from endpoint');
-                  urlsToTry.unshift(recordData.temporaryUrl);
-                  audioUrl = recordData.temporaryUrl;
-                  break;
-                }
-              }
-            }
-          } catch (e) {
-            console.warn('Endpoint failed:', endpoint, e.message);
+        if (audioResponse.ok) {
+          const ct = audioResponse.headers.get('content-type') || 'audio/mpeg';
+          // Reject HTML/XML error pages
+          if (ct.includes('html') || ct.includes('xml')) {
+            console.warn('Got HTML/XML instead of audio from:', tryUrl.substring(0, 60));
+            continue;
           }
+
+          const arrayBuffer = await audioResponse.arrayBuffer();
+          console.log('Downloaded bytes:', arrayBuffer.byteLength);
+
+          if (arrayBuffer.byteLength > 100) {
+            const buffer = Buffer.from(arrayBuffer);
+            const base64 = buffer.toString('base64');
+            const mimeType = ct.includes('audio') ? ct : 'audio/mpeg';
+            audioData = `data:${mimeType};base64,${base64}`;
+            audioUrl = tryUrl; // Use the URL that actually worked
+            console.log('Audio converted to base64, size:', audioData.length);
+            break;
+          } else {
+            console.warn('Response too small to be audio:', arrayBuffer.byteLength, 'bytes');
+          }
+        } else {
+          console.warn('Fetch failed:', audioResponse.status, audioResponse.statusText);
         }
+      } catch (fetchError) {
+        console.warn('Fetch error for', tryUrl.substring(0, 60), ':', fetchError.message);
       }
     }
 
-    for (const tryUrl of urlsToTry) {
-      try {
-        console.log('Fetching audio from:', tryUrl.substring(0, 100));
-        const audioResponse = await fetch(tryUrl);
-
-        if (audioResponse.ok) {
-          const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
-          if (!contentType.includes('html') && !contentType.includes('xml')) {
-            const arrayBuffer = await audioResponse.arrayBuffer();
-            if (arrayBuffer.byteLength > 100) { // Sanity check - real audio > 100 bytes
-              const buffer = Buffer.from(arrayBuffer);
-              const base64 = buffer.toString('base64');
-              audioData = `data:${contentType};base64,${base64}`;
-              console.log('Audio converted to base64, size:', audioData.length);
-              break;
-            }
-          } else {
-            console.warn('Fetch returned non-audio content-type:', contentType);
-          }
-        } else {
-          console.warn('Audio fetch failed:', audioResponse.status, tryUrl.substring(0, 80));
-        }
-      } catch (fetchError) {
-        console.warn('Audio fetch error:', fetchError.message);
-      }
+    if (!audioData) {
+      console.warn('All audio fetch attempts failed. Returning without audioData.');
     }
 
     return res.status(200).json({

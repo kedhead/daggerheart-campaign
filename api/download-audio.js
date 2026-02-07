@@ -1,6 +1,7 @@
 /**
  * Vercel Serverless Function - Audio Download Proxy
  * Proxies audio downloads from 1min.ai to avoid CORS issues
+ * Tries multiple S3 URL formats since asset.1min.ai is a private S3 bucket
  */
 
 export default async function handler(req, res) {
@@ -27,26 +28,49 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required field: audioUrl' });
     }
 
-    // Fetch the audio from the URL
-    const audioResponse = await fetch(audioUrl);
+    // Build list of URLs to try (different S3 access patterns)
+    const urlsToTry = [audioUrl];
 
-    if (!audioResponse.ok) {
-      return res.status(audioResponse.status).json({
-        error: `Failed to download audio: ${audioResponse.statusText}`
-      });
+    // If it's an asset.1min.ai URL, also try S3 path-style and virtual-hosted URLs
+    if (audioUrl.includes('asset.1min.ai')) {
+      const path = audioUrl.replace(/^https?:\/\/asset\.1min\.ai\//, '');
+      urlsToTry.push(`https://s3.us-east-1.amazonaws.com/asset.1min.ai/${path}`);
+      urlsToTry.push(`https://asset.1min.ai.s3.us-east-1.amazonaws.com/${path}`);
     }
 
-    // Get the audio as a buffer
-    const arrayBuffer = await audioResponse.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    for (const tryUrl of urlsToTry) {
+      try {
+        console.log('Trying to download audio from:', tryUrl.substring(0, 100));
+        const audioResponse = await fetch(tryUrl);
 
-    // Convert to base64 data URL
-    const base64 = buffer.toString('base64');
-    const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
-    const dataUrl = `data:${contentType};base64,${base64}`;
+        if (audioResponse.ok) {
+          const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+          if (contentType.includes('html') || contentType.includes('xml')) {
+            console.warn('Got HTML/XML instead of audio from:', tryUrl.substring(0, 60));
+            continue;
+          }
 
-    // Return the data URL
-    return res.status(200).json({ dataUrl });
+          const arrayBuffer = await audioResponse.arrayBuffer();
+          if (arrayBuffer.byteLength > 100) {
+            const buffer = Buffer.from(arrayBuffer);
+            const base64 = buffer.toString('base64');
+            const mimeType = contentType.includes('audio') ? contentType : 'audio/mpeg';
+            const dataUrl = `data:${mimeType};base64,${base64}`;
+            console.log('Audio downloaded, base64 size:', dataUrl.length);
+            return res.status(200).json({ dataUrl });
+          }
+        } else {
+          console.warn('Fetch failed:', audioResponse.status, tryUrl.substring(0, 60));
+        }
+      } catch (fetchError) {
+        console.warn('Fetch error:', fetchError.message, tryUrl.substring(0, 60));
+      }
+    }
+
+    return res.status(502).json({
+      error: 'Failed to download audio from any URL',
+      tried: urlsToTry.length
+    });
 
   } catch (error) {
     console.error('Download audio API error:', error);
