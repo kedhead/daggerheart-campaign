@@ -70,7 +70,7 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart', campaignI
   const rollDaggerheart = () => {
     const hopeDie = Math.floor(Math.random() * 12) + 1;
     const fearDie = Math.floor(Math.random() * 12) + 1;
-    const total = Math.max(hopeDie, fearDie) + parseInt(modifier);
+    const total = hopeDie + fearDie + parseInt(modifier); // Both dice added together
     const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope'; // Ties go to Hope
 
     return {
@@ -395,7 +395,7 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart', campaignI
 
           {currentRoll.modifier !== 0 && (
             <div className="modifier-display">
-              Base: {Math.max(currentRoll.hopeDie, currentRoll.fearDie)} + Modifier: {currentRoll.modifier}
+              {currentRoll.hopeDie} + {currentRoll.fearDie} + {currentRoll.modifier} = {currentRoll.total}
             </div>
           )}
         </div>

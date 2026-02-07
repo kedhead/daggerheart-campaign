@@ -553,7 +553,7 @@ export default function Dice3DOverlay({
                 {rollData.total}
                 {rollData.modifier !== 0 && (
                   <span className="modifier-display">
-                    ({Math.max(rollData.hopeDie, rollData.fearDie)}{rollData.modifier >= 0 ? '+' : ''}{rollData.modifier})
+                    ({rollData.hopeDie}+{rollData.fearDie}{rollData.modifier >= 0 ? '+' : ''}{rollData.modifier})
                   </span>
                 )}
               </div>

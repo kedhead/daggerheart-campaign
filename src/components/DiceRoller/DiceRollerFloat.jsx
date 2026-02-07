@@ -35,7 +35,7 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
   const rollDaggerheart = () => {
     const hopeDie = Math.floor(Math.random() * 12) + 1;
     const fearDie = Math.floor(Math.random() * 12) + 1;
-    const total = Math.max(hopeDie, fearDie) + parseInt(modifier);
+    const total = hopeDie + fearDie + parseInt(modifier); // Both dice added together
     const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
 
     return {

@@ -126,7 +126,7 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
     if (rollMode === 'daggerheart') {
       const hopeDie = Math.floor(Math.random() * 12) + 1;
       const fearDie = Math.floor(Math.random() * 12) + 1;
-      const total = Math.max(hopeDie, fearDie) + modifier;
+      const total = hopeDie + fearDie + modifier; // Both dice added together
       const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
 
       data = {
