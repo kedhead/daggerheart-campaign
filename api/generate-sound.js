@@ -94,7 +94,7 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    console.log('1min.ai sound response keys:', Object.keys(data));
+    console.log('1min.ai full response:', JSON.stringify(data, null, 2));
 
     // Extract audio URL from response
     let audioUrl = null;
@@ -115,17 +115,11 @@ export default async function handler(req, res) {
       audioUrl = data.url || data.audio_url;
     }
 
-    // Handle relative URLs
+    // Handle relative URLs - use temporaryUrl which has signed/authenticated access
     if (audioUrl && !audioUrl.startsWith('http')) {
-      // Check for temporaryUrl base
       if (data.aiRecord?.temporaryUrl) {
-        const baseUrl = data.aiRecord.temporaryUrl;
-        if (baseUrl.startsWith('http')) {
-          const baseMatch = baseUrl.match(/^(https?:\/\/[^?]+\/)/);
-          if (baseMatch) {
-            audioUrl = baseMatch[1] + audioUrl;
-          }
-        }
+        // temporaryUrl is the full signed URL to the asset
+        audioUrl = data.aiRecord.temporaryUrl;
       } else {
         // Fallback to 1min.ai asset CDN
         audioUrl = `https://asset.1min.ai/${audioUrl}`;
