@@ -30,7 +30,7 @@ const PLAYER_COLORS = [
   { id: 'white', color: '#ffffff', name: 'White' },
 ];
 
-export default function PlayerDicePanel({ campaignId, playerName: propPlayerName }) {
+export default function PlayerDicePanel({ campaignId, playerName: propPlayerName, characters = [] }) {
   const { currentUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -42,13 +42,42 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
   const [rollHistory, setRollHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(true);
 
-  // Load player color preference from localStorage
+  // Load player color preference and auto-detect name
   useEffect(() => {
     const savedColor = localStorage.getItem('daggerheart_dice_color');
-    const savedName = localStorage.getItem('daggerheart_player_name');
     if (savedColor) setPlayerColor(savedColor);
-    if (savedName && !propPlayerName) setPlayerName(savedName);
-  }, [propPlayerName]);
+
+    // If propPlayerName is provided, use it
+    if (propPlayerName) {
+      setPlayerName(propPlayerName);
+      return;
+    }
+
+    // Try to get from localStorage first
+    const savedName = localStorage.getItem('daggerheart_player_name');
+    if (savedName) {
+      setPlayerName(savedName);
+      return;
+    }
+
+    // Try to get character name
+    const myCharacter = characters.find(c => c.playerId === currentUser?.uid);
+    if (myCharacter?.name) {
+      setPlayerName(myCharacter.name);
+      return;
+    }
+
+    // Fall back to display name
+    if (currentUser?.displayName) {
+      setPlayerName(currentUser.displayName);
+      return;
+    }
+
+    // Fall back to email prefix
+    if (currentUser?.email) {
+      setPlayerName(currentUser.email.split('@')[0]);
+    }
+  }, [propPlayerName, characters, currentUser]);
 
   // Save color preference
   const handleColorChange = (color) => {
