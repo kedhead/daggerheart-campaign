@@ -136,8 +136,28 @@ export default async function handler(req, res) {
 
     console.log('Generated audio URL:', audioUrl);
 
+    // Fetch audio bytes and convert to base64 data URL for persistence
+    let audioData = null;
+    try {
+      console.log('Fetching audio bytes for base64 encoding...');
+      const audioResponse = await fetch(audioUrl);
+      if (audioResponse.ok) {
+        const arrayBuffer = await audioResponse.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64 = buffer.toString('base64');
+        const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+        audioData = `data:${contentType};base64,${base64}`;
+        console.log('Audio converted to base64, size:', audioData.length);
+      } else {
+        console.warn('Failed to fetch audio bytes:', audioResponse.status);
+      }
+    } catch (fetchError) {
+      console.warn('Could not fetch audio bytes for base64:', fetchError.message);
+    }
+
     return res.status(200).json({
       audioUrl,
+      audioData,
       prompt,
       duration
     });

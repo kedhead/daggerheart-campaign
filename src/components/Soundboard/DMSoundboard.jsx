@@ -7,6 +7,7 @@ import {
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { generateSoundEffect, generateBackgroundMusic, SOUND_PRESETS } from '../../services/audioGenerator';
+import { persistAudio, saveAudioCache, loadAudioCache } from '../../services/audioStorage';
 import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
 import './DMSoundboard.css';
 
@@ -146,7 +147,7 @@ export default function DMSoundboard({ campaignId }) {
   const effectsAudioRef = useRef(new Audio());
   const musicAudioRef = useRef(new Audio());
 
-  // Load custom sounds and cached sounds from localStorage
+  // Load custom sounds from localStorage and audio cache from Firestore
   useEffect(() => {
     const savedCustom = localStorage.getItem('dm_custom_sounds');
     if (savedCustom) {
@@ -157,24 +158,18 @@ export default function DMSoundboard({ campaignId }) {
       }
     }
 
-    const savedCached = localStorage.getItem('dm_cached_sounds');
-    if (savedCached) {
-      try {
-        setCachedSounds(JSON.parse(savedCached));
-      } catch (e) {
-        console.error('Failed to load cached sounds:', e);
-      }
+    // Load persistent audio cache from Firestore
+    if (campaignId) {
+      loadAudioCache(campaignId).then(({ sounds, music }) => {
+        if (Object.keys(sounds).length > 0) {
+          setCachedSounds(prev => ({ ...prev, ...sounds }));
+        }
+        if (Object.keys(music).length > 0) {
+          setCachedMusic(prev => ({ ...prev, ...music }));
+        }
+      });
     }
-
-    const savedMusic = localStorage.getItem('dm_cached_music');
-    if (savedMusic) {
-      try {
-        setCachedMusic(JSON.parse(savedMusic));
-      } catch (e) {
-        console.error('Failed to load cached music:', e);
-      }
-    }
-  }, []);
+  }, [campaignId]);
 
   // Save custom sounds
   const saveCustomSounds = (sounds) => {
@@ -182,37 +177,55 @@ export default function DMSoundboard({ campaignId }) {
     localStorage.setItem('dm_custom_sounds', JSON.stringify(sounds));
   };
 
-  // Save cached sounds
+  // Save cached sounds (updates state; Firestore save handled separately)
   const saveCachedSound = (soundId, audioUrl) => {
-    const updated = { ...cachedSounds, [soundId]: audioUrl };
-    setCachedSounds(updated);
-    localStorage.setItem('dm_cached_sounds', JSON.stringify(updated));
+    setCachedSounds(prev => {
+      const updated = { ...prev, [soundId]: audioUrl };
+      return updated;
+    });
   };
 
   // Generate a sound effect using AI
   const generateAndPlaySound = async (sound) => {
-    // Check if we have a cached version
+    // Check if we have a cached version (Firebase URLs are permanent)
     if (cachedSounds[sound.id]) {
       const played = await playAudioUrl(cachedSounds[sound.id], sound.name);
       if (played) return;
-      // Cached URL expired/broken - clear it and regenerate
-      console.warn('Cached sound expired, regenerating:', sound.id);
+      // Cached URL broken - clear it and regenerate
+      console.warn('Cached sound failed, regenerating:', sound.id);
       clearCachedSound(sound.id);
     }
 
     setGeneratingSound(sound.id);
 
     try {
-      const audioUrl = await generateSoundEffect(sound.prompt, null, {
+      const result = await generateSoundEffect(sound.prompt, null, {
         duration: sound.duration || 5,
         promptInfluence: 0.4
       });
 
-      // Cache the generated sound
-      saveCachedSound(sound.id, audioUrl);
+      // Play immediately from base64 data URL (or fall back to temp URL)
+      const playUrl = result.audioData || result.audioUrl;
+      playAudioUrl(playUrl, sound.name);
 
-      // Play the sound
-      await playAudioUrl(audioUrl, sound.name);
+      // Persist to Firebase Storage in the background
+      if (campaignId && result.audioData) {
+        const safeName = `sfx_${sound.id}_${Date.now()}`;
+        persistAudio(campaignId, result.audioData, safeName)
+          .then(firebaseUrl => {
+            saveCachedSound(sound.id, firebaseUrl);
+            // Save updated cache to Firestore
+            setCachedSounds(prev => {
+              const updated = { ...prev, [sound.id]: firebaseUrl };
+              saveAudioCache(campaignId, updated, cachedMusic);
+              return updated;
+            });
+          })
+          .catch(err => console.error('Failed to persist sound to Firebase:', err));
+      } else {
+        // No base64 data available, cache the temp URL as fallback
+        saveCachedSound(sound.id, result.audioUrl);
+      }
     } catch (error) {
       console.error('Failed to generate sound:', error);
       alert(`Failed to generate sound: ${error.message}`);
@@ -225,7 +238,7 @@ export default function DMSoundboard({ campaignId }) {
   const playAudioUrl = async (url, name) => {
     console.log('Attempting to play audio URL:', url?.substring(0, 120));
 
-    if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+    if (!url || typeof url !== 'string' || (!url.startsWith('http') && !url.startsWith('data:'))) {
       console.error('Invalid audio URL:', url);
       return false;
     }
@@ -344,7 +357,7 @@ export default function DMSoundboard({ campaignId }) {
 
     const music = musicAudioRef.current;
 
-    // Check if we have a cached version
+    // Check if we have a cached version (Firebase URLs are permanent)
     if (cachedMusic[themeKey]) {
       music.src = cachedMusic[themeKey];
       music.volume = isMuted ? 0 : musicVolume / 100;
@@ -365,12 +378,13 @@ export default function DMSoundboard({ campaignId }) {
         }
         return;
       } catch (error) {
-        // Cached URL expired, clear and regenerate
-        console.warn('Cached music expired, regenerating:', themeKey);
-        const updated = { ...cachedMusic };
-        delete updated[themeKey];
-        setCachedMusic(updated);
-        localStorage.setItem('dm_cached_music', JSON.stringify(updated));
+        // Cached URL broken, clear and regenerate
+        console.warn('Cached music failed, regenerating:', themeKey);
+        setCachedMusic(prev => {
+          const updated = { ...prev };
+          delete updated[themeKey];
+          return updated;
+        });
       }
     }
 
@@ -378,18 +392,14 @@ export default function DMSoundboard({ campaignId }) {
     setGeneratingMusic(themeKey);
 
     try {
-      const audioUrl = await generateBackgroundMusic(theme.prompt, null, {
+      const result = await generateBackgroundMusic(theme.prompt, null, {
         duration: 30,
         promptInfluence: 0.5
       });
 
-      // Cache it
-      const updated = { ...cachedMusic, [themeKey]: audioUrl };
-      setCachedMusic(updated);
-      localStorage.setItem('dm_cached_music', JSON.stringify(updated));
-
-      // Play it
-      music.src = audioUrl;
+      // Play immediately from base64 data URL (or fall back to temp URL)
+      const playUrl = result.audioData || result.audioUrl;
+      music.src = playUrl;
       music.volume = isMuted ? 0 : musicVolume / 100;
       music.loop = true;
       await music.play();
@@ -399,11 +409,44 @@ export default function DMSoundboard({ campaignId }) {
         broadcastAudioState({
           type: 'music',
           action: 'play',
-          url: audioUrl,
+          url: playUrl,
           name: `${theme.name} (AI)`,
           volume: musicVolume,
           loop: true
         });
+      }
+
+      // Persist to Firebase Storage in the background
+      if (campaignId && result.audioData) {
+        const safeName = `music_${themeKey}_${Date.now()}`;
+        persistAudio(campaignId, result.audioData, safeName)
+          .then(firebaseUrl => {
+            setCachedMusic(prev => {
+              const updated = { ...prev, [themeKey]: firebaseUrl };
+              saveAudioCache(campaignId, cachedSounds, updated);
+              return updated;
+            });
+            // Update the playing audio source to the permanent URL
+            if (music.src === playUrl) {
+              music.src = firebaseUrl;
+              music.play().catch(() => {});
+            }
+            // Re-broadcast with permanent URL
+            if (broadcastEnabled && campaignId) {
+              broadcastAudioState({
+                type: 'music',
+                action: 'play',
+                url: firebaseUrl,
+                name: `${theme.name} (AI)`,
+                volume: musicVolume,
+                loop: true
+              });
+            }
+          })
+          .catch(err => console.error('Failed to persist music to Firebase:', err));
+      } else {
+        // No base64 data, cache the temp URL as fallback
+        setCachedMusic(prev => ({ ...prev, [themeKey]: result.audioUrl }));
       }
     } catch (error) {
       console.error('Failed to generate music:', error);
@@ -465,10 +508,14 @@ export default function DMSoundboard({ campaignId }) {
 
   // Clear cached sound
   const clearCachedSound = (soundId) => {
-    const updated = { ...cachedSounds };
-    delete updated[soundId];
-    setCachedSounds(updated);
-    localStorage.setItem('dm_cached_sounds', JSON.stringify(updated));
+    setCachedSounds(prev => {
+      const updated = { ...prev };
+      delete updated[soundId];
+      if (campaignId) {
+        saveAudioCache(campaignId, updated, cachedMusic);
+      }
+      return updated;
+    });
   };
 
   // Generate custom AI sound
@@ -478,23 +525,41 @@ export default function DMSoundboard({ campaignId }) {
     setAiGenerating(true);
 
     try {
-      const audioUrl = await generateSoundEffect(aiPrompt, null, {
+      const result = await generateSoundEffect(aiPrompt, null, {
         duration: aiDuration,
         promptInfluence: 0.4
       });
 
-      // Save as custom sound
+      const playUrl = result.audioData || result.audioUrl;
+
+      // Save as custom sound (will be persisted to Firebase in background)
+      const soundName = aiPrompt.substring(0, 30) + (aiPrompt.length > 30 ? '...' : '');
       const newSound = {
         id: `ai-${Date.now()}`,
-        name: aiPrompt.substring(0, 30) + (aiPrompt.length > 30 ? '...' : ''),
-        url: audioUrl,
+        name: soundName,
+        url: playUrl,
         isCustom: true,
         isAIGenerated: true
       };
-      saveCustomSounds([...customSounds, newSound]);
 
-      // Play it
-      playAudioUrl(audioUrl, newSound.name);
+      // Play it immediately
+      playAudioUrl(playUrl, newSound.name);
+
+      // Persist to Firebase in background and save with permanent URL
+      if (campaignId && result.audioData) {
+        const safeName = `custom_${newSound.id}`;
+        persistAudio(campaignId, result.audioData, safeName)
+          .then(firebaseUrl => {
+            newSound.url = firebaseUrl;
+            saveCustomSounds([...customSounds, newSound]);
+          })
+          .catch(err => {
+            console.error('Failed to persist custom sound:', err);
+            saveCustomSounds([...customSounds, newSound]);
+          });
+      } else {
+        saveCustomSounds([...customSounds, newSound]);
+      }
 
       setAiPrompt('');
     } catch (error) {
@@ -840,10 +905,14 @@ export default function DMSoundboard({ campaignId }) {
                               className="refresh-cache-inline"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                const updated = { ...cachedMusic };
-                                delete updated[key];
-                                setCachedMusic(updated);
-                                localStorage.setItem('dm_cached_music', JSON.stringify(updated));
+                                setCachedMusic(prev => {
+                                  const updated = { ...prev };
+                                  delete updated[key];
+                                  if (campaignId) {
+                                    saveAudioCache(campaignId, cachedSounds, updated);
+                                  }
+                                  return updated;
+                                });
                               }}
                               title="Regenerate AI music"
                             >

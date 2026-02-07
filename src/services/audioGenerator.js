@@ -8,7 +8,7 @@
  * @param {string} prompt - Description of the sound to generate
  * @param {string} _apiKey - Unused (API key is in Vercel env)
  * @param {object} options - Generation options
- * @returns {Promise<string>} URL of the generated audio
+ * @returns {Promise<{ audioUrl: string, audioData: string|null }>} Generated audio result
  */
 export async function generateSoundEffect(prompt, _apiKey, options = {}) {
   const {
@@ -41,10 +41,10 @@ export async function generateSoundEffect(prompt, _apiKey, options = {}) {
     }
 
     const data = await response.json();
-    console.log('Sound API response:', { audioUrl: data.audioUrl, keys: Object.keys(data) });
+    console.log('Sound API response:', { audioUrl: data.audioUrl, hasAudioData: !!data.audioData, keys: Object.keys(data) });
 
     if (data.audioUrl) {
-      return data.audioUrl;
+      return { audioUrl: data.audioUrl, audioData: data.audioData || null };
     }
 
     throw new Error('No audio URL in response');
@@ -59,7 +59,7 @@ export async function generateSoundEffect(prompt, _apiKey, options = {}) {
  * @param {string} theme - Theme/mood for the music (e.g., "epic battle", "peaceful tavern")
  * @param {string} apiKey - 1min.ai API key
  * @param {object} options - Generation options
- * @returns {Promise<string>} URL of the generated music
+ * @returns {Promise<{ audioUrl: string, audioData: string|null }>} Generated audio result
  */
 export async function generateBackgroundMusic(theme, apiKey, options = {}) {
   const {
