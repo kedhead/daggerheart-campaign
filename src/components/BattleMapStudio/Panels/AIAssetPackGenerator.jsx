@@ -9,7 +9,9 @@ import {
   ChevronDown,
   ChevronUp,
   Share2,
-  Palette
+  Palette,
+  Zap,
+  Grid3X3
 } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
@@ -17,6 +19,31 @@ import {
   generateMapAsset,
   saveGeneratedImage
 } from '../../../services/battleMapGenerator';
+
+// Generation modes
+const GENERATION_MODES = {
+  quick: {
+    id: 'quick',
+    name: 'Quick (4)',
+    description: '4 core assets - fastest',
+    icon: Zap,
+    itemCount: 4
+  },
+  full: {
+    id: 'full',
+    name: 'Full (12)',
+    description: 'All 12 assets - most complete',
+    icon: Package,
+    itemCount: 12
+  },
+  spriteSheet: {
+    id: 'spriteSheet',
+    name: 'Sprite Sheet',
+    description: '4 per image - saves ~75% tokens',
+    icon: Grid3X3,
+    itemsPerSheet: 4
+  }
+};
 
 // Predefined themed asset packs
 const ASSET_PACK_THEMES = {
@@ -189,6 +216,7 @@ const ART_STYLES = [
 export default function AIAssetPackGenerator({ campaignId }) {
   const [selectedTheme, setSelectedTheme] = useState('graveyard');
   const [selectedStyle, setSelectedStyle] = useState('fantasy');
+  const [generationMode, setGenerationMode] = useState('spriteSheet'); // quick, full, spriteSheet
   const [customAssets, setCustomAssets] = useState([]);
   const [newAssetName, setNewAssetName] = useState('');
   const [newAssetPrompt, setNewAssetPrompt] = useState('');
@@ -276,105 +304,214 @@ export default function AIAssetPackGenerator({ campaignId }) {
     return assets;
   };
 
+  // Helper: Split a sprite sheet image into 4 quadrants
+  const splitSpriteSheet = async (imageUrl, assetNames) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const results = [];
+        const halfWidth = img.width / 2;
+        const halfHeight = img.height / 2;
+        const positions = [
+          { x: 0, y: 0 },           // Top-left
+          { x: halfWidth, y: 0 },    // Top-right
+          { x: 0, y: halfHeight },   // Bottom-left
+          { x: halfWidth, y: halfHeight } // Bottom-right
+        ];
+
+        positions.forEach((pos, i) => {
+          if (i < assetNames.length) {
+            const canvas = document.createElement('canvas');
+            canvas.width = halfWidth;
+            canvas.height = halfHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, pos.x, pos.y, halfWidth, halfHeight, 0, 0, halfWidth, halfHeight);
+            results.push({
+              name: assetNames[i],
+              dataUrl: canvas.toDataURL('image/png')
+            });
+          }
+        });
+        resolve(results);
+      };
+      img.onerror = () => reject(new Error('Failed to load sprite sheet'));
+      img.src = imageUrl;
+    });
+  };
+
+  // Helper: Save a single asset
+  const saveAsset = async (assetData, prompt) => {
+    const result = {
+      id: `ai_asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: assetData.name,
+      url: assetData.dataUrl || assetData.url,
+      theme: selectedTheme,
+      style: selectedStyle
+    };
+
+    if (campaignId) {
+      // Save to Firebase Storage
+      try {
+        const savedUrl = await saveGeneratedImage(result.url, campaignId, 'asset');
+        result.url = savedUrl;
+      } catch (saveError) {
+        console.warn('Failed to save to Firebase Storage:', saveError);
+      }
+
+      // Save to campaign assets
+      try {
+        const assetDoc = {
+          name: result.name,
+          url: result.url,
+          category: selectedTheme,
+          prompt: prompt,
+          theme: selectedTheme,
+          style: selectedStyle,
+          packGenerated: true,
+          backgroundRemoved: true,
+          createdAt: serverTimestamp()
+        };
+        const docRef = await addDoc(
+          collection(db, `campaigns/${campaignId}/battleMapAssets`),
+          assetDoc
+        );
+        result.id = docRef.id;
+
+        if (shareToLibrary) {
+          try {
+            await addDoc(collection(db, 'sharedAssets'), {
+              ...assetDoc,
+              sharedAt: serverTimestamp(),
+              sharedFrom: campaignId
+            });
+          } catch (shareError) {
+            console.warn('Failed to share asset:', shareError);
+          }
+        }
+      } catch (dbError) {
+        console.warn('Failed to save asset metadata:', dbError);
+      }
+    }
+
+    return result;
+  };
+
   // Generate all selected assets
   const handleGeneratePack = async () => {
-    const assetsToGenerate = getAssetsToGenerate();
+    let assetsToGenerate = getAssetsToGenerate();
 
     if (assetsToGenerate.length === 0) {
       setError('Please select at least one asset to generate');
       return;
     }
 
+    // Limit based on mode
+    if (generationMode === 'quick') {
+      assetsToGenerate = assetsToGenerate.slice(0, 4);
+    }
+
     setIsGenerating(true);
     setError(null);
     setGeneratedAssets([]);
-    setGenerationProgress({ current: 0, total: assetsToGenerate.length, currentAsset: '' });
 
     const results = [];
 
-    for (let i = 0; i < assetsToGenerate.length; i++) {
-      const asset = assetsToGenerate[i];
-      setGenerationProgress({
-        current: i + 1,
-        total: assetsToGenerate.length,
-        currentAsset: asset.name
-      });
-
-      try {
-        // Build the full prompt with style
-        const fullPrompt = `${asset.prompt}, ${style.prompt}, top-down token view, isolated on solid background, game asset`;
-
-        const result = await generateMapAsset({
-          prompt: fullPrompt,
-          category: selectedTheme,
-          removeBackground: true
-        });
-
-        result.name = asset.name;
-        result.theme = selectedTheme;
-        result.style = selectedStyle;
-
-        // Save to Firebase Storage
-        if (campaignId) {
-          try {
-            const savedUrl = await saveGeneratedImage(result.url, campaignId, 'asset');
-            result.url = savedUrl;
-          } catch (saveError) {
-            console.warn('Failed to save to Firebase Storage:', saveError);
-          }
-
-          // Save to campaign assets
-          try {
-            const assetDoc = {
-              name: result.name,
-              url: result.url,
-              category: selectedTheme,
-              prompt: fullPrompt,
-              theme: selectedTheme,
-              style: selectedStyle,
-              packGenerated: true,
-              backgroundRemoved: true,
-              createdAt: serverTimestamp()
-            };
-            const docRef = await addDoc(
-              collection(db, `campaigns/${campaignId}/battleMapAssets`),
-              assetDoc
-            );
-            result.id = docRef.id;
-
-            // Also save to shared library if option selected
-            if (shareToLibrary) {
-              try {
-                await addDoc(collection(db, 'sharedAssets'), {
-                  ...assetDoc,
-                  sharedAt: serverTimestamp(),
-                  sharedFrom: campaignId
-                });
-              } catch (shareError) {
-                console.warn('Failed to share asset:', shareError);
-              }
-            }
-          } catch (dbError) {
-            console.warn('Failed to save asset metadata:', dbError);
-          }
-        }
-
-        results.push(result);
-        setGeneratedAssets([...results]);
-
-      } catch (err) {
-        console.error(`Failed to generate ${asset.name}:`, err);
-        results.push({
-          name: asset.name,
-          error: err.message,
-          failed: true
-        });
-        setGeneratedAssets([...results]);
+    if (generationMode === 'spriteSheet') {
+      // Sprite sheet mode: generate 4 items per image
+      const batches = [];
+      for (let i = 0; i < assetsToGenerate.length; i += 4) {
+        batches.push(assetsToGenerate.slice(i, i + 4));
       }
 
-      // Small delay between generations to avoid rate limiting
-      if (i < assetsToGenerate.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+      setGenerationProgress({ current: 0, total: batches.length, currentAsset: 'Preparing...' });
+
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex];
+        const batchNames = batch.map(a => a.name);
+        const batchPrompts = batch.map(a => a.prompt).join(', ');
+
+        setGenerationProgress({
+          current: batchIndex + 1,
+          total: batches.length,
+          currentAsset: `Sheet ${batchIndex + 1}: ${batchNames.slice(0, 2).join(', ')}...`
+        });
+
+        try {
+          // Generate a 2x2 sprite sheet
+          const sheetPrompt = `2x2 grid sprite sheet showing four separate items: ${batchPrompts}. ${style.prompt}, top-down orthographic view, flat 2D battle map assets, tabletop RPG style, each item in its own quadrant, plain white background between items, clear separation`;
+
+          const sheetResult = await generateMapAsset({
+            prompt: sheetPrompt,
+            category: selectedTheme,
+            removeBackground: false // Keep white background for splitting
+          });
+
+          // Split the sprite sheet into individual assets
+          const splitAssets = await splitSpriteSheet(sheetResult.url, batchNames);
+
+          // Save each split asset
+          for (const splitAsset of splitAssets) {
+            try {
+              const savedResult = await saveAsset(splitAsset, sheetPrompt);
+              results.push(savedResult);
+              setGeneratedAssets([...results]);
+            } catch (saveErr) {
+              console.error(`Failed to save ${splitAsset.name}:`, saveErr);
+              results.push({ name: splitAsset.name, error: saveErr.message, failed: true });
+              setGeneratedAssets([...results]);
+            }
+          }
+
+        } catch (err) {
+          console.error(`Failed to generate sprite sheet ${batchIndex + 1}:`, err);
+          // Mark all items in batch as failed
+          batch.forEach(asset => {
+            results.push({ name: asset.name, error: err.message, failed: true });
+          });
+          setGeneratedAssets([...results]);
+        }
+
+        // Delay between batches
+        if (batchIndex < batches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    } else {
+      // Individual mode (quick or full)
+      setGenerationProgress({ current: 0, total: assetsToGenerate.length, currentAsset: '' });
+
+      for (let i = 0; i < assetsToGenerate.length; i++) {
+        const asset = assetsToGenerate[i];
+        setGenerationProgress({
+          current: i + 1,
+          total: assetsToGenerate.length,
+          currentAsset: asset.name
+        });
+
+        try {
+          const fullPrompt = `${asset.prompt}, ${style.prompt}, top-down orthographic view, flat 2D battle map asset, tabletop RPG, isolated on plain white background`;
+
+          const result = await generateMapAsset({
+            prompt: fullPrompt,
+            category: selectedTheme,
+            removeBackground: true
+          });
+
+          result.name = asset.name;
+          const savedResult = await saveAsset(result, fullPrompt);
+          results.push(savedResult);
+          setGeneratedAssets([...results]);
+
+        } catch (err) {
+          console.error(`Failed to generate ${asset.name}:`, err);
+          results.push({ name: asset.name, error: err.message, failed: true });
+          setGeneratedAssets([...results]);
+        }
+
+        if (i < assetsToGenerate.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
     }
 
@@ -436,6 +573,37 @@ export default function AIAssetPackGenerator({ campaignId }) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Generation Mode */}
+      <div className="pack-section">
+        <label className="section-label">
+          <Zap size={14} />
+          Generation Mode
+        </label>
+        <div className="mode-grid">
+          {Object.values(GENERATION_MODES).map(mode => {
+            const ModeIcon = mode.icon;
+            return (
+              <button
+                key={mode.id}
+                className={`mode-btn ${generationMode === mode.id ? 'active' : ''}`}
+                onClick={() => setGenerationMode(mode.id)}
+                title={mode.description}
+              >
+                <ModeIcon size={14} />
+                <span>{mode.name}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mode-hint">
+          {generationMode === 'spriteSheet'
+            ? '⚡ Generates 4 items per image, then splits them. Saves ~75% tokens!'
+            : generationMode === 'quick'
+            ? '🚀 Only generates 4 core assets for quick results.'
+            : '📦 Generates all 12 assets individually (most tokens).'}
+        </p>
       </div>
 
       {/* Assets List */}
@@ -555,12 +723,15 @@ export default function AIAssetPackGenerator({ campaignId }) {
         {isGenerating ? (
           <>
             <Loader2 size={18} className="spin" />
-            Generating {generationProgress.current}/{generationProgress.total}...
+            {generationMode === 'spriteSheet'
+              ? `Sheet ${generationProgress.current}/${generationProgress.total}...`
+              : `Asset ${generationProgress.current}/${generationProgress.total}...`}
           </>
         ) : (
           <>
             <Sparkles size={18} />
-            Generate {assetsToGenerate.length} Assets
+            Generate {generationMode === 'quick' ? Math.min(4, assetsToGenerate.length) : assetsToGenerate.length} Assets
+            {generationMode === 'spriteSheet' && ` (${Math.ceil(assetsToGenerate.length / 4)} images)`}
           </>
         )}
       </button>
@@ -736,6 +907,46 @@ export default function AIAssetPackGenerator({ campaignId }) {
           border-color: var(--hope-color);
           color: var(--hope-color);
           background: rgba(234, 179, 8, 0.1);
+        }
+
+        .mode-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0.35rem;
+        }
+
+        .mode-btn {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.5rem 0.25rem;
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border);
+          border-radius: 6px;
+          color: var(--text-muted);
+          font-size: 0.7rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .mode-btn:hover {
+          border-color: var(--text-muted);
+        }
+
+        .mode-btn.active {
+          border-color: var(--hope-color);
+          color: var(--hope-color);
+          background: rgba(234, 179, 8, 0.1);
+        }
+
+        .mode-hint {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          margin: 0.25rem 0 0 0;
+          padding: 0.35rem;
+          background: var(--bg-tertiary);
+          border-radius: 4px;
         }
 
         .assets-list {
