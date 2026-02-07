@@ -250,6 +250,12 @@ service cloud.firestore {
         allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
+      // Audio Cache (persisted sound effect / music URL mappings)
+      match /audioCache/{docId} {
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
+
       // Battle Maps (Battle Map Studio)
       match /battleMaps/{mapId} {
         // All members can read maps (for player display)

@@ -115,15 +115,12 @@ export default async function handler(req, res) {
       audioUrl = data.url || data.audio_url;
     }
 
-    // Handle relative URLs - use temporaryUrl which has signed/authenticated access
-    if (audioUrl && !audioUrl.startsWith('http')) {
-      if (data.aiRecord?.temporaryUrl) {
-        // temporaryUrl is the full signed URL to the asset
-        audioUrl = data.aiRecord.temporaryUrl;
-      } else {
-        // Fallback to 1min.ai asset CDN
-        audioUrl = `https://asset.1min.ai/${audioUrl}`;
-      }
+    // Always prefer temporaryUrl (signed, authenticated access) over asset CDN URLs
+    if (data.aiRecord?.temporaryUrl) {
+      audioUrl = data.aiRecord.temporaryUrl;
+    } else if (audioUrl && !audioUrl.startsWith('http')) {
+      // Fallback: resolve relative URLs to 1min.ai asset CDN
+      audioUrl = `https://asset.1min.ai/${audioUrl}`;
     }
 
     if (!audioUrl) {
