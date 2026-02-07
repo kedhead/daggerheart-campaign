@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Dices, X, Sun, Moon, Swords, Star, ChevronDown, ChevronUp, Lock } from 'lucide-react';
+import { Dices, X, Sun, Moon, Swords, Star, ChevronDown, ChevronUp, Lock, Sparkles } from 'lucide-react';
 import { useDiceRolls } from '../../hooks/useDiceRolls';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
 import RollHistory from './RollHistory';
+import Dice3DOverlay from './Dice3DOverlay';
 import './DiceRollerFloat.css';
 
 export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart', isDM = false }) {
@@ -17,6 +18,9 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
   const [showHistory, setShowHistory] = useState(false);
   const [isRolling, setIsRolling] = useState(false);
   const [currentRoll, setCurrentRoll] = useState(null);
+  const [use3DDice, setUse3DDice] = useState(true); // Enable 3D dice by default
+  const [show3DOverlay, setShow3DOverlay] = useState(false);
+  const [pending3DRoll, setPending3DRoll] = useState(null);
 
   // Roll configuration state
   const [modifier, setModifier] = useState(0);
@@ -136,26 +140,34 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
 
     setIsRolling(true);
 
-    // Simulate rolling animation
+    // Generate roll data immediately
+    let rollData;
+    switch (gameSystem) {
+      case 'dnd5e':
+        rollData = rollDnD5e();
+        break;
+      case 'starwarsd6':
+        rollData = rollStarWarsD6();
+        break;
+      case 'generic':
+        rollData = rollGeneric();
+        break;
+      case 'daggerheart':
+      default:
+        rollData = rollDaggerheart();
+        break;
+    }
+
+    // If 3D dice enabled, show overlay
+    if (use3DDice) {
+      setPending3DRoll({ system: gameSystem, ...rollData });
+      setShow3DOverlay(true);
+      setIsRolling(false);
+      return;
+    }
+
+    // Otherwise use original animation
     setTimeout(async () => {
-      let rollData;
-
-      switch (gameSystem) {
-        case 'dnd5e':
-          rollData = rollDnD5e();
-          break;
-        case 'starwarsd6':
-          rollData = rollStarWarsD6();
-          break;
-        case 'generic':
-          rollData = rollGeneric();
-          break;
-        case 'daggerheart':
-        default:
-          rollData = rollDaggerheart();
-          break;
-      }
-
       setCurrentRoll({ system: gameSystem, rollData });
 
       // Save to shared history
@@ -169,6 +181,26 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
       setRollLabel('');
       setIsRolling(false);
     }, 800);
+  };
+
+  // Handle 3D dice roll completion
+  const handle3DRollComplete = async () => {
+    if (pending3DRoll) {
+      const { system, ...rollData } = pending3DRoll;
+      setCurrentRoll({ system, rollData });
+
+      // Save to shared history
+      await addRoll({
+        system,
+        rollData,
+        label: rollLabel,
+        isPrivate: isDM ? isPrivate : false
+      });
+
+      setRollLabel('');
+    }
+    setShow3DOverlay(false);
+    setPending3DRoll(null);
   };
 
   const handleClearHistory = async () => {
@@ -343,6 +375,20 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
             </div>
 
             <div className="control-row">
+              <div className="control-group dice-3d-toggle">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={use3DDice}
+                    onChange={(e) => setUse3DDice(e.target.checked)}
+                  />
+                  <Sparkles size={14} />
+                  3D Dice Animation
+                </label>
+              </div>
+            </div>
+
+            <div className="control-row">
               <input
                 type="text"
                 className="roll-label-input"
@@ -432,6 +478,17 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
           )}
         </div>
       )}
+
+      {/* 3D Dice Overlay */}
+      <Dice3DOverlay
+        show={show3DOverlay}
+        rollData={pending3DRoll}
+        onComplete={handle3DRollComplete}
+        onClose={() => {
+          setShow3DOverlay(false);
+          setPending3DRoll(null);
+        }}
+      />
     </div>
   );
 }
