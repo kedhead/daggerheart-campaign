@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Save, Key, Users, Calendar, Zap, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff, Save, Key, Users, Calendar, Zap, AlertTriangle, Volume2 } from 'lucide-react';
 import { useSharedAPIKeyAdmin } from '../../hooks/useSharedAPIKey';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../../config/firebase';
@@ -10,11 +10,13 @@ export default function SharedAPIKeyManager() {
     enabled: false,
     anthropicKey: '',
     openaiKey: '',
+    oneMinAiKey: '',
     dailyLimit: 10,
     monthlyLimit: 100
   });
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
+  const [showOneMinAiKey, setShowOneMinAiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [recentUsage, setRecentUsage] = useState([]);
@@ -27,6 +29,7 @@ export default function SharedAPIKeyManager() {
         enabled: config.enabled || false,
         anthropicKey: config.anthropicKey || '',
         openaiKey: config.openaiKey || '',
+        oneMinAiKey: config.oneMinAiKey || '',
         dailyLimit: config.dailyLimit || 10,
         monthlyLimit: config.monthlyLimit || 100
       });
@@ -157,6 +160,36 @@ export default function SharedAPIKeyManager() {
             {formData.openaiKey && (
               <small style={{ color: 'var(--hope-color)' }}>Key configured</small>
             )}
+          </div>
+
+          {/* 1min.ai Key */}
+          <div className="form-group" style={{ margin: 0 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Volume2 size={16} />
+              1min.ai API Key (for AI Sound Effects & Music)
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type={showOneMinAiKey ? 'text' : 'password'}
+                value={formData.oneMinAiKey}
+                onChange={(e) => handleChange('oneMinAiKey', e.target.value)}
+                placeholder="Your 1min.ai API key..."
+                style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowOneMinAiKey(!showOneMinAiKey)}
+                style={{ padding: '0.5rem', background: 'var(--bg-tertiary)', border: '1px solid var(--border)', borderRadius: '4px', cursor: 'pointer', color: 'var(--text)' }}
+              >
+                {showOneMinAiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {formData.oneMinAiKey && (
+              <small style={{ color: 'var(--hope-color)' }}>Key configured - AI audio generation enabled</small>
+            )}
+            <small style={{ display: 'block', marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+              Used for ElevenLabs sound effects via 1min.ai. Get a key at 1min.ai
+            </small>
           </div>
         </div>
 

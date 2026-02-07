@@ -32,13 +32,15 @@ export function useSharedAPIKey(userId) {
             enabled: data.enabled || false,
             hasAnthropicKey: !!data.anthropicKey,
             hasOpenaiKey: !!data.openaiKey,
+            hasOneMinAiKey: !!data.oneMinAiKey,
             dailyLimit: data.dailyLimit || 10,
             monthlyLimit: data.monthlyLimit || 100,
             // Keys are only for server-side use, but we need them for client API calls
             // In a production app, you'd use Firebase Functions as a proxy
             // For simplicity, we'll store encrypted and trust authenticated users
             _anthropicKey: data.anthropicKey || null,
-            _openaiKey: data.openaiKey || null
+            _openaiKey: data.openaiKey || null,
+            _oneMinAiKey: data.oneMinAiKey || null
           });
         } else {
           setSharedConfig({ enabled: false });
@@ -180,6 +182,9 @@ export function useSharedAPIKey(userId) {
     if (provider === 'openai' && sharedConfig._openaiKey) {
       return sharedConfig._openaiKey;
     }
+    if (provider === '1minai' && sharedConfig._oneMinAiKey) {
+      return sharedConfig._oneMinAiKey;
+    }
 
     return null;
   }, [sharedConfig, checkUsageLimit]);
@@ -194,8 +199,9 @@ export function useSharedAPIKey(userId) {
 
     if (provider === 'anthropic') return sharedConfig.hasAnthropicKey;
     if (provider === 'openai') return sharedConfig.hasOpenaiKey;
+    if (provider === '1minai') return sharedConfig.hasOneMinAiKey;
 
-    return sharedConfig.hasAnthropicKey || sharedConfig.hasOpenaiKey;
+    return sharedConfig.hasAnthropicKey || sharedConfig.hasOpenaiKey || sharedConfig.hasOneMinAiKey;
   }, [sharedConfig]);
 
   return {
@@ -246,6 +252,7 @@ export function useSharedAPIKeyAdmin() {
             enabled: false,
             anthropicKey: '',
             openaiKey: '',
+            oneMinAiKey: '',
             dailyLimit: 10,
             monthlyLimit: 100
           });
