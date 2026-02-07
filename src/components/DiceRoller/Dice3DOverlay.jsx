@@ -535,7 +535,40 @@ export default function Dice3DOverlay({
       {/* Result banner */}
       {animationComplete && (
         <div className={`dice-result-banner ${outcomeClass}`}>
-          <div className="result-total">{rollData.total}</div>
+          {/* Daggerheart shows both dice */}
+          {rollData.system === 'daggerheart' && (
+            <>
+              <div className="dice-breakdown">
+                <span className="hope-value">
+                  <span className="die-label">Hope</span>
+                  <span className="die-value">{rollData.hopeDie}</span>
+                </span>
+                <span className="vs">vs</span>
+                <span className="fear-value">
+                  <span className="die-label">Fear</span>
+                  <span className="die-value">{rollData.fearDie}</span>
+                </span>
+              </div>
+              <div className="result-total">
+                {rollData.total}
+                {rollData.modifier !== 0 && (
+                  <span className="modifier-display">
+                    ({Math.max(rollData.hopeDie, rollData.fearDie)}{rollData.modifier >= 0 ? '+' : ''}{rollData.modifier})
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+          {/* Generic dice just show total */}
+          {rollData.system !== 'daggerheart' && (
+            <div className="result-total">{rollData.total}</div>
+          )}
+          {/* Player name if present */}
+          {rollData.playerName && (
+            <div className="roller-name" style={{ color: rollData.playerColor || '#fff' }}>
+              🎲 {rollData.playerName}
+            </div>
+          )}
           {rollData.outcome && (
             <div className={`result-outcome ${rollData.outcome}`}>
               {rollData.outcome === 'hope' ? '✨ WITH HOPE' : '💀 WITH FEAR'}

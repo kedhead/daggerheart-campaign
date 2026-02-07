@@ -6,6 +6,7 @@ import useImage from 'use-image';
 import { Maximize, Minimize, Grid } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 import Dice3DOverlay from '../DiceRoller/Dice3DOverlay';
+import PlayerDicePanel from './PlayerDicePanel';
 import './BattleMapDisplayWindow.css';
 
 /**
@@ -386,6 +387,9 @@ export default function BattleMapDisplayWindow({ campaignId }) {
           setShowDiceOverlay(false);
         }}
       />
+
+      {/* Player Dice Panel */}
+      <PlayerDicePanel campaignId={campaignId} />
     </div>
   );
 }
