@@ -1,31 +1,45 @@
 import { useState, useEffect } from 'react';
-import { Sun, Moon, Dices, Swords, Star, Palette, Monitor } from 'lucide-react';
+import { Sun, Moon, Dices, Plus, Minus, Palette, Monitor, RotateCcw } from 'lucide-react';
 import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import './DiceRoller.css';
 
-const PLAYER_COLORS = [
-  { id: 'red', color: '#ef4444', name: 'Red' },
-  { id: 'orange', color: '#f97316', name: 'Orange' },
-  { id: 'amber', color: '#f59e0b', name: 'Amber' },
-  { id: 'lime', color: '#84cc16', name: 'Lime' },
-  { id: 'green', color: '#22c55e', name: 'Green' },
-  { id: 'teal', color: '#14b8a6', name: 'Teal' },
-  { id: 'cyan', color: '#06b6d4', name: 'Cyan' },
-  { id: 'blue', color: '#3b82f6', name: 'Blue' },
-  { id: 'indigo', color: '#6366f1', name: 'Indigo' },
-  { id: 'purple', color: '#a855f7', name: 'Purple' },
-  { id: 'pink', color: '#ec4899', name: 'Pink' },
-  { id: 'white', color: '#ffffff', name: 'White' },
+const DICE_TYPES = [
+  { id: 'd4', sides: 4, color: '#10b981', label: 'D4' },
+  { id: 'd6', sides: 6, color: '#3b82f6', label: 'D6' },
+  { id: 'd8', sides: 8, color: '#8b5cf6', label: 'D8' },
+  { id: 'd10', sides: 10, color: '#ec4899', label: 'D10' },
+  { id: 'd12', sides: 12, color: '#f59e0b', label: 'D12' },
+  { id: 'd20', sides: 20, color: '#ef4444', label: 'D20' }
 ];
 
-export default function DiceRoller({ isDM, gameSystem = 'daggerheart', campaignId, characters = [], currentUserId }) {
+const PLAYER_COLORS = [
+  { id: 'red', color: '#ef4444' },
+  { id: 'orange', color: '#f97316' },
+  { id: 'amber', color: '#f59e0b' },
+  { id: 'lime', color: '#84cc16' },
+  { id: 'green', color: '#22c55e' },
+  { id: 'teal', color: '#14b8a6' },
+  { id: 'cyan', color: '#06b6d4' },
+  { id: 'blue', color: '#3b82f6' },
+  { id: 'purple', color: '#a855f7' },
+  { id: 'pink', color: '#ec4899' },
+];
+
+const QUICK_PRESETS = [
+  { label: '1d20', dice: { d20: 1 } },
+  { label: '2d6', dice: { d6: 2 } },
+  { label: '1d8', dice: { d8: 1 } },
+  { label: '1d10', dice: { d10: 1 } },
+  { label: '4d6', dice: { d6: 4 } },
+];
+
+export default function DiceRoller({ isDM, campaignId, characters = [], currentUserId }) {
   const { currentUser } = useAuth();
+  const [rollMode, setRollMode] = useState('daggerheart'); // 'daggerheart' | 'custom'
+  const [selectedDice, setSelectedDice] = useState({});
   const [modifier, setModifier] = useState(0);
-  const [numDice, setNumDice] = useState(3); // For Star Wars D6
-  const [selectedDie, setSelectedDie] = useState(20); // For Generic polyhedral
-  const [diceQuantity, setDiceQuantity] = useState(1); // For Generic polyhedral
   const [isRolling, setIsRolling] = useState(false);
   const [currentRoll, setCurrentRoll] = useState(null);
   const [rollHistory, setRollHistory] = useState([]);
@@ -34,28 +48,19 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart', campaignI
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [playerName, setPlayerName] = useState('');
 
-  // Auto-detect player name from character or user profile
+  // Auto-detect player name
   useEffect(() => {
-    // First, try to get the player's character name
     const myCharacter = characters.find(c => c.playerId === currentUserId || c.playerId === currentUser?.uid);
     if (myCharacter?.name) {
       setPlayerName(myCharacter.name);
-      return;
-    }
-
-    // Fall back to user display name
-    if (currentUser?.displayName) {
+    } else if (currentUser?.displayName) {
       setPlayerName(currentUser.displayName);
-      return;
-    }
-
-    // Fall back to email prefix
-    if (currentUser?.email) {
+    } else if (currentUser?.email) {
       setPlayerName(currentUser.email.split('@')[0]);
     }
   }, [characters, currentUserId, currentUser]);
 
-  // Load saved color preference
+  // Load saved color
   useEffect(() => {
     const savedColor = localStorage.getItem('daggerheart_dice_color');
     if (savedColor) setPlayerColor(savedColor);
@@ -67,136 +72,113 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart', campaignI
     setShowColorPicker(false);
   };
 
+  // Update dice count
+  const updateDiceCount = (dieId, delta) => {
+    setSelectedDice(prev => ({
+      ...prev,
+      [dieId]: Math.max(0, Math.min(10, (prev[dieId] || 0) + delta))
+    }));
+  };
+
+  // Apply preset
+  const applyPreset = (preset) => {
+    setSelectedDice(preset.dice);
+    setRollMode('custom');
+  };
+
+  // Clear all dice
+  const clearDice = () => {
+    setSelectedDice({});
+    setModifier(0);
+  };
+
+  // Get total dice count
+  const totalDice = Object.values(selectedDice).reduce((sum, count) => sum + count, 0);
+
+  // Get roll formula string
+  const getFormula = () => {
+    const parts = [];
+    DICE_TYPES.forEach(die => {
+      const count = selectedDice[die.id] || 0;
+      if (count > 0) parts.push(`${count}${die.id}`);
+    });
+    if (modifier !== 0) {
+      parts.push(modifier > 0 ? `+${modifier}` : `${modifier}`);
+    }
+    return parts.join(' + ') || 'Select dice';
+  };
+
+  // Roll Daggerheart dice
   const rollDaggerheart = () => {
     const hopeDie = Math.floor(Math.random() * 12) + 1;
     const fearDie = Math.floor(Math.random() * 12) + 1;
-    const total = hopeDie + fearDie + parseInt(modifier); // Both dice added together
-    const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope'; // Ties go to Hope
+    const total = hopeDie + fearDie + modifier;
+    const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
 
     return {
+      system: 'daggerheart',
       hopeDie,
       fearDie,
-      modifier: parseInt(modifier),
+      modifier,
       total,
       outcome,
-      timestamp: new Date().toLocaleTimeString(),
-      system: 'daggerheart'
+      timestamp: new Date().toLocaleTimeString()
     };
   };
 
-  const rollDnD5e = () => {
-    const d20 = Math.floor(Math.random() * 20) + 1;
-    const total = d20 + parseInt(modifier);
-    const isCritical = d20 === 20;
-    const isCriticalFail = d20 === 1;
-
-    return {
-      d20,
-      modifier: parseInt(modifier),
-      total,
-      isCritical,
-      isCriticalFail,
-      timestamp: new Date().toLocaleTimeString(),
-      system: 'dnd5e'
-    };
-  };
-
-  const rollStarWarsD6 = () => {
-    const dice = parseInt(numDice) || 3;
+  // Roll custom dice
+  const rollCustom = () => {
     const rolls = [];
-    const wildDieIndex = 0; // First die is the wild die
+    const diceResults = {};
     let total = 0;
-    let wildDieValue = 0;
-    let wildDieExploded = false;
 
-    // Roll all dice
-    for (let i = 0; i < dice; i++) {
-      let roll = Math.floor(Math.random() * 6) + 1;
-
-      if (i === wildDieIndex) {
-        wildDieValue = roll;
-        // Wild die: 6 explodes (roll again and add), 1 is complication
-        if (roll === 6) {
-          wildDieExploded = true;
-          const extraRoll = Math.floor(Math.random() * 6) + 1;
-          roll += extraRoll;
+    DICE_TYPES.forEach(die => {
+      const count = selectedDice[die.id] || 0;
+      if (count > 0) {
+        diceResults[die.id] = [];
+        for (let i = 0; i < count; i++) {
+          const roll = Math.floor(Math.random() * die.sides) + 1;
+          diceResults[die.id].push(roll);
+          rolls.push({ type: die.id, sides: die.sides, result: roll, color: die.color });
+          total += roll;
         }
       }
+    });
 
-      rolls.push(roll);
-      total += roll;
-    }
+    total += modifier;
 
-    total += parseInt(modifier);
+    const d20Rolls = diceResults.d20 || [];
+    const isCrit = d20Rolls.includes(20);
+    const isCritFail = d20Rolls.length > 0 && d20Rolls.every(r => r === 1);
 
     return {
+      system: 'generic',
+      diceResults,
       rolls,
-      wildDieValue,
-      wildDieExploded,
-      modifier: parseInt(modifier),
+      modifier,
       total,
-      complication: wildDieValue === 1,
-      timestamp: new Date().toLocaleTimeString(),
-      system: 'starwarsd6'
+      isCrit,
+      isCritFail,
+      formula: getFormula(),
+      timestamp: new Date().toLocaleTimeString()
     };
   };
 
-  const rollPolyhedral = () => {
-    const dieType = parseInt(selectedDie);
-    const quantity = parseInt(diceQuantity) || 1;
-    const rolls = [];
-    let total = 0;
-
-    // Roll each die
-    for (let i = 0; i < quantity; i++) {
-      const roll = Math.floor(Math.random() * dieType) + 1;
-      rolls.push(roll);
-      total += roll;
-    }
-
-    total += parseInt(modifier);
-
-    return {
-      dieType,
-      quantity,
-      rolls,
-      modifier: parseInt(modifier),
-      total,
-      timestamp: new Date().toLocaleTimeString(),
-      system: 'generic'
-    };
-  };
-
+  // Main roll function
   const rollDice = async () => {
     if (isRolling) return;
+    if (rollMode === 'custom' && totalDice === 0) return;
 
     setIsRolling(true);
 
-    // Simulate dice rolling animation
     setTimeout(async () => {
-      let roll;
-
-      switch (gameSystem) {
-        case 'dnd5e':
-          roll = rollDnD5e();
-          break;
-        case 'starwarsd6':
-          roll = rollStarWarsD6();
-          break;
-        case 'generic':
-          roll = rollPolyhedral();
-          break;
-        case 'daggerheart':
-        default:
-          roll = rollDaggerheart();
-          break;
-      }
+      const roll = rollMode === 'daggerheart' ? rollDaggerheart() : rollCustom();
 
       setCurrentRoll(roll);
-      setRollHistory([roll, ...rollHistory.slice(0, 9)]); // Keep last 10 rolls
+      setRollHistory([roll, ...rollHistory.slice(0, 9)]);
       setIsRolling(false);
 
-      // Broadcast to Battle Map Display if enabled
+      // Broadcast if enabled
       if (broadcastEnabled && campaignId) {
         try {
           const rollData = {
@@ -208,327 +190,248 @@ export default function DiceRoller({ isDM, gameSystem = 'daggerheart', campaignI
             rollId: Date.now().toString()
           };
 
-          // Broadcast to display
           const rollDoc = doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`);
           await setDoc(rollDoc, rollData);
 
-          // Also add to history
           const historyRef = collection(db, `campaigns/${campaignId}/battleMapDisplay/rolls/history`);
           await addDoc(historyRef, rollData);
         } catch (error) {
-          console.error('Failed to broadcast dice roll:', error);
+          console.error('Failed to broadcast:', error);
         }
       }
-    }, 1000);
-  };
-
-  // Get title based on game system
-  const getTitle = () => {
-    switch (gameSystem) {
-      case 'dnd5e':
-        return 'D20 Dice Roller';
-      case 'starwarsd6':
-        return 'Wild Die Roller';
-      case 'generic':
-        return 'Polyhedral Dice Roller';
-      case 'daggerheart':
-      default:
-        return 'Duality Dice Roller';
-    }
-  };
-
-  // Get color for die type
-  const getDieColor = (dieType) => {
-    const colors = {
-      4: '#10b981',
-      6: '#3b82f6',
-      8: '#8b5cf6',
-      10: '#ec4899',
-      12: '#f59e0b',
-      20: '#ef4444'
-    };
-    return colors[dieType] || '#6366f1';
+    }, 800);
   };
 
   return (
-    <div className="dice-roller">
-      <div className="dice-roller-header">
-        <h3>{getTitle()}</h3>
+    <div className="dice-roller-v2">
+      {/* Header with broadcast toggle */}
+      <div className="dr-header">
+        <div className="dr-title">Dice Roller</div>
         {campaignId && (
           <button
-            className={`broadcast-toggle ${broadcastEnabled ? 'active' : ''}`}
+            className={`dr-broadcast-btn ${broadcastEnabled ? 'active' : ''}`}
             onClick={() => setBroadcastEnabled(!broadcastEnabled)}
-            title={broadcastEnabled ? 'Broadcasting to Display' : 'Click to broadcast rolls to display'}
           >
-            <Monitor size={16} />
-            {broadcastEnabled ? 'Broadcasting' : 'Broadcast'}
+            <Monitor size={14} />
+            {broadcastEnabled ? 'Live' : 'Broadcast'}
           </button>
         )}
       </div>
 
-      {/* Player Identity - show when broadcasting */}
-      {broadcastEnabled && campaignId && (
-        <div className="player-identity-bar">
-          <div className="player-name-display">
-            <span className="player-label">Rolling as:</span>
-            <span className="player-name" style={{ color: playerColor }}>{playerName || 'Player'}</span>
-          </div>
+      {/* Player identity when broadcasting */}
+      {broadcastEnabled && (
+        <div className="dr-player-bar">
+          <span className="dr-player-name" style={{ color: playerColor }}>
+            {playerName || 'Player'}
+          </span>
           <button
-            className="color-picker-btn"
+            className="dr-color-btn"
             onClick={() => setShowColorPicker(!showColorPicker)}
             style={{ backgroundColor: playerColor }}
-            title="Change dice color"
           >
-            <Palette size={14} />
+            <Palette size={12} />
           </button>
         </div>
       )}
 
-      {/* Color Picker */}
       {showColorPicker && (
-        <div className="color-picker-grid">
+        <div className="dr-color-picker">
           {PLAYER_COLORS.map(c => (
             <button
               key={c.id}
-              className={`color-swatch ${playerColor === c.color ? 'active' : ''}`}
+              className={`dr-color-swatch ${playerColor === c.color ? 'active' : ''}`}
               style={{ backgroundColor: c.color }}
               onClick={() => handleColorChange(c.color)}
-              title={c.name}
             />
           ))}
         </div>
       )}
 
-      <div className="dice-controls">
-        {gameSystem === 'generic' && (
-          <>
-            <div className="modifier-input">
-              <label>Die Type</label>
-              <select
-                value={selectedDie}
-                onChange={(e) => setSelectedDie(e.target.value)}
-                className="die-type-select"
-              >
-                <option value={4}>d4</option>
-                <option value={6}>d6</option>
-                <option value={8}>d8</option>
-                <option value={10}>d10</option>
-                <option value={12}>d12</option>
-                <option value={20}>d20</option>
-              </select>
-            </div>
-            <div className="modifier-input">
-              <label>Quantity</label>
-              <input
-                type="number"
-                value={diceQuantity}
-                onChange={(e) => setDiceQuantity(e.target.value)}
-                min="1"
-                max="10"
-              />
-            </div>
-          </>
-        )}
-        {gameSystem === 'starwarsd6' && (
-          <div className="modifier-input">
-            <label>Dice Pool</label>
-            <input
-              type="number"
-              value={numDice}
-              onChange={(e) => setNumDice(e.target.value)}
-              min="1"
-              max="10"
-            />
-          </div>
-        )}
-        <div className="modifier-input">
-          <label>Modifier</label>
-          <input
-            type="number"
-            value={modifier}
-            onChange={(e) => setModifier(e.target.value)}
-            min="-5"
-            max="10"
-          />
-        </div>
+      {/* Mode tabs */}
+      <div className="dr-mode-tabs">
         <button
-          className={`btn btn-primary ${isDM ? 'dm-mode' : ''}`}
-          onClick={rollDice}
-          disabled={isRolling}
+          className={`dr-mode-tab ${rollMode === 'daggerheart' ? 'active' : ''}`}
+          onClick={() => setRollMode('daggerheart')}
         >
-          <Dices size={20} />
-          {isRolling ? 'Rolling...' : 'Roll Dice'}
+          <Sun size={14} />
+          <Moon size={14} />
+          Hope & Fear
+        </button>
+        <button
+          className={`dr-mode-tab ${rollMode === 'custom' ? 'active' : ''}`}
+          onClick={() => setRollMode('custom')}
+        >
+          <Dices size={14} />
+          Custom Dice
         </button>
       </div>
 
-      {currentRoll && currentRoll.system === 'daggerheart' && (
-        <div className={`roll-result ${currentRoll.outcome}`}>
-          <div className="dice-display">
-            <div className="die hope-die">
-              <Sun size={24} />
-              <span className="die-value">{currentRoll.hopeDie}</span>
-              <span className="die-label">Hope</span>
+      {/* Daggerheart mode */}
+      {rollMode === 'daggerheart' && (
+        <div className="dr-daggerheart-mode">
+          <div className="dr-duality-preview">
+            <div className="dr-duality-die hope">
+              <Sun size={20} />
+              <span>d12</span>
             </div>
-            <div className="die fear-die">
-              <Moon size={24} />
-              <span className="die-value">{currentRoll.fearDie}</span>
-              <span className="die-label">Fear</span>
+            <span className="dr-vs">+</span>
+            <div className="dr-duality-die fear">
+              <Moon size={20} />
+              <span>d12</span>
+            </div>
+          </div>
+          <div className="dr-modifier-row">
+            <span>Modifier</span>
+            <div className="dr-modifier-controls">
+              <button onClick={() => setModifier(m => m - 1)}><Minus size={14} /></button>
+              <span className="dr-modifier-value">{modifier >= 0 ? `+${modifier}` : modifier}</span>
+              <button onClick={() => setModifier(m => m + 1)}><Plus size={14} /></button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom dice mode */}
+      {rollMode === 'custom' && (
+        <div className="dr-custom-mode">
+          {/* Quick presets */}
+          <div className="dr-presets">
+            {QUICK_PRESETS.map((preset, i) => (
+              <button key={i} className="dr-preset-btn" onClick={() => applyPreset(preset)}>
+                {preset.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Dice grid */}
+          <div className="dr-dice-grid">
+            {DICE_TYPES.map(die => (
+              <div key={die.id} className="dr-die-row">
+                <div className="dr-die-icon" style={{ backgroundColor: die.color }}>
+                  {die.label}
+                </div>
+                <div className="dr-die-controls">
+                  <button
+                    onClick={() => updateDiceCount(die.id, -1)}
+                    disabled={!selectedDice[die.id]}
+                  >
+                    <Minus size={12} />
+                  </button>
+                  <span className="dr-die-count">{selectedDice[die.id] || 0}</span>
+                  <button onClick={() => updateDiceCount(die.id, 1)}>
+                    <Plus size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Modifier */}
+          <div className="dr-modifier-row">
+            <span>Modifier</span>
+            <div className="dr-modifier-controls">
+              <button onClick={() => setModifier(m => m - 1)}><Minus size={14} /></button>
+              <span className="dr-modifier-value">{modifier >= 0 ? `+${modifier}` : modifier}</span>
+              <button onClick={() => setModifier(m => m + 1)}><Plus size={14} /></button>
             </div>
           </div>
 
-          <div className="roll-total">
-            <div className="total-value">{currentRoll.total}</div>
-            <div className={`outcome-badge ${currentRoll.outcome}`}>
-              {currentRoll.outcome === 'hope' ? (
-                <>
+          {/* Formula display */}
+          {totalDice > 0 && (
+            <div className="dr-formula">
+              {getFormula()}
+              <button className="dr-clear-btn" onClick={clearDice} title="Clear">
+                <RotateCcw size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Roll button */}
+      <button
+        className={`dr-roll-btn ${isRolling ? 'rolling' : ''}`}
+        onClick={rollDice}
+        disabled={isRolling || (rollMode === 'custom' && totalDice === 0)}
+      >
+        <Dices size={20} className={isRolling ? 'spin' : ''} />
+        {isRolling ? 'Rolling...' : rollMode === 'daggerheart' ? 'Roll Hope & Fear' : 'Roll Dice'}
+      </button>
+
+      {/* Result display */}
+      {currentRoll && (
+        <div className={`dr-result ${currentRoll.outcome || ''} ${currentRoll.isCrit ? 'crit' : ''} ${currentRoll.isCritFail ? 'critfail' : ''}`}>
+          {currentRoll.system === 'daggerheart' ? (
+            <>
+              <div className="dr-result-dice">
+                <div className="dr-result-die hope">
                   <Sun size={16} />
-                  Hope Result
-                </>
-              ) : (
-                <>
+                  <span className="dr-result-value">{currentRoll.hopeDie}</span>
+                </div>
+                <span className="dr-result-plus">+</span>
+                <div className="dr-result-die fear">
                   <Moon size={16} />
-                  Fear Result
-                </>
-              )}
-            </div>
-          </div>
-
-          {currentRoll.modifier !== 0 && (
-            <div className="modifier-display">
-              {currentRoll.hopeDie} + {currentRoll.fearDie} + {currentRoll.modifier} = {currentRoll.total}
-            </div>
+                  <span className="dr-result-value">{currentRoll.fearDie}</span>
+                </div>
+                {currentRoll.modifier !== 0 && (
+                  <>
+                    <span className="dr-result-plus">{currentRoll.modifier > 0 ? '+' : ''}</span>
+                    <span className="dr-result-mod">{currentRoll.modifier}</span>
+                  </>
+                )}
+              </div>
+              <div className="dr-result-total">{currentRoll.total}</div>
+              <div className={`dr-result-outcome ${currentRoll.outcome}`}>
+                {currentRoll.outcome === 'hope' ? (
+                  <><Sun size={14} /> With Hope</>
+                ) : (
+                  <><Moon size={14} /> With Fear</>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="dr-result-formula">{currentRoll.formula}</div>
+              <div className="dr-result-rolls">
+                {currentRoll.rolls.map((roll, i) => (
+                  <span
+                    key={i}
+                    className="dr-result-roll"
+                    style={{ backgroundColor: roll.color }}
+                  >
+                    {roll.result}
+                  </span>
+                ))}
+                {currentRoll.modifier !== 0 && (
+                  <span className="dr-result-mod-badge">
+                    {currentRoll.modifier > 0 ? '+' : ''}{currentRoll.modifier}
+                  </span>
+                )}
+              </div>
+              <div className="dr-result-total">{currentRoll.total}</div>
+              {currentRoll.isCrit && <div className="dr-result-crit">Critical!</div>}
+              {currentRoll.isCritFail && <div className="dr-result-critfail">Critical Fail!</div>}
+            </>
           )}
         </div>
       )}
 
-      {currentRoll && currentRoll.system === 'dnd5e' && (
-        <div className={`roll-result ${currentRoll.isCritical ? 'critical' : currentRoll.isCriticalFail ? 'critical-fail' : ''}`}>
-          <div className="dice-display">
-            <div className="die d20-die">
-              <Swords size={24} />
-              <span className="die-value">{currentRoll.d20}</span>
-              <span className="die-label">d20</span>
-            </div>
-          </div>
-
-          <div className="roll-total">
-            <div className="total-value">{currentRoll.total}</div>
-            {currentRoll.isCritical && (
-              <div className="outcome-badge critical">
-                <Star size={16} />
-                Critical Success!
-              </div>
-            )}
-            {currentRoll.isCriticalFail && (
-              <div className="outcome-badge critical-fail">
-                Critical Fail!
-              </div>
-            )}
-          </div>
-
-          {currentRoll.modifier !== 0 && (
-            <div className="modifier-display">
-              d20: {currentRoll.d20} + Modifier: {currentRoll.modifier}
-            </div>
-          )}
-        </div>
-      )}
-
-      {currentRoll && currentRoll.system === 'starwarsd6' && (
-        <div className={`roll-result ${currentRoll.complication ? 'complication' : ''}`}>
-          <div className="dice-display star-wars">
-            {currentRoll.rolls.map((roll, index) => (
-              <div key={index} className={`die d6-die ${index === 0 ? 'wild-die' : ''}`}>
-                <Dices size={20} />
-                <span className="die-value">{roll}</span>
-                {index === 0 && <span className="die-label">Wild Die</span>}
-              </div>
-            ))}
-          </div>
-
-          <div className="roll-total">
-            <div className="total-value">{currentRoll.total}</div>
-            {currentRoll.wildDieExploded && (
-              <div className="outcome-badge success">
-                <Star size={16} />
-                Wild Die Exploded!
-              </div>
-            )}
-            {currentRoll.complication && (
-              <div className="outcome-badge complication">
-                Complication!
-              </div>
-            )}
-          </div>
-
-          {currentRoll.modifier !== 0 && (
-            <div className="modifier-display">
-              Dice Total: {currentRoll.total - currentRoll.modifier} + Modifier: {currentRoll.modifier}
-            </div>
-          )}
-        </div>
-      )}
-
-      {currentRoll && currentRoll.system === 'generic' && (
-        <div className="roll-result polyhedral">
-          <div className="roll-formula">
-            {currentRoll.quantity}d{currentRoll.dieType}
-            {currentRoll.modifier !== 0 && ` ${currentRoll.modifier >= 0 ? '+' : ''}${currentRoll.modifier}`}
-          </div>
-
-          <div className="dice-display polyhedral-display">
-            {currentRoll.rolls.map((roll, index) => (
-              <div key={index} className="die polyhedral-die" style={{ borderColor: getDieColor(currentRoll.dieType) }}>
-                <Dices size={20} style={{ color: getDieColor(currentRoll.dieType) }} />
-                <span className="die-value">{roll}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="roll-total">
-            <div className="total-value">{currentRoll.total}</div>
-          </div>
-
-          {currentRoll.modifier !== 0 && (
-            <div className="modifier-display">
-              Dice: {currentRoll.rolls.reduce((a, b) => a + b, 0)} + Modifier: {currentRoll.modifier}
-            </div>
-          )}
-        </div>
-      )}
-
+      {/* Roll history */}
       {rollHistory.length > 0 && (
-        <div className="roll-history">
-          <h4>Roll History</h4>
-          <div className="history-list">
-            {rollHistory.map((roll, index) => (
-              <div key={index} className="history-item">
-                <span className="history-time">{roll.timestamp}</span>
-                <span className="history-dice">
-                  {roll.system === 'daggerheart' && (
-                    <>
-                      <Sun size={14} /> {roll.hopeDie} | <Moon size={14} /> {roll.fearDie}
-                    </>
-                  )}
-                  {roll.system === 'dnd5e' && (
-                    <>
-                      d20: {roll.d20}
-                    </>
-                  )}
-                  {roll.system === 'starwarsd6' && (
-                    <>
-                      {roll.rolls.length}d6: {roll.rolls.join(', ')}
-                    </>
-                  )}
-                  {roll.system === 'generic' && (
-                    <>
-                      {roll.quantity}d{roll.dieType}: {roll.rolls.join(', ')}
-                    </>
+        <div className="dr-history">
+          <div className="dr-history-title">Recent Rolls</div>
+          <div className="dr-history-list">
+            {rollHistory.map((roll, i) => (
+              <div key={i} className={`dr-history-item ${roll.outcome || ''}`}>
+                <span className="dr-history-time">{roll.timestamp}</span>
+                <span className="dr-history-info">
+                  {roll.system === 'daggerheart' ? (
+                    <><Sun size={12} />{roll.hopeDie} <Moon size={12} />{roll.fearDie}</>
+                  ) : (
+                    roll.formula
                   )}
                 </span>
-                <span className={`history-outcome ${roll.outcome || ''} ${roll.isCritical ? 'critical' : ''} ${roll.isCriticalFail ? 'critical-fail' : ''}`}>
-                  {roll.total}
-                </span>
+                <span className="dr-history-total">{roll.total}</span>
               </div>
             ))}
           </div>

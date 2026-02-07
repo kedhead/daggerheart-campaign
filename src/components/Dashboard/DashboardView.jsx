@@ -105,10 +105,8 @@ export default function DashboardView({ campaign, updateCampaign, characters, lo
         </div>
 
         <div className="dashboard-section">
-          <h2>Dice Roller</h2>
           <DiceRoller
             isDM={isDM}
-            gameSystem={campaign.gameSystem}
             campaignId={campaign.id}
             characters={characters}
             currentUserId={currentUserId}
