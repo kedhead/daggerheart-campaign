@@ -136,15 +136,29 @@ export default async function handler(req, res) {
     // Fetch audio bytes and convert to base64 data URL for persistence
     let audioData = null;
     try {
-      console.log('Fetching audio bytes for base64 encoding...');
-      const audioResponse = await fetch(audioUrl);
+      console.log('Fetching audio bytes for base64 encoding from:', audioUrl.substring(0, 80));
+      let audioResponse = await fetch(audioUrl);
+
+      // If unauthenticated fetch fails, retry with API key header
+      if (!audioResponse.ok) {
+        console.warn('Unauthenticated audio fetch failed:', audioResponse.status, '- retrying with API key');
+        audioResponse = await fetch(audioUrl, {
+          headers: { 'API-KEY': apiKey }
+        });
+      }
+
       if (audioResponse.ok) {
-        const arrayBuffer = await audioResponse.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const base64 = buffer.toString('base64');
         const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
-        audioData = `data:${contentType};base64,${base64}`;
-        console.log('Audio converted to base64, size:', audioData.length);
+        // Verify we got actual audio, not an HTML error page
+        if (!contentType.includes('html')) {
+          const arrayBuffer = await audioResponse.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const base64 = buffer.toString('base64');
+          audioData = `data:${contentType};base64,${base64}`;
+          console.log('Audio converted to base64, size:', audioData.length);
+        } else {
+          console.warn('Audio fetch returned HTML instead of audio data');
+        }
       } else {
         console.warn('Failed to fetch audio bytes:', audioResponse.status);
       }

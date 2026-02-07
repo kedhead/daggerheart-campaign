@@ -204,14 +204,33 @@ export default function DMSoundboard({ campaignId }) {
         promptInfluence: 0.4
       });
 
+      // Get playable audio data - prefer base64, fall back to proxy download
+      let audioData = result.audioData;
+      if (!audioData && result.audioUrl) {
+        console.log('No audioData from API, fetching via download proxy...');
+        try {
+          const proxyRes = await fetch('/api/download-audio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioUrl: result.audioUrl })
+          });
+          if (proxyRes.ok) {
+            const proxyData = await proxyRes.json();
+            audioData = proxyData.dataUrl;
+          }
+        } catch (err) {
+          console.warn('Download proxy fallback failed:', err);
+        }
+      }
+
       // Play immediately from base64 data URL (or fall back to temp URL)
-      const playUrl = result.audioData || result.audioUrl;
+      const playUrl = audioData || result.audioUrl;
       playAudioUrl(playUrl, sound.name);
 
       // Persist to Firebase Storage in the background
-      if (campaignId && result.audioData) {
+      if (campaignId && audioData) {
         const safeName = `sfx_${sound.id}_${Date.now()}`;
-        persistAudio(campaignId, result.audioData, safeName)
+        persistAudio(campaignId, audioData, safeName)
           .then(firebaseUrl => {
             saveCachedSound(sound.id, firebaseUrl);
             // Save updated cache to Firestore
@@ -222,8 +241,8 @@ export default function DMSoundboard({ campaignId }) {
             });
           })
           .catch(err => console.error('Failed to persist sound to Firebase:', err));
-      } else {
-        // No base64 data available, cache the temp URL as fallback
+      } else if (!audioData) {
+        // No base64 data available at all, cache the temp URL as fallback
         saveCachedSound(sound.id, result.audioUrl);
       }
     } catch (error) {
@@ -397,8 +416,27 @@ export default function DMSoundboard({ campaignId }) {
         promptInfluence: 0.5
       });
 
+      // Get playable audio data - prefer base64, fall back to proxy download
+      let audioData = result.audioData;
+      if (!audioData && result.audioUrl) {
+        console.log('No audioData for music, fetching via download proxy...');
+        try {
+          const proxyRes = await fetch('/api/download-audio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioUrl: result.audioUrl })
+          });
+          if (proxyRes.ok) {
+            const proxyData = await proxyRes.json();
+            audioData = proxyData.dataUrl;
+          }
+        } catch (err) {
+          console.warn('Download proxy fallback failed for music:', err);
+        }
+      }
+
       // Play immediately from base64 data URL (or fall back to temp URL)
-      const playUrl = result.audioData || result.audioUrl;
+      const playUrl = audioData || result.audioUrl;
       music.src = playUrl;
       music.volume = isMuted ? 0 : musicVolume / 100;
       music.loop = true;
@@ -417,9 +455,9 @@ export default function DMSoundboard({ campaignId }) {
       }
 
       // Persist to Firebase Storage in the background
-      if (campaignId && result.audioData) {
+      if (campaignId && audioData) {
         const safeName = `music_${themeKey}_${Date.now()}`;
-        persistAudio(campaignId, result.audioData, safeName)
+        persistAudio(campaignId, audioData, safeName)
           .then(firebaseUrl => {
             setCachedMusic(prev => {
               const updated = { ...prev, [themeKey]: firebaseUrl };
@@ -444,8 +482,8 @@ export default function DMSoundboard({ campaignId }) {
             }
           })
           .catch(err => console.error('Failed to persist music to Firebase:', err));
-      } else {
-        // No base64 data, cache the temp URL as fallback
+      } else if (!audioData) {
+        // No base64 data at all, cache the temp URL as fallback
         setCachedMusic(prev => ({ ...prev, [themeKey]: result.audioUrl }));
       }
     } catch (error) {
@@ -530,7 +568,25 @@ export default function DMSoundboard({ campaignId }) {
         promptInfluence: 0.4
       });
 
-      const playUrl = result.audioData || result.audioUrl;
+      // Get playable audio data - prefer base64, fall back to proxy download
+      let audioData = result.audioData;
+      if (!audioData && result.audioUrl) {
+        try {
+          const proxyRes = await fetch('/api/download-audio', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioUrl: result.audioUrl })
+          });
+          if (proxyRes.ok) {
+            const proxyData = await proxyRes.json();
+            audioData = proxyData.dataUrl;
+          }
+        } catch (err) {
+          console.warn('Download proxy fallback failed:', err);
+        }
+      }
+
+      const playUrl = audioData || result.audioUrl;
 
       // Save as custom sound (will be persisted to Firebase in background)
       const soundName = aiPrompt.substring(0, 30) + (aiPrompt.length > 30 ? '...' : '');
@@ -546,9 +602,9 @@ export default function DMSoundboard({ campaignId }) {
       playAudioUrl(playUrl, newSound.name);
 
       // Persist to Firebase in background and save with permanent URL
-      if (campaignId && result.audioData) {
+      if (campaignId && audioData) {
         const safeName = `custom_${newSound.id}`;
-        persistAudio(campaignId, result.audioData, safeName)
+        persistAudio(campaignId, audioData, safeName)
           .then(firebaseUrl => {
             newSound.url = firebaseUrl;
             saveCustomSounds([...customSounds, newSound]);
