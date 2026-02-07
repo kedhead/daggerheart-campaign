@@ -185,31 +185,70 @@ export default async function handler(req, res) {
     let audioData = null;
     const urlsToTry = [audioUrl];
 
-    // If we got an asset.1min.ai URL (not presigned), also try the S3 direct path
-    // In case we missed the presigned URL, try fetching from the API's record endpoint
-    if (relativeAssetPath && audioUrl.includes('asset.1min.ai') && !audioUrl.includes('X-Amz-')) {
-      // The file is on S3 but we don't have a presigned URL - try fetching the record
-      // to get a download link
-      try {
-        console.log('No presigned URL found, fetching record for download link...');
-        const recordId = data.aiRecord?.id || data.aiRecord?.aiRecordDetail?.id;
-        if (recordId) {
-          const recordResponse = await fetch(`https://api.1min.ai/api/records/${recordId}`, {
-            headers: { 'API-KEY': apiKey }
-          });
-          if (recordResponse.ok) {
-            const recordData = await recordResponse.json();
-            console.log('Record response keys:', JSON.stringify(Object.keys(recordData)));
-            const recordSignedUrl = findSignedUrl(recordData);
-            if (recordSignedUrl) {
-              console.log('Found presigned URL from record endpoint');
-              urlsToTry.unshift(recordSignedUrl);
-              audioUrl = recordSignedUrl; // Use this as the primary URL
+    // If we don't have a presigned URL, try 1min.ai API endpoints to get a download link
+    if (!audioUrl.includes('X-Amz-') && !audioUrl.includes('amazonaws.com')) {
+      const recordUuid = data.aiRecord?.uuid;
+      console.log('No presigned URL found. Record UUID:', recordUuid, 'Asset path:', relativeAssetPath);
+
+      if (recordUuid) {
+        // Try multiple 1min.ai API endpoints to get a presigned download URL
+        const endpoints = [
+          `https://api.1min.ai/api/records/${recordUuid}`,
+          `https://api.1min.ai/api/records/${recordUuid}/download`,
+          `https://api.1min.ai/api/features/${recordUuid}/download`,
+        ];
+
+        for (const endpoint of endpoints) {
+          try {
+            console.log('Trying endpoint:', endpoint);
+            const recordResponse = await fetch(endpoint, {
+              headers: {
+                'API-KEY': apiKey,
+                'Content-Type': 'application/json'
+              }
+            });
+            console.log('Endpoint response:', recordResponse.status, recordResponse.headers.get('content-type'));
+
+            if (recordResponse.ok) {
+              const ct = recordResponse.headers.get('content-type') || '';
+
+              // If the endpoint returns the audio file directly
+              if (ct.includes('audio') || ct.includes('octet-stream')) {
+                console.log('Endpoint returned audio directly');
+                const arrayBuffer = await recordResponse.arrayBuffer();
+                if (arrayBuffer.byteLength > 100) {
+                  const buffer = Buffer.from(arrayBuffer);
+                  const base64 = buffer.toString('base64');
+                  audioData = `data:audio/mpeg;base64,${base64}`;
+                  console.log('Audio from endpoint, base64 size:', audioData.length);
+                  break;
+                }
+              }
+
+              // If the endpoint returns JSON with a URL
+              if (ct.includes('json')) {
+                const recordData = await recordResponse.json();
+                console.log('Endpoint JSON keys:', Object.keys(recordData));
+                const recordSignedUrl = findSignedUrl(recordData);
+                if (recordSignedUrl) {
+                  console.log('Found presigned URL from endpoint');
+                  urlsToTry.unshift(recordSignedUrl);
+                  audioUrl = recordSignedUrl;
+                  break;
+                }
+                // Check if there's a temporaryUrl in this response
+                if (recordData.temporaryUrl && recordData.temporaryUrl.length > 10) {
+                  console.log('Found temporaryUrl from endpoint');
+                  urlsToTry.unshift(recordData.temporaryUrl);
+                  audioUrl = recordData.temporaryUrl;
+                  break;
+                }
+              }
             }
+          } catch (e) {
+            console.warn('Endpoint failed:', endpoint, e.message);
           }
         }
-      } catch (e) {
-        console.warn('Record fetch attempt failed:', e.message);
       }
     }
 
