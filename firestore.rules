@@ -229,8 +229,24 @@ service cloud.firestore {
       match /battleMapDisplay/{docId} {
         // All campaign members can read the battle map display state
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        // Only DM can write to the battle map display
-        allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // DM can write to any doc, members can write to diceRoll (for player dice rolling)
+        allow write: if isAuthenticated() && (
+          isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) ||
+          isSuperAdmin() ||
+          (docId == 'diceRoll' && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data))
+        );
+
+        // Dice roll history subcollection - all members can write
+        match /rolls/{rollDoc} {
+          allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+          allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+
+          // History entries
+          match /history/{entryId} {
+            allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+            allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+          }
+        }
       }
 
       // Generated Images (AI-generated creatures, monsters, etc.)
