@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Dices, X, Sun, Moon, Plus, Minus } from 'lucide-react';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../../config/firebase';
 import Dice3DOverlay from '../../DiceRoller/Dice3DOverlay';
 
 const DICE_TYPES = [
@@ -11,7 +13,7 @@ const DICE_TYPES = [
   { id: 'd20', sides: 20, color: '#ef4444', label: 'D20' }
 ];
 
-export default function BattleMapDice({ onRollComplete }) {
+export default function BattleMapDice({ campaignId, onRollComplete }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDice, setSelectedDice] = useState({}); // { d4: 0, d6: 2, etc }
   const [modifier, setModifier] = useState(0);
@@ -129,6 +131,16 @@ export default function BattleMapDice({ onRollComplete }) {
     setRollData(data);
     setShow3D(true);
     setIsOpen(false);
+
+    // Broadcast to Battle Map Display
+    if (campaignId) {
+      const rollDoc = doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`);
+      setDoc(rollDoc, {
+        ...data,
+        timestamp: serverTimestamp(),
+        rollId: Date.now().toString()
+      }).catch(err => console.error('Failed to broadcast dice roll:', err));
+    }
   };
 
   // Handle 3D animation complete

@@ -10,7 +10,7 @@ const tools = [
   { id: 'fog-erase', icon: Eraser, label: 'Reveal Fog' }
 ];
 
-export default function CanvasToolbar() {
+export default function CanvasToolbar({ campaignId }) {
   const { selectedTool, setSelectedTool, selectedTokenIds, deleteSelectedTokens } = useBattleMapStore();
 
   // Set up keyboard shortcuts
@@ -72,7 +72,7 @@ export default function CanvasToolbar() {
       <div className="toolbar-divider" style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }} />
 
       {/* Dice Roller */}
-      <BattleMapDice />
+      <BattleMapDice campaignId={campaignId} />
     </div>
   );
 }

@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
 import useImage from 'use-image';
 import { Maximize, Minimize, Grid } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
+import Dice3DOverlay from '../DiceRoller/Dice3DOverlay';
 import './BattleMapDisplayWindow.css';
 
 /**
@@ -240,6 +241,9 @@ export default function BattleMapDisplayWindow({ campaignId }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [scale, setScale] = useState(1);
+  const [diceRoll, setDiceRoll] = useState(null);
+  const [showDiceOverlay, setShowDiceOverlay] = useState(false);
+  const lastRollIdRef = useRef(null);
 
   // Subscribe to battle map display state
   useEffect(() => {
@@ -261,6 +265,31 @@ export default function BattleMapDisplayWindow({ campaignId }) {
       (error) => {
         console.error('Battle map display subscription error:', error);
         setLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [campaignId]);
+
+  // Subscribe to dice rolls
+  useEffect(() => {
+    if (!campaignId) return;
+
+    const unsubscribe = onSnapshot(
+      doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`),
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data();
+          // Only show if it's a new roll (different rollId)
+          if (data.rollId && data.rollId !== lastRollIdRef.current) {
+            lastRollIdRef.current = data.rollId;
+            setDiceRoll(data);
+            setShowDiceOverlay(true);
+          }
+        }
+      },
+      (error) => {
+        console.error('Dice roll subscription error:', error);
       }
     );
 
@@ -345,6 +374,18 @@ export default function BattleMapDisplayWindow({ campaignId }) {
           Campaign: {campaignId || 'Not specified'}
         </div>
       )}
+
+      {/* 3D Dice Roll Overlay */}
+      <Dice3DOverlay
+        show={showDiceOverlay}
+        rollData={diceRoll}
+        onComplete={() => {
+          setShowDiceOverlay(false);
+        }}
+        onClose={() => {
+          setShowDiceOverlay(false);
+        }}
+      />
     </div>
   );
 }

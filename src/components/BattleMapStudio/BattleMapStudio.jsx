@@ -263,7 +263,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
       <div className="studio-workspace">
         {/* Left toolbar */}
         <div className="studio-toolbar">
-          <CanvasToolbar />
+          <CanvasToolbar campaignId={campaignId} />
           <div className="toolbar-divider" />
           <ZoomControls />
           <div className="toolbar-divider" />
