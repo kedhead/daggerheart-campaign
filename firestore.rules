@@ -235,18 +235,12 @@ service cloud.firestore {
           isSuperAdmin() ||
           (docId == 'diceRoll' && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data))
         );
+      }
 
-        // Dice roll history subcollection - all members can write
-        match /rolls/{rollDoc} {
-          allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-          allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-
-          // History entries
-          match /history/{entryId} {
-            allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-            allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-          }
-        }
+      // Dice roll history - path: battleMapDisplay/rolls/history/{entryId}
+      match /battleMapDisplay/rolls/history/{entryId} {
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Generated Images (AI-generated creatures, monsters, etc.)

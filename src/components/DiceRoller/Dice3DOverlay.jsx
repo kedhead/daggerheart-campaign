@@ -377,14 +377,17 @@ function DiceScene({ rollData, onComplete }) {
         }
       ];
     } else if (rollData.system === 'generic' && rollData.rolls) {
+      // Use player color if provided, otherwise fall back to die type color
+      const usePlayerColor = rollData.playerColor && rollData.playerColor !== '#3b82f6';
+
       // Handle new format with typed dice objects
       if (rollData.rolls.length > 0 && typeof rollData.rolls[0] === 'object') {
         return rollData.rolls.map((roll, i) => ({
           type: roll.type || `d${roll.sides}`,
           result: roll.result,
           position: [(i - (rollData.rolls.length - 1) / 2) * 1.5, 0, 0],
-          color: roll.color ? lightenColor(roll.color) : '#e0f2fe',
-          glowColor: roll.color || '#3b82f6'
+          color: usePlayerColor ? lightenColor(rollData.playerColor) : (roll.color ? lightenColor(roll.color) : '#e0f2fe'),
+          glowColor: usePlayerColor ? rollData.playerColor : (roll.color || '#3b82f6')
         }));
       }
       // Handle old format with simple array of numbers
@@ -392,8 +395,8 @@ function DiceScene({ rollData, onComplete }) {
         type: `d${rollData.dieType}`,
         result,
         position: [(i - (rollData.rolls.length - 1) / 2) * 1.5, 0, 0],
-        color: '#e0f2fe',
-        glowColor: '#3b82f6'
+        color: usePlayerColor ? lightenColor(rollData.playerColor) : '#e0f2fe',
+        glowColor: usePlayerColor ? rollData.playerColor : '#3b82f6'
       }));
     } else if (rollData.system === 'dnd5e') {
       const dice = [{
@@ -561,7 +564,18 @@ export default function Dice3DOverlay({
           )}
           {/* Generic dice just show total */}
           {rollData.system !== 'daggerheart' && (
-            <div className="result-total">{rollData.total}</div>
+            <div
+              className="result-total"
+              style={rollData.playerColor ? {
+                color: rollData.playerColor,
+                textShadow: `0 0 30px ${rollData.playerColor}`,
+                background: 'none',
+                WebkitBackgroundClip: 'unset',
+                WebkitTextFillColor: rollData.playerColor
+              } : {}}
+            >
+              {rollData.total}
+            </div>
           )}
           {/* Player name if present */}
           {rollData.playerName && (
