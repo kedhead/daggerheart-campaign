@@ -14,6 +14,15 @@ const DICE_FACES = {
   d20: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 };
 
+// Helper to lighten a color for the dice body
+function lightenColor(hex) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lighten = (c) => Math.min(255, c + 180);
+  return `#${lighten(r).toString(16).padStart(2, '0')}${lighten(g).toString(16).padStart(2, '0')}${lighten(b).toString(16).padStart(2, '0')}`;
+}
+
 // Single 3D Die component
 function Die3D({
   dieType = 'd12',
@@ -324,7 +333,10 @@ function DiceScene({ rollData, onComplete }) {
   const [particleTrigger, setParticleTrigger] = useState(false);
   const [shakeTrigger, setShakeTrigger] = useState(false);
   const diceCompleted = useRef(0);
-  const totalDice = rollData.dice?.length || 2; // Default to 2 for hope/fear
+  // Calculate total dice based on roll data
+  const totalDice = rollData.system === 'daggerheart' ? 2 :
+                    rollData.rolls?.length ||
+                    (rollData.d20Second !== undefined ? 2 : 1);
 
   const handleDieComplete = () => {
     diceCompleted.current++;
@@ -365,6 +377,17 @@ function DiceScene({ rollData, onComplete }) {
         }
       ];
     } else if (rollData.system === 'generic' && rollData.rolls) {
+      // Handle new format with typed dice objects
+      if (rollData.rolls.length > 0 && typeof rollData.rolls[0] === 'object') {
+        return rollData.rolls.map((roll, i) => ({
+          type: roll.type || `d${roll.sides}`,
+          result: roll.result,
+          position: [(i - (rollData.rolls.length - 1) / 2) * 1.5, 0, 0],
+          color: roll.color ? lightenColor(roll.color) : '#e0f2fe',
+          glowColor: roll.color || '#3b82f6'
+        }));
+      }
+      // Handle old format with simple array of numbers
       return rollData.rolls.map((result, i) => ({
         type: `d${rollData.dieType}`,
         result,
