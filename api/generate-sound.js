@@ -144,66 +144,94 @@ export default async function handler(req, res) {
     let audioUrl = assetPath ? `https://asset.1min.ai/${assetPath}` : null;
     const recordUuid = data.aiRecord?.uuid;
 
-    // Strategy 1: Try records endpoint (may have presigned URL)
-    if (recordUuid) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      try {
-        const recordResponse = await fetch(`https://api.1min.ai/api/records/${recordUuid}`, {
-          headers: { 'API-KEY': apiKey }
-        });
-        const status = recordResponse.status;
-        const ct = recordResponse.headers.get('content-type') || '';
-        if (recordResponse.ok && ct.includes('json')) {
-          const rd = await recordResponse.json();
-          const tempUrl = rd.temporaryUrl || rd.aiRecord?.temporaryUrl || '';
-          debug.push({ endpoint: `/api/records/${recordUuid}`, status, temporaryUrl: tempUrl.substring(0, 80) || '(empty)', keys: Object.keys(rd) });
-          if (tempUrl && tempUrl.length > 10) {
-            urlsToTry.unshift(tempUrl);
-          }
-        } else {
-          debug.push({ endpoint: `/api/records/${recordUuid}`, status, note: 'non-json or error' });
-        }
-      } catch (e) {
-        debug.push({ endpoint: `/api/records/${recordUuid}`, error: e.message });
-      }
-    }
-
-    // Strategy 2: Try 1min.ai assets endpoint as file proxy
+    // Strategy 1: Try asset.1min.ai with authentication headers
+    // asset.1min.ai returns JSON 500 (it's an API server, not raw S3)
+    // so it likely needs auth to serve files
     if (assetPath) {
       const cleanPath = assetPath.replace(/^\//, '');
-      const assetsEndpoints = [
-        { url: `https://api.1min.ai/api/assets/${cleanPath}`, label: 'assets/path' },
-        { url: `https://api.1min.ai/api/assets?path=${encodeURIComponent(cleanPath)}`, label: 'assets?path=' },
+      const assetUrl = `https://asset.1min.ai/${cleanPath}`;
+      const authHeaders = [
+        { headers: { 'API-KEY': apiKey }, label: 'asset.1min.ai+API-KEY' },
+        { headers: { 'Authorization': `Bearer ${apiKey}` }, label: 'asset.1min.ai+Bearer' },
+        { headers: { 'x-api-key': apiKey }, label: 'asset.1min.ai+x-api-key' },
       ];
-      for (const ep of assetsEndpoints) {
+
+      for (const auth of authHeaders) {
+        if (audioData) break;
         try {
-          const resp = await fetch(ep.url, { headers: { 'API-KEY': apiKey } });
+          const resp = await fetch(assetUrl, { headers: auth.headers });
           const ct = resp.headers.get('content-type') || '';
-          debug.push({ endpoint: ep.label, status: resp.status, contentType: ct.substring(0, 50) });
+          const status = resp.status;
 
           if (resp.ok && (ct.includes('audio') || ct.includes('octet-stream'))) {
             const ab = await resp.arrayBuffer();
             if (ab.byteLength > 100) {
               const buf = Buffer.from(ab);
               audioData = `data:audio/mpeg;base64,${buf.toString('base64')}`;
-              debug.push({ endpoint: ep.label, result: 'SUCCESS', bytes: ab.byteLength });
+              debug.push({ strategy: auth.label, status, result: 'SUCCESS', bytes: ab.byteLength });
               break;
             }
           } else if (resp.ok && ct.includes('json')) {
-            const jsonBody = await resp.json();
-            debug.push({ endpoint: ep.label, jsonKeys: Object.keys(jsonBody), tempUrl: (jsonBody.temporaryUrl || jsonBody.url || '').substring(0, 80) });
-            const foundUrl = jsonBody.temporaryUrl || jsonBody.url || jsonBody.downloadUrl;
-            if (foundUrl && foundUrl.length > 10 && foundUrl.startsWith('http')) {
-              urlsToTry.unshift(foundUrl);
+            const body = await resp.json();
+            debug.push({ strategy: auth.label, status, jsonKeys: Object.keys(body), msg: (body.message || body.error || '').substring(0, 100) });
+            // Check if JSON contains a download URL
+            const url = body.temporaryUrl || body.url || body.downloadUrl || body.signedUrl;
+            if (url && url.length > 10 && url.startsWith('http')) {
+              urlsToTry.unshift(url);
+              debug.push({ strategy: auth.label, note: 'Found URL in response', url: url.substring(0, 80) });
             }
+          } else {
+            // Read body for error details
+            let errBody = '';
+            try { errBody = (await resp.text()).substring(0, 150); } catch {}
+            debug.push({ strategy: auth.label, status, contentType: ct.substring(0, 50), body: errBody });
           }
         } catch (e) {
-          debug.push({ endpoint: ep.label, error: e.message });
+          debug.push({ strategy: auth.label, error: e.message });
         }
       }
     }
 
-    // Strategy 3: Try all collected URLs (presigned, S3, CNAME)
+    // Strategy 2: Try various 1min.ai API record/download endpoints
+    if (!audioData && recordUuid) {
+      const apiEndpoints = [
+        { url: `https://api.1min.ai/api/ai-records/${recordUuid}`, label: 'ai-records' },
+        { url: `https://api.1min.ai/api/features/${recordUuid}`, label: 'features/uuid' },
+        { url: `https://api.1min.ai/api/features/${recordUuid}/download`, label: 'features/download' },
+      ];
+
+      for (const ep of apiEndpoints) {
+        if (audioData) break;
+        try {
+          const resp = await fetch(ep.url, { headers: { 'API-KEY': apiKey } });
+          const ct = resp.headers.get('content-type') || '';
+          const status = resp.status;
+
+          if (resp.ok && (ct.includes('audio') || ct.includes('octet-stream'))) {
+            const ab = await resp.arrayBuffer();
+            if (ab.byteLength > 100) {
+              const buf = Buffer.from(ab);
+              audioData = `data:audio/mpeg;base64,${buf.toString('base64')}`;
+              debug.push({ strategy: ep.label, status, result: 'SUCCESS', bytes: ab.byteLength });
+              break;
+            }
+          } else if (resp.ok && ct.includes('json')) {
+            const body = await resp.json();
+            const tempUrl = body.temporaryUrl || body.aiRecord?.temporaryUrl || '';
+            debug.push({ strategy: ep.label, status, keys: Object.keys(body), temporaryUrl: (tempUrl || '').substring(0, 80) || '(empty)' });
+            if (tempUrl && tempUrl.length > 10) {
+              urlsToTry.unshift(tempUrl);
+            }
+          } else {
+            debug.push({ strategy: ep.label, status, contentType: ct.substring(0, 50) });
+          }
+        } catch (e) {
+          debug.push({ strategy: ep.label, error: e.message });
+        }
+      }
+    }
+
+    // Strategy 3: Try all collected URLs (presigned URLs found above, S3 URLs)
     if (!audioData) {
       for (const tryUrl of urlsToTry) {
         try {
@@ -219,13 +247,13 @@ export default async function handler(req, res) {
               const mimeType = ct.includes('audio') ? ct : 'audio/mpeg';
               audioData = `data:${mimeType};base64,${buf.toString('base64')}`;
               audioUrl = tryUrl;
-              debug.push({ url: label, status, result: 'SUCCESS', bytes: ab.byteLength });
+              debug.push({ strategy: 'direct-url', url: label, status, result: 'SUCCESS', bytes: ab.byteLength });
               break;
             }
           }
-          debug.push({ url: label, status, contentType: ct.substring(0, 30) });
+          debug.push({ strategy: 'direct-url', url: label, status, contentType: ct.substring(0, 30) });
         } catch (e) {
-          debug.push({ url: tryUrl.substring(0, 60), error: e.message });
+          debug.push({ strategy: 'direct-url', url: tryUrl.substring(0, 60), error: e.message });
         }
       }
     }
