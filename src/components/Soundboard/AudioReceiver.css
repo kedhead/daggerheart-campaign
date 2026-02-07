@@ -1,0 +1,67 @@
+/* Audio Receiver - Player side */
+.audio-receiver {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 100;
+}
+
+.audio-mute-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  backdrop-filter: blur(10px);
+}
+
+.audio-mute-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.audio-mute-btn.muted {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+}
+
+.audio-now-playing {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 20px;
+  color: white;
+  font-size: 0.85rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.audio-pulse {
+  width: 8px;
+  height: 8px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: audioPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes audioPulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}

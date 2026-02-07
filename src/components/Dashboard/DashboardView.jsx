@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Users, BookOpen, ScrollText, ExternalLink, Edit3 } from 'lucide-react';
 import DiceRoller from '../DiceRoller';
+import DMSoundboard from '../Soundboard/DMSoundboard';
 import Modal from '../Modal';
 import RelationshipGraph from '../RelationshipGraph/RelationshipGraph';
 import { getGameSystem } from '../../data/systems/index.js';
@@ -112,6 +113,13 @@ export default function DashboardView({ campaign, updateCampaign, characters, lo
             currentUserId={currentUserId}
           />
         </div>
+
+        {/* DM Soundboard */}
+        {isDM && (
+          <div className="dashboard-section">
+            <DMSoundboard campaignId={campaign.id} />
+          </div>
+        )}
       </div>
 
       {recentSessions.length > 0 && (

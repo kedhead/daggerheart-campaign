@@ -229,7 +229,8 @@ service cloud.firestore {
       match /battleMapDisplay/{docId} {
         // All campaign members can read the battle map display state
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
-        // DM can write to any doc, members can write to diceRoll (for player dice rolling)
+        // DM can write to any doc (including 'audio' for soundboard)
+        // Members can write to diceRoll (for player dice rolling)
         allow write: if isAuthenticated() && (
           isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) ||
           isSuperAdmin() ||

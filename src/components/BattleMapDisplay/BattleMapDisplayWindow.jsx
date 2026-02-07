@@ -7,6 +7,7 @@ import { Maximize, Minimize, Grid } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 import Dice3DOverlay from '../DiceRoller/Dice3DOverlay';
 import PlayerDicePanel from './PlayerDicePanel';
+import AudioReceiver from '../Soundboard/AudioReceiver';
 import './BattleMapDisplayWindow.css';
 
 /**
@@ -390,6 +391,9 @@ export default function BattleMapDisplayWindow({ campaignId }) {
 
       {/* Player Dice Panel */}
       <PlayerDicePanel campaignId={campaignId} />
+
+      {/* Audio Receiver for DM Soundboard */}
+      <AudioReceiver campaignId={campaignId} />
     </div>
   );
 }
