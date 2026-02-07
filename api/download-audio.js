@@ -31,8 +31,8 @@ export default async function handler(req, res) {
     // Build list of URLs to try (different S3 access patterns)
     const urlsToTry = [audioUrl];
 
-    // If it's an asset.1min.ai URL, also try S3 path-style and virtual-hosted URLs
-    if (audioUrl.includes('asset.1min.ai')) {
+    // If it's an asset.1min.ai CNAME URL (not already an S3 URL), try S3 patterns
+    if (audioUrl.includes('asset.1min.ai') && !audioUrl.includes('amazonaws.com')) {
       const path = audioUrl.replace(/^https?:\/\/asset\.1min\.ai\//, '');
       urlsToTry.push(`https://s3.us-east-1.amazonaws.com/asset.1min.ai/${path}`);
       urlsToTry.push(`https://asset.1min.ai.s3.us-east-1.amazonaws.com/${path}`);

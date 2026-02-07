@@ -138,25 +138,40 @@ export default async function handler(req, res) {
       urlsToTry.push(`https://asset.1min.ai/${cleanPath}`);
     }
 
-    // Also try the record endpoint to get a presigned URL
+    // Try the records endpoint to get a presigned URL
+    // The initial response has temporaryUrl: "" but fetching the record
+    // separately may return a populated presigned URL
     const recordUuid = data.aiRecord?.uuid;
     if (recordUuid && !hasTemporaryUrl) {
+      // Wait briefly for S3 presigned URL generation (may be async)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       try {
-        console.log('Fetching record to get download URL, UUID:', recordUuid);
+        console.log('Fetching record for presigned URL, UUID:', recordUuid);
         const recordResponse = await fetch(`https://api.1min.ai/api/records/${recordUuid}`, {
           headers: { 'API-KEY': apiKey }
         });
+        console.log('Record endpoint status:', recordResponse.status);
+
         if (recordResponse.ok) {
-          const contentType = recordResponse.headers.get('content-type') || '';
-          if (contentType.includes('json')) {
-            const recordData = await recordResponse.json();
-            console.log('Record response temporaryUrl:', recordData.temporaryUrl?.substring(0, 80));
-            if (recordData.temporaryUrl && recordData.temporaryUrl.length > 10) {
-              urlsToTry.unshift(recordData.temporaryUrl);
-            }
+          const recordData = await recordResponse.json();
+          // Log the full record response to understand its structure
+          console.log('Record response full:', JSON.stringify(recordData, null, 2));
+
+          // Check temporaryUrl at various paths
+          const recTempUrl = recordData.temporaryUrl
+            || recordData.aiRecord?.temporaryUrl
+            || recordData.data?.temporaryUrl;
+
+          if (recTempUrl && recTempUrl.length > 10) {
+            console.log('Found presigned URL from records endpoint!');
+            urlsToTry.unshift(recTempUrl);
+          } else {
+            console.warn('Records endpoint temporaryUrl is empty/missing');
           }
         } else {
-          console.warn('Record endpoint returned:', recordResponse.status);
+          const errText = await recordResponse.text();
+          console.warn('Record endpoint error:', recordResponse.status, errText.substring(0, 200));
         }
       } catch (e) {
         console.warn('Record fetch failed:', e.message);
