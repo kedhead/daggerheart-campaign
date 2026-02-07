@@ -223,6 +223,13 @@ export default function DMSoundboard({ campaignId }) {
 
   // Play an audio URL - returns true if successful, false if failed
   const playAudioUrl = async (url, name) => {
+    console.log('Attempting to play audio URL:', url?.substring(0, 120));
+
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+      console.error('Invalid audio URL:', url);
+      return false;
+    }
+
     const audio = effectsAudioRef.current;
     audio.src = url;
     audio.volume = isMuted ? 0 : effectsVolume / 100;
@@ -244,7 +251,7 @@ export default function DMSoundboard({ campaignId }) {
       }
       return true;
     } catch (error) {
-      console.error('Failed to play audio:', error);
+      console.error('Failed to play audio URL:', url?.substring(0, 120), error);
       return false;
     }
   };

@@ -41,6 +41,7 @@ export async function generateSoundEffect(prompt, _apiKey, options = {}) {
     }
 
     const data = await response.json();
+    console.log('Sound API response:', { audioUrl: data.audioUrl, keys: Object.keys(data) });
 
     if (data.audioUrl) {
       return data.audioUrl;
@@ -75,73 +76,6 @@ export async function generateBackgroundMusic(theme, apiKey, options = {}) {
     outputFormat: 'mp3_44100_192' // Higher quality for music
   });
 }
-
-/**
- * Curated royalty-free music tracks
- * These are from sources that allow embedding (Archive.org, etc.)
- */
-export const CURATED_MUSIC = {
-  battle: [
-    {
-      id: 'battle-1',
-      name: 'Epic Battle Theme',
-      artist: 'Fantasy RPG Music',
-      url: 'https://archive.org/download/EpicBattleMusic/epic-battle-theme.mp3',
-      duration: '3:24',
-      mood: 'Intense, dramatic'
-    }
-  ],
-  exploration: [
-    {
-      id: 'explore-1',
-      name: 'Wanderer\'s Journey',
-      artist: 'Ambient Fantasy',
-      url: 'https://archive.org/download/AmbientFantasyMusic/wanderers-journey.mp3',
-      duration: '4:12',
-      mood: 'Peaceful, adventurous'
-    }
-  ],
-  mystery: [
-    {
-      id: 'mystery-1',
-      name: 'Dark Secrets',
-      artist: 'Dungeon Sounds',
-      url: 'https://archive.org/download/DungeonAmbience/dark-secrets.mp3',
-      duration: '5:00',
-      mood: 'Suspenseful, eerie'
-    }
-  ],
-  tavern: [
-    {
-      id: 'tavern-1',
-      name: 'The Merry Inn',
-      artist: 'Medieval Tavern Music',
-      url: 'https://archive.org/download/MedievalTavernMusic/merry-inn.mp3',
-      duration: '3:45',
-      mood: 'Cheerful, festive'
-    }
-  ],
-  tension: [
-    {
-      id: 'tension-1',
-      name: 'Approaching Danger',
-      artist: 'Cinematic Scores',
-      url: 'https://archive.org/download/CinematicTension/approaching-danger.mp3',
-      duration: '2:30',
-      mood: 'Ominous, building'
-    }
-  ],
-  victory: [
-    {
-      id: 'victory-1',
-      name: 'Triumphant Heroes',
-      artist: 'Epic Orchestral',
-      url: 'https://archive.org/download/EpicOrchestral/triumphant-heroes.mp3',
-      duration: '1:45',
-      mood: 'Heroic, celebratory'
-    }
-  ]
-};
 
 /**
  * Sound effect presets for quick generation
@@ -192,6 +126,5 @@ export const SOUND_PRESETS = {
 export default {
   generateSoundEffect,
   generateBackgroundMusic,
-  CURATED_MUSIC,
   SOUND_PRESETS
 };
