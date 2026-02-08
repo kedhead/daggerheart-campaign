@@ -17,7 +17,7 @@ service firebase.storage {
     // Helper function to check if user is a member of the campaign
     function isCampaignMember(campaignId) {
       let campaign = getCampaign(campaignId);
-      return request.auth.uid in campaign.data.members;
+      return campaign.data.members[request.auth.uid] != null;
     }
 
     // Helper function to check if user is a DM of the campaign
