@@ -1,38 +1,112 @@
 .sidebar {
-  width: 280px;
+  width: var(--sidebar-width);
   min-height: 100vh;
   background: var(--bg-secondary);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--border-accent);
+  box-shadow: 4px 0 20px var(--glow-color);
   display: flex;
   flex-direction: column;
-  padding: 2rem 1.5rem;
+  padding: 1.5rem 1rem;
   position: sticky;
   top: 0;
   height: 100vh;
+  transition: width 0.3s ease, padding 0.3s ease;
+  overflow: hidden;
+}
+
+/* Collapsed sidebar state */
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+  padding: 1.5rem 0.75rem;
+}
+
+.sidebar.collapsed .sidebar-header {
+  justify-content: center;
+}
+
+.sidebar.collapsed .campaign-name,
+.sidebar.collapsed .user-role-badge span,
+.sidebar.collapsed .nav-group-title span,
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .logout-btn span,
+.sidebar.collapsed .sidebar-branding {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item,
+.sidebar.collapsed .nav-group-header {
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+.sidebar.collapsed .nav-group-items {
+  padding-left: 0;
+}
+
+.sidebar.collapsed .current-campaign {
+  padding: 0.5rem;
+}
+
+.sidebar.collapsed .campaign-switcher {
+  justify-content: center;
+  padding: 0.5rem;
 }
 
 .sidebar-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.sidebar.collapsed .sidebar-header {
+  align-items: center;
+}
+
+.collapse-toggle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sidebar.collapsed .collapse-toggle {
+  position: static;
+  margin-top: 0.5rem;
+}
+
+.collapse-toggle:hover {
+  background: var(--card-bg);
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
 }
 
 .sidebar-title {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   margin-bottom: 0.25rem;
-  background: linear-gradient(135deg, var(--hope-color), var(--hope-secondary));
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .sidebar.dm-mode .sidebar-title {
-  background: linear-gradient(135deg, var(--fear-color), var(--fear-secondary));
+  background: linear-gradient(135deg, var(--accent-tertiary), var(--accent-tertiary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .sidebar-subtitle {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
@@ -306,6 +380,7 @@
 
 /* Mobile responsive styles */
 @media (max-width: 767px) {
+
   /* Sidebar: Hidden by default, slide in when open */
   .sidebar {
     position: fixed;
@@ -316,7 +391,7 @@
     transition: left 0.3s ease;
     z-index: 1000;
     background: var(--bg-secondary);
-    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
   }
 
   .sidebar.mobile-open {
@@ -358,7 +433,7 @@
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     z-index: 999;
     animation: fadeIn 0.3s ease;
   }
@@ -371,6 +446,7 @@
   }
 
   .sidebar-backdrop {
-    display: none !important; /* Important to override inline style */
+    display: none !important;
+    /* Important to override inline style */
   }
 }

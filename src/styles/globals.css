@@ -1,25 +1,38 @@
 :root {
-  /* Background */
-  --bg-primary: #0f0f1a;
-  --bg-secondary: #1a1a2e;
-  --bg-tertiary: #16213e;
+  /* Background - Set dynamically by theme, these are defaults */
+  --bg-primary: #0d1126;
+  --bg-secondary: #141b33;
+  --bg-tertiary: #1a2340;
+
+  /* Accent Colors - Set dynamically by theme */
+  --accent-primary: #eab308;
+  --accent-secondary: #f59e0b;
+  --accent-tertiary: #8b5cf6;
+
+  /* Glow and Border Effects */
+  --glow-color: rgba(234, 179, 8, 0.3);
+  --border-accent: rgba(234, 179, 8, 0.4);
 
   /* Text */
   --text-primary: #e8e6e3;
-  --text-muted: rgba(232, 230, 227, 0.7);
+  --text-secondary: rgba(232, 230, 227, 0.8);
+  --text-muted: rgba(232, 230, 227, 0.6);
 
-  /* Hope (Player Mode Accent) */
-  --hope-color: #eab308;
-  --hope-secondary: #f59e0b;
-
-  /* Fear (DM Mode Accent) */
-  --fear-color: #8b5cf6;
-  --fear-secondary: #a78bfa;
+  /* Legacy support - map to new system */
+  --hope-color: var(--accent-primary);
+  --hope-secondary: var(--accent-secondary);
+  --fear-color: var(--accent-tertiary);
+  --fear-secondary: var(--accent-tertiary);
 
   /* UI */
   --danger: #ef4444;
+  --success: #22c55e;
   --border: rgba(255, 255, 255, 0.1);
-  --card-bg: rgba(0, 0, 0, 0.3);
+  --card-bg: rgba(13, 17, 38, 0.8);
+
+  /* Sidebar */
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 72px;
 }
 
 * {
@@ -36,7 +49,12 @@ body {
   line-height: 1.6;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: 'Cinzel', serif;
   font-weight: 600;
   line-height: 1.3;
@@ -48,7 +66,9 @@ button {
   transition: all 0.2s ease;
 }
 
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: 'Crimson Pro', Georgia, serif;
 }
 
@@ -93,15 +113,17 @@ input, textarea, select {
 
 .card {
   background: var(--card-bg);
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-accent);
+  border-radius: 16px;
   padding: 1.5rem;
   transition: all 0.3s ease;
+  box-shadow: 0 0 20px var(--glow-color), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 30px var(--glow-color), 0 8px 32px rgba(0, 0, 0, 0.3);
   transform: translateY(-2px);
 }
 
@@ -115,7 +137,8 @@ input, textarea, select {
   align-items: center;
   gap: 0.5rem;
   transition: all 0.2s ease;
-  min-height: 44px; /* iOS touch target minimum */
+  min-height: 44px;
+  /* iOS touch target minimum */
 }
 
 .btn:hover {
@@ -181,7 +204,8 @@ input, textarea, select {
   border-radius: 8px;
   color: var(--text-primary);
   font-size: 0.95rem;
-  min-height: 44px; /* iOS touch target minimum */
+  min-height: 44px;
+  /* iOS touch target minimum */
 }
 
 .input-group input:focus,
@@ -238,6 +262,7 @@ input, textarea, select {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -249,6 +274,7 @@ input, textarea, select {
     opacity: 0;
     transform: translateX(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -318,7 +344,8 @@ input, textarea, select {
 /* Responsive view header pattern */
 .view-header {
   display: flex;
-  flex-direction: column; /* Mobile: stack */
+  flex-direction: column;
+  /* Mobile: stack */
   gap: 1rem;
   align-items: stretch;
   margin-bottom: 1.5rem;
@@ -329,7 +356,8 @@ input, textarea, select {
 }
 
 .view-header .btn {
-  width: 100%; /* Full-width button on mobile */
+  width: 100%;
+  /* Full-width button on mobile */
 }
 
 @media (min-width: 768px) {
@@ -361,6 +389,7 @@ input, textarea, select {
 }
 
 @media (min-width: 768px) {
+
   .characters-view,
   .lore-view,
   .sessions-view,
@@ -374,6 +403,7 @@ input, textarea, select {
 }
 
 @media (min-width: 1024px) {
+
   .characters-view,
   .lore-view,
   .sessions-view,

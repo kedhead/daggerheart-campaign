@@ -1,13 +1,33 @@
-import { useState } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target, Monitor, Skull, Grid, TreePine } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target, Monitor, Skull, Grid, TreePine, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
+import { applyTheme } from '../config/themes.js';
 import './Sidebar.css';
 
 export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign, presenceIndicator }) {
   const { logout, currentUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('sidebarCollapsed') === 'true';
+  });
   const [expandedGroups, setExpandedGroups] = useState(['superadmin', 'campaign', 'players', 'world', 'adventure', 'resources', 'settings']);
+
+  // Apply theme based on campaign's game system
+  useEffect(() => {
+    if (currentCampaign?.gameSystem) {
+      applyTheme(currentCampaign.gameSystem);
+    }
+  }, [currentCampaign?.gameSystem]);
+
+  // Persist collapsed state
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', isCollapsed.toString());
+  }, [isCollapsed]);
+
+  const toggleCollapsed = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
   // Get game system name for title
   const gameSystem = currentCampaign ? getGameSystem(currentCampaign.gameSystem) : null;
@@ -139,89 +159,100 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         />
       )}
 
-      <aside className={`sidebar ${isDM ? 'dm-mode' : 'player-mode'} ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
-      <div className="sidebar-header">
-        <h1 className="sidebar-title">{systemName}</h1>
-        <p className="sidebar-subtitle">Campaign Manager</p>
-      </div>
-
-      {currentCampaign && (
-        <div className="current-campaign">
-          <div className="campaign-header-row">
-            <button className="campaign-switcher" onClick={onSwitchCampaign}>
-              <FolderOpen size={16} />
-              <span className="campaign-name">{currentCampaign.name}</span>
-            </button>
-            {presenceIndicator}
-          </div>
-          <div className="user-role-badge">
-            {isDM ? (
-              <>
-                <Crown size={16} />
-                <span>Dungeon Master</span>
-              </>
-            ) : (
-              <>
-                <User size={16} />
-                <span>Player</span>
-              </>
-            )}
-          </div>
+      <aside className={`sidebar ${isDM ? 'dm-mode' : 'player-mode'} ${isMobileMenuOpen ? 'mobile-open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          {!isCollapsed && (
+            <>
+              <h1 className="sidebar-title">{systemName}</h1>
+              <p className="sidebar-subtitle">Campaign Manager</p>
+            </>
+          )}
+          <button
+            className="collapse-toggle"
+            onClick={toggleCollapsed}
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
+          </button>
         </div>
-      )}
 
-      <nav className="sidebar-nav">
-        {navGroups.map(group => {
-          const GroupIcon = group.icon;
-          const isExpanded = expandedGroups.includes(group.id);
-          const hasActiveItem = group.items.some(item => item.id === currentView);
-
-          return (
-            <div key={group.id} className="nav-group">
-              <button
-                className={`nav-group-header ${hasActiveItem ? 'has-active' : ''}`}
-                onClick={() => toggleGroup(group.id)}
-              >
-                <div className="nav-group-title">
-                  <GroupIcon size={18} />
-                  <span>{group.label}</span>
-                </div>
-                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        {currentCampaign && (
+          <div className="current-campaign">
+            <div className="campaign-header-row">
+              <button className="campaign-switcher" onClick={onSwitchCampaign}>
+                <FolderOpen size={16} />
+                <span className="campaign-name">{currentCampaign.name}</span>
               </button>
-
-              {isExpanded && (
-                <div className="nav-group-items">
-                  {group.items.map(item => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        className={`nav-item ${currentView === item.id ? 'active' : ''}`}
-                        onClick={() => handleNavClick(item.id)}
-                      >
-                        <Icon size={18} />
-                        <span>{item.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+              {presenceIndicator}
+            </div>
+            <div className="user-role-badge">
+              {isDM ? (
+                <>
+                  <Crown size={16} />
+                  <span>Dungeon Master</span>
+                </>
+              ) : (
+                <>
+                  <User size={16} />
+                  <span>Player</span>
+                </>
               )}
             </div>
-          );
-        })}
-      </nav>
+          </div>
+        )}
 
-      <div className="sidebar-footer">
-        <button className="logout-btn" onClick={handleLogout}>
-          <LogOut size={18} />
-          Sign Out
-        </button>
+        <nav className="sidebar-nav">
+          {navGroups.map(group => {
+            const GroupIcon = group.icon;
+            const isExpanded = expandedGroups.includes(group.id);
+            const hasActiveItem = group.items.some(item => item.id === currentView);
 
-        <div className="sidebar-branding">
-          <img src="/lorelichlogo.png" alt="Lorelich" className="sidebar-logo" />
+            return (
+              <div key={group.id} className="nav-group">
+                <button
+                  className={`nav-group-header ${hasActiveItem ? 'has-active' : ''}`}
+                  onClick={() => toggleGroup(group.id)}
+                >
+                  <div className="nav-group-title">
+                    <GroupIcon size={18} />
+                    <span>{group.label}</span>
+                  </div>
+                  {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+
+                {isExpanded && (
+                  <div className="nav-group-items">
+                    {group.items.map(item => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          className={`nav-item ${currentView === item.id ? 'active' : ''}`}
+                          onClick={() => handleNavClick(item.id)}
+                        >
+                          <Icon size={18} />
+                          <span>{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={handleLogout}>
+            <LogOut size={18} />
+            Sign Out
+          </button>
+
+          <div className="sidebar-branding">
+            <img src="/lorelichlogo.png" alt="Lorelich" className="sidebar-logo" />
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 }
