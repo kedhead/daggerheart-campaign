@@ -244,7 +244,28 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
                     </span>
                   </>
                 ) : (
-                  <span className="total-mini">{roll.total}</span>
+                  <>
+                    {roll.rolls && roll.rolls.length > 0 && (
+                      <>
+                        <span className="dice-breakdown">
+                          {roll.rolls.map((r, i) => (
+                            <span key={i} style={{ color: r.color }}>
+                              {r.result}{i < roll.rolls.length - 1 ? ', ' : ''}
+                            </span>
+                          ))}
+                        </span>
+                        {roll.modifier !== 0 && (
+                          <span className="modifier-mini">
+                            {roll.modifier > 0 ? ' +' : ' '}{roll.modifier}
+                          </span>
+                        )}
+                        <span className="equals-mini"> = </span>
+                      </>
+                    )}
+                    <span className="total-mini">{roll.total}</span>
+                    {roll.isCrit && <span className="crit-mini">🎯</span>}
+                    {roll.isCritFail && <span className="critfail-mini">💥</span>}
+                  </>
                 )}
               </div>
             </div>
@@ -476,6 +497,11 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
         .vs-mini { color: rgba(255,255,255,0.4); }
         .total-mini { color: white; font-weight: 700; }
         .outcome-mini { font-size: 0.8rem; }
+        .dice-breakdown { font-size: 0.85rem; font-weight: 500; }
+        .modifier-mini { color: rgba(255,255,255,0.7); font-size: 0.85rem; }
+        .equals-mini { color: rgba(255,255,255,0.4); }
+        .crit-mini { font-size: 0.9rem; }
+        .critfail-mini { font-size: 0.9rem; }
 
         .no-rolls {
           color: rgba(255, 255, 255, 0.4);

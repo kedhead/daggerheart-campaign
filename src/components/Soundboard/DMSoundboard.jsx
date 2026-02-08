@@ -147,6 +147,7 @@ export default function DMSoundboard({ campaignId }) {
 
   const effectsAudioRef = useRef(new Audio());
   const musicAudioRef = useRef(new Audio());
+  const playbackSessionRef = useRef(0); // Track playback session to cancel stale operations
 
   // Load custom sounds from localStorage and audio cache from Firestore
   useEffect(() => {
@@ -263,12 +264,29 @@ export default function DMSoundboard({ campaignId }) {
       return false;
     }
 
+    // Capture current session to check if stop was called
+    const sessionId = playbackSessionRef.current;
+
     const audio = effectsAudioRef.current;
     audio.src = url;
     audio.volume = isMuted ? 0 : effectsVolume / 100;
 
     try {
+      // Check if stop was called before playing
+      if (sessionId !== playbackSessionRef.current) {
+        console.log('Playback cancelled');
+        return false;
+      }
+
       await audio.play();
+
+      // Check again after async play()
+      if (sessionId !== playbackSessionRef.current) {
+        audio.pause();
+        audio.currentTime = 0;
+        return false;
+      }
+
       setPlayingSound(name);
       audio.onended = () => setPlayingSound(null);
 
@@ -295,6 +313,7 @@ export default function DMSoundboard({ campaignId }) {
 
     // If this loop is already playing, stop it (toggle)
     if (sound.loop && playingSound === sound.name) {
+      playbackSessionRef.current++;
       audio.pause();
       audio.currentTime = 0;
       audio.loop = false;
@@ -305,13 +324,29 @@ export default function DMSoundboard({ campaignId }) {
       return;
     }
 
+    // Capture current session
+    const sessionId = playbackSessionRef.current;
+
     const url = getRandomVariantUrl(sound);
     audio.src = url;
     audio.volume = isMuted ? 0 : effectsVolume / 100;
     audio.loop = sound.loop || false;
 
     try {
+      // Check if stop was called
+      if (sessionId !== playbackSessionRef.current) {
+        return;
+      }
+
       await audio.play();
+
+      // Check again after async play()
+      if (sessionId !== playbackSessionRef.current) {
+        audio.pause();
+        audio.currentTime = 0;
+        return;
+      }
+
       setPlayingSound(sound.name);
       if (!sound.loop) {
         audio.onended = () => setPlayingSound(null);
@@ -334,12 +369,28 @@ export default function DMSoundboard({ campaignId }) {
 
   // Play custom uploaded sound
   const playCustomSound = async (sound) => {
+    // Capture current session
+    const sessionId = playbackSessionRef.current;
+
     const audio = effectsAudioRef.current;
     audio.src = sound.url;
     audio.volume = isMuted ? 0 : effectsVolume / 100;
 
     try {
+      // Check if stop was called
+      if (sessionId !== playbackSessionRef.current) {
+        return;
+      }
+
       await audio.play();
+
+      // Check again after async play()
+      if (sessionId !== playbackSessionRef.current) {
+        audio.pause();
+        audio.currentTime = 0;
+        return;
+      }
+
       setPlayingSound(sound.name);
       audio.onended = () => setPlayingSound(null);
 
@@ -358,6 +409,9 @@ export default function DMSoundboard({ campaignId }) {
 
   // Stop all audio
   const stopAll = () => {
+    // Increment session to cancel all pending audio operations
+    playbackSessionRef.current++;
+
     effectsAudioRef.current.pause();
     effectsAudioRef.current.currentTime = 0;
     effectsAudioRef.current.loop = false;
@@ -381,6 +435,9 @@ export default function DMSoundboard({ campaignId }) {
       return;
     }
 
+    // Capture current session
+    const sessionId = playbackSessionRef.current;
+
     const url = getTrackUrl(trackId);
     const displayName = getTrackDisplayName(trackId);
     const theme = MUSIC_THEMES[themeKey];
@@ -390,7 +447,20 @@ export default function DMSoundboard({ campaignId }) {
     music.loop = true;
 
     try {
+      // Check if stop was called
+      if (sessionId !== playbackSessionRef.current) {
+        return;
+      }
+
       await music.play();
+
+      // Check again after async play()
+      if (sessionId !== playbackSessionRef.current) {
+        music.pause();
+        music.currentTime = 0;
+        return;
+      }
+
       setCurrentMusic({ themeKey, trackId, source: 'curated' });
 
       if (broadcastEnabled && campaignId) {
@@ -419,6 +489,9 @@ export default function DMSoundboard({ campaignId }) {
       return;
     }
 
+    // Capture current session
+    const sessionId = playbackSessionRef.current;
+
     const music = musicAudioRef.current;
 
     // Check if we have a cached version (Firebase URLs are permanent)
@@ -428,7 +501,20 @@ export default function DMSoundboard({ campaignId }) {
       music.loop = true;
 
       try {
+        // Check if stop was called
+        if (sessionId !== playbackSessionRef.current) {
+          return;
+        }
+
         await music.play();
+
+        // Check again after async play()
+        if (sessionId !== playbackSessionRef.current) {
+          music.pause();
+          music.currentTime = 0;
+          return;
+        }
+
         setCurrentMusic({ themeKey, trackId: null, source: 'ai' });
         if (broadcastEnabled && campaignId) {
           broadcastAudioState({
@@ -480,12 +566,27 @@ export default function DMSoundboard({ campaignId }) {
         }
       }
 
+      // Check if stop was called during generation
+      if (sessionId !== playbackSessionRef.current) {
+        console.log('Music generation cancelled');
+        return;
+      }
+
       // Play immediately from base64 data URL (or fall back to temp URL)
       const playUrl = audioData || result.audioUrl;
       music.src = playUrl;
       music.volume = isMuted ? 0 : musicVolume / 100;
       music.loop = true;
+
       await music.play();
+
+      // Check again after async play()
+      if (sessionId !== playbackSessionRef.current) {
+        music.pause();
+        music.currentTime = 0;
+        return;
+      }
+
       setCurrentMusic({ themeKey, trackId: null, source: 'ai' });
 
       if (broadcastEnabled && campaignId) {
@@ -510,7 +611,8 @@ export default function DMSoundboard({ campaignId }) {
               return updated;
             });
             // Update the playing audio source to the permanent URL
-            if (music.src === playUrl) {
+            // Only if still in the same session and same track
+            if (sessionId === playbackSessionRef.current && music.src === playUrl) {
               music.src = firebaseUrl;
               music.play().catch(() => {});
             }
@@ -541,6 +643,9 @@ export default function DMSoundboard({ campaignId }) {
 
   // Stop background music
   const stopMusic = () => {
+    // Increment session to cancel pending music operations
+    playbackSessionRef.current++;
+
     musicAudioRef.current.pause();
     musicAudioRef.current.currentTime = 0;
     setCurrentMusic(null);

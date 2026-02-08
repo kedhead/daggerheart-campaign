@@ -562,20 +562,36 @@ export default function Dice3DOverlay({
               </div>
             </>
           )}
-          {/* Generic dice just show total */}
+          {/* Generic dice show breakdown and total */}
           {rollData.system !== 'daggerheart' && (
-            <div
-              className="result-total"
-              style={rollData.playerColor ? {
-                color: rollData.playerColor,
-                textShadow: `0 0 30px ${rollData.playerColor}`,
-                background: 'none',
-                WebkitBackgroundClip: 'unset',
-                WebkitTextFillColor: rollData.playerColor
-              } : {}}
-            >
-              {rollData.total}
-            </div>
+            <>
+              {rollData.rolls && rollData.rolls.length > 0 && (
+                <div className="dice-breakdown-display">
+                  {rollData.rolls.map((r, i) => (
+                    <span key={i} className="individual-die" style={{ color: r.color }}>
+                      {r.result}
+                    </span>
+                  ))}
+                  {rollData.modifier !== 0 && (
+                    <span className="modifier-breakdown">
+                      {rollData.modifier > 0 ? '+' : ''}{rollData.modifier}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div
+                className="result-total"
+                style={rollData.playerColor ? {
+                  color: rollData.playerColor,
+                  textShadow: `0 0 30px ${rollData.playerColor}`,
+                  background: 'none',
+                  WebkitBackgroundClip: 'unset',
+                  WebkitTextFillColor: rollData.playerColor
+                } : {}}
+              >
+                {rollData.total}
+              </div>
+            </>
           )}
           {/* Player name if present */}
           {rollData.playerName && (

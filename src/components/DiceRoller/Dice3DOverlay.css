@@ -221,6 +221,28 @@
   text-shadow: 0 0 10px currentColor;
 }
 
+.dice-breakdown-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.individual-die {
+  text-shadow: 0 0 10px currentColor;
+  font-weight: 700;
+}
+
+.modifier-breakdown {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.3rem;
+  margin-left: 0.25rem;
+}
+
 .result-total {
   font-size: 4rem;
   font-weight: 800;
