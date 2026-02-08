@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Dices, X, Sun, Moon, Plus, Minus, Palette, ChevronLeft, ChevronRight } from 'lucide-react';
-import { doc, setDoc, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { Dices, X, Sun, Moon, Plus, Minus, Palette, ChevronLeft, ChevronRight, Archive, BookOpen, Trash2 } from 'lucide-react';
+import { doc, setDoc, collection, addDoc, onSnapshot, query, orderBy, limit, serverTimestamp, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -41,6 +41,9 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
   const [rollMode, setRollMode] = useState('daggerheart');
   const [rollHistory, setRollHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(true);
+  const [showBattleLog, setShowBattleLog] = useState(false);
+  const [battleLogEntries, setBattleLogEntries] = useState([]);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   // Load player color preference and auto-detect name
   useEffect(() => {
@@ -205,6 +208,59 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
     return `Roll ${parts.join(' + ')}`;
   };
 
+  // Archive current roll history to battle log
+  const archiveHistory = async () => {
+    if (!campaignId || rollHistory.length === 0) return;
+
+    setIsArchiving(true);
+    try {
+      // Create a battle log entry with current rolls
+      const battleLogRef = collection(db, `campaigns/${campaignId}/battleLog`);
+      await addDoc(battleLogRef, {
+        rolls: rollHistory,
+        timestamp: serverTimestamp(),
+        archivedBy: currentUser?.uid,
+        archivedByName: playerName || currentUser?.displayName || 'Unknown',
+        rollCount: rollHistory.length
+      });
+
+      // Clear the current history
+      const historyRef = collection(db, `campaigns/${campaignId}/battleMapDisplay/rolls/history`);
+      const historySnapshot = await getDocs(historyRef);
+
+      const batch = writeBatch(db);
+      historySnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+
+      console.log('Roll history archived successfully');
+    } catch (error) {
+      console.error('Failed to archive roll history:', error);
+      alert('Failed to archive history. Please try again.');
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  // Load battle log entries
+  useEffect(() => {
+    if (!campaignId || !showBattleLog) return;
+
+    const logRef = collection(db, `campaigns/${campaignId}/battleLog`);
+    const q = query(logRef, orderBy('timestamp', 'desc'), limit(20));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const entries = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setBattleLogEntries(entries);
+    });
+
+    return unsubscribe;
+  }, [campaignId, showBattleLog]);
+
   return (
     <>
       {/* Floating dice button */}
@@ -221,7 +277,26 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
         <button className="history-toggle-btn" onClick={() => setShowHistory(!showHistory)}>
           {showHistory ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
-        <h4>Roll History</h4>
+        <div className="history-header">
+          <h4>Roll History</h4>
+          <div className="history-actions">
+            <button
+              className="history-action-btn"
+              onClick={() => setShowBattleLog(!showBattleLog)}
+              title="View Battle Log"
+            >
+              <BookOpen size={14} />
+            </button>
+            <button
+              className="history-action-btn"
+              onClick={archiveHistory}
+              disabled={rollHistory.length === 0 || isArchiving}
+              title="Archive & Clear History"
+            >
+              {isArchiving ? <Archive size={14} className="spinning" /> : <Archive size={14} />}
+            </button>
+          </div>
+        </div>
         <div className="roll-history-list">
           {rollHistory.map(roll => (
             <div
@@ -388,6 +463,74 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
         </div>
       )}
 
+      {/* Battle Log Modal */}
+      {showBattleLog && (
+        <div className="battle-log-modal" onClick={() => setShowBattleLog(false)}>
+          <div className="battle-log-content" onClick={(e) => e.stopPropagation()}>
+            <div className="battle-log-header">
+              <h3><BookOpen size={20} /> Battle Log</h3>
+              <button onClick={() => setShowBattleLog(false)}><X size={20} /></button>
+            </div>
+            <div className="battle-log-body">
+              {battleLogEntries.length === 0 ? (
+                <div className="no-battle-logs">
+                  <Archive size={48} style={{ opacity: 0.3 }} />
+                  <p>No archived battles yet</p>
+                  <p className="hint">Use the archive button to save roll history</p>
+                </div>
+              ) : (
+                battleLogEntries.map(entry => (
+                  <div key={entry.id} className="battle-log-entry">
+                    <div className="battle-log-entry-header">
+                      <span className="battle-log-time">
+                        {entry.timestamp?.toDate?.()?.toLocaleString() || 'Unknown time'}
+                      </span>
+                      <span className="battle-log-info">
+                        {entry.rollCount} rolls • {entry.archivedByName}
+                      </span>
+                    </div>
+                    <div className="battle-log-rolls">
+                      {entry.rolls?.map((roll, i) => (
+                        <div key={i} className="battle-log-roll" style={{ borderLeftColor: roll.playerColor }}>
+                          <span className="battle-log-player" style={{ color: roll.playerColor }}>
+                            {roll.playerName}
+                          </span>
+                          <span className="battle-log-result">
+                            {roll.system === 'daggerheart' ? (
+                              <>
+                                <span style={{ color: '#fbbf24' }}>{roll.hopeDie}</span>
+                                <span style={{ opacity: 0.4 }}>/</span>
+                                <span style={{ color: '#a855f7' }}>{roll.fearDie}</span>
+                                <span> = {roll.total}</span>
+                              </>
+                            ) : (
+                              <>
+                                {roll.rolls && roll.rolls.length > 0 && (
+                                  <span className="log-dice-breakdown">
+                                    {roll.rolls.map((r, j) => (
+                                      <span key={j} style={{ color: r.color }}>
+                                        {r.result}{j < roll.rolls.length - 1 ? ', ' : ''}
+                                      </span>
+                                    ))}
+                                    {roll.modifier !== 0 && ` ${roll.modifier > 0 ? '+' : ''}${roll.modifier}`}
+                                    {' = '}
+                                  </span>
+                                )}
+                                <span>{roll.total}</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .player-dice-fab {
           position: fixed;
@@ -450,10 +593,54 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
           justify-content: center;
         }
 
+        .history-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
         .roll-history-sidebar h4 {
-          margin: 0 0 0.75rem;
+          margin: 0;
           font-size: 0.85rem;
           color: rgba(255, 255, 255, 0.7);
+        }
+
+        .history-actions {
+          display: flex;
+          gap: 0.25rem;
+        }
+
+        .history-action-btn {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 4px;
+          padding: 0.25rem;
+          color: rgba(255, 255, 255, 0.8);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+
+        .history-action-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+        }
+
+        .history-action-btn:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+
+        .spinning {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
 
         .roll-history-list {
@@ -734,6 +921,148 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
         .roll-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        /* Battle Log Modal */
+        .battle-log-modal {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 200;
+          backdrop-filter: blur(4px);
+        }
+
+        .battle-log-content {
+          background: rgba(0, 0, 0, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 12px;
+          width: 90%;
+          max-width: 800px;
+          max-height: 80vh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .battle-log-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem 1.5rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .battle-log-header h3 {
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: white;
+        }
+
+        .battle-log-header button {
+          background: none;
+          border: none;
+          color: rgba(255, 255, 255, 0.6);
+          cursor: pointer;
+          padding: 0.25rem;
+          border-radius: 4px;
+          transition: all 0.2s;
+        }
+
+        .battle-log-header button:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: white;
+        }
+
+        .battle-log-body {
+          padding: 1rem;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .no-battle-logs {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 3rem;
+          color: rgba(255, 255, 255, 0.5);
+          text-align: center;
+        }
+
+        .no-battle-logs p {
+          margin: 0.5rem 0;
+        }
+
+        .no-battle-logs .hint {
+          font-size: 0.85rem;
+          opacity: 0.7;
+        }
+
+        .battle-log-entry {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          padding: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .battle-log-entry-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .battle-log-time {
+          font-size: 0.85rem;
+          color: rgba(255, 255, 255, 0.6);
+          font-weight: 600;
+        }
+
+        .battle-log-info {
+          font-size: 0.75rem;
+          color: rgba(255, 255, 255, 0.4);
+        }
+
+        .battle-log-rolls {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .battle-log-roll {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem;
+          background: rgba(255, 255, 255, 0.03);
+          border-radius: 4px;
+          border-left: 3px solid;
+          font-size: 0.9rem;
+        }
+
+        .battle-log-player {
+          font-weight: 600;
+          font-size: 0.85rem;
+        }
+
+        .battle-log-result {
+          font-size: 0.9rem;
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .log-dice-breakdown {
+          opacity: 0.8;
+          font-size: 0.85rem;
         }
       `}</style>
     </>
