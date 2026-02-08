@@ -3,7 +3,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
 import useImage from 'use-image';
-import { Maximize, Minimize, Grid } from 'lucide-react';
+import { Maximize, Minimize, RotateCw } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 import Dice3DOverlay from '../DiceRoller/Dice3DOverlay';
 import PlayerDicePanel from './PlayerDicePanel';
@@ -243,9 +243,15 @@ export default function BattleMapDisplayWindow({ campaignId }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [diceRoll, setDiceRoll] = useState(null);
   const [showDiceOverlay, setShowDiceOverlay] = useState(false);
   const lastRollIdRef = useRef(null);
+
+  // Rotate map by 90 degrees
+  const rotateMap = useCallback(() => {
+    setRotation(prev => (prev + 90) % 360);
+  }, []);
 
   // Subscribe to battle map display state
   useEffect(() => {
@@ -366,16 +372,19 @@ export default function BattleMapDisplayWindow({ campaignId }) {
     >
       {/* Controls overlay */}
       <div className={`display-controls ${showControls ? 'visible' : ''}`}>
+        <button onClick={rotateMap} title={`Rotate Map (${rotation}°)`}>
+          <RotateCw size={24} />
+        </button>
         <button onClick={toggleFullscreen} title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}>
           {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
         </button>
       </div>
 
-      {/* Map container with scaling */}
+      {/* Map container with scaling and rotation */}
       <div
         className="map-container"
         style={{
-          transform: `scale(${scale})`,
+          transform: `scale(${scale}) rotate(${rotation}deg)`,
           transformOrigin: 'center center'
         }}
       >
