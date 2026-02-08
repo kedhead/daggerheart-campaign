@@ -9,6 +9,7 @@ import { db } from '../../config/firebase';
 import { generateSoundEffect, generateBackgroundMusic, SOUND_PRESETS } from '../../services/audioGenerator';
 import { persistAudio, saveAudioCache, loadAudioCache } from '../../services/audioStorage';
 import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
+import { CURATED_SOUND_EFFECTS, getRandomVariantUrl } from '../../data/soundEffectsLibrary';
 import './DMSoundboard.css';
 
 // Background music themes
@@ -288,6 +289,49 @@ export default function DMSoundboard({ campaignId }) {
     }
   };
 
+  // Play a curated sound effect from CDN (instant, no generation)
+  const playCuratedSoundEffect = async (sound) => {
+    const audio = effectsAudioRef.current;
+
+    // If this loop is already playing, stop it (toggle)
+    if (sound.loop && playingSound === sound.name) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.loop = false;
+      setPlayingSound(null);
+      if (broadcastEnabled && campaignId) {
+        broadcastAudioState({ type: 'effects', action: 'stop' });
+      }
+      return;
+    }
+
+    const url = getRandomVariantUrl(sound);
+    audio.src = url;
+    audio.volume = isMuted ? 0 : effectsVolume / 100;
+    audio.loop = sound.loop || false;
+
+    try {
+      await audio.play();
+      setPlayingSound(sound.name);
+      if (!sound.loop) {
+        audio.onended = () => setPlayingSound(null);
+      }
+
+      if (broadcastEnabled && campaignId) {
+        broadcastAudioState({
+          type: 'url',
+          action: 'play',
+          url,
+          name: sound.name,
+          volume: effectsVolume,
+          loop: sound.loop || false
+        });
+      }
+    } catch (error) {
+      console.error('Failed to play curated sound:', error);
+    }
+  };
+
   // Play custom uploaded sound
   const playCustomSound = async (sound) => {
     const audio = effectsAudioRef.current;
@@ -316,6 +360,7 @@ export default function DMSoundboard({ campaignId }) {
   const stopAll = () => {
     effectsAudioRef.current.pause();
     effectsAudioRef.current.currentTime = 0;
+    effectsAudioRef.current.loop = false;
     musicAudioRef.current.pause();
     musicAudioRef.current.currentTime = 0;
     setPlayingSound(null);
@@ -626,7 +671,25 @@ export default function DMSoundboard({ campaignId }) {
     }
   };
 
-  // Filter sounds based on search
+  // Get curated sounds for the active category (or all if searching)
+  const getCuratedSounds = () => {
+    if (!searchQuery.trim()) {
+      return CURATED_SOUND_EFFECTS[activeCategory] || [];
+    }
+
+    const query = searchQuery.toLowerCase();
+    const results = [];
+    Object.entries(CURATED_SOUND_EFFECTS).forEach(([catKey, sounds]) => {
+      sounds.forEach(sound => {
+        if (sound.name.toLowerCase().includes(query)) {
+          results.push({ ...sound, category: catKey });
+        }
+      });
+    });
+    return results;
+  };
+
+  // Filter AI preset sounds based on search
   const getFilteredSounds = () => {
     if (!searchQuery.trim()) {
       return SOUND_CATEGORIES[activeCategory]?.sounds || [];
@@ -656,6 +719,7 @@ export default function DMSoundboard({ campaignId }) {
     return `${theme.name} (AI Generated)`;
   };
 
+  const curatedSounds = getCuratedSounds();
   const filteredSounds = getFilteredSounds();
 
   return (
@@ -747,40 +811,67 @@ export default function DMSoundboard({ campaignId }) {
 
       {/* Sound Grid */}
       <div className="sound-grid">
-        {filteredSounds.map(sound => {
-          const isGenerating = generatingSound === sound.id;
-          const isCached = !!cachedSounds[sound.id];
+        {/* Curated sound effects from CDN - instant play */}
+        {curatedSounds.length > 0 && (
+          <>
+            {!searchQuery && <div className="sound-section-label">Instant Sounds</div>}
+            {curatedSounds.map(sound => (
+              <button
+                key={sound.id}
+                className={`sound-btn curated ${playingSound === sound.name ? 'playing' : ''}`}
+                onClick={() => playCuratedSoundEffect(sound)}
+                style={{ '--sound-color': SOUND_CATEGORIES[activeCategory]?.color || '#6366f1' }}
+                title={sound.loop ? `${sound.name} (loop) - ${sound.variants.length} variants` : `${sound.name} - ${sound.variants.length} variants`}
+              >
+                {sound.loop ? <RefreshCw size={14} /> : <Play size={14} />}
+                <span>{sound.name}</span>
+                {sound.loop && <span className="loop-badge">Loop</span>}
+                {sound.variants.length > 1 && <span className="variant-badge">{sound.variants.length}</span>}
+              </button>
+            ))}
+          </>
+        )}
 
-          return (
-            <button
-              key={sound.id}
-              className={`sound-btn ${playingSound === sound.name ? 'playing' : ''} ${isCached ? 'cached' : ''}`}
-              onClick={() => generateAndPlaySound(sound)}
-              disabled={isGenerating}
-              style={{ '--sound-color': SOUND_CATEGORIES[activeCategory]?.color || '#6366f1' }}
-              title={sound.prompt}
-            >
-              {isGenerating ? (
-                <Loader2 size={14} className="spinning" />
-              ) : (
-                <Play size={14} />
-              )}
-              <span>{sound.name}</span>
-              {isCached && (
+        {/* AI-generated sound presets */}
+        {filteredSounds.length > 0 && (
+          <>
+            {!searchQuery && curatedSounds.length > 0 && <div className="sound-section-label">AI Generate</div>}
+            {filteredSounds.map(sound => {
+              const isGenerating = generatingSound === sound.id;
+              const isCached = !!cachedSounds[sound.id];
+
+              return (
                 <button
-                  className="refresh-cache"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    clearCachedSound(sound.id);
-                  }}
-                  title="Regenerate sound"
+                  key={sound.id}
+                  className={`sound-btn ${playingSound === sound.name ? 'playing' : ''} ${isCached ? 'cached' : ''}`}
+                  onClick={() => generateAndPlaySound(sound)}
+                  disabled={isGenerating}
+                  style={{ '--sound-color': SOUND_CATEGORIES[activeCategory]?.color || '#6366f1' }}
+                  title={sound.prompt}
                 >
-                  <RefreshCw size={10} />
+                  {isGenerating ? (
+                    <Loader2 size={14} className="spinning" />
+                  ) : (
+                    <Wand2 size={14} />
+                  )}
+                  <span>{sound.name}</span>
+                  {isCached && (
+                    <button
+                      className="refresh-cache"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearCachedSound(sound.id);
+                      }}
+                      title="Regenerate sound"
+                    >
+                      <RefreshCw size={10} />
+                    </button>
+                  )}
                 </button>
-              )}
-            </button>
-          );
-        })}
+              );
+            })}
+          </>
+        )}
 
         {/* Custom sounds */}
         {!searchQuery && customSounds.length > 0 && (

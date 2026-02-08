@@ -323,6 +323,40 @@
   flex-shrink: 0 !important;
 }
 
+.sound-btn.curated {
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+.sound-btn.curated:hover {
+  border-color: rgba(6, 182, 212, 0.6);
+}
+
+.variant-badge {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.3rem;
+  background: rgba(6, 182, 212, 0.15);
+  border-radius: 4px;
+  color: #06b6d4;
+  flex-shrink: 0 !important;
+  font-weight: 500;
+}
+
+.sound-section-label {
+  grid-column: 1 / -1;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0;
+  font-weight: 500;
+}
+
+.sound-section-label:not(:first-child) {
+  border-top: 1px solid var(--border);
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+}
+
 .sound-btn.custom {
   border-style: dashed;
 }
