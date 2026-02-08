@@ -13,7 +13,8 @@ import {
   Grid,
   Route,
   Package,
-  Boxes
+  Boxes,
+  Volume2
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -32,6 +33,7 @@ import AnimationControls from './Panels/AnimationControls';
 import TileLibrary from './Panels/TileLibrary';
 import OverlayLibrary from './Panels/OverlayLibrary';
 import AssetPackImporter from './Panels/AssetPackImporter';
+import DMSoundboard from '../Soundboard/DMSoundboard';
 import './BattleMapStudio.css';
 
 export default function BattleMapStudio({ campaign, isDM }) {
@@ -40,6 +42,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
   const [canvasMode, setCanvasMode] = useState('import'); // 'import' | 'ai-generate'
   const [showBroadcastConfirm, setShowBroadcastConfirm] = useState(false);
   const [isLive, setIsLive] = useState(false); // Live broadcast mode
+  const [showSoundboard, setShowSoundboard] = useState(false); // Soundboard modal
   const containerRef = useRef(null);
   const lastBroadcastRef = useRef(null); // Track last broadcast to debounce
 
@@ -256,6 +259,14 @@ export default function BattleMapStudio({ campaign, isDM }) {
             <ExternalLink size={18} />
             Open Display
           </button>
+          <button
+            className={`btn ${showSoundboard ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setShowSoundboard(!showSoundboard)}
+            title="Toggle Soundboard"
+          >
+            <Volume2 size={18} />
+            Sounds
+          </button>
         </div>
       </div>
 
@@ -407,6 +418,23 @@ export default function BattleMapStudio({ campaign, isDM }) {
           </div>
         </div>
       </div>
+
+      {/* Soundboard Modal */}
+      {showSoundboard && (
+        <div className="soundboard-modal-overlay" onClick={() => setShowSoundboard(false)}>
+          <div className="soundboard-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="soundboard-modal-header">
+              <h3>Soundboard</h3>
+              <button className="btn btn-icon" onClick={() => setShowSoundboard(false)} title="Close">
+                ✕
+              </button>
+            </div>
+            <div className="soundboard-modal-body">
+              <DMSoundboard campaignId={campaignId} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
