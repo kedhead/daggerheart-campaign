@@ -1,17 +1,32 @@
 .notes-view {
-  padding: 2rem;
+  padding: 1rem;
+  /* Mobile: smaller padding */
   max-width: 1400px;
   margin: 0 auto;
 }
 
+@media (min-width: 768px) {
+  .notes-view {
+    padding: 2rem;
+  }
+}
+
 .notes-controls {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .notes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  /* Mobile: single column */
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+  }
 }
 
 /* Note Card */
@@ -134,6 +149,7 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

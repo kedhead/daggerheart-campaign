@@ -3,8 +3,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 1rem;
+  /* Mobile: smaller padding */
   background: var(--bg-primary);
+}
+
+@media (min-width: 768px) {
+  .role-selection {
+    padding: 2rem;
+  }
 }
 
 .role-selection-container {
@@ -14,7 +21,8 @@
 }
 
 .role-selection h1 {
-  font-size: 2.5rem;
+  font-size: 1.75rem;
+  /* Mobile: smaller font */
   margin-bottom: 1rem;
   font-family: 'Cinzel', serif;
   background: linear-gradient(135deg, var(--hope-color), var(--fear-color));
@@ -23,27 +31,57 @@
   background-clip: text;
 }
 
+@media (min-width: 768px) {
+  .role-selection h1 {
+    font-size: 2.5rem;
+  }
+}
+
 .role-selection-subtitle {
-  font-size: 1.25rem;
+  font-size: 1rem;
+  /* Mobile: smaller font */
   color: var(--text-secondary);
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .role-selection-subtitle {
+    font-size: 1.25rem;
+    margin-bottom: 3rem;
+  }
 }
 
 .role-options {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  margin-bottom: 3rem;
+  grid-template-columns: 1fr;
+  /* Mobile: single column */
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .role-options {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+    margin-bottom: 3rem;
+  }
 }
 
 .role-option {
   background: var(--card-bg);
   border: 3px solid var(--border);
   border-radius: 16px;
-  padding: 3rem 2rem;
+  padding: 2rem 1.5rem;
+  /* Mobile: smaller padding */
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
+}
+
+@media (min-width: 768px) {
+  .role-option {
+    padding: 3rem 2rem;
+  }
 }
 
 .role-option:hover {
