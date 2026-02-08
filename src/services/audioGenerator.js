@@ -41,13 +41,10 @@ export async function generateSoundEffect(prompt, _apiKey, options = {}) {
     }
 
     const data = await response.json();
-    console.log('Sound API response:', { audioUrl: data.audioUrl, hasAudioData: !!data.audioData, keys: Object.keys(data) });
-    if (data.debug) {
-      console.log('Sound API debug:', JSON.stringify(data.debug, null, 2));
-    }
+    console.log('Sound API response:', { audioUrl: data.audioUrl, hasAudioData: !!data.audioData });
 
-    if (data.audioUrl) {
-      return { audioUrl: data.audioUrl, audioData: data.audioData || null };
+    if (data.audioUrl || data.audioData) {
+      return { audioUrl: data.audioUrl || null, audioData: data.audioData || null };
     }
 
     throw new Error('No audio URL in response');
