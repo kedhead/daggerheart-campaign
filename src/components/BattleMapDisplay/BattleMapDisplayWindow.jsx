@@ -277,17 +277,29 @@ export default function BattleMapDisplayWindow({ campaignId }) {
   useEffect(() => {
     if (!campaignId) return;
 
+    let isFirstSnapshot = true;
+
     const unsubscribe = onSnapshot(
       doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`),
       (docSnapshot) => {
         if (docSnapshot.exists()) {
           const data = docSnapshot.data();
+
+          // On first snapshot, just record the current rollId without triggering animation
+          if (isFirstSnapshot) {
+            isFirstSnapshot = false;
+            lastRollIdRef.current = data.rollId || null;
+            return;
+          }
+
           // Only show if it's a new roll (different rollId)
           if (data.rollId && data.rollId !== lastRollIdRef.current) {
             lastRollIdRef.current = data.rollId;
             setDiceRoll(data);
             setShowDiceOverlay(true);
           }
+        } else {
+          isFirstSnapshot = false;
         }
       },
       (error) => {

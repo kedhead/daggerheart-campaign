@@ -244,6 +244,12 @@ service cloud.firestore {
         allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
+      // Battle Log (archived dice roll sessions)
+      match /battleLog/{entryId} {
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
+
       // Generated Images (AI-generated creatures, monsters, etc.)
       match /generatedImages/{imageId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
