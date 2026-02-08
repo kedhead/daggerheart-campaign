@@ -5,6 +5,7 @@ import AuthPage from './components/Auth/AuthPage';
 import TermsOfService from './components/Auth/TermsOfService';
 import CampaignSelector from './components/Campaigns/CampaignSelector';
 import CampaignMembers from './components/Campaigns/CampaignMembers';
+import JoinCampaignPage from './components/Campaigns/JoinCampaignPage';
 import RoleSelection from './components/RoleSelection/RoleSelection';
 import SidebarWithAuth from './components/SidebarWithAuth';
 import DashboardView from './components/Dashboard/DashboardView';
@@ -633,6 +634,7 @@ function AppContent() {
   const urlParams = new URLSearchParams(window.location.search);
   const viewParam = urlParams.get('view');
   const campaignIdParam = urlParams.get('campaign');
+  const joinCampaignId = urlParams.get('join');
 
   useEffect(() => {
     if (currentUser) {
@@ -667,6 +669,18 @@ function AppContent() {
   // Handle battle map display window (separate screen for battle maps)
   if (viewParam === 'battleMapDisplay' && campaignIdParam) {
     return <BattleMapDisplayWindow campaignId={campaignIdParam} />;
+  }
+
+  // Handle join campaign link (?join=campaignId)
+  if (joinCampaignId) {
+    const handleJoinSuccess = (campaignId) => {
+      // Clear URL params and go to main app with the campaign
+      window.history.replaceState({}, '', window.location.origin);
+      localStorage.setItem('lastCampaignId', campaignId);
+      window.location.reload();
+    };
+
+    return <JoinCampaignPage campaignId={joinCampaignId} onJoinSuccess={handleJoinSuccess} />;
   }
 
   // Show terms if user hasn't accepted yet

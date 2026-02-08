@@ -1,0 +1,143 @@
+.join-campaign-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+}
+
+.join-campaign-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 3rem;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.join-campaign-card.error {
+    color: var(--danger-color);
+}
+
+.join-campaign-card .campaign-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--hope-color), var(--fear-color));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: white;
+}
+
+.join-campaign-card h1 {
+    margin: 0 0 0.5rem;
+    font-size: 1.75rem;
+    color: var(--text-primary);
+}
+
+.join-campaign-card .campaign-description {
+    color: var(--text-secondary);
+    margin: 0 0 1.5rem;
+    line-height: 1.6;
+}
+
+.join-campaign-card .campaign-meta {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+.join-campaign-card .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.join-campaign-card .dm-label {
+    opacity: 0.7;
+}
+
+.join-status {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    text-align: left;
+}
+
+.join-status.member {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+.join-status.pending {
+    background: rgba(234, 179, 8, 0.15);
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    color: #eab308;
+}
+
+.join-status.denied {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.join-status strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: inherit;
+}
+
+.join-status p {
+    margin: 0;
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.join-actions {
+    margin-top: 1rem;
+}
+
+.join-actions .btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    width: 100%;
+}
+
+.private-notice {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+/* Loading state */
+.join-campaign-card .loading-spinner {
+    margin: 0 auto 1rem;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .join-campaign-card {
+        padding: 2rem 1.5rem;
+    }
+
+    .join-campaign-card .campaign-meta {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}

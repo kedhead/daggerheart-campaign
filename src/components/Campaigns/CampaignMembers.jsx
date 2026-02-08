@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, X, Mail, Shield, User, CheckCircle, XCircle } from 'lucide-react';
+import { UserPlus, X, Mail, Shield, User, CheckCircle, XCircle, Copy } from 'lucide-react';
 import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import './CampaignMembers.css';
@@ -266,10 +266,23 @@ export default function CampaignMembers({ campaign, currentUserId }) {
               {inviting ? 'Inviting...' : 'Add to Whitelist'}
             </button>
           </div>
-          <p className="invite-instructions">
-            <strong>Campaign URL to share:</strong><br/>
-            {window.location.origin}
-          </p>
+          <div className="share-url-section">
+            <strong>Campaign invite link:</strong>
+            <div className="share-url-row">
+              <code className="share-url">{`${window.location.origin}?join=${campaign.id}`}</code>
+              <button
+                type="button"
+                className="btn btn-icon btn-sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}?join=${campaign.id}`);
+                  alert('Link copied to clipboard!');
+                }}
+                title="Copy link"
+              >
+                <Copy size={16} />
+              </button>
+            </div>
+          </div>
         </form>
       )}
     </div>

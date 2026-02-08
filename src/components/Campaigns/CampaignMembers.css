@@ -136,7 +136,7 @@
   flex: 1;
 }
 
-.request-info > div {
+.request-info>div {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -244,4 +244,35 @@
   border: 1px solid rgba(220, 38, 38, 0.3);
   border-radius: 0.375rem;
   color: #dc2626;
+}
+
+.share-url-section {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.share-url-section strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.share-url-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.share-url {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--hope-color);
+  word-break: break-all;
 }
