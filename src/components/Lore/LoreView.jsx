@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, BookOpen } from 'lucide-react';
 import LoreCard from './LoreCard';
 import LoreForm from './LoreForm';
 import Modal from '../Modal';
