@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Plus, Search, Filter, BookOpen } from 'lucide-react';
+import { Plus, Search, Filter, BookOpen, Wand2 } from 'lucide-react';
 import LoreCard from './LoreCard';
 import LoreForm from './LoreForm';
 import Modal from '../Modal';
 import { LORE_TYPES } from '../../data/daggerheart';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { generateLoreImage } from '../../services/loreGenerator';
 import './LoreView.css';
 
 export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, campaign, npcs = [], locations = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
@@ -11,6 +13,8 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
   const [editingLore, setEditingLore] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [generatingImageFor, setGeneratingImageFor] = useState(null);
+  const { hasKey, keys } = useAPIKey(campaign?.createdBy);
 
   const handleAdd = () => {
     setEditingLore(null);
@@ -30,6 +34,34 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
     }
     setIsModalOpen(false);
     setEditingLore(null);
+  };
+
+  const handleGenerateImage = async (loreEntry) => {
+    const openaiKey = keys.openai || keys.openai_shared;
+    if (!openaiKey) {
+      alert('OpenAI API key required for image generation.');
+      return;
+    }
+
+    setGeneratingImageFor(loreEntry.id);
+    try {
+      const imageUrl = await generateLoreImage(
+        loreEntry,
+        openaiKey,
+        campaign?.gameSystem || 'daggerheart',
+        campaign?.id
+      );
+
+      await updateLore(loreEntry.id, {
+        ...loreEntry,
+        coverImage: imageUrl
+      });
+    } catch (error) {
+      console.error('Error generating lore image:', error);
+      alert(`Generation failed: ${error.message}`);
+    } finally {
+      setGeneratingImageFor(null);
+    }
   };
 
   const visibleLore = lore.filter(entry => {
@@ -152,6 +184,8 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
               lore={entry}
               onEdit={() => handleEdit(entry)}
               onDelete={() => deleteLore(entry.id)}
+              onGenerateImage={isDM ? () => handleGenerateImage(entry) : null}
+              generatingImage={generatingImageFor === entry.id}
               isDM={isDM}
               campaign={campaign}
             />

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit3, Trash2, MapPin, UserCircle, Users, Package, BookOpen, Target, MoreHorizontal, EyeOff } from 'lucide-react';
+import { ChevronDown, Edit3, Trash2, MapPin, UserCircle, Users, Package, BookOpen, Target, MoreHorizontal, EyeOff, Wand2, Loader2 } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
@@ -25,7 +25,7 @@ const TYPE_STYLES = {
   other: 'text-slate-500 ring-slate-500/20 bg-slate-500/5'
 };
 
-export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
+export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, generatingImage, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
@@ -42,7 +42,12 @@ export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign, isEmb
     `}>
       {/* Cover Image with Deep Gradient */}
       <div className="relative h-40 overflow-hidden bg-gradient-to-br from-indigo-950/40 to-black/40 border-b border-white/5">
-        {lore.coverImage ? (
+        {generatingImage ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md z-10">
+            <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mb-2" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Visualizing...</span>
+          </div>
+        ) : lore.coverImage ? (
           <img src={lore.coverImage} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-700">
@@ -70,7 +75,7 @@ export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign, isEmb
       <div className="p-6 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-start justify-between gap-6">
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif text-2xl font-black text-white/90 leading-tight group-hover:text-white transition-all tracking-tight italic lowercase">
+            <h3 className="font-serif text-2xl font-black text-white/95 leading-tight group-hover:text-white transition-all tracking-tight italic lowercase">
               {lore.title || 'Untitled'}
             </h3>
             {lore.tags && Array.isArray(lore.tags) && lore.tags.length > 0 && (
@@ -103,20 +108,45 @@ export default function LoreCard({ lore, onEdit, onDelete, isDM, campaign, isEmb
             </div>
 
             {isDM && !isEmbedded && (
-              <div className="flex items-center gap-3 mt-8 pt-6 border-t border-white/5">
-                <button
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all group/btn"
-                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                >
-                  <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
-                  Edit Fragment
-                </button>
-                <button
-                  className="flex items-center justify-center p-3 rounded-2xl bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-500 hover:text-white transition-all shadow-lg shadow-red-500/0 hover:shadow-red-500/20"
-                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                >
-                  <Trash2 size={18} />
-                </button>
+              <div className="space-y-3 mt-8 pt-6 border-t border-white/5">
+                <div className="flex items-center gap-3">
+                  <button
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all group/btn"
+                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  >
+                    <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
+                    Edit Fragment
+                  </button>
+                  <button
+                    className="flex items-center justify-center p-3 rounded-2xl bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-500 hover:text-white transition-all shadow-lg shadow-red-500/0 hover:shadow-red-500/20"
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+
+                {onGenerateImage && (
+                  <button
+                    className={`
+                      w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl transition-all duration-500 group/gen
+                      ${generatingImage
+                        ? 'bg-indigo-500/20 text-indigo-300 cursor-not-allowed border border-indigo-500/30'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/20 shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/30 active:scale-95'
+                      }
+                    `}
+                    onClick={(e) => { e.stopPropagation(); onGenerateImage(); }}
+                    disabled={generatingImage}
+                  >
+                    {generatingImage ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Wand2 size={14} className="group-hover/gen:rotate-12 transition-transform" />
+                    )}
+                    <span className="text-xs font-black uppercase tracking-[0.2em]">
+                      {generatingImage ? 'Visualizing History...' : 'Generate AI Visual'}
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>
