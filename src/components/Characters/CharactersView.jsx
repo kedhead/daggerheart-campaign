@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Plus, Search, Users, Wand2 } from 'lucide-react';
 import CharacterCardSimple from './CharacterCardSimple';
 import CharacterFormSimple from './CharacterFormSimple';

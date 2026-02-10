@@ -3,7 +3,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
 import useImage from 'use-image';
-import { Maximize, Minimize, RotateCw } from 'lucide-react';
+import { Maximize, Minimize, RotateCw, Grid } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 import Dice3DOverlay from '../DiceRoller/Dice3DOverlay';
 import PlayerDicePanel from './PlayerDicePanel';
