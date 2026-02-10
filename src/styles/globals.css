@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   /* Background - Set dynamically by theme, these are defaults */
   --bg-primary: #0d1126;

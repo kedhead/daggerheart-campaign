@@ -8,7 +8,7 @@ import './PresenceIndicator.css';
  * @param {string} currentUserId - Current user's ID to exclude from display
  * @param {number} maxDisplay - Max avatars to show before "+X"
  */
-export default function PresenceIndicator({ presenceList = [], currentUserId, maxDisplay = 4 }) {
+export default function PresenceIndicator({ presenceList = [], currentUserId, maxDisplay = 4, isStatusBar = false }) {
   const [showTooltip, setShowTooltip] = useState(false);
 
   // Filter out current user and offline users
@@ -16,86 +16,83 @@ export default function PresenceIndicator({ presenceList = [], currentUserId, ma
     (p) => p.userId !== currentUserId && p.computedStatus !== 'offline'
   );
 
-  if (otherUsers.length === 0) {
-    return null;
-  }
-
-  const displayUsers = otherUsers.slice(0, maxDisplay);
-  const remainingCount = otherUsers.length - maxDisplay;
-
   const getStatusColor = (status) => {
     switch (status) {
-      case 'online':
-        return '#22c55e'; // Green
-      case 'away':
-        return '#f59e0b'; // Amber
-      default:
-        return '#6b7280'; // Gray
+      case 'online': return 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]';
+      case 'away': return 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]';
+      default: return 'bg-white/20';
     }
   };
 
   const getInitials = (name) => {
     if (!name) return '?';
-    return name
-      .split(' ')
-      .map((part) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase();
+    return name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
   };
+
+  if (isStatusBar) {
+    return (
+      <div className="flex items-center gap-1.5 transition-all duration-300">
+        <div className={`w-1.5 h-1.5 rounded-full ${otherUsers.length > 0 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-white/20'}`}></div>
+        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest whitespace-nowrap">
+          {otherUsers.length} Active
+        </span>
+      </div>
+    );
+  }
+
+  if (otherUsers.length === 0) return null;
+
+  const displayUsers = otherUsers.slice(0, maxDisplay);
+  const remainingCount = otherUsers.length - maxDisplay;
 
   return (
     <div
-      className="presence-indicator"
+      className="relative flex items-center"
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      <div className="presence-avatars">
+      <div className="flex -space-x-2">
         {displayUsers.map((user, index) => (
           <div
             key={user.id}
-            className="presence-avatar"
+            className="w-7 h-7 rounded-lg border-2 border-[#0d1126] bg-white/5 relative group/avatar transition-transform hover:scale-110 hover:z-20 cursor-pointer"
             style={{ zIndex: displayUsers.length - index }}
           >
             {user.photoURL ? (
-              <img src={user.photoURL} alt={user.displayName} />
+              <img src={user.photoURL} alt={user.displayName} className="w-full h-full object-cover rounded-md" />
             ) : (
-              <span className="presence-avatar-initials">
+              <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-white/60 uppercase">
                 {getInitials(user.displayName)}
-              </span>
+              </div>
             )}
-            <span
-              className="presence-status-dot"
-              style={{ backgroundColor: getStatusColor(user.computedStatus) }}
-            />
+            <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border-2 border-[#0d1126] ${getStatusColor(user.computedStatus)}`} />
           </div>
         ))}
         {remainingCount > 0 && (
-          <div className="presence-avatar presence-more">
-            <span>+{remainingCount}</span>
+          <div className="w-7 h-7 rounded-lg border-2 border-[#0d1126] bg-white/10 flex items-center justify-center text-[9px] font-black text-white/60 z-0">
+            +{remainingCount}
           </div>
         )}
       </div>
 
       {showTooltip && (
-        <div className="presence-tooltip">
-          <div className="presence-tooltip-header">
-            <Users size={14} />
-            <span>{otherUsers.length} online</span>
+        <div className="absolute top-full mt-2 left-0 w-48 bg-[#0d1126]/90 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200">
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <Users size={12} className="text-white/40" />
+            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{otherUsers.length} Online Now</span>
           </div>
-          <div className="presence-tooltip-list">
+          <div className="space-y-2">
             {otherUsers.map((user) => (
-              <div key={user.id} className="presence-tooltip-item">
-                <span
-                  className="presence-tooltip-dot"
-                  style={{ backgroundColor: getStatusColor(user.computedStatus) }}
-                />
-                <span className="presence-tooltip-name">{user.displayName}</span>
-                {user.currentView && (
-                  <span className="presence-tooltip-view">
-                    {formatViewName(user.currentView)}
-                  </span>
-                )}
+              <div key={user.id} className="flex items-center gap-2.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(user.computedStatus)}`} />
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-white/90 truncate">{user.displayName}</span>
+                  {user.currentView && (
+                    <span className="text-[9px] font-medium text-white/20 uppercase tracking-wide truncate">
+                      Viewing {formatViewName(user.currentView)}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>

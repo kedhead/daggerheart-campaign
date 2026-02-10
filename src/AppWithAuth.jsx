@@ -43,6 +43,7 @@ import PresenceIndicator from './components/PresenceIndicator/PresenceIndicator'
 import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import { usePresence } from './hooks/usePresence';
 import { getGameSystem } from './data/systems/index.js';
+import TopBar from './components/Layout/TopBar';
 import './App.css';
 
 function CampaignApp() {
@@ -243,9 +244,20 @@ function CampaignApp() {
   const renderView = () => {
     if (loading) {
       return (
-        <div className="loading-view">
-          <div className="loading-spinner"></div>
-          <p>Loading campaign...</p>
+        <div className="min-h-screen bg-arcane-navy flex flex-col items-center justify-center p-6 space-y-6 relative overflow-hidden">
+          {/* Background Flair for Loading State */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 blur-[150px] rounded-full animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-emerald-500/5 blur-[120px] rounded-full animate-pulse delay-700" />
+
+          <div className="relative group">
+            <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000" />
+            <div className="relative w-20 h-20 border-t-2 border-r-2 border-indigo-500 rounded-full animate-spin shadow-[0_0_20px_rgba(79,70,229,0.5)]" />
+          </div>
+
+          <div className="text-center space-y-2 relative">
+            <h2 className="font-serif text-2xl font-black text-white/90 italic lowercase tracking-tighter">Syncing Archives...</h2>
+            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Establishing uplink to campaign nodes</p>
+          </div>
         </div>
       );
     }
@@ -584,25 +596,33 @@ function CampaignApp() {
   // Default to daggerheart if gameSystem is missing (legacy support)
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
 
+  // Inside CampaignApp return...
   return (
-    <div className={`app ${isDM ? 'dm-mode' : 'player-mode'}`}>
-      <SidebarWithAuth
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-        isDM={isDM}
-        userRole={campaignRole}
-        currentCampaign={campaign}
-        onSwitchCampaign={() => setCurrentCampaignId(null)}
-        presenceIndicator={
-          <PresenceIndicator
-            presenceList={presenceList}
-            currentUserId={currentUser?.uid}
-          />
-        }
-      />
-      <main className="main-content">
-        {renderView()}
-      </main>
+    <div className={`app min-h-screen flex bg-arcane-navy selection:bg-indigo-500/30 font-sans relative overflow-hidden ${isDM ? 'dm-mode' : 'player-mode'}`}>
+      {/* Global Background Visuals */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-emerald-500/5 blur-[100px] rounded-full animate-pulse delay-1000" />
+        <div className="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-blue-500/5 blur-[80px] rounded-full animate-pulse delay-500" />
+      </div>
+
+      <div className="relative z-10 flex flex-1">
+        <SidebarWithAuth
+          currentView={currentView}
+          setCurrentView={setCurrentView}
+          isDM={isDM}
+          userRole={campaignRole}
+          currentCampaign={campaign}
+          onSwitchCampaign={() => setCurrentCampaignId(null)}
+        />
+        <div className="flex-1 flex flex-col min-w-0 min-h-screen relative">
+          <TopBar currentView={currentView} presenceList={presenceList} />
+          <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
+            {renderView()}
+          </main>
+        </div>
+      </div>
 
       {isDaggerheart && <ChatWidget userId={currentUser?.uid} />}
 

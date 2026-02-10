@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus } from 'lucide-react';
+import { ChevronDown, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import InlineEdit from '../InlineEdit/InlineEdit';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import { useToast } from '../../contexts/ToastContext';
-import './NPCsView.css';
 
 export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaign, isEmbedded = false, entities }) {
   const { success, error } = useToast();
@@ -13,125 +12,130 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
 
-  const getRelationshipIcon = (relationship) => {
+  const getRelationshipStyles = (relationship) => {
     switch (relationship) {
-      case 'ally':
-        return <Heart size={16} />;
-      case 'enemy':
-        return <Skull size={16} />;
-      default:
-        return <Minus size={16} />;
-    }
-  };
-
-  const getRelationshipColor = (relationship) => {
-    switch (relationship) {
-      case 'ally':
-        return 'relationship-ally';
-      case 'enemy':
-        return 'relationship-enemy';
-      default:
-        return 'relationship-neutral';
+      case 'ally': return 'text-emerald-400 ring-emerald-400/20 bg-emerald-400/5 shadow-[0_0_15px_rgba(52,211,153,0.1)]';
+      case 'enemy': return 'text-rose-400 ring-rose-400/20 bg-rose-400/5 shadow-[0_0_15px_rgba(251,113,133,0.1)]';
+      default: return 'text-slate-400 ring-slate-400/20 bg-slate-400/5';
     }
   };
 
   return (
-    <div className="npc-card card">
-      <div className="npc-header" onClick={() => setIsExpanded(!isExpanded)}>
-        <div className="npc-avatar">
-          {npc.avatarUrl ? (
-            <img src={npc.avatarUrl} alt={npc.name} />
-          ) : (
-            <span>{npc.name.charAt(0)}</span>
-          )}
+    <div className={`
+      group relative flex flex-col overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl transition-all duration-700 hover:bg-white/[0.05] hover:border-white/10 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] hover:-translate-y-2
+      ${isExpanded ? 'ring-2 ring-white/10 bg-white/[0.07]' : ''}
+    `}>
+      {/* High Impact Visual Header */}
+      <div className="relative h-56 overflow-hidden bg-gradient-to-br from-indigo-950/20 to-black/60 border-b border-white/5 group-hover:h-64 transition-all duration-700">
+        {npc.avatarUrl ? (
+          <img src={npc.avatarUrl} alt={npc.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]">
+            <span className="text-8xl font-serif font-black text-white/[0.03] select-none italic lowercase">{npc.name.charAt(0)}</span>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d1126] via-[#0d1126]/40 to-transparent" />
+
+        {/* Floating ID / Badge */}
+        <div className="absolute top-6 left-6">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-xl bg-black/40 ${getRelationshipStyles(npc.relationship)}`}>
+            {npc.relationship === 'ally' ? <Heart size={12} strokeWidth={3} /> : npc.relationship === 'enemy' ? <Skull size={12} strokeWidth={3} /> : <Minus size={12} strokeWidth={3} />}
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{npc.relationship || 'Neutral'}</span>
+          </div>
         </div>
-        <div className="npc-info">
-          <InlineEdit
-            value={npc.name}
-            onSave={async (newName) => {
-              if (onUpdate) {
-                try {
-                  await onUpdate(npc.id, { ...npc, name: newName });
-                  success('NPC name updated');
-                } catch (e) {
-                  error('Failed to update NPC name');
-                  throw e;
-                }
-              }
-            }}
-            disabled={!isDM || isEmbedded || !onUpdate}
-            as="h3"
-            className="large"
-          />
-          {npc.occupation && (
-            <p className="npc-occupation">
-              <Briefcase size={14} />
-              {npc.occupation}
-            </p>
-          )}
-          {npc.location && (
-            <p className="npc-location">
-              <MapPin size={14} />
-              {npc.location}
-            </p>
-          )}
-          <span className={`relationship-badge ${getRelationshipColor(npc.relationship)}`}>
-            {getRelationshipIcon(npc.relationship)}
-            {npc.relationship || 'neutral'}
-          </span>
-        </div>
-        <button className="btn btn-icon expand-btn">
-          {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-        </button>
       </div>
 
-      {isExpanded && (
-        <div className="npc-details">
-          {npc.description && (
-            <div className="npc-section">
-              <h4>Description</h4>
-              <WikiText
-                text={npc.description}
-                onLinkClick={setViewingEntity}
-                getEntity={getByName}
-              />
+      <div className="p-8 cursor-pointer relative" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="flex flex-col gap-4">
+          <div className="space-y-1">
+            <InlineEdit
+              value={npc.name}
+              onSave={async (newName) => {
+                if (onUpdate) {
+                  try {
+                    await onUpdate(npc.id, { ...npc, name: newName });
+                    success('Identity Re-scanned');
+                  } catch (e) {
+                    error('Scan Failed');
+                    throw e;
+                  }
+                }
+              }}
+              disabled={!isDM || isEmbedded || !onUpdate}
+              as="h3"
+              className="text-3xl font-serif font-black text-white/95 leading-none italic lowercase tracking-tighter"
+            />
+            <div className="flex flex-wrap gap-3 pt-2">
+              {npc.occupation && (
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                  <Briefcase size={10} className="text-indigo-400/50" />
+                  {npc.occupation}
+                </div>
+              )}
+              {npc.location && (
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                  <MapPin size={10} className="text-rose-400/50" />
+                  {npc.location}
+                </div>
+              )}
             </div>
-          )}
-
-          {npc.notes && (
-            <div className="npc-section">
-              <h4>Notes</h4>
-              <WikiText
-                text={npc.notes}
-                onLinkClick={setViewingEntity}
-                getEntity={getByName}
-              />
-            </div>
-          )}
-
-          {npc.firstMet && (
-            <div className="npc-section">
-              <h4>First Met</h4>
-              <p>{npc.firstMet}</p>
-            </div>
-          )}
-
-          {isDM && !isEmbedded && (
-            <div className="npc-actions">
-              <button className="btn btn-secondary" onClick={onEdit}>
-                <Edit3 size={16} />
-                Edit
-              </button>
-              <button className="btn btn-danger" onClick={onDelete}>
-                <Trash2 size={16} />
-                Delete
-              </button>
-            </div>
-          )}
+          </div>
         </div>
-      )}
 
-      {/* Entity viewer modal for wiki links */}
+        {isExpanded && (
+          <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-top-6 duration-700">
+            {npc.description && (
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Observations</h4>
+                <div className="prose prose-invert prose-sm font-sans font-medium text-white/60 leading-relaxed max-w-none">
+                  <WikiText
+                    text={npc.description}
+                    onLinkClick={setViewingEntity}
+                    getEntity={getByName}
+                  />
+                </div>
+              </div>
+            )}
+
+            {npc.notes && (
+              <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5 italic">
+                <h4 className="text-[10px] font-black text-amber-400/60 uppercase tracking-[0.3em] font-sans not-italic">Encrypted Intel</h4>
+                <div className="prose prose-invert prose-sm font-sans font-medium text-white/50 leading-relaxed max-w-none">
+                  <WikiText
+                    text={npc.notes}
+                    onLinkClick={setViewingEntity}
+                    getEntity={getByName}
+                  />
+                </div>
+              </div>
+            )}
+
+            {isDM && !isEmbedded && (
+              <div className="flex items-center gap-3 pt-6 border-t border-white/5">
+                <button
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all group/btn"
+                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                >
+                  <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
+                  Re-Profile
+                </button>
+                <button
+                  className="flex items-center justify-center p-3 rounded-2xl bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-500 hover:text-white transition-all shadow-lg shadow-red-500/0 hover:shadow-red-500/20"
+                  onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className={`absolute top-8 right-8 p-1.5 rounded-xl border border-white/5 bg-white/[0.02] text-white/10 group-hover:text-white group-hover:bg-white/10 transition-all duration-500 ${isExpanded ? 'rotate-180 bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : ''}`}>
+          <ChevronDown size={20} />
+        </div>
+      </div>
+
+      {/* Entity viewer modal */}
       {viewingEntity && (
         <EntityViewer
           entity={viewingEntity}
