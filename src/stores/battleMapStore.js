@@ -138,12 +138,23 @@ export const useBattleMapStore = create((set, get) => ({
   hideAllFog: () => set({ fogRevealed: [], isDirty: true }),
 
   // Layer actions
-  toggleLayerVisibility: (layerId) => set((state) => ({
-    layers: {
-      ...state.layers,
-      [layerId]: { ...state.layers[layerId], visible: !state.layers[layerId].visible }
+  toggleLayerVisibility: (layerId) => set((state) => {
+    const isVisible = !state.layers[layerId].visible;
+    const updates = {
+      layers: {
+        ...state.layers,
+        [layerId]: { ...state.layers[layerId], visible: isVisible }
+      },
+      isDirty: true
+    };
+
+    // Sync fogEnabled with fog layer visibility
+    if (layerId === 'fog') {
+      updates.fogEnabled = isVisible;
     }
-  })),
+
+    return updates;
+  }),
 
   // Animation actions
   toggleAnimationEnabled: () => set((state) => ({
