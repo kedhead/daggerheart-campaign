@@ -26,14 +26,14 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
       ${isExpanded ? 'ring-2 ring-white/10 bg-white/[0.07]' : ''}
     `}>
       {/* High Impact Visual Header */}
-      <div className="relative h-64 overflow-hidden bg-gradient-to-br from-indigo-950/20 to-black/60 border-b border-white/5 group-hover:h-72 transition-all duration-700">
+      <div className="relative h-80 overflow-hidden bg-gradient-to-br from-indigo-950/20 to-black/60 border-b border-white/5 group-hover:h-[22rem] transition-all duration-700">
         <div className="absolute inset-0 bg-white/[0.02] flex items-center justify-center">
           <span className="text-9xl font-serif font-black text-white/[0.02] select-none italic lowercase transform -rotate-12">{npc.name.charAt(0)}</span>
         </div>
         {npc.avatarUrl && (
-          <img src={npc.avatarUrl} alt={npc.name} className="absolute inset-0 w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-[3s]" />
+          <img src={npc.avatarUrl} alt={npc.name} className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-[3s]" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d1126] via-[#0d1126]/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d1126] via-[#0d1126]/20 to-transparent" />
 
         {/* Tactical ID Badge */}
         <div className="absolute top-6 left-6 z-20">
