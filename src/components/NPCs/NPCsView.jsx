@@ -128,7 +128,7 @@ export default function NPCsView({ npcs, addNPC, updateNPC, deleteNPC, isDM, cam
           <p className="text-sm text-white/20 font-medium tracking-wide">No individuals matching those parameters were found in the manifest.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10 items-start">
           {visibleNPCs.map(npc => (
             <NPCCard
               key={npc.id}

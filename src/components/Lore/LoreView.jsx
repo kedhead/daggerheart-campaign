@@ -145,7 +145,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8 pb-20 items-start">
           {visibleLore.map(entry => (
             <LoreCard
               key={entry.id}

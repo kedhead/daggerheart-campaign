@@ -292,7 +292,7 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
           <p className="text-sm text-white/20 font-medium tracking-wide">The current search criteria yield no cartographed locations.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pb-20">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 pb-20 items-start">
           {filteredLocations.map((location) => (
             <LocationCard
               key={location.id}

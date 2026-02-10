@@ -27,20 +27,19 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
     `}>
       {/* High Impact Visual Header */}
       <div className="relative h-56 overflow-hidden bg-gradient-to-br from-indigo-950/20 to-black/60 border-b border-white/5 group-hover:h-64 transition-all duration-700">
-        {npc.avatarUrl ? (
-          <img src={npc.avatarUrl} alt={npc.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]" />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/[0.02]">
-            <span className="text-8xl font-serif font-black text-white/[0.03] select-none italic lowercase">{npc.name.charAt(0)}</span>
-          </div>
+        <div className="absolute inset-0 bg-white/[0.02] flex items-center justify-center">
+          <span className="text-9xl font-serif font-black text-white/[0.02] select-none italic lowercase transform -rotate-12">{npc.name.charAt(0)}</span>
+        </div>
+        {npc.avatarUrl && (
+          <img src={npc.avatarUrl} alt={npc.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-[3s]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0d1126] via-[#0d1126]/40 to-transparent" />
 
-        {/* Floating ID / Badge */}
-        <div className="absolute top-6 left-6">
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-xl bg-black/40 ${getRelationshipStyles(npc.relationship)}`}>
-            {npc.relationship === 'ally' ? <Heart size={12} strokeWidth={3} /> : npc.relationship === 'enemy' ? <Skull size={12} strokeWidth={3} /> : <Minus size={12} strokeWidth={3} />}
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{npc.relationship || 'Neutral'}</span>
+        {/* Tactical ID Badge */}
+        <div className="absolute top-6 left-6 z-20">
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 ${getRelationshipStyles(npc.relationship)}`}>
+            {npc.relationship === 'ally' ? <Heart size={14} strokeWidth={3} className="animate-pulse" /> : npc.relationship === 'enemy' ? <Skull size={14} strokeWidth={3} /> : <Minus size={14} strokeWidth={3} />}
+            <span className="text-[11px] font-black uppercase tracking-[0.2em]">{npc.relationship || 'Neutral'}</span>
           </div>
         </div>
       </div>
