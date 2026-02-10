@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Save, X } from 'lucide-react';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
-import './TimelineView.css';
 
 export default function TimelineEventForm({ event, onSave, onCancel, campaign, entities, isDM }) {
   const { search } = useEntityRegistry(campaign, entities);
@@ -30,9 +29,9 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
   };
 
   return (
-    <form className="timeline-event-form" onSubmit={handleSubmit}>
-      <div className="input-group">
-        <label>Event Title *</label>
+    <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Event Title <span className="text-red-400">*</span></label>
         <input
           type="text"
           value={formData.title}
@@ -42,21 +41,21 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
         />
       </div>
 
-      <div className="input-group">
-        <label>In-Game Date</label>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">In-Game Date</label>
         <input
           type="text"
           value={formData.date}
           onChange={(e) => handleChange('date', e.target.value)}
           placeholder="e.g., Day 15 of Summer, Year 1024"
         />
-        <small className="input-hint">
+        <p className="text-xs text-white/40">
           Use any format that makes sense for your campaign
-        </small>
+        </p>
       </div>
 
-      <div className="input-group">
-        <label>Location</label>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Location</label>
         <input
           type="text"
           value={formData.location}
@@ -65,34 +64,40 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
         />
       </div>
 
-      <div className="input-group">
-        <label>Event Type *</label>
-        <select
-          value={formData.type}
-          onChange={(e) => handleChange('type', e.target.value)}
-          required
-        >
-          <option value="event">Event</option>
-          <option value="quest">Quest</option>
-          <option value="milestone">Milestone</option>
-          <option value="other">Other</option>
-        </select>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Event Type <span className="text-red-400">*</span></label>
+        <div className="relative">
+          <select
+            value={formData.type}
+            onChange={(e) => handleChange('type', e.target.value)}
+            required
+            className="appearance-none"
+          >
+            <option value="event">Event - Standard campaign event</option>
+            <option value="quest">Quest - Major objective or mission</option>
+            <option value="milestone">Milestone - Significant achievement</option>
+            <option value="other">Other - Background info or flavor</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white/50">
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+          </div>
+        </div>
       </div>
 
-      <div className="input-group">
-        <label>Description</label>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Description</label>
         <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
           searchEntities={search}
-          placeholder="What happened during this event? Type [[ to link entities"
+          placeholder="What happened? Type [[ to link entities"
           rows={4}
         />
-        <small className="form-hint">Type [[ to link to other entities</small>
+        <p className="text-xs text-white/40">Type [[ to link to other entities</p>
       </div>
 
-      <div className="input-group">
-        <label>Participants</label>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Participants</label>
         <input
           type="text"
           value={formData.participants}
@@ -101,33 +106,33 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
         />
       </div>
 
-      <div className="input-group">
-        <label>Outcome</label>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Outcome</label>
         <WikiLinkInput
           value={formData.outcome}
           onChange={(e) => handleChange('outcome', e.target.value)}
           searchEntities={search}
-          placeholder="What was the result or consequence? Type [[ to link entities"
+          placeholder="Consequences? Type [[ to link entities"
           rows={3}
         />
-        <small className="form-hint">Type [[ to link to other entities</small>
       </div>
 
       {isDM && (
-        <div className="checkbox-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={formData.hidden}
-              onChange={(e) => handleChange('hidden', e.target.checked)}
-            />
-            <span>Hidden from Players</span>
-          </label>
-          <small className="form-hint">Players won't see this event until you reveal it</small>
+        <div className="flex items-center gap-3 p-3 bg-white/5 rounded border border-white/10 cursor-pointer" onClick={() => handleChange('hidden', !formData.hidden)}>
+          <input
+            type="checkbox"
+            checked={formData.hidden}
+            onChange={(e) => handleChange('hidden', e.target.checked)}
+            className="w-4 h-4 rounded border-gray-300 text-[rgb(var(--color-primary))] focus:ring-[rgb(var(--color-primary))]"
+          />
+          <div>
+            <span className="block text-sm font-medium text-white">Hidden from Players</span>
+            <span className="block text-xs text-white/50">Only you can see this until revealed</span>
+          </div>
         </div>
       )}
 
-      <div className="form-actions">
+      <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>
           <X size={16} />
           Cancel

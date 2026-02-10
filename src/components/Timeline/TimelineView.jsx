@@ -76,14 +76,14 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
   // Filter timeline items
   const filteredItems = timelineItems.filter(item => {
     const matchesSearch = item.displayTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.location?.toLowerCase().includes(searchTerm.toLowerCase());
+      item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.summary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.location?.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Filter by event type (only applies to events, not sessions)
     const matchesFilter = filterType === 'all' ||
-                         item.itemType === 'session' ||
-                         item.type === filterType;
+      item.itemType === 'session' ||
+      item.type === filterType;
 
     return matchesSearch && matchesFilter;
   });
@@ -116,135 +116,128 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
   };
 
   return (
-    <div className="timeline-view">
-      <div className="view-header">
-        <div>
-          <h2>Campaign Timeline</h2>
-          <p className="view-subtitle">{counts.all} total items - {counts.sessions} sessions, {events.length} events</p>
+    <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+      {/* Universal Header */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-[rgb(var(--color-primary))]">Timeline</h1>
+            <p className="text-white/60 mt-1">
+              {counts.all} items • {counts.sessions} sessions • {events.length} events
+            </p>
+          </div>
+          {isDM && (
+            <button
+              className="px-4 py-2 bg-[rgb(var(--color-primary))] hover:brightness-110 text-white rounded-lg font-medium transition-all shadow-lg shadow-[rgb(var(--color-primary)/0.2)] flex items-center gap-2"
+              onClick={handleAdd}
+            >
+              <Plus size={18} />
+              Add Event
+            </button>
+          )}
         </div>
-        {isDM && (
-          <button className="btn btn-primary" onClick={handleAdd}>
-            <Plus size={20} />
-            Add Event
-          </button>
-        )}
+        <hr className="border-[rgb(var(--color-accent))] opacity-30" />
       </div>
 
-      {/* Search and Filter */}
-      <div className="timeline-controls">
-        <div className="search-box">
-          <Search size={20} />
+      {/* Search and Filters */}
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white/5 border border-white/10 p-4 rounded-lg">
+        <div className="relative w-full md:w-96">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="text"
-            placeholder="Search timeline by title, description, or location..."
+            placeholder="Search events and sessions..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-black/20 border border-white/10 rounded-md py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-[rgb(var(--color-primary))]"
           />
         </div>
 
-        <div className="timeline-toggles">
-          <button
-            className={`toggle-btn ${showSessions ? 'active' : ''}`}
-            onClick={() => setShowSessions(!showSessions)}
-          >
-            <ScrollText size={16} />
-            Sessions ({counts.sessions})
-          </button>
-          <button
-            className={`toggle-btn ${showEvents ? 'active' : ''}`}
-            onClick={() => setShowEvents(!showEvents)}
-          >
-            <Calendar size={16} />
-            Events ({events.length})
-          </button>
-        </div>
+        <div className="flex flex-wrap gap-2">
+          <div className="flex bg-black/20 rounded-lg p-1 border border-white/5">
+            <button
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${showSessions ? 'bg-[rgb(var(--color-primary)/0.2)] text-white' : 'text-white/60 hover:text-white'}`}
+              onClick={() => setShowSessions(!showSessions)}
+            >
+              <ScrollText size={14} />
+              Sessions
+            </button>
+            <button
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${showEvents ? 'bg-[rgb(var(--color-primary)/0.2)] text-white' : 'text-white/60 hover:text-white'}`}
+              onClick={() => setShowEvents(!showEvents)}
+            >
+              <Calendar size={14} />
+              Events
+            </button>
+          </div>
 
-        <div className="filter-tabs">
+          <div className="h-8 w-px bg-white/10 mx-2 hidden md:block"></div>
+
           <button
-            className={`filter-tab ${filterType === 'all' ? 'active' : ''}`}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all border ${filterType === 'all' ? 'bg-white/10 border-white/20 text-white' : 'border-transparent text-white/60 hover:text-white hover:bg-white/5'}`}
             onClick={() => setFilterType('all')}
           >
             All
           </button>
-          <button
-            className={`filter-tab ${filterType === 'event' ? 'active' : ''}`}
-            onClick={() => setFilterType('event')}
-          >
-            Event ({counts.event})
-          </button>
-          <button
-            className={`filter-tab ${filterType === 'quest' ? 'active' : ''}`}
-            onClick={() => setFilterType('quest')}
-          >
-            Quest ({counts.quest})
-          </button>
-          <button
-            className={`filter-tab ${filterType === 'milestone' ? 'active' : ''}`}
-            onClick={() => setFilterType('milestone')}
-          >
-            Milestone ({counts.milestone})
-          </button>
-          <button
-            className={`filter-tab ${filterType === 'other' ? 'active' : ''}`}
-            onClick={() => setFilterType('other')}
-          >
-            Other ({counts.other})
-          </button>
+          {['event', 'quest', 'milestone', 'other'].map(type => (
+            <button
+              key={type}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all border capitalize ${filterType === type ? 'bg-white/10 border-white/20 text-white' : 'border-transparent text-white/60 hover:text-white hover:bg-white/5'}`}
+              onClick={() => setFilterType(type)}
+            >
+              {type}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Enhanced Timeline */}
+      {/* Timeline Content */}
       {sortedItems.length === 0 ? (
-        <div className="empty-state card">
-          {searchTerm || filterType !== 'all' || !showSessions || !showEvents ? (
-            <p>No items match your filters</p>
-          ) : (
-            <>
-              <Calendar size={64} />
-              <p>No timeline items yet</p>
-              {isDM && (
-                <button className="btn btn-primary" onClick={handleAdd}>
-                  <Plus size={20} />
-                  Add Your First Event
-                </button>
-              )}
-            </>
+        <div className="bg-white/5 border border-[rgb(var(--color-accent)/0.2)] rounded-lg p-16 flex flex-col items-center justify-center text-center">
+          <Calendar size={48} className="text-white/20 mb-4" />
+          <h3 className="text-xl font-bold text-white/40 mb-2">No Items Found</h3>
+          <p className="text-white/20 max-w-sm">No timeline events or sessions match your current filters.</p>
+          {isDM && (searchTerm === '' && filterType === 'all') && (
+            <button
+              className="mt-6 px-4 py-2 border border-[rgb(var(--color-accent))] text-white rounded-lg hover:bg-white/5 transition-all"
+              onClick={handleAdd}
+            >
+              Create First Event
+            </button>
           )}
         </div>
       ) : (
-        <div className="timeline-enhanced">
-          <div className="timeline-rail"></div>
-          <div className="timeline-items">
-            {sortedItems.map((item, index) => (
-              <div key={`${item.itemType}-${item.id}`} className="timeline-item-wrapper">
-                <div className={`timeline-node ${item.itemType}-node`}>
-                  {item.itemType === 'session' ? (
-                    <ScrollText size={16} />
-                  ) : (
-                    <Calendar size={16} />
-                  )}
-                </div>
-                <div className="timeline-item-content">
-                  {item.itemType === 'session' ? (
-                    <SessionCard
-                      session={item}
-                      isDM={isDM}
-                      campaign={campaign}
-                      isEmbedded={true}
-                    />
-                  ) : (
-                    <TimelineEventCard
-                      event={item}
-                      onEdit={() => handleEdit(item)}
-                      onDelete={() => handleDelete(item.id)}
-                      isDM={isDM}
-                      campaign={campaign}
-                    />
-                  )}
-                </div>
+        <div className="relative pl-8 space-y-8 before:absolute before:left-3.5 before:top-4 before:bottom-4 before:w-px before:bg-white/10">
+          {sortedItems.map((item, index) => (
+            <div key={`${item.itemType}-${item.id}`} className="relative">
+              {/* Timeline Node */}
+              <div
+                className={`absolute -left-8 top-6 w-8 h-8 rounded-full border-2 flex items-center justify-center z-10 bg-[var(--bg-secondary)]
+                  ${item.itemType === 'session' ? 'border-emerald-500/50 text-emerald-400' : 'border-[rgb(var(--color-primary)/0.5)] text-[rgb(var(--color-primary))]'}`}
+              >
+                {item.itemType === 'session' ? <ScrollText size={14} /> : <Calendar size={14} />}
               </div>
-            ))}
-          </div>
+
+              {/* Card */}
+              <div className={`bg-white/5 border border-[rgb(var(--color-accent)/0.2)] rounded-lg overflow-hidden transition-all hover:border-[rgb(var(--color-accent)/0.4)]`}>
+                {item.itemType === 'session' ? (
+                  <SessionCard
+                    session={item}
+                    isDM={isDM}
+                    campaign={campaign}
+                    isEmbedded={true}
+                  />
+                ) : (
+                  <TimelineEventCard
+                    event={item}
+                    onEdit={() => handleEdit(item)}
+                    onDelete={() => handleDelete(item.id)}
+                    isDM={isDM}
+                    campaign={campaign}
+                  />
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -255,7 +248,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
           setIsModalOpen(false);
           setEditingEvent(null);
         }}
-        title={editingEvent ? 'Edit Event' : 'Add Event'}
+        title={editingEvent ? 'Edit Event' : 'Add New Event'}
         size="medium"
       >
         <TimelineEventForm
