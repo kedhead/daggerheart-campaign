@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles } from 'lucide-react';
 import './CharacterCard.css';
 
 export default function CharacterCardSimple({ character, onEdit, onDelete, isDM, canEdit, campaign }) {
