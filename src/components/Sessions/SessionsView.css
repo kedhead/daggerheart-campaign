@@ -1,7 +1,8 @@
-/* Padding now in globals.css */
-
-.sessions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
+/* 
+ * DEPRECATED
+ * 
+ * This file is no longer used. All styles have been migrated to Tailwind CSS
+ * within the component files.
+ * 
+ * Please do not add new styles here.
+ */

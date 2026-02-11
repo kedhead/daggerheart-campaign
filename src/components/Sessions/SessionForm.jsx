@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, X, Link as LinkIcon } from 'lucide-react';
+import { Save, X, Link as LinkIcon, Plus, Minus } from 'lucide-react';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionForm.css';
@@ -49,34 +49,39 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
   };
 
   return (
-    <form className="session-form" onSubmit={handleSubmit}>
-      <div className="input-group">
-        <label>Session Title *</label>
-        <input
-          type="text"
-          value={formData.title}
-          onChange={(e) => handleChange('title', e.target.value)}
-          placeholder="e.g., The Forest of Whispers"
-          required
-        />
-      </div>
+    <form className="space-y-6" onSubmit={handleSubmit}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-1">
+          <label className="block text-sm font-semibold text-white/60">Session Title *</label>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => handleChange('title', e.target.value)}
+            placeholder="e.g., The Forest of Whispers"
+            className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
+            required
+          />
+        </div>
 
-      <div className="input-group">
-        <label>Date *</label>
-        <input
-          type="date"
-          value={formData.date}
-          onChange={(e) => handleChange('date', e.target.value)}
-          required
-        />
+        <div className="space-y-1">
+          <label className="block text-sm font-semibold text-white/60">Date *</label>
+          <input
+            type="date"
+            value={formData.date}
+            onChange={(e) => handleChange('date', e.target.value)}
+            className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
+            required
+          />
+        </div>
       </div>
 
       {isDM && (
-        <div className="input-group">
-          <label>Status</label>
+        <div className="space-y-1">
+          <label className="block text-sm font-semibold text-white/60">Status</label>
           <select
             value={formData.status}
             onChange={(e) => handleChange('status', e.target.value)}
+            className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
           >
             <option value="planned">Planned (Future Session)</option>
             <option value="in-progress">In Progress</option>
@@ -86,9 +91,9 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
       )}
 
       {isDM && (
-        <div className="input-group">
-          <label>
-            <LinkIcon size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-sm font-semibold text-white/60">
+            <LinkIcon size={14} />
             Encounter Links (DM Only)
           </label>
           <input
@@ -96,13 +101,16 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
             value={formData.encounterLinks}
             onChange={(e) => handleChange('encounterLinks', e.target.value)}
             placeholder="https://freshcutgrass.app/encounter/..."
+            className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
           />
-          <small className="form-hint">Paste FreshCutGrass encounter link(s), separate multiple with commas</small>
+          <p className="text-xs text-white/40 mt-1">Paste FreshCutGrass encounter link(s), separate multiple with commas</p>
         </div>
       )}
 
-      <div className="input-group">
-        <label>Summary {formData.status === 'planned' ? '' : '*'}</label>
+      <div className="space-y-1">
+        <label className="block text-sm font-semibold text-white/60">
+          Summary {formData.status === 'planned' ? '' : '*'}
+        </label>
         <WikiLinkInput
           value={formData.summary}
           onChange={(e) => handleChange('summary', e.target.value)}
@@ -110,59 +118,73 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
           placeholder={formData.status === 'planned' ? 'What do you plan for this session? Type [[ to link entities' : 'What happened in this session? Type [[ to link entities'}
           rows={6}
           required={formData.status !== 'planned'}
+          className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
         />
-        <small className="form-hint">Type [[ to link to other entities</small>
+        <p className="text-xs text-white/40 mt-1">Type [[ to link to other entities</p>
       </div>
 
-      <div className="highlights-form-section">
-        <label>Highlights</label>
-        <div className="highlight-input-group">
+      <div className="space-y-3">
+        <label className="block text-sm font-semibold text-white/60">Highlights</label>
+        <div className="flex gap-2">
           <input
             type="text"
             value={highlightInput}
             onChange={(e) => setHighlightInput(e.target.value)}
             placeholder="Add a highlight moment..."
             onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addHighlight())}
+            className="flex-1 p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
           />
-          <button type="button" className="btn btn-secondary" onClick={addHighlight}>
-            Add
+          <button
+            type="button"
+            className="btn btn-secondary px-4"
+            onClick={addHighlight}
+          >
+            <Plus size={20} />
           </button>
         </div>
+
         {formData.highlights.length > 0 && (
-          <ul className="highlights-list">
+          <div className="space-y-2 mt-3">
             {formData.highlights.map((highlight, index) => (
-              <li key={index}>
-                <span>{highlight}</span>
-                <button type="button" onClick={() => removeHighlight(index)}>
+              <div key={index} className="flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/5 rounded-lg group hover:border-white/20 transition-colors">
+                <span className="text-sm text-white/80">{highlight}</span>
+                <button
+                  type="button"
+                  onClick={() => removeHighlight(index)}
+                  className="text-white/40 hover:text-red-400 transition-colors p-1"
+                >
                   <X size={16} />
                 </button>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
 
       {isDM && (
-        <div className="input-group">
-          <label>DM Notes (DM Only)</label>
-          <WikiLinkInput
-            value={formData.dmNotes}
-            onChange={(e) => handleChange('dmNotes', e.target.value)}
-            searchEntities={search}
-            placeholder="Private notes for your eyes only... Type [[ to link entities"
-            rows={4}
-          />
-          <small className="form-hint">Type [[ to link to other entities</small>
+        <div className="space-y-1">
+          <label className="block text-sm font-semibold text-amber-400/80">DM Notes (DM Only)</label>
+          <div className="bg-amber-950/10 rounded-lg border border-amber-500/10 overflow-hidden">
+            <WikiLinkInput
+              value={formData.dmNotes}
+              onChange={(e) => handleChange('dmNotes', e.target.value)}
+              searchEntities={search}
+              placeholder="Private notes for your eyes only... Type [[ to link entities"
+              rows={4}
+              className="w-full p-3 bg-transparent text-amber-100/90 focus:outline-none placeholder-amber-500/30"
+            />
+          </div>
+          <p className="text-xs text-amber-500/40 mt-1">Type [[ to link to other entities</p>
         </div>
       )}
 
-      <div className="form-actions">
+      <div className="flex items-center justify-end gap-3 pt-6 border-t border-white/10">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>
-          <X size={16} />
+          <X size={18} />
           Cancel
         </button>
         <button type="submit" className="btn btn-primary">
-          <Save size={16} />
+          <Save size={18} />
           Save Session
         </button>
       </div>

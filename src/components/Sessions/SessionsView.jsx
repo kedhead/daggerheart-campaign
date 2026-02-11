@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, BookOpen, ScrollText } from 'lucide-react';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
 import SessionLive from './SessionLive';
@@ -66,32 +66,46 @@ export default function SessionsView({ sessions, addSession, updateSession, dele
   }
 
   return (
-    <div className="sessions-view">
-      <div className="view-header">
+    <div className="max-w-7xl mx-auto p-4 space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 py-4">
         <div>
-          <h2>Session Log</h2>
-          <p className="view-subtitle">{sessions.length} session{sessions.length !== 1 ? 's' : ''} logged</p>
+          <h2 className="text-3xl font-bold text-white flex items-center gap-3 font-cinzel">
+            <BookOpen className="text-[rgb(var(--color-primary))]" size={32} />
+            Session Log
+          </h2>
+          <p className="text-white/60 text-lg">
+            {sessions.length} session{sessions.length !== 1 ? 's' : ''} logged
+          </p>
         </div>
         {isDM && (
-          <button className={`btn btn-primary ${isDM ? 'dm-mode' : ''}`} onClick={handleAdd}>
-            <Plus size={20} />
+          <button
+            className="btn btn-primary flex items-center gap-2 px-6 py-3 text-lg shadow-lg shadow-[rgb(var(--color-primary))/20]"
+            onClick={handleAdd}
+          >
+            <Plus size={24} />
             Log Session
           </button>
         )}
       </div>
 
       {sortedSessions.length === 0 ? (
-        <div className="empty-state">
-          <p>No sessions logged yet</p>
+        <div className="flex flex-col items-center justify-center p-12 bg-[var(--bg-secondary)] border border-white/5 rounded-xl text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-2">
+            <ScrollText size={32} className="text-white/40" />
+          </div>
+          <h3 className="text-xl font-bold text-white">No sessions logged yet</h3>
+          <p className="text-white/60 max-w-md">
+            Start tracking your campaign's history by logging your first session.
+          </p>
           {isDM && (
-            <button className={`btn btn-primary ${isDM ? 'dm-mode' : ''}`} onClick={handleAdd}>
+            <button className="btn btn-primary mt-4" onClick={handleAdd}>
               <Plus size={20} />
               Log First Session
             </button>
           )}
         </div>
       ) : (
-        <div className="sessions-list">
+        <div className="space-y-4">
           {sortedSessions.map(session => (
             <SessionCard
               key={session.id}
@@ -113,7 +127,7 @@ export default function SessionsView({ sessions, addSession, updateSession, dele
           setEditingSession(null);
         }}
         title={editingSession ? 'Edit Session' : 'Log New Session'}
-        size="medium"
+        size="large"
       >
         <SessionForm
           session={editingSession}

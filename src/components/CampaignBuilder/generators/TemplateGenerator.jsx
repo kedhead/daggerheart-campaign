@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Sparkles } from 'lucide-react';
-import '../CampaignBuilder.css';
 
 /**
  * Template Generator Component
@@ -20,12 +19,13 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
   const renderRequirements = () => {
     if (type === 'npc') {
       return (
-        <div className="generator-requirements">
-          <div className="form-group">
-            <label>Relationship (Optional)</label>
+        <div className="flex flex-col gap-4">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Relationship (Optional)</label>
             <select
               value={selectedOptions.relationship || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, relationship: e.target.value })}
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             >
               <option value="">Random</option>
               <option value="ally">Ally</option>
@@ -34,23 +34,25 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Occupation (Optional)</label>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Occupation (Optional)</label>
             <input
               type="text"
               value={selectedOptions.occupation || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, occupation: e.target.value })}
               placeholder="Leave blank for random"
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             />
           </div>
 
-          <div className="form-group">
-            <label>Location (Optional)</label>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Location (Optional)</label>
             <input
               type="text"
               value={selectedOptions.location || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, location: e.target.value })}
               placeholder="Leave blank for random"
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             />
           </div>
         </div>
@@ -59,12 +61,13 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
 
     if (type === 'location') {
       return (
-        <div className="generator-requirements">
-          <div className="form-group">
-            <label>Type (Optional)</label>
+        <div className="flex flex-col gap-4">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Type (Optional)</label>
             <select
               value={selectedOptions.type || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, type: e.target.value })}
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             >
               <option value="">Random</option>
               <option value="city">City</option>
@@ -77,13 +80,14 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Region (Optional)</label>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Region (Optional)</label>
             <input
               type="text"
               value={selectedOptions.region || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, region: e.target.value })}
               placeholder="Leave blank for random"
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             />
           </div>
         </div>
@@ -92,12 +96,13 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
 
     if (type === 'encounter') {
       return (
-        <div className="generator-requirements">
-          <div className="form-group">
-            <label>Difficulty (Optional)</label>
+        <div className="flex flex-col gap-4">
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Difficulty (Optional)</label>
             <select
               value={selectedOptions.difficulty || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, difficulty: e.target.value })}
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             >
               <option value="">Random</option>
               <option value="easy">Easy</option>
@@ -107,8 +112,8 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Party Level (Optional)</label>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Party Level (Optional)</label>
             <input
               type="number"
               min="1"
@@ -116,6 +121,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
               value={selectedOptions.partyLevel || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, partyLevel: parseInt(e.target.value) })}
               placeholder="1"
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             />
           </div>
         </div>
@@ -126,12 +132,12 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
   };
 
   return (
-    <div className="template-generator">
-      <div className="generator-info">
-        <Sparkles size={24} />
+    <div className="flex flex-col gap-6">
+      <div className="flex items-start gap-4 p-4 bg-[var(--bg-secondary)] rounded-xl border border-white/5">
+        <Sparkles size={24} className="text-emerald-400 mt-1" />
         <div>
-          <h4>Random Template Generation</h4>
-          <p>Instantly generate content from curated lists. No AI required!</p>
+          <h4 className="text-base font-bold text-white mb-1">Random Template Generation</h4>
+          <p className="text-sm text-white/60 m-0">Instantly generate content from curated lists. No AI required!</p>
         </div>
       </div>
 

@@ -22,7 +22,6 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import { generateCampaignContent } from '../../services/campaignGenerator';
 import { generateMap } from '../../services/mapGenerator';
-import './CampaignBuilder.css';
 
 export default function CampaignBuilderWizard({
   userId,
@@ -316,23 +315,23 @@ export default function CampaignBuilderWizard({
   // Show generating screen
   if (generating) {
     return (
-      <div className="campaign-builder-view" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+      <div className="max-w-2xl mx-auto p-8 text-center min-h-[50vh] flex flex-col items-center justify-center">
         {!generationComplete ? (
           <>
-            <Loader2 size={64} style={{ color: 'var(--hope-color)', margin: '0 auto 1rem', animation: 'spin 1s linear infinite' }} />
-            <h2>Generating Your Campaign...</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '1.125rem' }}>
+            <Loader2 size={64} className="text-[rgb(var(--color-primary))] mx-auto mb-4 animate-spin" />
+            <h2 className="text-2xl font-bold text-white mb-2">Generating Your Campaign...</h2>
+            <p className="text-lg text-white/60 mb-8 max-w-lg mx-auto">
               {generationProgress}
             </p>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+            <p className="text-sm text-white/50 max-w-md mx-auto">
               This may take a few moments. We're creating NPCs, locations, lore, encounters, and timeline events based on your campaign frame.
             </p>
           </>
         ) : (
           <>
-            <Sparkles size={64} style={{ color: 'var(--hope-color)', margin: '0 auto 1rem' }} />
-            <h2>Campaign Generated!</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', fontSize: '1.125rem' }}>
+            <Sparkles size={64} className="text-emerald-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Campaign Generated!</h2>
+            <p className="text-lg text-white/60 mb-8 max-w-lg mx-auto">
               Your campaign is ready to play! Check out the NPCs, Locations, Lore, and other sections to see your generated content.
             </p>
           </>
@@ -343,13 +342,13 @@ export default function CampaignBuilderWizard({
 
   if (isComplete) {
     return (
-      <div className="campaign-builder-view" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-        <CheckCircle size={64} style={{ color: 'var(--success-color)', margin: '0 auto 1rem' }} />
-        <h2>Campaign Frame Complete!</h2>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+      <div className="max-w-2xl mx-auto p-8 text-center min-h-[50vh] flex flex-col items-center justify-center">
+        <CheckCircle size={64} className="text-emerald-400 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold text-white mb-2">Campaign Frame Complete!</h2>
+        <p className="text-white/60 mb-8 max-w-lg mx-auto">
           Your campaign frame has been saved and is now available throughout your campaign.
         </p>
-        <button className="btn btn-primary" onClick={onComplete}>
+        <button className="btn btn-primary px-8 py-3 text-lg" onClick={onComplete}>
           Back to Campaign
         </button>
       </div>
@@ -405,47 +404,46 @@ export default function CampaignBuilderWizard({
   // Review step (after step 14)
   if (currentStep === 15) {
     return (
-      <div className="campaign-builder-view">
+      <div className="max-w-7xl mx-auto p-4 space-y-6">
         <WizardProgress
           currentStep={currentStep}
           completedSteps={completedSteps}
           onStepClick={goToStep}
         />
 
-        <div className="wizard-step">
-          <div className="step-header">
-            <h2>Review & Complete</h2>
-            <p className="step-description">Review your campaign frame and complete the wizard.</p>
+        <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6 md:p-8">
+          <div className="mb-6 border-b border-white/5 pb-6">
+            <h2 className="text-2xl font-bold text-white mb-2">Review & Complete</h2>
+            <p className="text-white/60">Review your campaign frame and complete the wizard.</p>
           </div>
 
-          <div className="step-content">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div className="card">
-                <h3>Campaign Frame Summary</h3>
-                <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
-                  <div>
-                    <strong>Pitch:</strong>
-                    <p style={{ marginTop: '0.25rem' }}>{data.pitch || 'Not set'}</p>
-                  </div>
-                  <div>
-                    <strong>Tone & Feel:</strong>
-                    <p style={{ marginTop: '0.25rem' }}>{data.toneAndFeel.length > 0 ? data.toneAndFeel.join(', ') : 'Not set'}</p>
-                  </div>
-                  <div>
-                    <strong>Themes:</strong>
-                    <p style={{ marginTop: '0.25rem' }}>{data.themes.length > 0 ? data.themes.join(', ') : 'Not set'}</p>
-                  </div>
-                  <div>
-                    <strong>Touchstones:</strong>
-                    <p style={{ marginTop: '0.25rem' }}>{data.touchstones.length > 0 ? data.touchstones.join(', ') : 'Not set'}</p>
-                  </div>
+          <div className="space-y-6">
+            <div className="bg-black/20 rounded-xl p-6 border border-white/5">
+              <h3 className="text-lg font-bold text-white mb-4">Campaign Frame Summary</h3>
+              <div className="space-y-4">
+                <div>
+                  <strong className="text-white/80 block mb-1">Pitch:</strong>
+                  <p className="text-white/60 text-sm">{data.pitch || 'Not set'}</p>
+                </div>
+                <div>
+                  <strong className="text-white/80 block mb-1">Tone & Feel:</strong>
+                  <p className="text-white/60 text-sm">{data.toneAndFeel.length > 0 ? data.toneAndFeel.join(', ') : 'Not set'}</p>
+                </div>
+                <div>
+                  <strong className="text-white/80 block mb-1">Themes:</strong>
+                  <p className="text-white/60 text-sm">{data.themes.length > 0 ? data.themes.join(', ') : 'Not set'}</p>
+                </div>
+                <div>
+                  <strong className="text-white/80 block mb-1">Touchstones:</strong>
+                  <p className="text-white/60 text-sm">{data.touchstones.length > 0 ? data.touchstones.join(', ') : 'Not set'}</p>
                 </div>
               </div>
+            </div>
 
+            <div className="flex justify-center pt-4">
               <button
-                className="btn btn-primary"
+                className="btn btn-primary px-8 py-3 text-lg flex items-center gap-3"
                 onClick={handleComplete}
-                style={{ alignSelf: 'center', fontSize: '1.125rem', padding: '1rem 2rem' }}
               >
                 <CheckCircle size={24} />
                 Complete Campaign Frame
@@ -468,14 +466,16 @@ export default function CampaignBuilderWizard({
   }
 
   return (
-    <div className="campaign-builder-view">
+    <div className="max-w-7xl mx-auto p-4 space-y-6">
       <WizardProgress
         currentStep={currentStep}
         completedSteps={completedSteps}
         onStepClick={goToStep}
       />
 
-      {renderStep()}
+      <div className="min-h-[400px]">
+        {renderStep()}
+      </div>
 
       <StepNavigation
         currentStep={currentStep}

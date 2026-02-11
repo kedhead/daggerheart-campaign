@@ -8,7 +8,6 @@ import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateNPCPortrait } from '../../services/portraitGenerator';
 import { Wand2, AlertCircle, ImageIcon, Loader2 } from 'lucide-react';
-import './CampaignBuilder.css';
 
 /**
  * Quick Generator Modal
@@ -213,27 +212,27 @@ export default function QuickGeneratorModal({
 
     if (type === 'npc') {
       return (
-        <div className="results-preview">
-          <h3>
-            <Wand2 size={20} />
+        <div className="mt-6 p-4 bg-[var(--bg-secondary)] border border-[rgb(var(--color-primary))] rounded-lg">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Wand2 size={20} className="text-[rgb(var(--color-primary))]" />
             Generated NPC
           </h3>
-          <div className="preview-fields">
+          <div className="space-y-4">
             {/* Portrait Section */}
-            <div className="preview-field portrait-section">
-              <label>Portrait</label>
-              <div className="portrait-container">
+            <div className="border-b border-white/10 pb-4 mb-2">
+              <label className="block text-sm font-semibold text-white/60 mb-2">Portrait</label>
+              <div className="flex justify-center">
                 {editableResult.avatarUrl ? (
-                  <div className="portrait-preview">
-                    <img src={editableResult.avatarUrl} alt={editableResult.name} />
+                  <div className="flex flex-col items-center gap-3">
+                    <img src={editableResult.avatarUrl} alt={editableResult.name} className="w-36 h-36 object-cover rounded-lg border-2 border-white/10" />
                     <button
-                      className="btn btn-sm btn-secondary"
+                      className="btn btn-sm btn-secondary text-xs"
                       onClick={() => handleGeneratePortrait()}
                       disabled={generatingPortrait || !hasOpenAIKey}
                     >
                       {generatingPortrait ? (
                         <>
-                          <Loader2 size={14} className="spinner" />
+                          <Loader2 size={14} className="animate-spin" />
                           Regenerating...
                         </>
                       ) : (
@@ -245,17 +244,17 @@ export default function QuickGeneratorModal({
                     </button>
                   </div>
                 ) : generatingPortrait ? (
-                  <div className="portrait-generating">
-                    <Loader2 size={32} className="spinner" />
+                  <div className="flex flex-col items-center justify-center gap-2 p-8 text-white/40">
+                    <Loader2 size={32} className="animate-spin" />
                     <span>Generating portrait...</span>
                   </div>
                 ) : (
-                  <div className="portrait-empty">
-                    <ImageIcon size={32} />
+                  <div className="flex flex-col items-center justify-center gap-2 p-6 text-white/40 bg-black/20 border-2 border-dashed border-white/10 rounded-lg min-w-[150px]">
+                    <ImageIcon size={32} className="opacity-50" />
                     <span>No portrait</span>
                     {hasOpenAIKey && (
                       <button
-                        className="btn btn-sm btn-secondary"
+                        className="btn btn-sm btn-secondary text-xs"
                         onClick={() => handleGeneratePortrait()}
                       >
                         <ImageIcon size={14} />
@@ -263,74 +262,81 @@ export default function QuickGeneratorModal({
                       </button>
                     )}
                     {!hasOpenAIKey && (
-                      <span className="portrait-hint">OpenAI key required</span>
+                      <span className="text-xs opacity-70">OpenAI key required</span>
                     )}
                   </div>
                 )}
               </div>
               {portraitError && (
-                <div className="portrait-error">
+                <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm flex items-center gap-2">
                   <AlertCircle size={14} />
                   {portraitError}
                 </div>
               )}
             </div>
 
-            <div className="preview-field">
-              <label>Name *</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Name *</label>
               <input
                 type="text"
                 value={editableResult.name || ''}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
-            <div className="preview-field">
-              <label>Occupation</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Occupation</label>
               <input
                 type="text"
                 value={editableResult.occupation || ''}
                 onChange={(e) => handleFieldChange('occupation', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
-            <div className="preview-field">
-              <label>Location</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Location</label>
               <input
                 type="text"
                 value={editableResult.location || ''}
                 onChange={(e) => handleFieldChange('location', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
-            <div className="preview-field">
-              <label>Relationship</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Relationship</label>
               <select
                 value={editableResult.relationship || 'neutral'}
                 onChange={(e) => handleFieldChange('relationship', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               >
                 <option value="ally">Ally</option>
                 <option value="neutral">Neutral</option>
                 <option value="enemy">Enemy</option>
               </select>
             </div>
-            <div className="preview-field">
-              <label>Description</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Description</label>
               <textarea
                 value={editableResult.description || ''}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[80px]"
               />
             </div>
-            <div className="preview-field">
-              <label>Notes</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Notes</label>
               <textarea
                 value={editableResult.notes || ''}
                 onChange={(e) => handleFieldChange('notes', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[80px]"
               />
             </div>
-            <div className="preview-field">
-              <label>First Met</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">First Met</label>
               <textarea
                 value={editableResult.firstMet || ''}
                 onChange={(e) => handleFieldChange('firstMet', e.target.value)}
                 rows={2}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
           </div>
@@ -340,25 +346,27 @@ export default function QuickGeneratorModal({
 
     if (type === 'location') {
       return (
-        <div className="results-preview">
-          <h3>
-            <Wand2 size={20} />
+        <div className="mt-6 p-4 bg-[var(--bg-secondary)] border border-[rgb(var(--color-primary))] rounded-lg">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Wand2 size={20} className="text-[rgb(var(--color-primary))]" />
             Generated Location
           </h3>
-          <div className="preview-fields">
-            <div className="preview-field">
-              <label>Name *</label>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Name *</label>
               <input
                 type="text"
                 value={editableResult.name || ''}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
-            <div className="preview-field">
-              <label>Type</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Type</label>
               <select
                 value={editableResult.type || 'other'}
                 onChange={(e) => handleFieldChange('type', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               >
                 <option value="city">City</option>
                 <option value="town">Town</option>
@@ -369,41 +377,46 @@ export default function QuickGeneratorModal({
                 <option value="other">Other</option>
               </select>
             </div>
-            <div className="preview-field">
-              <label>Region</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Region</label>
               <input
                 type="text"
                 value={editableResult.region || ''}
                 onChange={(e) => handleFieldChange('region', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
-            <div className="preview-field">
-              <label>Description</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Description</label>
               <textarea
                 value={editableResult.description || ''}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[80px]"
               />
             </div>
-            <div className="preview-field">
-              <label>Notable Features</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Notable Features</label>
               <textarea
                 value={editableResult.notableFeatures || ''}
                 onChange={(e) => handleFieldChange('notableFeatures', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[80px]"
               />
             </div>
-            <div className="preview-field">
-              <label>Secrets</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Secrets</label>
               <textarea
                 value={editableResult.secrets || ''}
                 onChange={(e) => handleFieldChange('secrets', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[80px]"
               />
             </div>
-            <div className="preview-field">
-              <label>Inhabitants</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Inhabitants</label>
               <textarea
                 value={editableResult.inhabitants || ''}
                 onChange={(e) => handleFieldChange('inhabitants', e.target.value)}
                 rows={2}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
           </div>
@@ -413,25 +426,27 @@ export default function QuickGeneratorModal({
 
     if (type === 'encounter') {
       return (
-        <div className="results-preview">
-          <h3>
-            <Wand2 size={20} />
+        <div className="mt-6 p-4 bg-[var(--bg-secondary)] border border-[rgb(var(--color-primary))] rounded-lg">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Wand2 size={20} className="text-[rgb(var(--color-primary))]" />
             Generated Encounter
           </h3>
-          <div className="preview-fields">
-            <div className="preview-field">
-              <label>Name *</label>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Name *</label>
               <input
                 type="text"
                 value={editableResult.name || ''}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
-            <div className="preview-field">
-              <label>Difficulty</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Difficulty</label>
               <select
                 value={editableResult.difficulty || 'medium'}
                 onChange={(e) => handleFieldChange('difficulty', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               >
                 <option value="easy">Easy</option>
                 <option value="medium">Medium</option>
@@ -439,41 +454,46 @@ export default function QuickGeneratorModal({
                 <option value="deadly">Deadly</option>
               </select>
             </div>
-            <div className="preview-field">
-              <label>Environment</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Environment</label>
               <textarea
                 value={editableResult.environment || ''}
                 onChange={(e) => handleFieldChange('environment', e.target.value)}
                 rows={2}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
-            <div className="preview-field">
-              <label>Description</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Description</label>
               <textarea
                 value={editableResult.description || ''}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[80px]"
               />
             </div>
-            <div className="preview-field">
-              <label>Enemies</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Enemies</label>
               <textarea
                 value={editableResult.enemies || ''}
                 onChange={(e) => handleFieldChange('enemies', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[80px]"
               />
             </div>
-            <div className="preview-field">
-              <label>Tactics</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Tactics</label>
               <textarea
                 value={editableResult.tactics || ''}
                 onChange={(e) => handleFieldChange('tactics', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[80px]"
               />
             </div>
-            <div className="preview-field">
-              <label>Rewards</label>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Rewards</label>
               <textarea
                 value={editableResult.rewards || ''}
                 onChange={(e) => handleFieldChange('rewards', e.target.value)}
                 rows={2}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
               />
             </div>
           </div>
@@ -491,7 +511,7 @@ export default function QuickGeneratorModal({
       title={`Generate ${getTypeLabel()}`}
       size="large"
     >
-      <div className="quick-generator-modal">
+      <div className="flex flex-col gap-6 min-h-[400px]">
         <GenerationModeSelector
           mode={mode}
           onModeChange={setMode}
@@ -499,27 +519,28 @@ export default function QuickGeneratorModal({
         />
 
         {error && (
-          <div className="generator-error">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded text-red-400 flex items-center gap-2">
             <AlertCircle size={20} />
             <span>{error}</span>
           </div>
         )}
 
-        <div className="generator-content">
+        <div className="flex-1 flex flex-col">
           {/* Portrait generation option for NPCs */}
           {type === 'npc' && !editableResult && (
-            <div className="portrait-option">
-              <label className="checkbox-control">
+            <div className="p-3 bg-[var(--bg-secondary)] border border-white/10 rounded-lg mb-4">
+              <label className="flex items-center gap-2 cursor-pointer font-medium text-white select-none">
                 <input
                   type="checkbox"
                   checked={generatePortrait}
                   onChange={(e) => setGeneratePortrait(e.target.checked)}
                   disabled={!hasOpenAIKey}
+                  className="w-4 h-4 rounded border-gray-600 bg-black/40 text-[rgb(var(--color-primary))] focus:ring-[rgb(var(--color-primary))]"
                 />
                 <ImageIcon size={16} />
                 <span>Generate AI Portrait</span>
                 {!hasOpenAIKey && (
-                  <span className="option-hint">(OpenAI key required)</span>
+                  <span className="text-sm text-white/50 ml-1">(OpenAI key required)</span>
                 )}
               </label>
             </div>
@@ -529,7 +550,7 @@ export default function QuickGeneratorModal({
           {renderResultsPreview()}
         </div>
 
-        <div className="modal-actions">
+        <div className="flex justify-end gap-2 pt-4 border-t border-white/5">
           <button className="btn btn-secondary" onClick={onClose}>
             Cancel
           </button>

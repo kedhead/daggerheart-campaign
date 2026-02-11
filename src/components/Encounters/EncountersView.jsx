@@ -7,9 +7,6 @@ import LiveEncounterTracker from './LiveEncounterTracker';
 import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
-import './EncountersView.css';
-import './EncounterBuilder.css';
-import './LiveEncounterTracker.css';
 
 export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,8 +67,8 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     if (!isDM && encounter.hidden) return false;
 
     const matchesSearch = encounter.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         encounter.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         encounter.enemies?.toLowerCase().includes(searchTerm.toLowerCase());
+      encounter.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      encounter.enemies?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesFilter = filterDifficulty === 'all' || encounter.difficulty === filterDifficulty;
 
@@ -99,14 +96,20 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
   }
 
   return (
-    <div className="encounters-view">
-      <div className="view-header">
-        <div>
-          <h2>Combat Encounters</h2>
-          <p className="view-subtitle">{encounters.length} encounter{encounters.length !== 1 ? 's' : ''} prepared</p>
+    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+            <Swords className="text-[rgb(var(--color-primary))]" size={32} />
+            Combat Scenarios
+          </h2>
+          <p className="text-white/60 text-lg">
+            {encounters.length} {encounters.length !== 1 ? 'scenario' : 'scenarios'} prepared
+          </p>
         </div>
         {isDM && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="flex gap-2 flex-wrap">
             {activeEncounter && (
               <button className="btn btn-primary" onClick={() => setShowTracker(true)}>
                 <Play size={20} />
@@ -115,30 +118,30 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
             )}
             <button className="btn btn-secondary" onClick={() => setQuickGenOpen(true)}>
               <Wand2 size={20} />
-              Generate with AI
+              AI Generate
             </button>
             <button className="btn btn-primary" onClick={handleAdd}>
               <Plus size={20} />
-              Add Encounter
+              New Scenario
             </button>
           </div>
         )}
       </div>
 
       {/* FreshCutGrass Link */}
-      <div className="encounter-tool-link card">
-        <div>
-          <h3>
-            <Swords size={20} />
-            FreshCutGrass Encounter Manager
+      <div className="bg-[var(--bg-secondary)] border border-white/5 rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Swords className="text-emerald-400" size={24} />
+            FreshCutGrass Integration
           </h3>
-          <p>Build detailed encounters with the full FreshCutGrass toolkit, then save templates here for quick reference.</p>
+          <p className="text-white/60">Build detailed encounters with the full FreshCutGrass toolkit, then save templates here for quick reference.</p>
         </div>
         <a
           href="https://freshcutgrass.app/encounter-manager"
           target="_blank"
           rel="noopener noreferrer"
-          className="btn btn-secondary"
+          className="btn btn-secondary whitespace-nowrap"
         >
           <ExternalLink size={16} />
           Open FreshCutGrass
@@ -146,45 +149,71 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
       </div>
 
       {/* Search and Filter */}
-      <div className="encounters-controls">
-        <div className="search-box">
-          <Search size={20} />
+      <div className="flex flex-col gap-4 sticky top-0 z-20 bg-[var(--bg-primary)]/80 backdrop-blur-xl p-4 -mx-4 rounded-xl border border-white/5 md:flex-row md:items-center md:justify-between shadow-lg">
+        <div className="relative flex-1 max-w-md">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="text"
-            placeholder="Search encounters by name, description, or enemies..."
+            placeholder="Search scenarios..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-primary))]"
           />
         </div>
 
-        <div className="filter-tabs">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
           <button
-            className={`filter-tab ${filterDifficulty === 'all' ? 'active' : ''}`}
             onClick={() => setFilterDifficulty('all')}
+            className={`
+              whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border
+              ${filterDifficulty === 'all'
+                ? 'bg-white/10 text-white border-white/20'
+                : 'bg-white/5 text-white/60 border-transparent hover:bg-white/10 hover:text-white'}
+            `}
           >
             All ({counts.all})
           </button>
           <button
-            className={`filter-tab difficulty-easy ${filterDifficulty === 'easy' ? 'active' : ''}`}
             onClick={() => setFilterDifficulty('easy')}
+            className={`
+              whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border
+              ${filterDifficulty === 'easy'
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                : 'bg-emerald-500/5 text-emerald-500/60 border-transparent hover:bg-emerald-500/10 hover:text-emerald-400'}
+            `}
           >
             Easy ({counts.easy})
           </button>
           <button
-            className={`filter-tab difficulty-medium ${filterDifficulty === 'medium' ? 'active' : ''}`}
             onClick={() => setFilterDifficulty('medium')}
+            className={`
+              whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border
+              ${filterDifficulty === 'medium'
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/50'
+                : 'bg-amber-500/5 text-amber-500/60 border-transparent hover:bg-amber-500/10 hover:text-amber-400'}
+            `}
           >
             Medium ({counts.medium})
           </button>
           <button
-            className={`filter-tab difficulty-hard ${filterDifficulty === 'hard' ? 'active' : ''}`}
             onClick={() => setFilterDifficulty('hard')}
+            className={`
+              whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border
+              ${filterDifficulty === 'hard'
+                ? 'bg-orange-500/20 text-orange-400 border-orange-500/50'
+                : 'bg-orange-500/5 text-orange-500/60 border-transparent hover:bg-orange-500/10 hover:text-orange-400'}
+            `}
           >
             Hard ({counts.hard})
           </button>
           <button
-            className={`filter-tab difficulty-deadly ${filterDifficulty === 'deadly' ? 'active' : ''}`}
             onClick={() => setFilterDifficulty('deadly')}
+            className={`
+              whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border
+              ${filterDifficulty === 'deadly'
+                ? 'bg-red-500/20 text-red-400 border-red-500/50'
+                : 'bg-red-500/5 text-red-500/60 border-transparent hover:bg-red-500/10 hover:text-red-400'}
+            `}
           >
             Deadly ({counts.deadly})
           </button>
@@ -193,24 +222,25 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
 
       {/* Encounters Grid */}
       {filteredEncounters.length === 0 ? (
-        <div className="empty-state card">
-          {searchTerm || filterDifficulty !== 'all' ? (
-            <p>No encounters match your search</p>
-          ) : (
-            <>
-              <Swords size={64} />
-              <p>No encounters yet</p>
-              {isDM && (
-                <button className="btn btn-primary" onClick={handleAdd}>
-                  <Plus size={20} />
-                  Add Your First Encounter
-                </button>
-              )}
-            </>
+        <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-white/10 rounded-xl bg-white/5">
+          <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 text-white/20">
+            <Swords size={32} />
+          </div>
+          <h3 className="text-xl font-medium text-white mb-2">No scenarios found</h3>
+          <p className="text-white/40 max-w-sm mb-6">
+            {searchTerm || filterDifficulty !== 'all'
+              ? 'Try adjusting your filters.'
+              : 'Create your first combat scenario to get started.'}
+          </p>
+          {isDM && (
+            <button className="btn btn-primary" onClick={handleAdd}>
+              <Plus size={16} />
+              Create Scenario
+            </button>
           )}
         </div>
       ) : (
-        <div className="encounters-grid">
+        <div className="grid grid-cols-1 gap-4">
           {filteredEncounters.map((encounter) => (
             <EncounterCard
               key={encounter.id}
@@ -234,22 +264,22 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
           setIsModalOpen(false);
           setEditingEncounter(null);
         }}
-        title={editingEncounter ? 'Edit Encounter' : 'Add Encounter'}
+        title={editingEncounter ? 'Edit Scenario' : 'New Scenario'}
         size={useBuilder && isDaggerheart ? 'large' : 'medium'}
       >
         {/* Builder Mode Toggle for Daggerheart */}
         {isDaggerheart && (
-          <div className="builder-mode-toggle">
+          <div className="flex gap-2 p-1 bg-black/40 rounded-lg mb-6 w-fit">
             <button
               type="button"
-              className={`mode-btn ${!useBuilder ? 'active' : ''}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${!useBuilder ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'}`}
               onClick={() => setUseBuilder(false)}
             >
               Simple
             </button>
             <button
               type="button"
-              className={`mode-btn ${useBuilder ? 'active' : ''}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${useBuilder ? 'bg-[rgb(var(--color-primary))] text-white' : 'text-white/40 hover:text-white'}`}
               onClick={() => setUseBuilder(true)}
             >
               BP Builder
