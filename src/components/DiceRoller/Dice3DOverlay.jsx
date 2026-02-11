@@ -82,13 +82,13 @@ export default function Dice3DOverlay({
         // Daggerheart: 2d12 with distinct colors
         diceConfig = [
           {
-            type: 'd12',
+            sides: 12,
             theme: 'default',
             themeColor: '#fbbf24', // Hope (Gold)
             value: rollData.hopeDie // Pre-determined result
           },
           {
-            type: 'd12',
+            sides: 12,
             theme: 'default',
             themeColor: '#a855f7', // Fear (Purple)
             value: rollData.fearDie // Pre-determined result
@@ -99,14 +99,14 @@ export default function Dice3DOverlay({
         const color = rollData.isCrit ? '#fbbf24' : rollData.isCritFail ? '#ef4444' : '#3b82f6';
 
         diceConfig.push({
-          type: 'd20',
+          sides: 20,
           themeColor: color,
           value: rollData.d20
         });
 
         if (rollData.d20Second !== undefined) {
           diceConfig.push({
-            type: 'd20',
+            sides: 20,
             themeColor: '#3b82f6', // Second die standard color
             value: rollData.d20Second
           });
@@ -118,9 +118,11 @@ export default function Dice3DOverlay({
             // Handle both simple number array or object array with colors
             const val = typeof r === 'object' ? r.result : r;
             const col = (typeof r === 'object' && r.color) ? r.color : (rollData.playerColor || '#3b82f6');
+            // Extract sides from 'd20' -> 20
+            const sides = parseInt((rollData.dieType || '20').toString().replace('d', ''), 10);
 
             diceConfig.push({
-              type: `d${rollData.dieType || 20}`, // Default to d20 if missing
+              sides: sides,
               themeColor: col,
               value: val
             });
@@ -130,7 +132,7 @@ export default function Dice3DOverlay({
         // Star Wars D6
         // Wild Die
         diceConfig.push({
-          type: 'd6',
+          sides: 6,
           themeColor: '#fbbf24', // Gold for Wild Die
           value: rollData.wildDie
         });
@@ -145,7 +147,7 @@ export default function Dice3DOverlay({
           const normalDiceCount = rollData.dice.length - 1;
           for (let i = 0; i < normalDiceCount; i++) {
             diceConfig.push({
-              type: 'd6',
+              sides: 6,
               themeColor: '#3b82f6',
               value: rollData.dice[i + 1] // Skip first (wild)
             });
