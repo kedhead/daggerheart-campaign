@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Save, X, Plus, Trash2, GripVertical } from 'lucide-react';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
-import './QuestForm.css';
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
@@ -114,52 +113,69 @@ export default function QuestForm({
   };
 
   return (
-    <form className="quest-form" onSubmit={handleSubmit}>
-      <h3>{quest ? 'Edit Quest' : 'Create Quest'}</h3>
+    <form className="space-y-6" onSubmit={handleSubmit}>
+      <div className="flex items-center justify-between border-b border-white/5 pb-4">
+        <h3 className="text-xl font-bold text-white">{quest ? 'Edit Quest' : 'Create New Quest'}</h3>
+        <button type="button" onClick={onCancel} className="text-white/40 hover:text-white transition-colors">
+          <X size={20} />
+        </button>
+      </div>
 
       {/* Name */}
-      <div className="form-group">
-        <label>Quest Name *</label>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Quest Name <span className="text-red-400">*</span></label>
         <input
           type="text"
           value={formData.name}
           onChange={(e) => handleChange('name', e.target.value)}
           placeholder="Enter quest name..."
-          className={errors.name ? 'error' : ''}
+          className={`w-full bg-black/20 border rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-primary))] transition-all ${errors.name ? 'border-red-500/50' : 'border-white/10'}`}
         />
-        {errors.name && <span className="error-text">{errors.name}</span>}
+        {errors.name && <span className="text-xs text-red-400">{errors.name}</span>}
       </div>
 
       {/* Status & Priority Row */}
-      <div className="form-row">
-        <div className="form-group">
-          <label>Status</label>
-          <select
-            value={formData.status}
-            onChange={(e) => handleChange('status', e.target.value)}
-          >
-            {STATUS_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-white/80 block">Status</label>
+          <div className="relative">
+            <select
+              value={formData.status}
+              onChange={(e) => handleChange('status', e.target.value)}
+              className="w-full appearance-none bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-primary))] transition-all"
+            >
+              {STATUS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-white/40">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+            </div>
+          </div>
         </div>
 
-        <div className="form-group">
-          <label>Priority</label>
-          <select
-            value={formData.priority}
-            onChange={(e) => handleChange('priority', e.target.value)}
-          >
-            {PRIORITY_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-white/80 block">Priority</label>
+          <div className="relative">
+            <select
+              value={formData.priority}
+              onChange={(e) => handleChange('priority', e.target.value)}
+              className="w-full appearance-none bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-primary))] transition-all"
+            >
+              {PRIORITY_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-white/40">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Description */}
-      <div className="form-group">
-        <label>Description</label>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Description</label>
         <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
@@ -167,17 +183,22 @@ export default function QuestForm({
           placeholder="Describe the quest... Use [[entity name]] to link to NPCs, locations, etc."
           rows={4}
         />
+        <p className="text-xs text-white/40">Type [[ to link to other entities</p>
       </div>
 
       {/* Objectives */}
-      <div className="form-group">
-        <label>Objectives</label>
-        <div className="objectives-editor">
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-white/80 block">Objectives</label>
+        <div className="space-y-2 bg-black/20 border border-white/5 rounded-lg p-4">
+          {formData.objectives.length === 0 && (
+            <p className="text-sm text-white/40 italic text-center py-2">No objectives added yet</p>
+          )}
+
           {formData.objectives.map((objective, index) => (
-            <div key={objective.id} className="objective-row">
+            <div key={objective.id} className="flex items-center gap-2">
               <button
                 type="button"
-                className="btn btn-ghost btn-icon drag-handle"
+                className={`p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded transition-colors ${index === 0 ? 'opacity-20 cursor-not-allowed' : ''}`}
                 disabled={index === 0}
                 onClick={() => handleMoveObjective(index, -1)}
                 title="Move up"
@@ -188,11 +209,12 @@ export default function QuestForm({
                 type="text"
                 value={objective.text}
                 onChange={(e) => handleObjectiveChange(objective.id, e.target.value)}
+                className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-primary))]"
                 placeholder="Objective..."
               />
               <button
                 type="button"
-                className="btn btn-ghost btn-icon btn-danger"
+                className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
                 onClick={() => handleRemoveObjective(objective.id)}
                 title="Remove"
               >
@@ -201,12 +223,13 @@ export default function QuestForm({
             </div>
           ))}
 
-          <div className="add-objective-row">
+          <div className="flex gap-2 pt-2 mt-2 border-t border-white/5">
             <input
               type="text"
               value={newObjective}
               onChange={(e) => setNewObjective(e.target.value)}
               placeholder="Add new objective..."
+              className="flex-1 bg-transparent border border-white/10 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-primary))] placeholder:text-white/20"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -216,7 +239,7 @@ export default function QuestForm({
             />
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary text-xs py-1.5 h-full"
               onClick={handleAddObjective}
               disabled={!newObjective.trim()}
             >
@@ -228,8 +251,8 @@ export default function QuestForm({
       </div>
 
       {/* Rewards */}
-      <div className="form-group">
-        <label>Rewards</label>
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80 block">Rewards</label>
         <WikiLinkInput
           value={formData.rewards}
           onChange={(e) => handleChange('rewards', e.target.value)}
@@ -241,21 +264,22 @@ export default function QuestForm({
 
       {/* Hidden Toggle */}
       {isDM && (
-        <div className="form-group checkbox-group">
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={formData.hidden}
-              onChange={(e) => handleChange('hidden', e.target.checked)}
-            />
-            <span>Hidden from players</span>
-          </label>
-          <small className="form-hint">Players won't see this quest until you reveal it</small>
+        <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/10 cursor-pointer hover:bg-white/10 transition-colors" onClick={() => handleChange('hidden', !formData.hidden)}>
+          <input
+            type="checkbox"
+            checked={formData.hidden}
+            onChange={(e) => handleChange('hidden', e.target.checked)}
+            className="rounded border-white/20 bg-black/40 text-[rgb(var(--color-primary))] focus:ring-[rgb(var(--color-primary))]"
+          />
+          <div>
+            <span className="block text-sm font-medium text-white">Hidden from Players</span>
+            <span className="block text-xs text-white/50">Only you can see this quest until revealed</span>
+          </div>
         </div>
       )}
 
       {/* Actions */}
-      <div className="form-actions">
+      <div className="flex justify-end gap-3 pt-6 border-t border-white/10">
         <button type="button" className="btn btn-secondary" onClick={onCancel}>
           <X size={16} />
           Cancel
