@@ -6,7 +6,7 @@ import { Upload, File, Image, Map, Trash2, Download, Eye, X, Wand2, Loader2 } fr
 import Modal from '../Modal';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateMap } from '../../services/mapGenerator';
-import './FilesView.css';
+// import './FilesView.css';
 
 export default function FilesView({ campaign, isDM, userId, locations = [], updateCampaign }) {
   const [files, setFiles] = useState([]);
@@ -388,7 +388,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
       {/* Map Generator Panel */}
       {isDM && showMapGenerator && (
-        <div className="card border-2 border-[var(--fear-color)]/30 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-tertiary)] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="bg-white/5 border border-[var(--fear-color)]/30 rounded-lg backdrop-blur-sm p-6 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-[var(--fear-color)]/20 rounded-full text-[var(--fear-color)]">
               <Wand2 size={24} />
@@ -483,7 +483,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
       {/* Upload Progress */}
       {uploading && (
-        <div className="card p-4 flex items-center gap-4 animate-pulse">
+        <div className="bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm p-4 flex items-center gap-4 animate-pulse">
           <Upload size={24} className="text-[var(--hope-color)]" />
           <div className="flex-1 space-y-2">
             <div className="flex justify-between text-sm">
@@ -525,7 +525,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         {files.map((file) => (
           <div
             key={file.id}
-            className={`card p-0 overflow-hidden flex flex-col group hover:border-[var(--hope-color)] transition-all duration-300 ${file.isGeneratedMap ? 'border-[var(--fear-color)]/30' : ''}`}
+            className={`bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm p-0 overflow-hidden flex flex-col group hover:border-[var(--hope-color)] transition-all duration-300 ${file.isGeneratedMap ? 'border-[var(--fear-color)]/30' : ''}`}
           >
             {/* Preview Area */}
             <div

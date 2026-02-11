@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ExternalLink, X } from 'lucide-react';
 import { getGameSystem } from '../../data/systems/index.js';
 import Modal from '../Modal';
-import './ToolsView.css';
+// import './ToolsView.css';
 
 const ICON_MAP = {
   sword: '⚔️',
@@ -57,7 +57,7 @@ export default function ToolsView({ campaign }) {
               href={tool.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="card group hover:border-[var(--hope-color)] transition-all duration-300 flex items-start gap-4 p-6 relative overflow-hidden"
+              className="bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm group hover:border-[var(--hope-color)] transition-all duration-300 flex items-start gap-4 p-6 relative overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-[var(--hope-color)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="text-4xl select-none group-hover:scale-110 transition-transform duration-300">
@@ -91,7 +91,7 @@ export default function ToolsView({ campaign }) {
                 <div
                   key={className}
                   onClick={() => openModal({ name: className, ...data }, 'class')}
-                  className="card cursor-pointer hover:border-[var(--hope-color)]/50 transition-all duration-300 p-5 group"
+                  className="bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm cursor-pointer hover:border-[var(--hope-color)]/50 transition-all duration-300 p-5 group"
                 >
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="font-cinzel font-bold text-lg group-hover:text-[var(--hope-color)] transition-colors">
