@@ -50,22 +50,23 @@ export default function BPCalculator({
   const fillPercent = Math.min((usedBP / budget) * 100, 100);
 
   return (
-    <div className="bp-calculator">
-      <div className="bp-header">
-        <h4>Battle Points</h4>
-        <div className="party-size-selector">
-          <Users size={16} />
-          <label>Party Size:</label>
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h4 className="text-lg font-bold text-white">Battle Points</h4>
+        <div className="flex items-center gap-2 bg-black/20 p-2 rounded-lg border border-white/5">
+          <Users size={16} className="text-white/40" />
+          <label className="text-sm font-medium text-white/60">Party Size:</label>
           <input
             type="number"
             value={partySize}
             onChange={(e) => setPartySize(Math.max(1, parseInt(e.target.value) || 1))}
             min={1}
             max={10}
+            className="w-12 bg-white/5 border border-white/10 rounded px-2 py-1 text-center text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
           />
           {characterCount > 0 && partySize !== characterCount && (
             <button
-              className="btn btn-ghost btn-sm"
+              className="px-2 py-1 text-xs bg-white/10 hover:bg-white/20 text-white/60 rounded transition-colors"
               onClick={() => setPartySize(characterCount)}
               title={`Set to ${characterCount} (campaign characters)`}
             >
@@ -75,59 +76,63 @@ export default function BPCalculator({
         </div>
       </div>
 
-      <div className="bp-meter">
-        <div className="bp-meter-track">
+      <div className="relative pt-6 pb-2">
+        <div className="h-4 bg-black/40 rounded-full overflow-hidden border border-white/5">
           <div
-            className={`bp-meter-fill ${isOver ? 'over' : isBalanced ? 'balanced' : ''}`}
+            className={`h-full transition-all duration-500 ease-out ${isOver ? 'bg-red-500' : isBalanced ? 'bg-emerald-500' : 'bg-blue-500'}`}
             style={{ width: `${fillPercent}%` }}
           />
         </div>
-        <div className="bp-meter-labels">
-          <span>0</span>
-          <span className="bp-budget-mark" style={{ left: `${Math.min((budget / (budget * 1.5)) * 100, 100)}%` }}>
-            Budget: {budget}
-          </span>
+
+        {/* Labels & Markers */}
+        <div className="absolute top-0 left-0 text-xs font-mono text-white/40">0</div>
+
+        {/* Budget Marker */}
+        <div
+          className="absolute top-0 bottom-0 pointer-events-none flex flex-col items-center justify-end"
+          style={{ left: `${Math.min((budget / (budget * 1.5)) * 100, 100)}%` }} // Simplified, just clamping logic
+        >
+          {/* Note: logic for marker position is tricky without fixed width, simplified here to just end of bar if 100% */}
+        </div>
+
+        <div className="flex justify-between mt-2 text-sm font-medium">
+          <span className={isOver ? 'text-red-400' : 'text-white/60'}>Used: {usedBP} BP</span>
+          <span className="text-white/60">Budget: {budget} BP</span>
         </div>
       </div>
 
-      <div className={`bp-summary ${isOver ? 'over' : isBalanced ? 'balanced' : ''}`}>
-        <div className="bp-used">
-          <span className="bp-label">Used:</span>
-          <span className="bp-value">{usedBP} BP</span>
-        </div>
-        <div className="bp-divider">/</div>
-        <div className="bp-budget">
-          <span className="bp-label">Budget:</span>
-          <span className="bp-value">{budget} BP</span>
-        </div>
-        <div className="bp-status">
-          {isOver ? (
-            <>
-              <AlertTriangle size={16} />
-              <span className="text-danger">{Math.abs(remaining)} over!</span>
-            </>
-          ) : isBalanced ? (
-            <>
-              <CheckCircle size={16} />
-              <span className="text-success">Balanced</span>
-            </>
-          ) : (
-            <span className="text-muted">{remaining} remaining</span>
-          )}
-        </div>
+      <div className={`flex items-center justify-center p-3 rounded-lg border ${isOver
+          ? 'bg-red-500/10 border-red-500/30 text-red-200'
+          : isBalanced
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+            : 'bg-blue-500/10 border-blue-500/30 text-blue-200'
+        }`}>
+        {isOver ? (
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={18} />
+            <span className="font-bold">{Math.abs(remaining)} over budget!</span>
+          </div>
+        ) : isBalanced ? (
+          <div className="flex items-center gap-2">
+            <CheckCircle size={18} />
+            <span className="font-bold">Perfectly Balanced</span>
+          </div>
+        ) : (
+          <span className="font-bold">{remaining} BP remaining</span>
+        )}
       </div>
 
-      <div className="bp-costs-legend">
-        <span className="bp-cost-item">
-          <span className="role-dot role-minion" />
+      <div className="flex flex-wrap gap-3 text-xs text-white/40 pt-2 border-t border-white/5 justify-center">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           Minion/Horde: 1 BP
         </span>
-        <span className="bp-cost-item">
-          <span className="role-dot role-standard" />
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-blue-500" />
           Standard: 2 BP
         </span>
-        <span className="bp-cost-item">
-          <span className="role-dot role-solo" />
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-red-500" />
           Solo: 5 BP
         </span>
       </div>
