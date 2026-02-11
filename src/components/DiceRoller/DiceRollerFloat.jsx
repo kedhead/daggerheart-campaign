@@ -31,11 +31,11 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
   const [isPrivate, setIsPrivate] = useState(false);
   const [rollMode, setRollMode] = useState('normal'); // D&D 5e: normal, advantage, disadvantage
 
-  // Dice rolling functions
-  const rollDaggerheart = () => {
-    const hopeDie = Math.floor(Math.random() * 12) + 1;
-    const fearDie = Math.floor(Math.random() * 12) + 1;
-    const total = hopeDie + fearDie + parseInt(modifier); // Both dice added together
+  // Dice rolling functions - modified to accept overrides or generate random
+  const rollDaggerheart = (overrides = null) => {
+    const hopeDie = overrides?.hopeDie ?? (Math.floor(Math.random() * 12) + 1);
+    const fearDie = overrides?.fearDie ?? (Math.floor(Math.random() * 12) + 1);
+    const total = hopeDie + fearDie + parseInt(modifier);
     const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
 
     return {
@@ -47,16 +47,22 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     };
   };
 
-  const rollDnD5e = () => {
-    const d20 = Math.floor(Math.random() * 20) + 1;
-    let d20Second = undefined;
+  const rollDnD5e = (overrides = null) => {
+    const d20 = overrides?.d20 ?? (Math.floor(Math.random() * 20) + 1);
+    let d20Second = overrides?.d20Second;
     let finalD20 = d20;
 
-    if (rollMode === 'advantage' || rollMode === 'disadvantage') {
+    // If we are rolling freshly (no overrides) and mode is adv/dis, generate second
+    if (!overrides && (rollMode === 'advantage' || rollMode === 'disadvantage')) {
       d20Second = Math.floor(Math.random() * 20) + 1;
-      finalD20 = rollMode === 'advantage'
-        ? Math.max(d20, d20Second)
-        : Math.min(d20, d20Second);
+    }
+
+    if (rollMode === 'advantage' || rollMode === 'disadvantage') {
+      if (d20Second !== undefined) {
+        finalD20 = rollMode === 'advantage'
+          ? Math.max(d20, d20Second)
+          : Math.min(d20, d20Second);
+      }
     }
 
     const total = finalD20 + parseInt(modifier);
@@ -74,57 +80,96 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     };
   };
 
-  const rollStarWarsD6 = () => {
+  const rollStarWarsD6 = (overrides = null) => {
+    // If 3D dice used, we get raw values but maybe not exploding ones visualised
+    // We will just calc stats from what we got + mimic explosion if needed logic-side
+
+    // For 2D (no overrides), we do full logic
+    let dice = overrides?.dice || [];
+    let wildDie = overrides?.wildDie || 0;
+
     const diceCount = parseInt(numDice) || 3;
-    const dice = [];
-    let wildDie = 0;
+
+    if (!overrides) {
+      dice = [];
+      // Generate... (same as before)
+      let total = 0;
+      let complication = false;
+
+      for (let i = 0; i < diceCount; i++) {
+        let roll = Math.floor(Math.random() * 6) + 1;
+        if (i === 0) {
+          wildDie = roll;
+          if (roll === 6) {
+            const extra = Math.floor(Math.random() * 6) + 1;
+            roll += extra; // Simple 1-level explosion for now
+          }
+        }
+        dice.push(roll);
+      }
+      // ... (rest of logic duplicated, let's simplify)
+      // Actually simpler to just rely on the pure function:
+      // We will reconstruct this below.
+    }
+
+    // Recalculate totals from dice array (whether override or new)
+    // NOTE: If override provided (3D), we accept those FACE values.
+    // If wild die was 6 in 3D, we should theoretically explode it.
+    // But we didn't roll a visual 3D extra die. 
+    // So we add it legally but invisibly? Or just ignore explosion for 3D?
+    // Let's add it invisibly to keep math fair.
+
     let total = 0;
     let complication = false;
 
-    // Roll all dice
-    for (let i = 0; i < diceCount; i++) {
-      let roll = Math.floor(Math.random() * 6) + 1;
-
-      if (i === 0) {
-        // First die is wild die
-        wildDie = roll;
-        if (roll === 6) {
-          // Explode on 6
-          const extraRoll = Math.floor(Math.random() * 6) + 1;
-          roll += extraRoll;
-        } else if (roll === 1) {
-          complication = true;
-        }
+    // If generating fresh:
+    if (!overrides) {
+      dice = [];
+      for (let i = 0; i < diceCount; i++) {
+        let r = Math.floor(Math.random() * 6) + 1;
+        if (i === 0) wildDie = r;
+        dice.push(r);
       }
-
-      dice.push(roll);
-      total += roll;
     }
 
-    total += parseInt(modifier);
+    // Now process dice (apply rules)
+    const processedDice = [...dice];
+    const finalWildDie = processedDice[0]; // Assume first is wild
+
+    // Explode logic (apply to first die value if it was a 6)
+    // Only if it's a "fresh" 6 (face value).
+    // If passed from 3D, wildDie is face value.
+    if (wildDie === 6) {
+      // Add an extra random calc for explosion (invisible)
+      const extra = Math.floor(Math.random() * 6) + 1;
+      processedDice[0] += extra;
+    } else if (wildDie === 1) {
+      complication = true;
+    }
+
+    total = processedDice.reduce((a, b) => a + b, 0) + parseInt(modifier);
 
     return {
-      dice,
-      wildDie,
+      dice: processedDice,
+      wildDie, // Face value
       modifier: parseInt(modifier),
       total,
       complication
     };
   };
 
-  const rollGeneric = () => {
+  const rollGeneric = (overrides = null) => {
     const dieType = parseInt(selectedDie);
     const quantity = parseInt(diceQuantity) || 1;
-    const rolls = [];
-    let total = 0;
+    let rolls = overrides?.rolls || [];
 
-    for (let i = 0; i < quantity; i++) {
-      const roll = Math.floor(Math.random() * dieType) + 1;
-      rolls.push(roll);
-      total += roll;
+    if (!overrides) {
+      for (let i = 0; i < quantity; i++) {
+        rolls.push(Math.floor(Math.random() * dieType) + 1);
+      }
     }
 
-    total += parseInt(modifier);
+    const total = rolls.reduce((a, b) => a + b, 0) + parseInt(modifier);
 
     return {
       dieType,
@@ -140,65 +185,99 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
 
     setIsRolling(true);
 
-    // Generate roll data immediately
-    let rollData;
-    switch (gameSystem) {
-      case 'dnd5e':
-        rollData = rollDnD5e();
-        break;
-      case 'starwarsd6':
-        rollData = rollStarWarsD6();
-        break;
-      case 'generic':
-        rollData = rollGeneric();
-        break;
-      case 'daggerheart':
-      default:
-        rollData = rollDaggerheart();
-        break;
-    }
-
-    // If 3D dice enabled, show overlay
+    // If 3D dice enabled, defer calculation!
     if (use3DDice) {
-      setPending3DRoll({ system: gameSystem, ...rollData });
+      // Prepare config to pass to overlay
+      const config = {
+        system: gameSystem,
+        // pass params needed for setup
+        numDice,
+        selectedDie,
+        diceQuantity,
+        mode: rollMode
+      };
+
+      setPending3DRoll(config);
       setShow3DOverlay(true);
       setIsRolling(false);
       return;
     }
 
-    // Otherwise use original animation
+    // 2D Logic (Immediate)
+    let rollData;
+    switch (gameSystem) {
+      case 'dnd5e': rollData = rollDnD5e(); break;
+      case 'starwarsd6': rollData = rollStarWarsD6(); break;
+      case 'generic': rollData = rollGeneric(); break;
+      case 'daggerheart': default: rollData = rollDaggerheart(); break;
+    }
+
     setTimeout(async () => {
       setCurrentRoll({ system: gameSystem, rollData });
-
-      // Save to shared history
       await addRoll({
         system: gameSystem,
         rollData,
         label: rollLabel,
         isPrivate: isDM ? isPrivate : false
       });
-
       setRollLabel('');
       setIsRolling(false);
     }, 800);
   };
 
   // Handle 3D dice roll completion
-  const handle3DRollComplete = async () => {
-    if (pending3DRoll) {
-      const { system, ...rollData } = pending3DRoll;
-      setCurrentRoll({ system, rollData });
+  const handle3DRollComplete = async (rawResults) => {
+    // rawResults contains { hope: X, fear: Y } etc from Dice3DOverlay
 
-      // Save to shared history
-      await addRoll({
-        system,
-        rollData,
-        label: rollLabel,
-        isPrivate: isDM ? isPrivate : false
-      });
-
-      setRollLabel('');
+    if (!rawResults) {
+      // Error or closed without rolling
+      setShow3DOverlay(false);
+      setPending3DRoll(null);
+      return;
     }
+
+    let rollData;
+    const system = pending3DRoll.system; // Use saved system
+
+    switch (system) {
+      case 'daggerheart':
+        rollData = rollDaggerheart({
+          hopeDie: rawResults.hope,
+          fearDie: rawResults.fear
+        });
+        break;
+      case 'dnd5e':
+        rollData = rollDnD5e({
+          d20: rawResults.d20,
+          d20Second: rawResults.d20Second
+        });
+        break;
+      case 'generic':
+        rollData = rollGeneric({
+          rolls: rawResults.rolls
+        });
+        break;
+      case 'starwarsd6':
+        rollData = rollStarWarsD6({
+          wildDie: rawResults.wildDie,
+          dice: rawResults.dice
+        });
+        break;
+      default:
+        rollData = rollDaggerheart();
+    }
+
+    setCurrentRoll({ system, rollData });
+
+    // Save
+    await addRoll({
+      system,
+      rollData,
+      label: rollLabel,
+      isPrivate: isDM ? isPrivate : false
+    });
+
+    setRollLabel('');
     setShow3DOverlay(false);
     setPending3DRoll(null);
   };

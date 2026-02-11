@@ -85,106 +85,114 @@ export default function Dice3DOverlay({
             sides: 12,
             theme: 'default',
             themeColor: '#fbbf24', // Hope (Gold)
-            value: rollData.hopeDie // Pre-determined result
+            groupId: 'hope'
           },
           {
             sides: 12,
             theme: 'default',
             themeColor: '#a855f7', // Fear (Purple)
-            value: rollData.fearDie // Pre-determined result
+            groupId: 'fear'
           }
         ];
       } else if (rollData.system === 'dnd5e') {
         // D&D 5e
-        const color = rollData.isCrit ? '#fbbf24' : rollData.isCritFail ? '#ef4444' : '#3b82f6';
+        // For D&D we roll random if we don't have visual results yet
+        // But if we passed data, we might want to respect it?
+        // Actually, let's switch to Visuals-As-Truth for DnD too.
 
         diceConfig.push({
           sides: 20,
-          themeColor: color,
-          value: rollData.d20
+          themeColor: '#3b82f6',
+          groupId: 'd20'
         });
 
-        if (rollData.d20Second !== undefined) {
+        if (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') {
           diceConfig.push({
             sides: 20,
-            themeColor: '#3b82f6', // Second die standard color
-            value: rollData.d20Second
+            themeColor: '#3b82f6', // Second die
+            groupId: 'd20Second'
           });
         }
       } else if (rollData.system === 'generic') {
-        // Generic
-        if (rollData.rolls) {
-          rollData.rolls.forEach(r => {
-            // Handle both simple number array or object array with colors
-            const val = typeof r === 'object' ? r.result : r;
-            const col = (typeof r === 'object' && r.color) ? r.color : (rollData.playerColor || '#3b82f6');
-            // Extract sides from 'd20' -> 20
-            const sides = parseInt((rollData.dieType || '20').toString().replace('d', ''), 10);
+        const quantity = rollData.quantity || 1;
+        const sides = rollData.dieType || 20;
 
-            diceConfig.push({
-              sides: sides,
-              themeColor: col,
-              value: val
-            });
+        for (let i = 0; i < quantity; i++) {
+          diceConfig.push({
+            sides: sides,
+            themeColor: '#3b82f6',
+            groupId: `die_${i}`
           });
         }
       } else if (rollData.system === 'starwarsd6') {
-        // Star Wars D6
+        // Star Wars - Keeping original logic because of complexity of exploding dice
+        // We will TRY to just roll random and let the user handle the math mentally? 
+        // No, that breaks the "Wild Die" mechanic calculation.
+        // For now, we will roll visual dice matching the quantity.
+        // The results won't trigger re-rolls visually, but we will pass the INITIAL results back.
+        // This means visual = truth for the base roll. Exploding dice won't be visualized.
+
         // Wild Die
         diceConfig.push({
           sides: 6,
-          themeColor: '#fbbf24', // Gold for Wild Die
-          value: rollData.wildDie
+          themeColor: '#fbbf24',
+          groupId: 'wild'
         });
 
         // Normal Dice
-        if (rollData.dice) {
-          // First die in array is wild die, skip it or handle logic match
-          // Actually rollData.dice contains ALL dice including wild.
-          // Let's assume index 0 is wild, others are normal.
-          // But rollData.wildDie is explicit.
-          // Let's rely on rollData.dice length
-          const normalDiceCount = rollData.dice.length - 1;
-          for (let i = 0; i < normalDiceCount; i++) {
-            diceConfig.push({
-              sides: 6,
-              themeColor: '#3b82f6',
-              value: rollData.dice[i + 1] // Skip first (wild)
-            });
-          }
+        // rollData.pendingNumDice should be passed via rollData
+        const count = rollData.numDice || 3;
+        for (let i = 0; i < count - 1; i++) {
+          diceConfig.push({
+            sides: 6,
+            themeColor: '#3b82f6',
+            groupId: `normal_${i}`
+          });
         }
       }
 
-      // Roll the dice!
-      // diceBox.roll(diceConfig)
-      // Note: @3d-dice/dice-box accepts array of objects for advanced rolling
-      // We are forcing results by passing objects with `value` property if the library supports it,
-      // OR we just rely on standard roll and override?
-      // Wait, standard dice-box `roll` method usually generates random values.
-      // To force results, we need to look at specific API.
-      // v1.x: .roll([{ type: 'd20', themeColor: '#ff0000', value: 20 }]) SHOULD work for forcing text result 
-      // but physical result might differ unless we use specific physics solver or 'mock' roll.
-      // Actually, standard `roll` accepts notation strings or objects.
-      // If we want to visualization a PRE-DETERMINED result:
-      // The library allows passing `val` or `value` in the object to force the face result.
-
       const results = await diceBoxRef.current.roll(diceConfig);
+
+      // Process results to send back
+      const rawResults = {};
+
+      // dice-box return format is array of { groupId, value, ... }
+      results.forEach(res => {
+        if (res.groupId) {
+          rawResults[res.groupId] = res.value;
+        } else {
+          // Fallback for generic without IDs
+          // rawResults.push(res.value); 
+        }
+      });
+
+      // For generic/star wars which use array indices
+      if (rollData.system === 'generic') {
+        rawResults.rolls = results.map(r => r.value);
+      }
+      if (rollData.system === 'starwarsd6') {
+        // Map back to expected structure
+        const wild = results.find(r => r.groupId === 'wild')?.value || 0;
+        const others = results.filter(r => r.groupId.startsWith('normal_')).map(r => r.value);
+        rawResults.wildDie = wild;
+        rawResults.dice = [wild, ...others];
+      }
 
       // Delay to show result state
       setTimeout(() => {
         setAnimationComplete(true);
       }, 1000);
 
-      // Notify completion
+      // Notify completion with RAW RESULTS
       setTimeout(() => {
-        if (onComplete) onComplete();
+        if (onComplete) onComplete(rawResults);
         if (onClose) onClose();
-      }, 3500); // Close after a few seconds
+      }, 3500);
 
     } catch (error) {
       console.error('DiceBox roll error:', error);
       // Fallback
-      if (onComplete) onComplete();
+      if (onComplete) onComplete(null);
       if (onClose) onClose();
     }
   };
