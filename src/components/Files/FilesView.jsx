@@ -351,48 +351,58 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
   }
 
   return (
-    <div className="files-view">
-      <div className="view-header">
-        <div>
-          <h2>Maps & Files</h2>
-          <p className="view-subtitle">{files.length} file{files.length !== 1 ? 's' : ''} uploaded</p>
-        </div>
-        {isDM && (
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button className="btn btn-secondary" onClick={() => setShowMapGenerator(!showMapGenerator)}>
-              <Wand2 size={20} />
-              {showMapGenerator ? 'Hide Map Generator' : 'Generate Map with AI'}
-            </button>
-            <label className="btn btn-primary upload-btn">
-              <Upload size={20} />
-              Upload File (Max 5MB)
-              <input
-                type="file"
-                accept="image/*,.pdf,.txt,.doc,.docx"
-                onChange={handleFileSelect}
-                disabled={uploading}
-                style={{ display: 'none' }}
-              />
-            </label>
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold font-cinzel text-[var(--hope-color)]">Maps & Files</h1>
+            <p className="text-[var(--text-secondary)] mt-1">{files.length} file{files.length !== 1 ? 's' : ''} uploaded to your dedicated storage</p>
           </div>
-        )}
+
+          {isDM && (
+            <div className="flex flex-wrap gap-3 w-full md:w-auto">
+              <button
+                className="btn btn-secondary flex-1 md:flex-none justify-center"
+                onClick={() => setShowMapGenerator(!showMapGenerator)}
+              >
+                <Wand2 size={18} />
+                {showMapGenerator ? 'Hide Generator' : 'AI Map Generator'}
+              </button>
+              <label className="btn btn-primary cursor-pointer flex-1 md:flex-none justify-center">
+                <Upload size={18} />
+                Upload File
+                <input
+                  type="file"
+                  accept="image/*,.pdf,.txt,.doc,.docx"
+                  onChange={handleFileSelect}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          )}
+        </div>
+        <hr className="border-[var(--border-accent)] opacity-30" />
       </div>
 
-      {/* Map Generator */}
+      {/* Map Generator Panel */}
       {isDM && showMapGenerator && (
-        <div className="map-generator card">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <Wand2 size={20} />
-            AI Map Generator
-          </h3>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-            Generate maps using AI based on your campaign and locations.
-          </p>
+        <div className="card border-2 border-[var(--fear-color)]/30 bg-gradient-to-b from-[var(--bg-secondary)] to-[var(--bg-tertiary)] p-6 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-[var(--fear-color)]/20 rounded-full text-[var(--fear-color)]">
+              <Wand2 size={24} />
+            </div>
+            <div>
+              <h3 className="text-xl font-cinzel font-bold">AI Cartographer</h3>
+              <p className="text-sm text-[var(--text-secondary)]">Procedurally generate maps and lore based on your campaign</p>
+            </div>
+          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Map Type Selection */}
-            <div className="form-group">
-              <label>Map Type</label>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[var(--text-primary)]">Map Type</label>
               <select
                 value={mapType}
                 onChange={(e) => {
@@ -400,7 +410,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                   setSelectedLocation(null);
                 }}
                 disabled={generatingMap}
-                className="form-control"
+                className="w-full p-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] focus:border-[var(--hope-color)] outline-none transition-colors"
               >
                 <option value="world">{mapDescriptions.world}</option>
                 <option value="regional">{mapDescriptions.regional}</option>
@@ -409,10 +419,10 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               </select>
             </div>
 
-            {/* Location Selection for Regional/Local/Dungeon */}
+            {/* Location Selection */}
             {(mapType === 'regional' || mapType === 'local' || mapType === 'dungeon') && (
-              <div className="form-group">
-                <label>Select Location</label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-[var(--text-primary)]">Select Location</label>
                 <select
                   value={selectedLocation?.id || ''}
                   onChange={(e) => {
@@ -420,7 +430,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                     setSelectedLocation(loc);
                   }}
                   disabled={generatingMap}
-                  className="form-control"
+                  className="w-full p-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] focus:border-[var(--hope-color)] outline-none transition-colors"
                 >
                   <option value="">-- Select a location --</option>
                   {locations.map(loc => (
@@ -432,162 +442,169 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               </div>
             )}
 
-            {/* API Key Warning */}
-            {!hasKey() && (
-              <div className="alert alert-warning">
-                ⚠️ You need to add an API key in Settings to use map generation.
-              </div>
-            )}
+            {/* Info Alerts */}
+            <div className="md:col-span-2 space-y-3">
+              {!hasKey() && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-500 rounded-lg text-sm flex items-center gap-2">
+                  ⚠️ You need to add an API key in Settings to use map generation.
+                </div>
+              )}
 
-            {/* OpenAI Key Info */}
-            {hasKey() && !hasKey('openai') && (
-              <div className="alert alert-info">
-                ℹ️ Add an OpenAI API key to generate visual map images with DALL-E. Otherwise, only text descriptions will be generated.
-              </div>
-            )}
+              {hasKey() && !hasKey('openai') && (
+                <div className="p-3 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-sm flex items-center gap-2">
+                  ℹ️ Add an OpenAI API key to generate visual map images with DALL-E. Otherwise, only text descriptions will be generated.
+                </div>
+              )}
+            </div>
 
             {/* Generate Button */}
-            <button
-              className="btn btn-primary"
-              onClick={handleGenerateMap}
-              disabled={generatingMap || !hasKey() || ((mapType === 'regional' || mapType === 'local' || mapType === 'dungeon') && !selectedLocation)}
-              style={{ alignSelf: 'flex-start' }}
-            >
-              {generatingMap ? (
-                <>
-                  <Loader2 size={20} className="spinner" />
-                  Generating Map...
-                </>
-              ) : (
-                <>
-                  <Wand2 size={20} />
-                  Generate {mapType.charAt(0).toUpperCase() + mapType.slice(1)} Map
-                </>
-              )}
-            </button>
+            <div className="md:col-span-2 flex justify-end">
+              <button
+                className="btn btn-primary"
+                onClick={handleGenerateMap}
+                disabled={generatingMap || !hasKey() || ((mapType === 'regional' || mapType === 'local' || mapType === 'dungeon') && !selectedLocation)}
+              >
+                {generatingMap ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Forging Map...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 size={18} />
+                    Generate {mapType.charAt(0).toUpperCase() + mapType.slice(1)} Map
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Upload Progress */}
       {uploading && (
-        <div className="upload-progress card">
-          <div className="progress-info">
-            <Upload size={20} />
-            <span>Uploading {selectedFile?.name}...</span>
+        <div className="card p-4 flex items-center gap-4 animate-pulse">
+          <Upload size={24} className="text-[var(--hope-color)]" />
+          <div className="flex-1 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Uploading {selectedFile?.name}...</span>
+              <span>{Math.round(uploadProgress)}%</span>
+            </div>
+            <div className="h-2 bg-[var(--bg-secondary)] rounded-full overflow-hidden">
+              <div className="h-full bg-[var(--hope-color)] transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+            </div>
           </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${uploadProgress}%` }}></div>
-          </div>
-          <span className="progress-text">{Math.round(uploadProgress)}%</span>
         </div>
       )}
 
-      {files.length === 0 && !uploading ? (
-        <div className="empty-state card">
-          <Map size={64} />
-          <p>No files uploaded yet</p>
+      {/* Empty State */}
+      {files.length === 0 && !uploading && (
+        <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed border-[var(--border)] rounded-2xl bg-[var(--bg-primary)]/50">
+          <div className="p-4 bg-[var(--bg-secondary)] rounded-full mb-4">
+            <Map size={48} className="text-[var(--text-muted)] opacity-50" />
+          </div>
+          <h3 className="text-xl font-cinzel font-semibold mb-2">No Archives Found</h3>
+          <p className="text-[var(--text-secondary)] max-w-md mx-auto mb-6">Upload maps, documents, or images to access them during your session.</p>
           {isDM && (
-            <label className="btn btn-primary">
-              <Upload size={20} />
+            <label className="btn btn-primary cursor-pointer">
+              <Upload size={18} />
               Upload First File
               <input
                 type="file"
                 accept="image/*,.pdf,.txt,.doc,.docx"
                 onChange={handleFileSelect}
-                style={{ display: 'none' }}
+                className="hidden"
               />
             </label>
           )}
         </div>
-      ) : (
-        <div className="files-grid">
-          {files.map((file) => (
-            <div key={file.id} className={`file-card card ${file.isGeneratedMap ? 'generated-map' : ''}`}>
-              <div className="file-preview">
-                {isImage(file.contentType) ? (
-                  <img src={file.dataUrl} alt={file.name} />
-                ) : file.isGeneratedMap && file.mapDescription ? (
-                  <div className="file-icon-large" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                    <Map size={48} style={{ color: 'var(--hope-color)' }} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Text Map Description</span>
-                  </div>
-                ) : (
-                  <div className="file-icon-large">
-                    {getFileIcon(file.contentType)}
-                  </div>
-                )}
+      )}
+
+      {/* Files Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {files.map((file) => (
+          <div
+            key={file.id}
+            className={`card p-0 overflow-hidden flex flex-col group hover:border-[var(--hope-color)] transition-all duration-300 ${file.isGeneratedMap ? 'border-[var(--fear-color)]/30' : ''}`}
+          >
+            {/* Preview Area */}
+            <div
+              className="h-48 bg-[var(--bg-secondary)] relative flex items-center justify-center overflow-hidden cursor-pointer"
+              onClick={() => isImage(file.contentType) ? setViewingFile(file) : (file.isGeneratedMap ? setViewingMap(file) : null)}
+            >
+              {/* Overlay Gradient on Hover */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 flex items-center justify-center">
+                <Eye size={32} className="text-white drop-shadow-lg" />
               </div>
-              <div className="file-info">
-                <h4 className="file-name">
-                  {file.name}
-                  {file.isGeneratedMap && (
-                    <span className="badge badge-ai" title="AI Generated">
-                      <Wand2 size={12} />
-                    </span>
-                  )}
-                </h4>
-                <div className="file-meta">
-                  {file.size > 0 && <span className="file-size">{formatFileSize(file.size)}</span>}
-                  <span className="file-uploader">by {file.uploadedBy}</span>
+
+              {isImage(file.contentType) ? (
+                <img src={file.dataUrl} alt={file.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              ) : file.isGeneratedMap && file.mapDescription ? (
+                <div className="text-center p-6">
+                  <Wand2 size={48} className="text-[var(--fear-color)] mx-auto mb-3 opacity-80" />
+                  <span className="text-xs uppercase tracking-widest text-[var(--fear-color)] font-bold">Generated Map</span>
                 </div>
-                {file.mapDescription && (
-                  <p className="map-description" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                    {file.mapDescription.length > 100
-                      ? file.mapDescription.substring(0, 100) + '...'
-                      : file.mapDescription}
-                  </p>
-                )}
+              ) : (
+                <div className="text-[var(--text-muted)] opacity-50 scale-125">
+                  {getFileIcon(file.contentType)}
+                </div>
+              )}
+
+              {/* AI Badge Overlay */}
+              {file.isGeneratedMap && (
+                <div className="absolute top-2 right-2 z-20 bg-black/60 backdrop-blur-sm border border-[var(--fear-color)] text-[var(--fear-color)] text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">
+                  AI Generated
+                </div>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="p-4 flex-1 flex flex-col">
+              <div className="flex-1">
+                <h4 className="font-semibold text-[var(--text-primary)] mb-1 truncate" title={file.name}>{file.name}</h4>
+
                 {file.mapType && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <span className="tag" style={{ fontSize: '0.75rem' }}>
-                      {file.mapType} map
-                    </span>
-                  </div>
+                  <span className="inline-block px-2 py-0.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded text-[10px] uppercase tracking-wide text-[var(--text-secondary)] mb-2">
+                    {file.mapType}
+                  </span>
                 )}
+
+                <div className="flex justify-between items-center text-xs text-[var(--text-muted)] mt-2">
+                  <span>{formatFileSize(file.size)}</span>
+                  <span>by {file.uploadedBy}</span>
+                </div>
               </div>
-              <div className="file-actions">
-                {file.isGeneratedMap && (
-                  <button
-                    className="btn btn-icon"
-                    onClick={() => setViewingMap(file)}
-                    title="View map details"
-                  >
-                    <Eye size={18} />
-                  </button>
-                )}
-                {isImage(file.contentType) && !file.isGeneratedMap && (
-                  <button
-                    className="btn btn-icon"
-                    onClick={() => setViewingFile(file)}
-                    title="View full size"
-                  >
-                    <Eye size={18} />
-                  </button>
-                )}
-                {file.dataUrl && (
-                  <a
-                    href={file.dataUrl}
-                    download={file.name}
-                    className="btn btn-icon"
-                    title="Download"
-                  >
-                    <Download size={18} />
-                  </a>
-                )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[var(--border)]">
+                <a
+                  href={file.dataUrl}
+                  download={file.name}
+                  className="p-2 text-[var(--text-secondary)] hover:text-[var(--hope-color)] hover:bg-[var(--bg-primary)] rounded transition-colors"
+                  title="Download"
+                >
+                  <Download size={16} />
+                </a>
+
+                <div className="flex-1"></div>
+
                 {isDM && (
                   <button
-                    className="btn btn-icon btn-danger"
-                    onClick={() => handleDelete(file)}
+                    className="p-2 text-[var(--text-secondary)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(file);
+                    }}
                     title="Delete"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={16} />
                   </button>
                 )}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
 
       {viewingFile && (
         <Modal
@@ -596,8 +613,8 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
           title={viewingFile.name}
           size="large"
         >
-          <div className="file-viewer">
-            <img src={viewingFile.dataUrl} alt={viewingFile.name} />
+          <div className="flex justify-center items-center bg-black/20 p-4 rounded-lg">
+            <img src={viewingFile.dataUrl} alt={viewingFile.name} className="max-w-full max-h-[80vh] rounded shadow-2xl" />
           </div>
         </Modal>
       )}
@@ -633,153 +650,142 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
             title={viewingMap.name.replace('.txt', '').replace('.png', '')}
             size="large"
           >
-            <div className="map-viewer" style={{ padding: '1.5rem' }}>
+            <div className="space-y-6">
               {viewingMap.dataUrl && (
-                <div style={{ marginBottom: '2rem' }}>
-                  <img src={viewingMap.dataUrl} alt={viewingMap.name} style={{ width: '100%', borderRadius: '8px' }} />
+                <div className="rounded-lg overflow-hidden border border-[var(--border)] shadow-lg">
+                  <img src={viewingMap.dataUrl} alt={viewingMap.name} className="w-full h-auto" />
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                <span className="tag">{viewingMap.mapType} map</span>
-                <span className="badge badge-ai"><Wand2 size={12} /> AI Generated</span>
-                {viewingMap.mapStyle && <span className="tag" style={{ fontSize: '0.75rem' }}>{viewingMap.mapStyle}</span>}
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 bg-[var(--bg-tertiary)] rounded-full text-xs font-medium uppercase tracking-wider text-[var(--text-secondary)] border border-[var(--border)]">{viewingMap.mapType} map</span>
+                <span className="px-3 py-1 bg-[var(--fear-color)]/10 text-[var(--fear-color)] rounded-full text-xs font-bold uppercase tracking-wider border border-[var(--fear-color)]/20 flex items-center gap-1">
+                  <Wand2 size={10} /> AI Generated
+                </span>
+                {viewingMap.mapStyle && <span className="px-3 py-1 bg-[var(--bg-tertiary)] rounded-full text-xs text-[var(--text-secondary)] border border-[var(--border)]">{viewingMap.mapStyle}</span>}
               </div>
 
-              <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Description</h3>
-              <p style={{ lineHeight: '1.6', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>
-                {viewingMap.mapDescription}
-              </p>
+              <div>
+                <h3 className="text-lg font-cinzel font-bold text-[var(--hope-color)] mb-2">Description</h3>
+                <p className="text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap bg-[var(--bg-primary)]/30 p-4 rounded-lg border border-[var(--border)]">
+                  {viewingMap.mapDescription}
+                </p>
+              </div>
 
               {mapRegions && mapRegions.length > 0 && (
-                <>
-                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Regions</h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h3 className="text-lg font-cinzel font-bold text-[var(--hope-color)] mb-3">Regions</h3>
+                  <div className="flex flex-wrap gap-2">
                     {mapRegions.map((region, idx) => (
-                      <span key={idx} className="tag">{region}</span>
+                      <span key={idx} className="px-3 py-1.5 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded text-sm text-[var(--text-secondary)]">{region}</span>
                     ))}
                   </div>
-                </>
+                </div>
               )}
 
               {mapFeatures && mapFeatures.length > 0 && (
-                <>
-                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Features</h3>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <h3 className="text-lg font-cinzel font-bold text-[var(--hope-color)] mb-3">Features</h3>
+                  <div className="flex flex-wrap gap-2">
                     {mapFeatures.map((feature, idx) => (
-                      <span key={idx} className="tag">{feature}</span>
+                      <span key={idx} className="px-3 py-1.5 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded text-sm text-[var(--text-secondary)]">{feature}</span>
                     ))}
                   </div>
-                </>
+                </div>
               )}
 
               {locationPlacements.length > 0 && (
-                <>
-                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Location Placements</h3>
-                  <div style={{ display: 'grid', gap: '1rem', marginTop: '1rem' }}>
+                <div>
+                  <h3 className="text-lg font-cinzel font-bold text-[var(--hope-color)] mb-3">Key Locations</h3>
+                  <div className="grid gap-4">
                     {locationPlacements.map((loc, idx) => (
-                      <div key={idx} style={{
-                        padding: '1rem',
-                        background: 'var(--card-bg)',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border-color)'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                          <strong style={{ color: 'var(--hope-color)' }}>{loc.location}</strong>
-                          {loc.type && <span className="tag">{loc.type}</span>}
+                      <div key={idx} className="p-4 bg-[var(--bg-tertiary)]/50 rounded-lg border border-[var(--border)]">
+                        <div className="flex justify-between items-start mb-2">
+                          <strong className="text-[var(--text-primary)] font-cinzel">{loc.location}</strong>
+                          {loc.type && <span className="text-xs px-2 py-0.5 bg-[var(--bg-primary)] rounded text-[var(--text-muted)] border border-[var(--border)]">{loc.type}</span>}
                         </div>
                         {loc.position && (
-                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.25rem 0' }}>
+                          <p className="text-xs text-[var(--hope-color)] mb-2 flex items-center gap-1">
                             📍 {loc.position}
                           </p>
                         )}
                         {loc.description && (
-                          <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>
+                          <p className="text-sm text-[var(--text-secondary)] opacity-90">
                             {loc.description}
                           </p>
                         )}
                       </div>
                     ))}
                   </div>
-                </>
+                </div>
               )}
 
               {climateZones.length > 0 && (
-                <>
-                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Climate Zones</h3>
-                  <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
+                <div>
+                  <h3 className="text-lg font-cinzel font-bold text-[var(--hope-color)] mb-3">Climate Zones</h3>
+                  <div className="grid gap-3">
                     {climateZones.map((zone, idx) => (
-                      <div key={idx} style={{
-                        padding: '0.75rem',
-                        background: 'var(--card-bg)',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border-color)'
-                      }}>
-                        <strong style={{ color: 'var(--hope-color)', fontSize: '0.9rem' }}>
+                      <div key={idx} className="p-3 bg-[var(--bg-tertiary)]/30 rounded-lg border border-[var(--border)]">
+                        <strong className="text-sm block text-[var(--text-primary)] mb-1">
                           {zone.zone || zone.region || 'Climate Zone'}
                         </strong>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>
+                        <p className="text-sm text-[var(--text-secondary)]">
                           {zone.climate || zone.description || ''}
                         </p>
                       </div>
                     ))}
                   </div>
-                </>
+                </div>
               )}
 
               {geographicalFeatures.length > 0 && (
-                <>
-                  <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Geographical Features</h3>
-                  <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1rem' }}>
+                <div>
+                  <h3 className="text-lg font-cinzel font-bold text-[var(--hope-color)] mb-3">Geography</h3>
+                  <div className="grid gap-3">
                     {geographicalFeatures.map((feature, idx) => (
-                      <div key={idx} style={{
-                        padding: '0.75rem',
-                        background: 'var(--card-bg)',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border-color)'
-                      }}>
-                        <strong style={{ color: 'var(--hope-color)', fontSize: '0.9rem' }}>
+                      <div key={idx} className="p-3 bg-[var(--bg-tertiary)]/30 rounded-lg border border-[var(--border)]">
+                        <strong className="text-sm block text-[var(--text-primary)] mb-1">
                           {feature.feature || feature.name || 'Feature'}
                         </strong>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>
+                        <p className="text-sm text-[var(--text-secondary)]">
                           {feature.description || ''}
                         </p>
                       </div>
                     ))}
                   </div>
-                </>
+                </div>
               )}
 
-            {rooms && rooms.length > 0 && (
-              <>
-                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Rooms</h3>
-                <ul style={{ lineHeight: '1.8', color: 'var(--text-secondary)' }}>
-                  {rooms.map((room, idx) => (
-                    <li key={idx}>{room}</li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {connections && connections.length > 0 && (
-              <>
-                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Connections</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {connections.map((connection, idx) => (
-                    <span key={idx} className="tag">{connection}</span>
-                  ))}
+              {rooms && rooms.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-cinzel font-bold text-[var(--hope-color)] mb-3">Rooms</h3>
+                  <ul className="list-disc list-inside space-y-1 text-[var(--text-secondary)] pl-2">
+                    {rooms.map((room, idx) => (
+                      <li key={idx} className="marker:text-[var(--hope-color)]">{room}</li>
+                    ))}
+                  </ul>
                 </div>
-              </>
-            )}
+              )}
 
-            {viewingMap.gridSize && (
-              <>
-                <h3 style={{ marginTop: '1.5rem', marginBottom: '0.75rem' }}>Grid Size</h3>
-                <p style={{ color: 'var(--text-secondary)' }}>{viewingMap.gridSize}</p>
-              </>
-            )}
-          </div>
-        </Modal>
+              {connections && connections.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-cinzel font-bold text-[var(--hope-color)] mb-3">Connections</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {connections.map((connection, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded text-sm text-[var(--text-secondary)]">{connection}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {viewingMap.gridSize && (
+                <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] bg-[var(--bg-primary)]/50 p-2 rounded inline-block">
+                  <span className="uppercase tracking-wider font-bold text-[10px]">Grid Size:</span>
+                  {viewingMap.gridSize}
+                </div>
+              )}
+            </div>
+          </Modal>
         );
       })()}
     </div>

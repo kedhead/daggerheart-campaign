@@ -33,90 +33,123 @@ export default function ToolsView({ campaign }) {
   };
 
   return (
-    <div className="tools-view">
-      <div className="view-header">
-        <div>
-          <h2>Tools & Reference</h2>
-          <p className="view-subtitle">External resources and quick reference guides</p>
+    <div className="max-w-7xl mx-auto p-6 space-y-8">
+      {/* Header */}
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold font-cinzel text-[var(--hope-color)]">Tools & Reference</h1>
+            <p className="text-[var(--text-secondary)] mt-1">External resources and quick reference guides</p>
+          </div>
         </div>
+        <hr className="border-[var(--border-accent)] opacity-30" />
       </div>
 
-      <div className="tools-section">
-        <h3>External Tools</h3>
-        <div className="external-tools-grid">
+      {/* External Tools Section */}
+      <section>
+        <h2 className="text-xl font-cinzel font-semibold mb-6 text-[var(--text-primary)] flex items-center gap-2">
+          <span className="text-[var(--hope-color)]">✦</span> External Tools
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {externalTools.map((tool, index) => (
             <a
               key={index}
               href={tool.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="tool-card card"
+              className="card group hover:border-[var(--hope-color)] transition-all duration-300 flex items-start gap-4 p-6 relative overflow-hidden"
             >
-              <span className="tool-icon">{ICON_MAP[tool.icon] || '🔗'}</span>
-              <div className="tool-content">
-                <h4>{tool.name}</h4>
-                <p>{tool.description}</p>
+              <div className="absolute inset-0 bg-gradient-to-br from-[var(--hope-color)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="text-4xl select-none group-hover:scale-110 transition-transform duration-300">
+                {ICON_MAP[tool.icon] || '🔗'}
               </div>
-              <ExternalLink size={20} className="external-icon" />
+              <div className="flex-1 min-w-0 relative z-10">
+                <h3 className="font-cinzel font-bold text-lg mb-1 group-hover:text-[var(--hope-color)] transition-colors">
+                  {tool.name}
+                </h3>
+                <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                  {tool.description}
+                </p>
+              </div>
+              <ExternalLink size={18} className="text-[var(--text-muted)] group-hover:text-[var(--hope-color)] transition-colors flex-shrink-0 mt-1" />
             </a>
           ))}
         </div>
-      </div>
+      </section>
 
-      {/* Only show game-specific reference data for Daggerheart */}
+      {/* Daggerheart Specific Reference */}
       {gameSystem?.id === 'daggerheart' && (
-        <div className="reference-grid">
-          <div className="tools-section">
-            <h3>Classes & Domains</h3>
-            <div className="reference-list">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+          {/* Classes */}
+          <section>
+            <h2 className="text-xl font-cinzel font-semibold mb-6 text-[var(--text-primary)] flex items-center gap-2">
+              <span className="text-[var(--hope-color)]">⚔️</span> Classes & Domains
+            </h2>
+            <div className="space-y-4">
               {Object.entries(classes).map(([className, data]) => (
                 <div
                   key={className}
-                  className="reference-item card clickable"
                   onClick={() => openModal({ name: className, ...data }, 'class')}
+                  className="card cursor-pointer hover:border-[var(--hope-color)]/50 transition-all duration-300 p-5 group"
                 >
-                  <h4>{className}</h4>
-                  <div className="domains-list">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="font-cinzel font-bold text-lg group-hover:text-[var(--hope-color)] transition-colors">
+                      {className}
+                    </h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                     {data.domains && data.domains.map(domain => (
-                      <span key={domain} className="badge">{domain}</span>
+                      <span key={domain} className="px-2 py-1 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded text-xs text-[var(--text-secondary)] uppercase tracking-wide">
+                        {domain}
+                      </span>
                     ))}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </section>
 
-        <div className="tools-section">
-          <h3>Ancestries</h3>
-          <div className="reference-tags">
-            {Object.entries(gameSystem.ancestries || {}).map(([name, description]) => (
-              <span
-                key={name}
-                className="badge badge-hope clickable"
-                onClick={() => openModal({ name, description }, 'ancestry')}
-              >
-                {name}
-              </span>
-            ))}
-          </div>
+          {/* Ancestries & Communities */}
+          <div className="space-y-8">
+            <section>
+              <h2 className="text-xl font-cinzel font-semibold mb-6 text-[var(--text-primary)] flex items-center gap-2">
+                <span className="text-[var(--hope-color)]">🧬</span> Ancestries
+              </h2>
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(gameSystem.ancestries || {}).map(([name, description]) => (
+                  <button
+                    key={name}
+                    onClick={() => openModal({ name, description }, 'ancestry')}
+                    className="badge badge-hope px-4 py-2 hover:scale-105 transition-transform cursor-pointer"
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </section>
 
-          <h3 style={{marginTop: '2rem'}}>Communities</h3>
-          <div className="reference-tags">
-            {Object.entries(gameSystem.communities || {}).map(([name, description]) => (
-              <span
-                key={name}
-                className="badge badge-fear clickable"
-                onClick={() => openModal({ name, description }, 'community')}
-              >
-                {name}
-              </span>
-            ))}
+            <section>
+              <h2 className="text-xl font-cinzel font-semibold mb-6 text-[var(--text-primary)] flex items-center gap-2">
+                <span className="text-[var(--fear-color)]">🏘️</span> Communities
+              </h2>
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(gameSystem.communities || {}).map(([name, description]) => (
+                  <button
+                    key={name}
+                    onClick={() => openModal({ name, description }, 'community')}
+                    className="badge badge-fear px-4 py-2 hover:scale-105 transition-transform cursor-pointer"
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            </section>
           </div>
-        </div>
         </div>
       )}
 
-      {/* Modal for showing details */}
+      {/* Modal Re-style */}
       {selectedItem && (
         <Modal
           isOpen={!!selectedItem}
@@ -124,26 +157,40 @@ export default function ToolsView({ campaign }) {
           title={selectedItem.name}
           size="medium"
         >
-          <div className="reference-modal-content">
+          <div className="p-4 space-y-6">
             {modalType === 'class' && (
               <>
-                <p className="modal-description">{selectedItem.description}</p>
-                <div className="modal-section">
-                  <h4>Key Features</h4>
-                  <p>{selectedItem.features}</p>
+                <div className="p-4 bg-[var(--bg-tertiary)]/50 rounded-lg border border-[var(--border)]">
+                  <h4 className="text-sm uppercase tracking-wider text-[var(--text-muted)] mb-2 font-bold">Description</h4>
+                  <p className="text-[var(--text-primary)] leading-relaxed italic">
+                    {selectedItem.description}
+                  </p>
                 </div>
-                <div className="modal-section">
-                  <h4>Available Domains</h4>
-                  <div className="domains-list">
+
+                <div>
+                  <h4 className="text-sm uppercase tracking-wider text-[var(--hope-color)] mb-3 font-bold border-b border-[var(--border)] pb-2">Key Features</h4>
+                  <p className="text-[var(--text-primary)] leading-relaxed">{selectedItem.features}</p>
+                </div>
+
+                <div>
+                  <h4 className="text-sm uppercase tracking-wider text-[var(--hope-color)] mb-3 font-bold border-b border-[var(--border)] pb-2">Available Domains</h4>
+                  <div className="flex flex-wrap gap-2">
                     {selectedItem.domains.map(domain => (
-                      <span key={domain} className="badge">{domain}</span>
+                      <span key={domain} className="badge bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-primary)]">
+                        {domain}
+                      </span>
                     ))}
                   </div>
                 </div>
               </>
             )}
+
             {(modalType === 'ancestry' || modalType === 'community') && (
-              <p className="modal-description">{selectedItem.description}</p>
+              <div className="p-4 bg-[var(--bg-tertiary)]/50 rounded-lg border border-[var(--border)]">
+                <p className="text-[var(--text-primary)] leading-relaxed text-lg">
+                  {selectedItem.description}
+                </p>
+              </div>
             )}
           </div>
         </Modal>
