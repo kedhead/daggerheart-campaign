@@ -32,7 +32,17 @@ const initialState = {
   layers: {
     background: { visible: true },
     tokens: { visible: true },
-    fog: { visible: true }
+    fog: { visible: true },
+    drawings: { visible: true }
+  },
+
+  // Drawings
+  drawings: [],
+  drawingSettings: {
+    tool: 'brush', // brush, line, rect, circle, eraser
+    color: '#e2e8f0', // slate-200
+    width: 3,
+    opacity: 1
   },
 
   // Animation effects
@@ -70,6 +80,31 @@ export const useBattleMapStore = create((set, get) => ({
   setPanOffset: (panOffset) => set({ panOffset }),
   setSelectedTool: (selectedTool) => set({ selectedTool }),
   setStageSize: (stageSize) => set({ stageSize }),
+
+  // Drawing actions
+  addDrawing: (drawing) => set((state) => ({
+    drawings: [...state.drawings, {
+      ...drawing,
+      id: drawing.id || `draw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    }],
+    isDirty: true
+  })),
+
+  removeDrawing: (drawingId) => set((state) => ({
+    drawings: state.drawings.filter(d => d.id !== drawingId),
+    isDirty: true
+  })),
+
+  clearDrawings: () => set({ drawings: [], isDirty: true }),
+
+  undoLastDrawing: () => set((state) => ({
+    drawings: state.drawings.slice(0, -1),
+    isDirty: true
+  })),
+
+  setDrawingSettings: (settings) => set((state) => ({
+    drawingSettings: { ...state.drawingSettings, ...settings }
+  })),
 
   // Token actions
   addToken: (token) => set((state) => ({
@@ -188,6 +223,7 @@ export const useBattleMapStore = create((set, get) => ({
   // Load/Save state
   loadMapState: (mapState) => set({
     ...mapState,
+    drawings: mapState.drawings || [],
     isDirty: false
   }),
 
@@ -206,7 +242,9 @@ export const useBattleMapStore = create((set, get) => ({
       gridColor: state.gridColor,
       gridVisible: state.gridVisible,
       snapToGrid: state.snapToGrid,
+      snapToGrid: state.snapToGrid,
       tokens: state.tokens,
+      drawings: state.drawings,
       fogEnabled: state.fogEnabled,
       fogRevealed: state.fogRevealed,
       layers: state.layers,
@@ -226,6 +264,7 @@ export const useBattleMapStore = create((set, get) => ({
       gridColor: state.gridColor,
       gridVisible: state.gridVisible,
       tokens: state.tokens.filter(t => state.layers[t.layer]?.visible !== false),
+      drawings: state.drawings,
       fogEnabled: state.fogEnabled,
       fogRevealed: state.fogRevealed,
       animationEffects: state.animationEffects,

@@ -14,12 +14,13 @@ import {
   Route,
   Package,
   Boxes,
-  Volume2
+  Volume2,
+  X
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
-import MapCanvas from './Canvas/MapCanvas';
-import CanvasToolbar from './Toolbar/CanvasToolbar';
+import CanvasLayers from './Canvas/MapCanvas'; // Using existing MapCanvas component
+import FloatingToolbar from './Toolbar/FloatingToolbar';
 import ZoomControls from './Toolbar/ZoomControls';
 import LayerControls from './Toolbar/LayerControls';
 import AssetLibrary from './Panels/AssetLibrary';
@@ -34,7 +35,6 @@ import TileLibrary from './Panels/TileLibrary';
 import OverlayLibrary from './Panels/OverlayLibrary';
 import AssetPackImporter from './Panels/AssetPackImporter';
 import DMSoundboard from '../Soundboard/DMSoundboard';
-import './BattleMapStudio.css';
 
 export default function BattleMapStudio({ campaign, isDM }) {
   const campaignId = campaign?.id;
@@ -186,13 +186,9 @@ export default function BattleMapStudio({ campaign, isDM }) {
 
   if (!isDM) {
     return (
-      <div className="battle-map-studio">
-        <div className="view-header">
-          <div>
-            <h2>Battle Map Studio</h2>
-            <p className="view-subtitle">This feature is only available to DMs</p>
-          </div>
-        </div>
+      <div className="flex flex-col items-center justify-center p-8 text-center h-full text-zinc-400">
+        <h2 className="text-xl font-bold mb-2">Battle Map Studio</h2>
+        <p>This feature is only available to DMs</p>
       </div>
     );
   }
@@ -200,12 +196,12 @@ export default function BattleMapStudio({ campaign, isDM }) {
   // Render canvas content based on mode
   const renderCanvasContent = () => {
     if (mapImage) {
-      return <MapCanvas />;
+      return <CanvasLayers />;
     }
 
     if (canvasMode === 'ai-generate') {
       return (
-        <div className="canvas-mode-panel">
+        <div className="w-full max-w-lg p-8 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl h-[90%] overflow-y-auto">
           <AIMapGenerator campaignId={campaignId} />
         </div>
       );
@@ -215,173 +211,128 @@ export default function BattleMapStudio({ campaign, isDM }) {
   };
 
   return (
-    <div className="battle-map-studio">
+    <div className="flex flex-col h-screen w-full bg-zinc-950 text-zinc-200 overflow-hidden font-sans">
       {/* Header */}
-      <div className="studio-header">
-        <div className="studio-title-area">
-          <h2>Battle Map Studio</h2>
+      <div className="h-16 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-bold text-zinc-100 tracking-tight">Battle Map Studio</h2>
+          <div className="h-6 w-px bg-zinc-800" />
           <input
             type="text"
-            className="map-name-input"
+            className="bg-transparent border-none text-zinc-300 placeholder-zinc-600 focus:ring-0 text-sm w-48 hover:bg-zinc-800/50 rounded px-2 py-1 transition-colors"
             value={mapName}
             onChange={(e) => setMapName(e.target.value)}
             placeholder="Map name..."
           />
-          {isDirty && <span className="unsaved-indicator">Unsaved changes</span>}
+          {isDirty && <span className="text-amber-500 text-xs font-medium px-2 py-0.5 bg-amber-500/10 rounded-full">Unsaved</span>}
         </div>
-        <div className="studio-actions">
-          <button className="btn btn-secondary" onClick={handleNewMap} title="New Map (Ctrl+N)">
+
+        <div className="flex items-center gap-2">
+          <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors" onClick={handleNewMap} title="New Map (Ctrl+N)">
             <Plus size={18} />
-            New
           </button>
-          <button className="btn btn-secondary" onClick={() => setActivePanel('maps')} title="Open Map">
+          <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors" onClick={() => setActivePanel('maps')} title="Open Map">
             <FolderOpen size={18} />
-            Open
           </button>
-          <button className="btn btn-primary" onClick={handleSave} title="Save Map (Ctrl+S)">
-            <Save size={18} />
+          <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-2" onClick={handleSave} title="Save Map (Ctrl+S)">
+            <Save size={16} />
             Save
           </button>
+
+          <div className="h-6 w-px bg-zinc-800 mx-2" />
+
           <button
-            className={`btn ${isLive ? 'btn-live active' : 'btn-secondary'}`}
+            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${isLive ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'text-zinc-400 hover:bg-zinc-800'}`}
             onClick={() => setIsLive(!isLive)}
-            title={isLive ? 'Stop Live Broadcast' : 'Start Live Broadcast'}
           >
-            <Radio size={18} />
+            <Radio size={16} />
             {isLive ? 'Live' : 'Go Live'}
           </button>
-          <button className="btn btn-primary broadcast-btn" onClick={handleBroadcast} title="Broadcast to Battle Map Display" disabled={isLive}>
+
+          <button className="p-2 text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-md transition-colors" onClick={handleBroadcast} title="Broadcast" disabled={isLive}>
             <Monitor size={18} />
-            Broadcast
-            {showBroadcastConfirm && <span className="broadcast-confirm">Sent!</span>}
           </button>
-          <button className="btn btn-secondary" onClick={openBattleMapDisplay} title="Open Battle Map Display Window">
+          <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors" onClick={openBattleMapDisplay} title="Open Display">
             <ExternalLink size={18} />
-            Open Display
           </button>
           <button
-            className={`btn ${showSoundboard ? 'btn-primary' : 'btn-secondary'}`}
+            className={`p-2 rounded-md transition-colors ${showSoundboard ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}`}
             onClick={() => setShowSoundboard(!showSoundboard)}
-            title="Toggle Soundboard"
           >
             <Volume2 size={18} />
-            Sounds
           </button>
         </div>
       </div>
 
       {/* Main workspace */}
-      <div className="studio-workspace">
-        {/* Left toolbar */}
-        <div className="studio-toolbar">
-          <CanvasToolbar campaignId={campaignId} />
-          <div className="toolbar-divider" />
+      <div className="flex-1 grid grid-cols-[60px_1fr_320px] overflow-hidden">
+        {/* Left toolbar (Mini) */}
+        <div className="bg-zinc-900 border-r border-zinc-800 flex flex-col items-center py-4 gap-4 z-10">
           <ZoomControls />
-          <div className="toolbar-divider" />
+          <div className="w-8 h-px bg-zinc-800" />
           <LayerControls />
         </div>
 
         {/* Canvas area */}
-        <div className="studio-canvas-area">
+        <div className="relative bg-zinc-950 overflow-hidden flex items-center justify-center">
+
+          <FloatingToolbar />
+
           {/* Mode selector - only show when no map loaded */}
           {!mapImage && (
-            <div className="canvas-mode-selector">
-              <button
-                className={`mode-btn ${canvasMode === 'import' ? 'active' : ''}`}
-                onClick={() => setCanvasMode('import')}
-              >
-                <Upload size={18} />
-                Import Map
-              </button>
-              <button
-                className={`mode-btn ${canvasMode === 'ai-generate' ? 'active' : ''}`}
-                onClick={() => setCanvasMode('ai-generate')}
-              >
-                <Wand2 size={18} />
-                AI Generate
-              </button>
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
+              <div className="flex gap-4">
+                <button
+                  className={`flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-600 transition-all ${canvasMode === 'import' ? 'ring-2 ring-indigo-500' : ''}`}
+                  onClick={() => setCanvasMode('import')}
+                >
+                  <Upload size={32} className="text-zinc-400" />
+                  <span className="text-sm font-medium text-zinc-300">Import Map</span>
+                </button>
+                <button
+                  className={`flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-600 transition-all ${canvasMode === 'ai-generate' ? 'ring-2 ring-indigo-500' : ''}`}
+                  onClick={() => setCanvasMode('ai-generate')}
+                >
+                  <Wand2 size={32} className="text-zinc-400" />
+                  <span className="text-sm font-medium text-zinc-300">AI Generate</span>
+                </button>
+              </div>
             </div>
           )}
-          <div className="studio-canvas-container" ref={containerRef}>
+          <div className="w-full h-full" ref={containerRef}>
             {renderCanvasContent()}
           </div>
         </div>
 
         {/* Right panel */}
-        <div className="studio-panel">
-          <div className="panel-tabs">
+        <div className="bg-zinc-900 border-l border-zinc-800 flex flex-col w-[320px]">
+          <div className="flex items-center overflow-x-auto p-1 border-b border-zinc-800 gap-1 scrollbar-hide">
+            {[
+              { id: 'assets', icon: Layers, label: 'Tokens' },
+              { id: 'tiles', icon: Grid, label: 'Tiles' },
+              { id: 'overlays', icon: Route, label: 'Overlays' },
+              { id: 'ai-assets', icon: Wand2, label: 'AI' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${activePanel === tab.id ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
+                onClick={() => setActivePanel(tab.id)}
+                title={tab.label}
+              >
+                <tab.icon size={16} />
+                {tab.label}
+              </button>
+            ))}
             <button
-              className={`panel-tab ${activePanel === 'assets' ? 'active' : ''}`}
-              onClick={() => setActivePanel('assets')}
-              title="Token Library"
-            >
-              <Layers size={14} />
-              Tokens
-            </button>
-            <button
-              className={`panel-tab ${activePanel === 'tiles' ? 'active' : ''}`}
-              onClick={() => setActivePanel('tiles')}
-              title="Map Tiles"
-            >
-              <Grid size={14} />
-              Tiles
-            </button>
-            <button
-              className={`panel-tab ${activePanel === 'overlays' ? 'active' : ''}`}
-              onClick={() => setActivePanel('overlays')}
-              title="Overlay Tiles (Roads, Rivers)"
-            >
-              <Route size={14} />
-              Overlays
-            </button>
-            <button
-              className={`panel-tab ${activePanel === 'import' ? 'active' : ''}`}
-              onClick={() => setActivePanel('import')}
-              title="Import Asset Packs"
-            >
-              <Package size={14} />
-              Import
-            </button>
-            <button
-              className={`panel-tab ${activePanel === 'ai-assets' ? 'active' : ''}`}
-              onClick={() => setActivePanel('ai-assets')}
-              title="AI Asset Generator"
-            >
-              <Wand2 size={14} />
-              AI
-            </button>
-            <button
-              className={`panel-tab ${activePanel === 'ai-packs' ? 'active' : ''}`}
-              onClick={() => setActivePanel('ai-packs')}
-              title="AI Asset Pack Generator"
-            >
-              <Boxes size={14} />
-              Packs
-            </button>
-            <button
-              className={`panel-tab ${activePanel === 'grid' ? 'active' : ''}`}
-              onClick={() => setActivePanel('grid')}
-              title="Grid Settings"
-            >
-              Grid
-            </button>
-            <button
-              className={`panel-tab ${activePanel === 'animate' ? 'active' : ''}`}
-              onClick={() => setActivePanel('animate')}
-              title="Map Animations"
-            >
-              <Sparkles size={14} />
-              FX
-            </button>
-            <button
-              className={`panel-tab ${activePanel === 'maps' ? 'active' : ''}`}
+              className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${activePanel === 'maps' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
               onClick={() => setActivePanel('maps')}
-              title="Saved Maps"
             >
+              <FolderOpen size={16} />
               Maps
             </button>
           </div>
-          <div className="panel-content">
+
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {activePanel === 'assets' && (
               <AssetLibrary campaignId={campaignId} />
             )}
@@ -421,15 +372,15 @@ export default function BattleMapStudio({ campaign, isDM }) {
 
       {/* Soundboard Modal */}
       {showSoundboard && (
-        <div className="soundboard-modal-overlay" onClick={() => setShowSoundboard(false)}>
-          <div className="soundboard-modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="soundboard-modal-header">
-              <h3>Soundboard</h3>
-              <button className="btn btn-icon" onClick={() => setShowSoundboard(false)} title="Close">
-                ✕
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setShowSoundboard(false)}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-[90%] max-w-5xl h-[80vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-4 border-b border-zinc-800">
+              <h3 className="text-lg font-bold text-zinc-100">Soundboard</h3>
+              <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition-colors" onClick={() => setShowSoundboard(false)} title="Close">
+                <X size={24} />
               </button>
             </div>
-            <div className="soundboard-modal-body">
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
               <DMSoundboard campaignId={campaignId} />
             </div>
           </div>

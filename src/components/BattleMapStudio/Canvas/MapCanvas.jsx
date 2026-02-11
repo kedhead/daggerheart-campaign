@@ -2,9 +2,11 @@ import { useRef, useEffect, useCallback } from 'react';
 import { Stage, Layer, Image as KonvaImage } from 'react-konva';
 import useImage from 'use-image';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
+import { useDrawingMode } from '../../../hooks/useDrawingMode';
 import GridOverlay from './GridOverlay';
 import TokenLayer from './TokenLayer';
 import FogOfWarLayer from './FogOfWarLayer';
+import DrawingLayer from './DrawingLayer';
 import MapAnimationOverlay from './MapAnimationOverlay';
 
 function MapBackground({ url }) {
@@ -44,6 +46,14 @@ export default function MapCanvas() {
     deselectAll,
     updateToken
   } = useBattleMapStore();
+
+  const {
+    isDrawing,
+    currentShape,
+    handleMouseDown: handleDrawingMouseDown,
+    handleMouseMove: handleDrawingMouseMove,
+    handleMouseUp: handleDrawingMouseUp
+  } = useDrawingMode();
 
   // Handle wheel zoom
   const handleWheel = useCallback((e) => {
@@ -94,6 +104,12 @@ export default function MapCanvas() {
   const lastPos = useRef(null);
 
   const handleMouseDown = useCallback((e) => {
+    // Handle Drawing
+    if (['brush', 'eraser', 'line', 'rect', 'circle'].includes(selectedTool)) {
+      handleDrawingMouseDown(e);
+      return;
+    }
+
     if (selectedTool === 'fog-erase' || selectedTool === 'fog-paint') {
       isPainting.current = true;
       const pos = e.target.getStage().getPointerPosition();
@@ -113,9 +129,15 @@ export default function MapCanvas() {
         });
       }
     }
-  }, [selectedTool, panOffset, zoom, fogBrushSize, addFogReveal]);
+  }, [selectedTool, panOffset, zoom, fogBrushSize, addFogReveal, handleDrawingMouseDown]);
 
   const handleMouseMove = useCallback((e) => {
+    // Handle Drawing
+    if (isDrawing) {
+      handleDrawingMouseMove(e);
+      return;
+    }
+
     if (!isPainting.current || (selectedTool !== 'fog-erase' && selectedTool !== 'fog-paint')) return;
 
     const pos = e.target.getStage().getPointerPosition();
@@ -134,12 +156,15 @@ export default function MapCanvas() {
     }
 
     lastPos.current = scaledPos;
-  }, [selectedTool, panOffset, zoom, fogBrushSize, addFogReveal]);
+  }, [selectedTool, panOffset, zoom, fogBrushSize, addFogReveal, isDrawing, handleDrawingMouseMove]);
 
   const handleMouseUp = useCallback(() => {
+    if (isDrawing) {
+      handleDrawingMouseUp();
+    }
     isPainting.current = false;
     lastPos.current = null;
-  }, []);
+  }, [isDrawing, handleDrawingMouseUp]);
 
   // Handle drag-and-drop of tokens from asset library
   const handleDragOver = useCallback((e) => {
@@ -209,52 +234,60 @@ export default function MapCanvas() {
         onMouseLeave={handleMouseUp}
         style={{ cursor: selectedTool === 'pan' ? 'grab' : 'default' }}
       >
-      {/* Background layer */}
-      {layers.background.visible && (
-        <Layer>
-          <MapBackground url={mapImage.url} />
-        </Layer>
-      )}
+        {/* Background layer */}
+        {layers.background.visible && (
+          <Layer>
+            <MapBackground url={mapImage.url} />
+          </Layer>
+        )}
 
-      {/* Grid layer */}
-      {gridVisible && gridType !== 'none' && (
-        <Layer listening={false}>
-          <GridOverlay
-            width={mapImage.width}
-            height={mapImage.height}
-            gridType={gridType}
-            gridSize={gridSize}
-            gridColor={gridColor}
-          />
-        </Layer>
-      )}
+        {/* Grid layer */}
+        {gridVisible && gridType !== 'none' && (
+          <Layer listening={false}>
+            <GridOverlay
+              width={mapImage.width}
+              height={mapImage.height}
+              gridType={gridType}
+              gridSize={gridSize}
+              gridColor={gridColor}
+            />
+          </Layer>
+        )}
 
-      {/* Tokens layer */}
-      {layers.tokens.visible && (
-        <Layer>
-          <TokenLayer
-            tokens={tokens}
-            selectedIds={selectedTokenIds}
-            onSelect={selectToken}
-            onUpdate={updateToken}
-            gridSize={gridSize}
-            snapToGrid={snapToGrid}
-            isSelectable={selectedTool === 'select'}
+        {/* Drawing layer (New) */}
+        {layers.drawings?.visible !== false && (
+          <DrawingLayer
+            currentDrawing={currentShape}
+            isDrawing={isDrawing}
           />
-        </Layer>
-      )}
+        )}
 
-      {/* Fog of War layer */}
-      {layers.fog.visible && fogEnabled && (
-        <Layer listening={false}>
-          <FogOfWarLayer
-            width={mapImage.width}
-            height={mapImage.height}
-            revealed={fogRevealed}
-          />
-        </Layer>
-      )}
-    </Stage>
+        {/* Tokens layer */}
+        {layers.tokens.visible && (
+          <Layer>
+            <TokenLayer
+              tokens={tokens}
+              selectedIds={selectedTokenIds}
+              onSelect={selectToken}
+              onUpdate={updateToken}
+              gridSize={gridSize}
+              snapToGrid={snapToGrid}
+              isSelectable={selectedTool === 'select'}
+            />
+          </Layer>
+        )}
+
+        {/* Fog of War layer */}
+        {layers.fog.visible && fogEnabled && (
+          <Layer listening={false}>
+            <FogOfWarLayer
+              width={mapImage.width}
+              height={mapImage.height}
+              revealed={fogRevealed}
+            />
+          </Layer>
+        )}
+      </Stage>
 
       {/* Animation overlay - rendered on top of canvas */}
       {animationEnabled && animationEffects.length > 0 && (

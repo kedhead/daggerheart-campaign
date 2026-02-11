@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, User, Users, Skull, Circle, Square, Diamond, Star, Shield, Globe, Loader2 } from 'lucide-react';
+import { Upload, User, Users, Skull, Globe, Loader2 } from 'lucide-react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
@@ -34,7 +34,7 @@ export default function AssetLibrary({ campaignId }) {
   const [sharedAssets, setSharedAssets] = useState([]);
   const [loadingShared, setLoadingShared] = useState(false);
 
-  const { addToken, gridSize, selectedTool, setSelectedTool } = useBattleMapStore();
+  const { addToken, gridSize, setSelectedTool } = useBattleMapStore();
 
   // Load shared assets when tab is activated
   useEffect(() => {
@@ -94,318 +94,182 @@ export default function AssetLibrary({ campaignId }) {
   }, {});
 
   return (
-    <div className="asset-library">
+    <div className="h-full flex flex-col bg-zinc-900 text-zinc-300">
       {/* Tab selector */}
-      <div className="asset-tabs">
+      <div className="flex border-b border-zinc-800 p-2 gap-1">
         <button
-          className={`asset-tab ${activeTab === 'tokens' ? 'active' : ''}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded text-xs font-medium transition-colors ${activeTab === 'tokens' ? 'bg-zinc-800 text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
           onClick={() => setActiveTab('tokens')}
         >
           <User size={14} />
           Tokens
         </button>
         <button
-          className={`asset-tab ${activeTab === 'shared' ? 'active' : ''}`}
+          className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-3 rounded text-xs font-medium transition-colors ${activeTab === 'shared' ? 'bg-zinc-800 text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
           onClick={() => setActiveTab('shared')}
         >
           <Globe size={14} />
-          Shared Library
+          Shared
           {sharedAssets.length > 0 && (
-            <span className="asset-count">{sharedAssets.length}</span>
+            <span className="ml-1 bg-indigo-500/20 text-indigo-400 px-1.5 rounded-full text-[10px]">{sharedAssets.length}</span>
           )}
         </button>
       </div>
 
-      {activeTab === 'tokens' ? (
-        <>
-          {/* Size selector */}
-          <div className="asset-category">
-            <h4>Token Size</h4>
-            <div className="grid-type-buttons" style={{ marginBottom: '0.5rem' }}>
-              {sizePresets.map(size => (
-                <button
-                  key={size.id}
-                  className={selectedSize === size.id ? 'active' : ''}
-                  onClick={() => setSelectedSize(size.id)}
-                  style={{ flex: 'none', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                >
-                  {size.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Player tokens */}
-          <div className="asset-category">
-            <h4>Player Tokens</h4>
-            <div className="asset-grid">
-              {builtInTokens.filter(t => t.id.startsWith('player')).map(token => (
-                <div
-                  key={token.id}
-                  className="asset-item"
-                  onClick={() => handleAddToken(token)}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, token)}
-                  title={token.name}
-                >
-                  <div
-                    className="asset-placeholder"
-                    style={{ backgroundColor: token.color }}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4">
+        {activeTab === 'tokens' ? (
+          <>
+            {/* Size selector */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Token Size</h4>
+              <div className="flex bg-zinc-950 p-1 rounded-lg border border-zinc-800">
+                {sizePresets.map(size => (
+                  <button
+                    key={size.id}
+                    className={`flex-1 py-1 text-[10px] font-medium rounded transition-colors ${selectedSize === size.id ? 'bg-zinc-800 text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => setSelectedSize(size.id)}
                   >
-                    <User size={20} color="white" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Enemy tokens */}
-          <div className="asset-category">
-            <h4>Enemy Tokens</h4>
-            <div className="asset-grid">
-              {builtInTokens.filter(t => t.id.startsWith('enemy')).map(token => (
-                <div
-                  key={token.id}
-                  className="asset-item"
-                  onClick={() => handleAddToken(token)}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, token)}
-                  title={token.name}
-                >
-                  <div
-                    className="asset-placeholder"
-                    style={{ backgroundColor: token.color }}
-                  >
-                    <Skull size={20} color="white" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* NPC tokens */}
-          <div className="asset-category">
-            <h4>NPC Tokens</h4>
-            <div className="asset-grid">
-              {builtInTokens.filter(t => t.id.startsWith('npc')).map(token => (
-                <div
-                  key={token.id}
-                  className="asset-item"
-                  onClick={() => handleAddToken(token)}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, token)}
-                  title={token.name}
-                >
-                  <div
-                    className="asset-placeholder"
-                    style={{ backgroundColor: token.color }}
-                  >
-                    <Users size={20} color="white" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Custom assets */}
-          {customAssets.length > 0 && (
-            <div className="asset-category">
-              <h4>Custom Assets</h4>
-              <div className="asset-grid">
-                {customAssets.map(asset => (
-                  <div
-                    key={asset.id}
-                    className="asset-item"
-                    onClick={() => handleAddToken({ src: asset.url, name: asset.name })}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, { src: asset.url, name: asset.name })}
-                    title={asset.name}
-                  >
-                    <img src={asset.url} alt={asset.name} />
-                  </div>
+                    {size.name}
+                  </button>
                 ))}
               </div>
             </div>
-          )}
 
-          {/* Upload button */}
-          <div className="asset-uploader">
-            {showUploader ? (
-              <AssetUploader
-                onUpload={handleAssetUpload}
-                onCancel={() => setShowUploader(false)}
-              />
-            ) : (
-              <button
-                className="asset-upload-btn"
-                onClick={() => setShowUploader(true)}
-              >
-                <Upload size={18} />
-                Upload Custom Token
-              </button>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          {/* Shared Library Tab */}
-          <div className="shared-library-info">
-            <p>Assets shared from all campaigns. Click or drag to add to your map.</p>
-          </div>
+            {/* Built-in Token Categories */}
+            {[
+              { id: 'player', label: 'Player Tokens', icon: User },
+              { id: 'enemy', label: 'Enemy Tokens', icon: Skull },
+              { id: 'npc', label: 'NPC Tokens', icon: Users },
+            ].map(category => (
+              <div key={category.id} className="space-y-2">
+                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{category.label}</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {builtInTokens.filter(t => t.id.startsWith(category.id)).map(token => (
+                    <div
+                      key={token.id}
+                      className="aspect-square relative group cursor-pointer"
+                      onClick={() => handleAddToken(token)}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, token)}
+                      title={token.name}
+                    >
+                      <div
+                        className="w-full h-full rounded-full flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 ring-2 ring-transparent group-hover:ring-indigo-500"
+                        style={{ backgroundColor: token.color }}
+                      >
+                        <category.icon size={20} className="text-white/90" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
 
-          {/* Size selector for shared assets */}
-          <div className="asset-category">
-            <h4>Token Size</h4>
-            <div className="grid-type-buttons" style={{ marginBottom: '0.5rem' }}>
-              {sizePresets.map(size => (
-                <button
-                  key={size.id}
-                  className={selectedSize === size.id ? 'active' : ''}
-                  onClick={() => setSelectedSize(size.id)}
-                  style={{ flex: 'none', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                >
-                  {size.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {loadingShared ? (
-            <div className="shared-loading">
-              <Loader2 size={24} className="spin" />
-              <span>Loading shared assets...</span>
-            </div>
-          ) : sharedAssets.length === 0 ? (
-            <div className="shared-empty">
-              <Globe size={32} />
-              <p>No shared assets yet</p>
-              <p className="shared-hint">Share assets from AI Assets tab to build your library</p>
-            </div>
-          ) : (
-            Object.entries(sharedByCategory).map(([category, assets]) => (
-              <div key={category} className="asset-category">
-                <h4>{category.charAt(0).toUpperCase() + category.slice(1)} ({assets.length})</h4>
-                <div className="asset-grid">
-                  {assets.map(asset => (
+            {/* Custom assets */}
+            {customAssets.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Custom Assets</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {customAssets.map(asset => (
                     <div
                       key={asset.id}
-                      className="asset-item shared-asset"
+                      className="aspect-square relative group cursor-pointer"
                       onClick={() => handleAddToken({ src: asset.url, name: asset.name })}
                       draggable
                       onDragStart={(e) => handleDragStart(e, { src: asset.url, name: asset.name })}
                       title={asset.name}
                     >
-                      <img src={asset.url} alt={asset.name} />
+                      <img
+                        src={asset.url}
+                        alt={asset.name}
+                        className="w-full h-full rounded-full object-cover shadow-lg transition-transform group-hover:scale-105 ring-2 ring-transparent group-hover:ring-indigo-500 bg-zinc-800"
+                      />
                     </div>
                   ))}
                 </div>
               </div>
-            ))
-          )}
-        </>
-      )}
+            )}
 
-      <style>{`
-        .asset-tabs {
-          display: flex;
-          gap: 0.25rem;
-          margin-bottom: 1rem;
-          border-bottom: 1px solid var(--border);
-          padding-bottom: 0.5rem;
-        }
+            {/* Upload button */}
+            <div className="pt-2">
+              {showUploader ? (
+                <AssetUploader
+                  onUpload={handleAssetUpload}
+                  onCancel={() => setShowUploader(false)}
+                />
+              ) : (
+                <button
+                  className="w-full py-2 border border-dashed border-zinc-700 rounded-lg text-zinc-500 hover:text-indigo-400 hover:border-indigo-500/50 hover:bg-zinc-800/50 transition-all flex items-center justify-center gap-2 text-xs"
+                  onClick={() => setShowUploader(true)}
+                >
+                  <Upload size={14} />
+                  Upload Custom Token
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Shared Library Tab */}
+            <div className="bg-zinc-950/50 rounded-lg p-3 text-xs text-zinc-400 border border-zinc-800/50">
+              Assets shared from all campaigns. Click or drag to add to your map.
+            </div>
 
-        .asset-tab {
-          display: flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.4rem 0.6rem;
-          background: transparent;
-          border: 1px solid transparent;
-          border-radius: 6px 6px 0 0;
-          color: var(--text-muted);
-          font-size: 0.8rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
+            {/* Size selector for shared assets */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Token Size</h4>
+              <div className="flex bg-zinc-950 p-1 rounded-lg border border-zinc-800">
+                {sizePresets.map(size => (
+                  <button
+                    key={size.id}
+                    className={`flex-1 py-1 text-[10px] font-medium rounded transition-colors ${selectedSize === size.id ? 'bg-zinc-800 text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => setSelectedSize(size.id)}
+                  >
+                    {size.name}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        .asset-tab:hover {
-          color: var(--text-primary);
-          background: var(--bg-tertiary);
-        }
-
-        .asset-tab.active {
-          color: var(--hope-color);
-          background: var(--bg-tertiary);
-          border-color: var(--border);
-          border-bottom-color: var(--bg-tertiary);
-        }
-
-        .asset-count {
-          background: var(--hope-color);
-          color: var(--bg-primary);
-          font-size: 0.65rem;
-          padding: 0.1rem 0.35rem;
-          border-radius: 10px;
-          font-weight: 600;
-        }
-
-        .shared-library-info {
-          padding: 0.5rem;
-          background: var(--bg-tertiary);
-          border-radius: 6px;
-          margin-bottom: 1rem;
-        }
-
-        .shared-library-info p {
-          margin: 0;
-          font-size: 0.8rem;
-          color: var(--text-muted);
-        }
-
-        .shared-loading {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 2rem;
-          color: var(--text-muted);
-        }
-
-        .shared-loading .spin {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .shared-empty {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 2rem;
-          color: var(--text-muted);
-          text-align: center;
-        }
-
-        .shared-empty p {
-          margin: 0;
-        }
-
-        .shared-hint {
-          font-size: 0.75rem;
-          opacity: 0.7;
-        }
-
-        .shared-asset {
-          border: 1px solid var(--border);
-        }
-
-        .shared-asset:hover {
-          border-color: var(--hope-color);
-        }
-      `}</style>
+            {loadingShared ? (
+              <div className="flex flex-col items-center justify-center py-8 text-zinc-500 gap-2">
+                <Loader2 size={20} className="animate-spin" />
+                <span className="text-xs">Loading shared assets...</span>
+              </div>
+            ) : sharedAssets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-zinc-500 gap-2 text-center">
+                <Globe size={24} className="opacity-50" />
+                <p className="text-sm font-medium">No shared assets yet</p>
+                <p className="text-xs opacity-70">Share assets from AI Assets tab to build your library</p>
+              </div>
+            ) : (
+              Object.entries(sharedByCategory).map(([category, assets]) => (
+                <div key={category} className="space-y-2">
+                  <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">{category.charAt(0).toUpperCase() + category.slice(1)} ({assets.length})</h4>
+                  <div className="grid grid-cols-4 gap-2">
+                    {assets.map(asset => (
+                      <div
+                        key={asset.id}
+                        className="aspect-square relative group cursor-pointer"
+                        onClick={() => handleAddToken({ src: asset.url, name: asset.name })}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, { src: asset.url, name: asset.name })}
+                        title={asset.name}
+                      >
+                        <img
+                          src={asset.url}
+                          alt={asset.name}
+                          className="w-full h-full rounded-full object-cover shadow-lg transition-transform group-hover:scale-105 ring-2 ring-transparent group-hover:ring-indigo-500 bg-zinc-800 border border-zinc-700"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

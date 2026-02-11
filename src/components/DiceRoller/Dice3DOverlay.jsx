@@ -37,7 +37,7 @@ export default function Dice3DOverlay({
       gravity: 3,
       theme: 'default',
       themeColor: '#3b82f6',
-      offscreen: true, // Use offscreen canvas for performance
+      offscreen: false, // Usage of offscreen canvas causing issues in production regarding worker communication
     });
 
     box.init().then(() => {
