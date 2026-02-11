@@ -27,8 +27,11 @@ export default function Dice3DOverlay({
     // Only initialize once
     if (diceBoxRef.current) return;
 
+    // Ensure container is available
+    if (!containerRef.current) return;
+
     const box = new DiceBox({
-      container: '#dice-box-canvas',
+      container: containerRef.current,
       assetPath: '/assets/dice-box/', // Must match where we copied assets
       scale: 6,
       throwForce: 6,
@@ -46,11 +49,9 @@ export default function Dice3DOverlay({
 
     // Cleanup
     return () => {
-      // DiceBox doesn't have a strict destroy method exposed easily in docs, 
-      // but we can clear the container if needed. 
-      // For now, we keep the instance alive to avoid re-init cost.
+      // DiceBox cleanup if needed
     };
-  }, []);
+  }, []); // Run on mount
 
   // Handle rolling when `show` becomes true and we have data
   useEffect(() => {
@@ -187,8 +188,6 @@ export default function Dice3DOverlay({
     }
   };
 
-  if (!show) return null;
-
   const outcomeClass = rollData?.outcome ||
     (rollData?.isCrit ? 'crit' : '') ||
     (rollData?.isCritFail ? 'critfail' : '');
@@ -197,7 +196,7 @@ export default function Dice3DOverlay({
     <div className={`dice-3d-overlay ${outcomeClass} ${show ? 'visible' : ''}`} onClick={onClose}>
 
       {/* Container for the 3D Canvas */}
-      <div id="dice-box-canvas" className="dice-box-canvas"></div>
+      <div id="dice-box-canvas" ref={containerRef} className="dice-box-canvas"></div>
 
       {/* Result Banner (Overlay on top) */}
       {animationComplete && rollData && (

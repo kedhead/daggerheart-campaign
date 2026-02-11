@@ -6,13 +6,17 @@
   width: 100vw;
   height: 100vh;
   z-index: 10000;
-  pointer-events: all;
+  pointer-events: none;
   background: transparent;
-  display: none;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .dice-3d-overlay.visible {
-  display: block;
+  visibility: visible;
+  pointer-events: all;
+  opacity: 1;
 }
 
 /* The actual canvas container for dice-box */
@@ -22,7 +26,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  /* Ensure canvas is behind UI elements */
+  /* Ensure canvas takes up space but doesn't block */
   z-index: 10001;
   pointer-events: none;
   /* Let clicks pass through if needed, but dice-box might need events? */
