@@ -30,8 +30,7 @@ export default function Dice3DOverlay({
     // Ensure container is available
     if (!containerRef.current) return;
 
-    const box = new DiceBox({
-      container: containerRef.current,
+    const box = new DiceBox('#dice-box-canvas', {
       assetPath: '/assets/dice-box/', // Must match where we copied assets
       scale: 6,
       throwForce: 6,
