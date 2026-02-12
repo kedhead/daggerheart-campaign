@@ -85,23 +85,16 @@ export default function Dice3DOverlay({
         diceConfig = [
           {
             sides: 12,
-            theme: 'default',
             themeColor: '#fbbf24', // Hope (Gold)
             groupId: 'hope'
           },
           {
             sides: 12,
-            theme: 'default',
             themeColor: '#a855f7', // Fear (Purple)
             groupId: 'fear'
           }
         ];
       } else if (rollData.system === 'dnd5e') {
-        // D&D 5e
-        // For D&D we roll random if we don't have visual results yet
-        // But if we passed data, we might want to respect it?
-        // Actually, let's switch to Visuals-As-Truth for DnD too.
-
         diceConfig.push({
           sides: 20,
           themeColor: '#3b82f6',
@@ -127,13 +120,6 @@ export default function Dice3DOverlay({
           });
         }
       } else if (rollData.system === 'starwarsd6') {
-        // Star Wars - Keeping original logic because of complexity of exploding dice
-        // We will TRY to just roll random and let the user handle the math mentally? 
-        // No, that breaks the "Wild Die" mechanic calculation.
-        // For now, we will roll visual dice matching the quantity.
-        // The results won't trigger re-rolls visually, but we will pass the INITIAL results back.
-        // This means visual = truth for the base roll. Exploding dice won't be visualized.
-
         // Wild Die
         diceConfig.push({
           sides: 6,
@@ -142,7 +128,6 @@ export default function Dice3DOverlay({
         });
 
         // Normal Dice
-        // rollData.pendingNumDice should be passed via rollData
         const count = rollData.numDice || 3;
         for (let i = 0; i < count - 1; i++) {
           diceConfig.push({
@@ -153,7 +138,9 @@ export default function Dice3DOverlay({
         }
       }
 
+      console.log('Rolling with config:', JSON.stringify(diceConfig));
       const results = await diceBoxRef.current.roll(diceConfig);
+      console.log('Roll results:', results);
 
       // Process results to send back
       const rawResults = {};
