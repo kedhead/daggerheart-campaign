@@ -20,7 +20,9 @@ export default function CampaignBuilderView({
   addLore,
   addEncounter,
   addTimelineEvent,
-  addQuest
+  addQuest,
+  addAdversary,
+  addEnvironment
 }) {
   const [wizardStarted, setWizardStarted] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -246,8 +248,8 @@ export default function CampaignBuilderView({
                     <div className="flex items-center gap-3 mb-2">
                       <strong className="text-white">{quest.name}</strong>
                       <span className={`text-xs px-2 py-0.5 rounded font-medium ${quest.priority === 'high' ? 'bg-red-500/20 text-red-400' :
-                          quest.priority === 'medium' ? 'bg-emerald-500/20 text-emerald-400' :
-                            'bg-slate-500/20 text-slate-400'
+                        quest.priority === 'medium' ? 'bg-emerald-500/20 text-emerald-400' :
+                          'bg-slate-500/20 text-slate-400'
                         }`}>
                         {quest.priority}
                       </span>
@@ -393,6 +395,8 @@ export default function CampaignBuilderView({
         addTimelineEvent={addTimelineEvent}
         updateCampaign={updateCampaign}
         addQuest={addQuest}
+        addAdversary={addAdversary}
+        addEnvironment={addEnvironment}
       />
     );
   }

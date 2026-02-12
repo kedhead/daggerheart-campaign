@@ -22,6 +22,7 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import { generateCampaignContent } from '../../services/campaignGenerator';
 import { generateMap } from '../../services/mapGenerator';
+import { generateNPCPortrait, generateLocationPortrait } from '../../services/portraitGenerator';
 
 export default function CampaignBuilderWizard({
   userId,
@@ -35,7 +36,9 @@ export default function CampaignBuilderWizard({
   addEncounter,
   addTimelineEvent,
   updateCampaign,
-  addQuest
+  addQuest,
+  addAdversary,
+  addEnvironment
 }) {
   const { hasKey, keys, getEffectiveKey, recordUsage, sharedKeysEnabled, checkUsageLimit } = useAPIKey(userId);
   const {
@@ -73,11 +76,11 @@ export default function CampaignBuilderWizard({
 
     try {
       // Save the campaign frame first
-      setGenerationProgress('Step 1/6: Saving campaign frame...');
+      setGenerationProgress('Step 1/10: Saving campaign frame...');
       await complete();
 
       // Generate campaign content
-      setGenerationProgress('Step 2/6: Generating content...');
+      setGenerationProgress('Step 2/10: Generating NPCs, locations, lore, encounters...');
 
       // Get effective API key (user's own or shared)
       const anthropicResult = getEffectiveKey('anthropic');
@@ -108,15 +111,70 @@ export default function CampaignBuilderWizard({
         return;
       }
 
+      // Get OpenAI key for portrait generation (DALL-E)
+      const openaiEffective = getEffectiveKey('openai');
+      const openaiKey = openaiEffective.key;
+
       console.log('Starting content generation with API key:', apiKey ? 'Yes' : 'No');
       const generatedContent = await generateCampaignContent(data, campaign, apiKey, provider);
       console.log('Generated content:', generatedContent);
 
-      // Save NPCs
-      setGenerationProgress(`Step 3/6: Saving ${generatedContent.npcs.length} NPCs...`);
+      // Step 3: Import adversaries to campaign
+      const adversaryIdMap = {}; // name -> firestoreId
+      if (generatedContent.adversaries?.length > 0 && addAdversary) {
+        setGenerationProgress(`Step 3/10: Importing ${generatedContent.adversaries.length} adversaries...`);
+        for (let i = 0; i < generatedContent.adversaries.length; i++) {
+          const adversary = generatedContent.adversaries[i];
+          console.log(`Importing Adversary ${i + 1}:`, adversary.name);
+          try {
+            const docRef = await addAdversary(adversary);
+            adversaryIdMap[adversary.name.toLowerCase()] = docRef?.id || docRef;
+            console.log(`Adversary ${i + 1} imported successfully`);
+          } catch (err) {
+            console.error(`Failed to import Adversary ${i + 1}:`, err);
+          }
+        }
+      } else {
+        setGenerationProgress('Step 3/10: Skipping adversaries (not applicable)...');
+      }
+
+      // Step 4: Import environments to campaign
+      const environmentIdMap = {}; // name -> firestoreId
+      if (generatedContent.environments?.length > 0 && addEnvironment) {
+        setGenerationProgress(`Step 4/10: Importing ${generatedContent.environments.length} environments...`);
+        for (let i = 0; i < generatedContent.environments.length; i++) {
+          const environment = generatedContent.environments[i];
+          console.log(`Importing Environment ${i + 1}:`, environment.name);
+          try {
+            const docRef = await addEnvironment(environment);
+            environmentIdMap[environment.name.toLowerCase()] = docRef?.id || docRef;
+            console.log(`Environment ${i + 1} imported successfully`);
+          } catch (err) {
+            console.error(`Failed to import Environment ${i + 1}:`, err);
+          }
+        }
+      } else {
+        setGenerationProgress('Step 4/10: Skipping environments (not applicable)...');
+      }
+
+      // Step 5: Generate NPC portraits and save NPCs
+      setGenerationProgress(`Step 5/10: Saving ${generatedContent.npcs.length} NPCs with portraits...`);
       for (let i = 0; i < generatedContent.npcs.length; i++) {
         const npc = generatedContent.npcs[i];
-        console.log(`Saving NPC ${i + 1}:`, npc);
+        console.log(`Saving NPC ${i + 1}:`, npc.name);
+
+        // Generate portrait if OpenAI key is available
+        if (openaiKey) {
+          try {
+            setGenerationProgress(`Step 5/10: Generating portrait for ${npc.name}...`);
+            const portraitUrl = await generateNPCPortrait(npc, openaiKey, campaign?.gameSystem || 'daggerheart', campaign?.id);
+            npc.portraitUrl = portraitUrl;
+            console.log(`Portrait generated for ${npc.name}`);
+          } catch (err) {
+            console.error(`Failed to generate portrait for ${npc.name}:`, err);
+          }
+        }
+
         try {
           await addNPC(npc);
           console.log(`NPC ${i + 1} saved successfully`);
@@ -125,11 +183,24 @@ export default function CampaignBuilderWizard({
         }
       }
 
-      // Save Locations
-      setGenerationProgress(`Step 4/6: Saving ${generatedContent.locations.length} locations...`);
+      // Step 6: Generate location portraits and save locations
+      setGenerationProgress(`Step 6/10: Saving ${generatedContent.locations.length} locations with portraits...`);
       for (let i = 0; i < generatedContent.locations.length; i++) {
         const location = generatedContent.locations[i];
-        console.log(`Saving Location ${i + 1}:`, location);
+        console.log(`Saving Location ${i + 1}:`, location.name);
+
+        // Generate portrait if OpenAI key is available
+        if (openaiKey) {
+          try {
+            setGenerationProgress(`Step 6/10: Generating portrait for ${location.name}...`);
+            const portraitUrl = await generateLocationPortrait(location, openaiKey, campaign?.gameSystem || 'daggerheart', campaign?.id);
+            location.imageUrl = portraitUrl;
+            console.log(`Portrait generated for ${location.name}`);
+          } catch (err) {
+            console.error(`Failed to generate portrait for ${location.name}:`, err);
+          }
+        }
+
         try {
           await addLocation(location);
           console.log(`Location ${i + 1} saved successfully`);
@@ -138,8 +209,8 @@ export default function CampaignBuilderWizard({
         }
       }
 
-      // Save Lore
-      setGenerationProgress(`Step 5/6: Saving ${generatedContent.lore.length} lore entries...`);
+      // Step 7: Save Lore
+      setGenerationProgress(`Step 7/10: Saving ${generatedContent.lore.length} lore entries...`);
       for (let i = 0; i < generatedContent.lore.length; i++) {
         const lore = generatedContent.lore[i];
         console.log(`Saving Lore ${i + 1}:`, lore);
@@ -151,11 +222,36 @@ export default function CampaignBuilderWizard({
         }
       }
 
-      // Save Encounters
-      setGenerationProgress(`Step 6/6: Saving ${generatedContent.encounters.length} encounters...`);
+      // Step 8: Enrich and save Encounters
+      setGenerationProgress(`Step 8/10: Saving ${generatedContent.encounters.length} encounters...`);
       for (let i = 0; i < generatedContent.encounters.length; i++) {
         const encounter = generatedContent.encounters[i];
         console.log(`Saving Encounter ${i + 1}:`, encounter);
+
+        // Resolve suggested adversaries to adversary slots
+        if (encounter.suggestedAdversaries && Array.isArray(encounter.suggestedAdversaries)) {
+          const adversarySlots = [];
+          for (const advName of encounter.suggestedAdversaries) {
+            const advId = adversaryIdMap[advName.toLowerCase()];
+            if (advId) {
+              adversarySlots.push({ adversaryId: advId, quantity: 1 });
+            }
+          }
+          if (adversarySlots.length > 0) {
+            encounter.adversarySlots = adversarySlots;
+          }
+          delete encounter.suggestedAdversaries;
+        }
+
+        // Resolve suggested environment to environment ID
+        if (encounter.suggestedEnvironment) {
+          const envId = environmentIdMap[encounter.suggestedEnvironment.toLowerCase()];
+          if (envId) {
+            encounter.environmentId = envId;
+          }
+          delete encounter.suggestedEnvironment;
+        }
+
         try {
           await addEncounter(encounter);
           console.log(`Encounter ${i + 1} saved successfully`);
@@ -164,8 +260,8 @@ export default function CampaignBuilderWizard({
         }
       }
 
-      // Save Timeline Events
-      setGenerationProgress(`Step 6/6: Saving ${generatedContent.timelineEvents.length} timeline events...`);
+      // Step 9: Save Timeline Events
+      setGenerationProgress(`Step 9/10: Saving ${generatedContent.timelineEvents.length} timeline events...`);
       for (let i = 0; i < generatedContent.timelineEvents.length; i++) {
         const event = generatedContent.timelineEvents[i];
         console.log(`Saving Timeline Event ${i + 1}:`, event);
@@ -222,13 +318,11 @@ export default function CampaignBuilderWizard({
         }
       }
 
-      // Generate World Map
-      setGenerationProgress('Bonus: Generating world map...');
+      // Step 10: Generate World Map
+      setGenerationProgress('Step 10/10: Generating world map...');
       try {
         console.log('Generating world map with locations...');
-        // Get OpenAI key for DALL-E image generation (user's own or shared)
-        const openaiEffective = getEffectiveKey('openai');
-        const openaiKey = openaiEffective.key;
+        // Reuse openaiKey declared earlier for DALL-E image generation
         const generateImage = !!openaiKey; // Only generate image if we have OpenAI key
 
         const mapData = await generateMap(

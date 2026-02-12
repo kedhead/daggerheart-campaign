@@ -239,7 +239,84 @@ export async function generateCharacterPortrait(character, openaiKey, gameSystem
 export const portraitGeneratorService = {
   generateNPCPortrait,
   generateCharacterPortrait,
+  generateLocationPortrait,
   buildNPCPortraitPrompt,
   buildCharacterPortraitPrompt,
+  buildLocationPortraitPrompt,
   generatePortraitImage
 };
+
+/**
+ * Build a DALL-E prompt for a location portrait
+ * @param {object} location - Location data with name, type, description, region, etc.
+ * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
+ * @returns {string} DALL-E prompt
+ */
+export function buildLocationPortraitPrompt(location, gameSystem = 'daggerheart') {
+  const { name, type, description, region } = location;
+
+  // Base style per game system
+  let styleBase = '';
+  if (gameSystem === 'starwarsd6') {
+    styleBase = 'Star Wars landscape illustration, sci-fi environment, cinematic wide shot, dramatic lighting, concept art quality';
+  } else {
+    styleBase = 'Fantasy RPG landscape illustration, detailed fantasy environment, cinematic wide shot, dramatic lighting, painterly concept art quality';
+  }
+
+  // Map location types to visual cues
+  const typeHints = {
+    city: 'bustling city streets, architecture, rooftops',
+    town: 'quaint town square, medieval buildings, marketplace',
+    village: 'small rural village, cottages, dirt roads',
+    tavern: 'cozy tavern interior, warm hearth light, wooden beams',
+    inn: 'rustic inn, candlelit interior, welcoming atmosphere',
+    dungeon: 'underground dungeon, stone corridors, torchlit',
+    cave: 'natural cave system, stalactites, mysterious light',
+    forest: 'dense ancient forest, towering trees, dappled sunlight',
+    mountain: 'dramatic mountain peaks, alpine landscape',
+    ruins: 'ancient crumbling ruins, overgrown stonework, mystery',
+    temple: 'grand temple interior, stained glass, sacred atmosphere',
+    castle: 'imposing castle, battlements, medieval fortification',
+    port: 'bustling harbor, ships at dock, seaside town',
+    wilderness: 'untamed wilderness, natural landscape, vast horizon',
+    swamp: 'murky swamp, twisted trees, foggy waters',
+    desert: 'vast desert landscape, sand dunes, harsh sun',
+    underground: 'deep underground cavern, crystal formations, glowing fungi',
+    other: ''
+  };
+
+  const typeHint = typeHints[type] || '';
+  const regionContext = region ? `, in the ${region} region` : '';
+
+  const prompt = `${styleBase}. ${name || 'A mysterious location'}${regionContext}. ${typeHint}. ${description || ''}. Wide establishing shot, atmospheric, highly detailed, no text or labels, no people.`;
+
+  return prompt;
+}
+
+/**
+ * Generate a location portrait
+ * @param {object} location - Location data
+ * @param {string} openaiKey - OpenAI API key for DALL-E
+ * @param {string} gameSystem - Game system for style
+ * @param {string} campaignId - Campaign ID for storage
+ * @returns {Promise<string>} Portrait URL
+ */
+export async function generateLocationPortrait(location, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
+  if (!openaiKey) {
+    throw new Error('OpenAI API key required for portrait generation');
+  }
+
+  console.log('Building portrait prompt for location:', location.name);
+  const prompt = buildLocationPortraitPrompt(location, gameSystem);
+  console.log('DALL-E prompt:', prompt);
+
+  const dataUrl = await generatePortraitImage(prompt, openaiKey);
+
+  // If campaignId provided, upload to Firebase Storage
+  if (campaignId) {
+    const storageUrl = await uploadPortraitToStorage(dataUrl, campaignId, `loc_${location.name}`);
+    return storageUrl;
+  }
+
+  return dataUrl;
+}

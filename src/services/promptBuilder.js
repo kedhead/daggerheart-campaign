@@ -254,7 +254,7 @@ Make sure the location fits the campaign's tone and is geographically consistent
    * @returns {string} Generated prompt
    */
   buildEncounterPrompt(context) {
-    const { campaign, campaignFrame, partyLevel = 1, partySize = 4, requirements = {} } = context;
+    const { campaign, campaignFrame, partyLevel = 1, partySize = 4, requirements = {}, availableAdversaries = [], availableEnvironments = [] } = context;
     const gameSystem = this._getGameSystemContext(campaign);
 
     let prompt = `You are creating a combat encounter for a ${gameSystem.name} campaign set in a ${gameSystem.genre} setting.
@@ -284,6 +284,22 @@ Party Size: ${partySize} characters`;
     prompt += requirements.environment ? `\nEnvironment: ${requirements.environment}` : '\nEnvironment: Suggest an environment';
     prompt += requirements.enemyTypes ? `\nEnemy Types: ${requirements.enemyTypes}` : '\nEnemy Types: Suggest appropriate enemies';
 
+    // Include available adversaries from the campaign's catalog
+    if (availableAdversaries.length > 0) {
+      prompt += `\n\nAVAILABLE ADVERSARIES (use these exact names for suggestedAdversaries):`;
+      availableAdversaries.forEach(name => {
+        prompt += `\n- ${name}`;
+      });
+    }
+
+    // Include available environments from the campaign's catalog
+    if (availableEnvironments.length > 0) {
+      prompt += `\n\nAVAILABLE ENVIRONMENTS (use one of these exact names for suggestedEnvironment):`;
+      availableEnvironments.forEach(name => {
+        prompt += `\n- ${name}`;
+      });
+    }
+
     prompt += `\n\nPlease generate an encounter with this JSON structure:
 \`\`\`json
 {
@@ -294,9 +310,14 @@ Party Size: ${partySize} characters`;
   "enemies": "List of enemies and approximate numbers",
   "tactics": "How the enemies fight and their strategy",
   "rewards": "Potential loot, experience, or other rewards",
+  "suggestedAdversaries": ["exact adversary name", "exact adversary name"],
+  "suggestedEnvironment": "exact environment name or empty string",
   "freshCutGrassLink": "" (leave empty)
 }
 \`\`\`
+
+${availableAdversaries.length > 0 ? 'IMPORTANT: For suggestedAdversaries, use EXACT names from the AVAILABLE ADVERSARIES list above. Pick 2-4 adversaries that fit the encounter thematically.' : ''}
+${availableEnvironments.length > 0 ? 'IMPORTANT: For suggestedEnvironment, use an EXACT name from the AVAILABLE ENVIRONMENTS list above that fits the encounter.' : ''}
 
 Balance the encounter for the party level and size. Make it thematically appropriate to the campaign.`;
 

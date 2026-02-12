@@ -7,6 +7,8 @@ import { templateService } from './templateService';
 import { aiService } from './aiService';
 import { promptBuilder } from './promptBuilder';
 import { responseParser } from './responseParser';
+import { DAGGERHEART_ADVERSARIES } from '../data/daggerheartAdversaries';
+import { DAGGERHEART_ENVIRONMENTS } from '../data/daggerheartEnvironments';
 
 /**
  * Generate starter content for a campaign based on its frame
@@ -32,7 +34,9 @@ export async function generateCampaignContent(campaignFrame, campaign, apiKey = 
     locations: [],
     lore: [],
     encounters: [],
-    timelineEvents: []
+    timelineEvents: [],
+    adversaries: [],
+    environments: []
   };
 
   try {
@@ -89,12 +93,23 @@ export async function generateCampaignContent(campaignFrame, campaign, apiKey = 
       }
     }
 
+    // Select thematic Adversaries and Environments from SRD (Daggerheart only, before encounter generation)
+    if (campaign?.gameSystem === 'daggerheart' || !campaign?.gameSystem) {
+      console.log('Selecting thematic adversaries...');
+      generated.adversaries = selectThematicAdversaries(campaignFrame, 8);
+      console.log(`Selected ${generated.adversaries.length} adversaries`);
+
+      console.log('Selecting thematic environments...');
+      generated.environments = selectThematicEnvironments(campaignFrame, 4);
+      console.log(`Selected ${generated.environments.length} environments`);
+    }
+
     // Generate Encounters (2 starter encounters)
     console.log('Generating Encounters...');
     for (let i = 0; i < 2; i++) {
       try {
         const encounter = useAI
-          ? await generateEncounterWithAI(context, apiKey, provider, i)
+          ? await generateEncounterWithAI(context, apiKey, provider, i, generated.adversaries, generated.environments)
           : templateService.generateRandomEncounter({ partyLevel: 1, partySize: 4 });
         console.log('Generated Encounter:', encounter);
         generated.encounters.push(encounter);
@@ -196,7 +211,7 @@ Make it thematically consistent with the campaign. Incorporate player-establishe
 /**
  * Generate Encounter using AI
  */
-async function generateEncounterWithAI(context, apiKey, provider, index) {
+async function generateEncounterWithAI(context, apiKey, provider, index, availableAdversaries = [], availableEnvironments = []) {
   const difficulties = ['easy', 'medium'];
   const difficulty = difficulties[index % difficulties.length];
 
@@ -204,7 +219,9 @@ async function generateEncounterWithAI(context, apiKey, provider, index) {
     ...context,
     partyLevel: 1,
     partySize: 4,
-    requirements: { difficulty }
+    requirements: { difficulty },
+    availableAdversaries: availableAdversaries.map(a => a.name),
+    availableEnvironments: availableEnvironments.map(e => e.name)
   };
 
   const prompt = promptBuilder.buildEncounterPrompt(encounterContext);
@@ -297,3 +314,153 @@ function generateTimelineEvents(campaignFrame) {
 export const campaignGeneratorService = {
   generateCampaignContent
 };
+
+/**
+ * Select thematic adversaries from DAGGERHEART_ADVERSARIES based on campaign themes
+ * Picks a balanced mix of tiers and roles appropriate for a new campaign
+ * @param {object} campaignFrame - Campaign frame data
+ * @param {number} count - Number of adversaries to select
+ * @returns {Array} Selected adversary objects
+ */
+function selectThematicAdversaries(campaignFrame, count = 8) {
+  const themes = (campaignFrame.themes || []).map(t => t.toLowerCase());
+  const pitch = (campaignFrame.pitch || '').toLowerCase();
+  const overview = (campaignFrame.overview || '').toLowerCase();
+  const allText = `${themes.join(' ')} ${pitch} ${overview}`;
+
+  // Score adversaries by thematic relevance
+  const scored = DAGGERHEART_ADVERSARIES.map(adv => {
+    let score = 0;
+    const advText = `${adv.name} ${adv.description} ${adv.motives || ''}`.toLowerCase();
+
+    // Tier 1 adversaries get priority for new campaigns
+    if (adv.tier === 1) score += 3;
+    else if (adv.tier === 2) score += 1;
+    // Tier 3+ are too strong for starter content
+
+    // Keyword matching
+    const keywords = [
+      'undead', 'zombie', 'skeleton', 'ghost', 'spirit',
+      'beast', 'wolf', 'bear', 'snake', 'spider',
+      'bandit', 'thief', 'rogue', 'criminal',
+      'guard', 'knight', 'soldier', 'warrior',
+      'mage', 'wizard', 'sorcerer', 'magic',
+      'goblin', 'orc', 'troll', 'ogre',
+      'dragon', 'demon', 'devil', 'fiend',
+      'nature', 'forest', 'plant', 'treant',
+      'construct', 'golem', 'mechanical',
+      'cultist', 'cult', 'dark', 'shadow',
+      'noble', 'courtier', 'political', 'social',
+      'pirate', 'sailor', 'sea', 'ocean'
+    ];
+
+    for (const keyword of keywords) {
+      if (allText.includes(keyword) && advText.includes(keyword)) {
+        score += 2;
+      }
+    }
+
+    // Bonus for role variety
+    return { ...adv, _score: score };
+  });
+
+  // Sort by score descending, then by tier ascending
+  scored.sort((a, b) => b._score - a._score || a.tier - b.tier);
+
+  // Pick top candidates ensuring role variety
+  const selected = [];
+  const usedRoles = new Set();
+
+  for (const adv of scored) {
+    if (selected.length >= count) break;
+
+    // Prefer role variety for first selections
+    if (selected.length < 5 && usedRoles.has(adv.role) && scored.some(
+      a => a._score > 0 && !usedRoles.has(a.role) && !selected.includes(a)
+    )) {
+      continue;
+    }
+
+    usedRoles.add(adv.role);
+    // Remove internal scoring field
+    const { _score, ...cleanAdv } = adv;
+    selected.push(cleanAdv);
+  }
+
+  return selected;
+}
+
+/**
+ * Select thematic environments from DAGGERHEART_ENVIRONMENTS based on campaign themes
+ * @param {object} campaignFrame - Campaign frame data
+ * @param {number} count - Number of environments to select
+ * @returns {Array} Selected environment objects
+ */
+function selectThematicEnvironments(campaignFrame, count = 4) {
+  const themes = (campaignFrame.themes || []).map(t => t.toLowerCase());
+  const pitch = (campaignFrame.pitch || '').toLowerCase();
+  const overview = (campaignFrame.overview || '').toLowerCase();
+  const allText = `${themes.join(' ')} ${pitch} ${overview}`;
+
+  // Score environments by thematic relevance
+  const scored = DAGGERHEART_ENVIRONMENTS.map(env => {
+    let score = 0;
+    const envText = `${env.name} ${env.description} ${env.type || ''}`.toLowerCase();
+
+    // Tier 1-2 environments preferred for new campaigns
+    if (env.tier === 1) score += 3;
+    else if (env.tier === 2) score += 2;
+    else if (env.tier === 3) score += 1;
+
+    // Type variety bonus
+    const typeKeywords = {
+      exploration: ['explore', 'discover', 'journey', 'travel', 'wilderness', 'nature', 'forest', 'cave', 'ruins'],
+      social: ['social', 'political', 'intrigue', 'city', 'town', 'noble', 'court', 'marketplace'],
+      combat: ['war', 'battle', 'fight', 'siege', 'conflict', 'military'],
+      traversal: ['travel', 'journey', 'climb', 'cross', 'passage', 'mountain', 'sea'],
+      event: ['event', 'ritual', 'ceremony', 'ambush', 'trap']
+    };
+
+    for (const [envType, keywords] of Object.entries(typeKeywords)) {
+      if (env.type === envType) {
+        for (const kw of keywords) {
+          if (allText.includes(kw)) score += 1;
+        }
+      }
+    }
+
+    // Direct keyword matching
+    const words = envText.split(/\W+/);
+    for (const word of words) {
+      if (word.length > 3 && allText.includes(word)) {
+        score += 1;
+      }
+    }
+
+    return { ...env, _score: score };
+  });
+
+  // Sort by score descending
+  scored.sort((a, b) => b._score - a._score || a.tier - b.tier);
+
+  // Pick top candidates ensuring type variety
+  const selected = [];
+  const usedTypes = new Set();
+
+  for (const env of scored) {
+    if (selected.length >= count) break;
+
+    // Prefer type variety
+    if (selected.length < 3 && usedTypes.has(env.type) && scored.some(
+      e => e._score > 0 && !usedTypes.has(e.type) && !selected.includes(e)
+    )) {
+      continue;
+    }
+
+    usedTypes.add(env.type);
+    const { _score, ...cleanEnv } = env;
+    selected.push(cleanEnv);
+  }
+
+  return selected;
+}

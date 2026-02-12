@@ -462,6 +462,8 @@ function CampaignApp() {
             addEncounter={addEncounter}
             addTimelineEvent={addTimelineEvent}
             addQuest={addQuest}
+            addAdversary={addAdversary}
+            addEnvironment={addEnvironment}
           />
         );
       case 'apiSettings':
