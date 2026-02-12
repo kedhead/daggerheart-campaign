@@ -75,6 +75,26 @@ async function generatePortraitImage(prompt, apiKey) {
 }
 
 /**
+ * Sanitize text to remove potential DALL-E safety triggers
+ * @param {string} text - Input text
+ * @returns {string} Sanitized text
+ */
+function sanitizePortraitText(text) {
+  if (!text) return '';
+  return text
+    .replace(/fracture/gi, 'mark')
+    .replace(/shattering/gi, 'breaking')
+    .replace(/flesh/gi, 'skin')
+    .replace(/blood/gi, 'crimson')
+    .replace(/gore/gi, 'mess')
+    .replace(/severed/gi, 'missing')
+    .replace(/corpse/gi, 'fallen')
+    .replace(/kill/gi, 'defeat')
+    .replace(/death/gi, 'end')
+    .replace(/torture/gi, 'torment');
+}
+
+/**
  * Build a DALL-E prompt for a player character portrait
  * @param {object} character - Character data with name, class, ancestry, appearanceDescription, etc.
  * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
@@ -99,6 +119,9 @@ function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
     // Extract first 200 chars of backstory for context
     appearance = backstory.substring(0, 200);
   }
+
+  // Sanitize appearance text
+  appearance = sanitizePortraitText(appearance);
 
   // Build character context
   let characterContext = name || 'an adventurer';
@@ -136,7 +159,7 @@ function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
   let characterDesc = '';
   if (description) {
     // Extract physical appearance from description if present
-    characterDesc = description;
+    characterDesc = sanitizePortraitText(description);
   }
 
   // Add occupation context
@@ -318,7 +341,7 @@ export function buildLocationPortraitPrompt(location, gameSystem = 'daggerheart'
   const typeHint = typeHints[type] || '';
   const regionContext = region ? `, in the ${region} region` : '';
 
-  const prompt = `${styleBase}. ${name || 'A mysterious location'}${regionContext}. ${typeHint}. ${description || ''}. Wide establishing shot, atmospheric, highly detailed, no text or labels, no people.`;
+  const prompt = `${styleBase}. ${name || 'A mysterious location'}${regionContext}. ${typeHint}. ${sanitizePortraitText(description) || ''}. Wide establishing shot, atmospheric, highly detailed, no text or labels, no people.`;
 
   return prompt;
 }
