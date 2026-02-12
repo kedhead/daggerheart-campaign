@@ -65,56 +65,53 @@ export default function Dice3DOverlay({
       setRollResult(null);
       diceBoxRef.current.clear();
 
-      // Roll dice with per-die coloring where needed
-      let results;
+      // Roll all dice at once using array of {qty, sides, themeColor} objects
+      // This gives us per-die coloring AND simultaneous rolling
+      let rollInput;
 
       if (rollData.system === 'daggerheart') {
-        // Hope die (Gold) first, then add Fear die (Purple)
-        diceBoxRef.current.updateConfig({ themeColor: '#fbbf24' });
-        console.log('[Dice3D] Rolling Hope d12 (gold)');
-        await diceBoxRef.current.roll('1d12');
-        console.log('[Dice3D] Adding Fear d12 (purple)');
-        diceBoxRef.current.updateConfig({ themeColor: '#a855f7' });
-        results = await diceBoxRef.current.add('1d12');
+        rollInput = [
+          { qty: 1, sides: 12, themeColor: '#fbbf24' }, // Hope (Gold)
+          { qty: 1, sides: 12, themeColor: '#a855f7' }, // Fear (Purple)
+        ];
+      } else if (rollData.system === 'dnd5e') {
+        if (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') {
+          rollInput = [
+            { qty: 1, sides: 20, themeColor: '#3b82f6' },
+            { qty: 1, sides: 20, themeColor: '#60a5fa' },
+          ];
+        } else {
+          rollInput = [{ qty: 1, sides: 20, themeColor: '#3b82f6' }];
+        }
+      } else if (rollData.system === 'generic') {
+        const quantity = rollData.diceQuantity || rollData.quantity || 1;
+        const sides = rollData.selectedDie || rollData.dieType || 20;
+        rollInput = [{ qty: quantity, sides: sides, themeColor: '#3b82f6' }];
       } else if (rollData.system === 'starwarsd6') {
         const count = rollData.numDice || 3;
-        // Wild die (Gold) first, then add normal dice (Blue)
-        diceBoxRef.current.updateConfig({ themeColor: '#fbbf24' });
-        await diceBoxRef.current.roll('1d6');
-        if (count > 1) {
-          diceBoxRef.current.updateConfig({ themeColor: '#3b82f6' });
-          results = await diceBoxRef.current.add(`${count - 1}d6`);
-        } else {
-          results = await diceBoxRef.current.roll('1d6');
-        }
+        rollInput = [
+          { qty: 1, sides: 6, themeColor: '#fbbf24' }, // Wild die (Gold)
+          ...(count > 1 ? [{ qty: count - 1, sides: 6, themeColor: '#3b82f6' }] : []),
+        ];
       } else {
-        // Standard notation for other systems
-        let notation;
-        if (rollData.system === 'dnd5e') {
-          notation = (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') ? '2d20' : '1d20';
-        } else if (rollData.system === 'generic') {
-          const quantity = rollData.diceQuantity || rollData.quantity || 1;
-          const sides = rollData.selectedDie || rollData.dieType || 20;
-          notation = `${quantity}d${sides}`;
-        } else {
-          notation = '2d12';
-        }
-        diceBoxRef.current.updateConfig({ themeColor: '#3b82f6' });
-        results = await diceBoxRef.current.roll(notation);
+        rollInput = '2d12';
       }
 
-      console.log('[Dice3D] Final results:', JSON.stringify(results));
-      console.log('[Dice3D] Values:', results.map(r => ({ value: r.value, sides: r.sides })));
+      console.log('[Dice3D] Rolling:', JSON.stringify(rollInput));
+      const results = await diceBoxRef.current.roll(rollInput);
+      console.log('[Dice3D] Results:', JSON.stringify(results));
 
-      // Process results into rawResults for parent AND local rollResult for banner
-      const values = results.map(r => r.value);
+      // Extract values - results is a flat array of individual die results
+      const values = (results || []).map(r => r.value);
+      console.log('[Dice3D] Extracted values:', values);
+
       const rawResults = {};
       let localResult = { system: rollData.system };
+      const modifier = parseInt(rollData.modifier) || 0;
 
       if (rollData.system === 'daggerheart') {
-        const hopeDie = values[0];
-        const fearDie = values[1];
-        const modifier = parseInt(rollData.modifier) || 0;
+        const hopeDie = values[0] || 0;
+        const fearDie = values[1] || 0;
         const total = hopeDie + fearDie + modifier;
         const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
 
@@ -123,10 +120,9 @@ export default function Dice3DOverlay({
 
         localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome };
       } else if (rollData.system === 'dnd5e') {
-        rawResults.d20 = values[0];
+        rawResults.d20 = values[0] || 0;
         if (values.length > 1) rawResults.d20Second = values[1];
-        const modifier = parseInt(rollData.modifier) || 0;
-        let finalD20 = values[0];
+        let finalD20 = values[0] || 0;
         if (values.length > 1) {
           finalD20 = rollData.mode === 'advantage'
             ? Math.max(values[0], values[1])
@@ -135,13 +131,11 @@ export default function Dice3DOverlay({
         localResult = { ...localResult, d20: values[0], d20Second: values[1], total: finalD20 + modifier, isCrit: finalD20 === 20, isCritFail: finalD20 === 1 };
       } else if (rollData.system === 'generic') {
         rawResults.rolls = values;
-        const modifier = parseInt(rollData.modifier) || 0;
         const total = values.reduce((a, b) => a + b, 0) + modifier;
         localResult = { ...localResult, rolls: values, total };
       } else if (rollData.system === 'starwarsd6') {
-        rawResults.wildDie = values[0];
+        rawResults.wildDie = values[0] || 0;
         rawResults.dice = values;
-        const modifier = parseInt(rollData.modifier) || 0;
         const total = values.reduce((a, b) => a + b, 0) + modifier;
         localResult = { ...localResult, wildDie: values[0], dice: values, total, complication: values[0] === 1 };
       }
