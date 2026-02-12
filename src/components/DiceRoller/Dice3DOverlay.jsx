@@ -65,32 +65,46 @@ export default function Dice3DOverlay({
       setRollResult(null);
       diceBoxRef.current.clear();
 
-      // Use notation strings - these are proven to work with dice-box v1.1
-      let notation;
+      // Roll dice with per-die coloring where needed
+      let results;
 
       if (rollData.system === 'daggerheart') {
-        notation = '2d12';
-      } else if (rollData.system === 'dnd5e') {
-        if (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') {
-          notation = '2d20';
-        } else {
-          notation = '1d20';
-        }
-      } else if (rollData.system === 'generic') {
-        const quantity = rollData.diceQuantity || rollData.quantity || 1;
-        const sides = rollData.selectedDie || rollData.dieType || 20;
-        notation = `${quantity}d${sides}`;
+        // Hope die (Gold) first, then add Fear die (Purple)
+        diceBoxRef.current.updateConfig({ themeColor: '#fbbf24' });
+        console.log('[Dice3D] Rolling Hope d12 (gold)');
+        await diceBoxRef.current.roll('1d12');
+        console.log('[Dice3D] Adding Fear d12 (purple)');
+        diceBoxRef.current.updateConfig({ themeColor: '#a855f7' });
+        results = await diceBoxRef.current.add('1d12');
       } else if (rollData.system === 'starwarsd6') {
         const count = rollData.numDice || 3;
-        notation = `${count}d6`;
+        // Wild die (Gold) first, then add normal dice (Blue)
+        diceBoxRef.current.updateConfig({ themeColor: '#fbbf24' });
+        await diceBoxRef.current.roll('1d6');
+        if (count > 1) {
+          diceBoxRef.current.updateConfig({ themeColor: '#3b82f6' });
+          results = await diceBoxRef.current.add(`${count - 1}d6`);
+        } else {
+          results = await diceBoxRef.current.roll('1d6');
+        }
       } else {
-        notation = '2d12';
+        // Standard notation for other systems
+        let notation;
+        if (rollData.system === 'dnd5e') {
+          notation = (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') ? '2d20' : '1d20';
+        } else if (rollData.system === 'generic') {
+          const quantity = rollData.diceQuantity || rollData.quantity || 1;
+          const sides = rollData.selectedDie || rollData.dieType || 20;
+          notation = `${quantity}d${sides}`;
+        } else {
+          notation = '2d12';
+        }
+        diceBoxRef.current.updateConfig({ themeColor: '#3b82f6' });
+        results = await diceBoxRef.current.roll(notation);
       }
 
-      console.log('[Dice3D] Rolling notation:', notation, '| rollData:', JSON.stringify(rollData));
-      const results = await diceBoxRef.current.roll(notation);
-      console.log('[Dice3D] Raw results:', JSON.stringify(results));
-      console.log('[Dice3D] Result values:', results.map(r => ({ value: r.value, sides: r.sides, groupId: r.groupId, rollId: r.rollId })));
+      console.log('[Dice3D] Final results:', JSON.stringify(results));
+      console.log('[Dice3D] Values:', results.map(r => ({ value: r.value, sides: r.sides })));
 
       // Process results into rawResults for parent AND local rollResult for banner
       const values = results.map(r => r.value);
