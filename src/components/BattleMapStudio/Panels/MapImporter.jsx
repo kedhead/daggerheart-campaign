@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Grid, Square } from 'lucide-react';
+import { Upload, Grid, Square, Youtube, Link, Play } from 'lucide-react';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
 
 // Blank canvas size presets
@@ -15,9 +15,73 @@ export default function MapImporter() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showBlankOptions, setShowBlankOptions] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [urlError, setUrlError] = useState('');
   const fileInputRef = useRef(null);
 
   const { setMapImage, setGridSize } = useBattleMapStore();
+
+  // Extract YouTube video ID from various URL formats
+  const extractYouTubeId = (url) => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+      /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+      /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+      /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+      /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    ];
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  };
+
+  // Handle YouTube URL submission
+  const handleYoutubeSubmit = useCallback(() => {
+    setUrlError('');
+    const videoId = extractYouTubeId(youtubeUrl);
+    if (!videoId) {
+      setUrlError('Invalid YouTube URL. Paste a link like youtube.com/watch?v=...');
+      return;
+    }
+
+    // Standard 16:9 dimensions for the embed
+    setMapImage({
+      url: `https://www.youtube.com/embed/${videoId}`,
+      width: 1920,
+      height: 1080,
+      name: `YouTube Map (${videoId})`,
+      isYouTube: true,
+      youtubeId: videoId
+    });
+  }, [youtubeUrl, setMapImage]);
+
+  // Handle direct video URL
+  const handleVideoUrlSubmit = useCallback(async () => {
+    setUrlError('');
+    if (!videoUrl.trim()) {
+      setUrlError('Please enter a video URL');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      setMapImage({
+        url: videoUrl.trim(),
+        width: 1920,
+        height: 1080,
+        name: 'External Video Map',
+        isVideo: true,
+        isExternal: true
+      });
+    } catch (error) {
+      setUrlError('Failed to load video. Check the URL and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [videoUrl, setMapImage]);
 
   const processFile = useCallback(async (file) => {
     const isImage = file.type.startsWith('image/');
@@ -186,6 +250,59 @@ export default function MapImporter() {
         />
       </div>
 
+      {/* YouTube URL Section */}
+      <div className="youtube-section">
+        <p className="section-divider">— or paste a YouTube URL —</p>
+        <div className="url-input-group">
+          <div className="url-input-wrapper">
+            <Youtube size={18} className="url-icon" />
+            <input
+              type="text"
+              value={youtubeUrl}
+              onChange={(e) => { setYoutubeUrl(e.target.value); setUrlError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleYoutubeSubmit()}
+              placeholder="https://youtube.com/watch?v=..."
+              className="url-input"
+            />
+            <button
+              className="url-submit-btn"
+              onClick={handleYoutubeSubmit}
+              disabled={!youtubeUrl.trim()}
+            >
+              <Play size={16} />
+              Load
+            </button>
+          </div>
+          <p className="url-hint">Works with animated battle map channels like Warbux, Dynamic Dungeons, etc.</p>
+        </div>
+
+        <p className="section-divider" style={{ marginTop: '0.75rem' }}>— or paste a direct video URL —</p>
+        <div className="url-input-group">
+          <div className="url-input-wrapper">
+            <Link size={18} className="url-icon" />
+            <input
+              type="text"
+              value={videoUrl}
+              onChange={(e) => { setVideoUrl(e.target.value); setUrlError(''); }}
+              onKeyDown={(e) => e.key === 'Enter' && handleVideoUrlSubmit()}
+              placeholder="https://example.com/map.mp4"
+              className="url-input"
+            />
+            <button
+              className="url-submit-btn"
+              onClick={handleVideoUrlSubmit}
+              disabled={!videoUrl.trim()}
+            >
+              <Play size={16} />
+              Load
+            </button>
+          </div>
+          <p className="url-hint">MP4 or WebM URLs from Patreon, Google Drive, etc.</p>
+        </div>
+
+        {urlError && <p className="url-error">{urlError}</p>}
+      </div>
+
       <div className="blank-canvas-section">
         <p className="section-divider">— or —</p>
 
@@ -317,6 +434,90 @@ export default function MapImporter() {
         .cancel-btn:hover {
           border-color: var(--text-muted);
           color: var(--text-primary);
+        }
+
+        .youtube-section {
+          margin-top: 1.5rem;
+          text-align: center;
+        }
+
+        .url-input-group {
+          max-width: 400px;
+          margin: 0 auto;
+        }
+
+        .url-input-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 0.25rem 0.5rem;
+          transition: border-color 0.2s;
+        }
+
+        .url-input-wrapper:focus-within {
+          border-color: #ef4444;
+        }
+
+        .url-icon {
+          color: var(--text-muted);
+          flex-shrink: 0;
+        }
+
+        .url-input {
+          flex: 1;
+          background: transparent;
+          border: none;
+          color: var(--text-primary);
+          font-size: 0.85rem;
+          padding: 0.5rem 0;
+          outline: none;
+          min-width: 0;
+        }
+
+        .url-input::placeholder {
+          color: var(--text-muted);
+          opacity: 0.6;
+        }
+
+        .url-submit-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.4rem 0.75rem;
+          background: #ef4444;
+          border: none;
+          border-radius: 6px;
+          color: white;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          flex-shrink: 0;
+        }
+
+        .url-submit-btn:hover:not(:disabled) {
+          background: #dc2626;
+        }
+
+        .url-submit-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        .url-hint {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+          opacity: 0.6;
+          margin-top: 0.5rem;
+        }
+
+        .url-error {
+          color: #ef4444;
+          font-size: 0.8rem;
+          margin-top: 0.5rem;
         }
       `}</style>
     </div>

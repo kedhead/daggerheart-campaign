@@ -215,14 +215,34 @@ export default function MapCanvas() {
       onDrop={handleDrop}
       style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}
     >
-      {/* Video background for animated maps */}
-      {mapImage.isVideo && (
+      {/* YouTube iframe background for embedded maps */}
+      {mapImage.isYouTube && (
+        <iframe
+          src={`https://www.youtube.com/embed/${mapImage.youtubeId}?autoplay=1&loop=1&controls=0&mute=1&playlist=${mapImage.youtubeId}&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1`}
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            pointerEvents: 'none',
+            zIndex: 0
+          }}
+          title="Battle Map Background"
+        />
+      )}
+      {/* Video background for animated maps (local/external) */}
+      {mapImage.isVideo && !mapImage.isYouTube && (
         <video
           src={mapImage.url}
           autoPlay
           loop
           muted
           playsInline
+          crossOrigin={mapImage.isExternal ? 'anonymous' : undefined}
           style={{
             position: 'absolute',
             top: 0,
@@ -260,7 +280,7 @@ export default function MapCanvas() {
         }}
       >
         {/* Background layer - only render image for static maps */}
-        {layers.background.visible && !mapImage.isVideo && (
+        {layers.background.visible && !mapImage.isVideo && !mapImage.isYouTube && (
           <Layer>
             <MapBackground url={mapImage.url} />
           </Layer>
