@@ -194,7 +194,8 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
         numDice,
         selectedDie,
         diceQuantity,
-        mode: rollMode
+        mode: rollMode,
+        modifier: parseInt(modifier) || 0
       };
 
       setPending3DRoll(config);

@@ -65,15 +65,11 @@ export default function Dice3DOverlay({
       setRollResult(null);
       diceBoxRef.current.clear();
 
-      // Build roll notation - use {qty, sides, themeColor} for per-die coloring
+      // Use notation strings - these are proven to work with dice-box v1.1
       let notation;
 
       if (rollData.system === 'daggerheart') {
-        // Two separate d12s with distinct colors: Gold for Hope, Purple for Fear
-        notation = [
-          { qty: 1, sides: 12, themeColor: '#fbbf24' }, // Hope (Gold)
-          { qty: 1, sides: 12, themeColor: '#a855f7' }, // Fear (Purple)
-        ];
+        notation = '2d12';
       } else if (rollData.system === 'dnd5e') {
         if (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') {
           notation = '2d20';
@@ -86,18 +82,15 @@ export default function Dice3DOverlay({
         notation = `${quantity}d${sides}`;
       } else if (rollData.system === 'starwarsd6') {
         const count = rollData.numDice || 3;
-        // Wild die in gold, rest in blue
-        notation = [
-          { qty: 1, sides: 6, themeColor: '#fbbf24' }, // Wild die
-          ...(count > 1 ? [{ qty: count - 1, sides: 6, themeColor: '#3b82f6' }] : []),
-        ];
+        notation = `${count}d6`;
       } else {
         notation = '2d12';
       }
 
-      console.log('Rolling with notation:', JSON.stringify(notation));
+      console.log('[Dice3D] Rolling notation:', notation, '| rollData:', JSON.stringify(rollData));
       const results = await diceBoxRef.current.roll(notation);
-      console.log('Roll results:', JSON.stringify(results));
+      console.log('[Dice3D] Raw results:', JSON.stringify(results));
+      console.log('[Dice3D] Result values:', results.map(r => ({ value: r.value, sides: r.sides, groupId: r.groupId, rollId: r.rollId })));
 
       // Process results into rawResults for parent AND local rollResult for banner
       const values = results.map(r => r.value);
