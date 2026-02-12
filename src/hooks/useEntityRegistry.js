@@ -24,8 +24,17 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
 
     const entities = [];
 
+    // Helper to safely iterate potentially non-array sources
+    const safeForEach = (collection, callback) => {
+      if (Array.isArray(collection)) {
+        collection.forEach(callback);
+      } else if (collection) {
+        console.warn('[useEntityRegistry] Collection is not an array:', collection);
+      }
+    };
+
     // NPCs
-    (source.npcs || []).forEach(npc => {
+    safeForEach(source.npcs, npc => {
       // Visibility filter: skip hidden entities for non-DMs
       if (!isDM && npc.hidden) return;
 
@@ -41,7 +50,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     });
 
     // Locations
-    (source.locations || []).forEach(location => {
+    safeForEach(source.locations, location => {
       // Visibility filter: skip hidden entities for non-DMs
       if (!isDM && location.hidden) return;
 
@@ -57,7 +66,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     });
 
     // Lore
-    (source.lore || []).forEach(lore => {
+    safeForEach(source.lore, lore => {
       // Visibility filter: skip hidden entities for non-DMs
       if (!isDM && lore.hidden) return;
 
@@ -73,7 +82,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     });
 
     // Sessions
-    (source.sessions || []).forEach(session => {
+    safeForEach(source.sessions, session => {
       // Visibility filter: skip hidden entities for non-DMs
       if (!isDM && session.hidden) return;
 
@@ -89,7 +98,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     });
 
     // Timeline Events
-    (source.timelineEvents || []).forEach(event => {
+    safeForEach(source.timelineEvents, event => {
       // Visibility filter: skip hidden entities for non-DMs
       if (!isDM && event.hidden) return;
 
@@ -105,7 +114,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     });
 
     // Encounters
-    (source.encounters || []).forEach(encounter => {
+    safeForEach(source.encounters, encounter => {
       // Visibility filter: skip hidden entities for non-DMs
       if (!isDM && encounter.hidden) return;
 
@@ -121,7 +130,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     });
 
     // Notes
-    (source.notes || []).forEach(note => {
+    safeForEach(source.notes, note => {
       // Visibility filter for notes
       if (!isDM) {
         // Players can see their own notes, shared notes, or DM-overridden notes
@@ -142,7 +151,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     });
 
     // Quests
-    (source.quests || []).forEach(quest => {
+    safeForEach(source.quests, quest => {
       // Visibility filter: skip hidden quests for non-DMs
       if (!isDM && quest.hidden) return;
 

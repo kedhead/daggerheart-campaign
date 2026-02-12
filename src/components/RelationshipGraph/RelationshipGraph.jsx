@@ -92,12 +92,19 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     };
 
     allEntityTypes.forEach(entityKey => {
-      const entityArray = entities[entityKey] || [];
+      let entityArray = entities[entityKey];
+
+      // Defensive check for non-array entity lists
+      if (!Array.isArray(entityArray)) {
+        if (entityArray) console.warn(`RelationshipGraph: ${entityKey} is not an array:`, entityArray);
+        entityArray = [];
+      }
+
       const entityType = entityTypeMap[entityKey];
 
       entityArray.forEach(entity => {
         // Skip hidden entities for non-DMs
-        if (!isDM && entity.hidden) {
+        if (!entity || (!isDM && entity.hidden)) {
           // Special handling for notes
           if (entityType === 'note') {
             // Players can see their own notes, shared notes, or DM-overridden notes

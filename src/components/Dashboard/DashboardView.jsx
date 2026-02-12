@@ -15,7 +15,28 @@ const ICON_MAP = {
   'book-open': '📖'
 };
 
-export default function DashboardView({ campaign, updateCampaign, characters, lore, sessions, isDM, npcs, locations, timelineEvents, encounters, notes, currentUserId }) {
+export default function DashboardView({
+  campaign,
+  updateCampaign,
+  characters = [],
+  lore = [],
+  sessions = [],
+  isDM,
+  npcs = [],
+  locations = [],
+  timelineEvents = [],
+  encounters = [],
+  notes = [],
+  currentUserId
+}) {
+  // Defensive check for array props to prevent "is not iterable" errors
+  const safeSessions = Array.isArray(sessions) ? sessions : [];
+  const safeCharacters = Array.isArray(characters) ? characters : [];
+  const safeLore = Array.isArray(lore) ? lore : [];
+
+  if (!Array.isArray(sessions)) console.error('DashboardView: sessions is not an array:', sessions);
+  if (!Array.isArray(encounters)) console.error('DashboardView: encounters is not an array:', encounters);
+
   const [isEditingCampaign, setIsEditingCampaign] = useState(false);
   const [campaignForm, setCampaignForm] = useState(campaign);
 
@@ -29,7 +50,7 @@ export default function DashboardView({ campaign, updateCampaign, characters, lo
     setIsEditingCampaign(false);
   };
 
-  const recentSessions = [...sessions]
+  const recentSessions = [...safeSessions]
     .sort((a, b) => b.number - a.number)
     .slice(0, 3);
 
@@ -63,9 +84,9 @@ export default function DashboardView({ campaign, updateCampaign, characters, lo
       {/* Stats Cluster */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: 'Synchronized Souls', value: characters.length, icon: Users, color: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/20' },
-          { label: 'Archived Lore', value: lore.length, icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' },
-          { label: 'Recorded Sessions', value: sessions.length, icon: ScrollText, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' }
+          { label: 'Synchronized Souls', value: safeCharacters.length, icon: Users, color: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/20' },
+          { label: 'Archived Lore', value: safeLore.length, icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' },
+          { label: 'Recorded Sessions', value: safeSessions.length, icon: ScrollText, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' }
         ].map((stat, i) => (
           <div key={i} className="group relative flex items-center gap-6 p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl transition-all duration-500 hover:bg-white/[0.05] hover:border-white/10 hover:-translate-y-1 overflow-hidden">
             <div className={`w-16 h-16 rounded-2xl ${stat.bg} ${stat.border} border flex items-center justify-center ${stat.color} transition-transform group-hover:scale-110 duration-500 shadow-lg`}>
