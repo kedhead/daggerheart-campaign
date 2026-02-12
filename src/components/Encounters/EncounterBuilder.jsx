@@ -20,7 +20,7 @@ export default function EncounterBuilder({
   const { search } = useEntityRegistry(campaign, entities);
   const characterCount = characters.length;
 
-  const [formData, setFormData] = useState(encounter || {
+  const [formData, setFormData] = useState({
     name: '',
     description: '',
     environmentId: '',
@@ -28,7 +28,10 @@ export default function EncounterBuilder({
     partySize: characterCount || 4,
     tactics: '',
     rewards: '',
-    hidden: false
+    hidden: false,
+    ...(encounter || {}),
+    // Ensure array safety even if encounter has bad data
+    adversarySlots: Array.isArray(encounter?.adversarySlots) ? encounter.adversarySlots : []
   });
 
   // Calculate BP values

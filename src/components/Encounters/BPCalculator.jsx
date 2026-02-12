@@ -23,7 +23,9 @@ export function calculateBPBudget(partySize) {
 export function calculateUsedBP(adversarySlots, adversaries) {
   let total = 0;
 
-  for (const slot of adversarySlots) {
+  const slots = Array.isArray(adversarySlots) ? adversarySlots : [];
+
+  for (const slot of slots) {
     const adversary = adversaries.find(a => a.id === slot.adversaryId);
     if (adversary) {
       const role = adversary.role?.toLowerCase() || 'standard';
@@ -102,10 +104,10 @@ export default function BPCalculator({
       </div>
 
       <div className={`flex items-center justify-center p-3 rounded-lg border ${isOver
-          ? 'bg-red-500/10 border-red-500/30 text-red-200'
-          : isBalanced
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
-            : 'bg-blue-500/10 border-blue-500/30 text-blue-200'
+        ? 'bg-red-500/10 border-red-500/30 text-red-200'
+        : isBalanced
+          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200'
+          : 'bg-blue-500/10 border-blue-500/30 text-blue-200'
         }`}>
         {isOver ? (
           <div className="flex items-center gap-2">

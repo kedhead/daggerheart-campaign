@@ -49,7 +49,9 @@ export function useActiveEncounter(campaignId) {
     const participants = [];
     let participantIndex = 0;
 
-    for (const slot of encounter.adversarySlots || []) {
+    const slots = Array.isArray(encounter.adversarySlots) ? encounter.adversarySlots : [];
+
+    for (const slot of slots) {
       const adversary = adversaries.find(a => a.id === slot.adversaryId);
       if (!adversary) continue;
 
