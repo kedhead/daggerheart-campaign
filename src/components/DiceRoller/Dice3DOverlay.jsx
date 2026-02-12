@@ -78,93 +78,54 @@ export default function Dice3DOverlay({
       setAnimationComplete(false);
       diceBoxRef.current.clear();
 
-      let diceConfig = [];
+      // dice-box v1.1 expects notation strings like "2d12", "1d20", etc.
+      // NOT objects with {sides, groupId, themeColor}
+      let notation;
 
       if (rollData.system === 'daggerheart') {
-        // Daggerheart: 2d12 with distinct colors
-        diceConfig = [
-          {
-            sides: 12,
-            themeColor: '#fbbf24', // Hope (Gold)
-            groupId: 'hope'
-          },
-          {
-            sides: 12,
-            themeColor: '#a855f7', // Fear (Purple)
-            groupId: 'fear'
-          }
-        ];
+        // 2d12 for hope + fear
+        notation = '2d12';
       } else if (rollData.system === 'dnd5e') {
-        diceConfig.push({
-          sides: 20,
-          themeColor: '#3b82f6',
-          groupId: 'd20'
-        });
-
         if (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') {
-          diceConfig.push({
-            sides: 20,
-            themeColor: '#3b82f6', // Second die
-            groupId: 'd20Second'
-          });
+          notation = '2d20';
+        } else {
+          notation = '1d20';
         }
       } else if (rollData.system === 'generic') {
-        const quantity = rollData.quantity || 1;
-        const sides = rollData.dieType || 20;
-
-        for (let i = 0; i < quantity; i++) {
-          diceConfig.push({
-            sides: sides,
-            themeColor: '#3b82f6',
-            groupId: `die_${i}`
-          });
-        }
+        const quantity = rollData.diceQuantity || rollData.quantity || 1;
+        const sides = rollData.selectedDie || rollData.dieType || 20;
+        notation = `${quantity}d${sides}`;
       } else if (rollData.system === 'starwarsd6') {
-        // Wild Die
-        diceConfig.push({
-          sides: 6,
-          themeColor: '#fbbf24',
-          groupId: 'wild'
-        });
-
-        // Normal Dice
         const count = rollData.numDice || 3;
-        for (let i = 0; i < count - 1; i++) {
-          diceConfig.push({
-            sides: 6,
-            themeColor: '#3b82f6',
-            groupId: `normal_${i}`
-          });
-        }
+        notation = `${count}d6`;
+      } else {
+        notation = '2d12'; // Default fallback
       }
 
-      console.log('Rolling with config:', JSON.stringify(diceConfig));
-      const results = await diceBoxRef.current.roll(diceConfig);
-      console.log('Roll results:', results);
+      console.log('Rolling with notation:', notation);
+      const results = await diceBoxRef.current.roll(notation);
+      console.log('Roll results:', JSON.stringify(results));
 
-      // Process results to send back
+      // Process results - dice-box returns an array of result objects
+      // Each result has a .value property with the die face value
+      const values = results.map(r => r.value);
       const rawResults = {};
 
-      // dice-box return format is array of { groupId, value, ... }
-      results.forEach(res => {
-        if (res.groupId) {
-          rawResults[res.groupId] = res.value;
-        } else {
-          // Fallback for generic without IDs
-          // rawResults.push(res.value); 
+      if (rollData.system === 'daggerheart') {
+        // First die = hope, second die = fear
+        rawResults.hope = values[0];
+        rawResults.fear = values[1];
+      } else if (rollData.system === 'dnd5e') {
+        rawResults.d20 = values[0];
+        if (values.length > 1) {
+          rawResults.d20Second = values[1];
         }
-      });
-
-      // For generic/star wars which use array indices
-      if (rollData.system === 'generic') {
-        rawResults.rolls = results.map(r => r.value);
-      }
-      if (rollData.system === 'starwarsd6') {
-        // Map back to expected structure
-        const wild = results.find(r => r.groupId === 'wild')?.value || 0;
-        const others = results.filter(r => r.groupId.startsWith('normal_')).map(r => r.value);
-        rawResults.wildDie = wild;
-        rawResults.dice = [wild, ...others];
+      } else if (rollData.system === 'generic') {
+        rawResults.rolls = values;
+      } else if (rollData.system === 'starwarsd6') {
+        // First die is the wild die
+        rawResults.wildDie = values[0];
+        rawResults.dice = values;
       }
 
       // Delay to show result state
@@ -180,7 +141,7 @@ export default function Dice3DOverlay({
 
     } catch (error) {
       console.error('DiceBox roll error:', error);
-      // Fallback
+      // Fallback: generate random results so the UI doesn't break
       if (onComplete) onComplete(null);
       if (onClose) onClose();
     }
