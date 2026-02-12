@@ -1,15 +1,6 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DiceBox from '@3d-dice/dice-box';
 import './Dice3DOverlay.css';
-
-// Helper to lighter color for text/details if needed
-function lightenColor(hex) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const lighten = (c) => Math.min(255, c + 40);
-  return `#${lighten(r).toString(16).padStart(2, '0')}${lighten(g).toString(16).padStart(2, '0')}${lighten(b).toString(16).padStart(2, '0')}`;
-}
 
 export default function Dice3DOverlay({
   show,
@@ -21,25 +12,22 @@ export default function Dice3DOverlay({
   const diceBoxRef = useRef(null);
   const [animationComplete, setAnimationComplete] = useState(false);
   const [isBoxReady, setIsBoxReady] = useState(false);
+  const [rollResult, setRollResult] = useState(null); // Local computed result for banner display
 
   // Initialize DiceBox on mount
   useEffect(() => {
-    // Only initialize once
     if (diceBoxRef.current) return;
-
-    // Ensure container is available
     if (!containerRef.current) return;
 
-    // Updated API for v1.1.0: Constructor accepts a single config object
     const box = new DiceBox({
       container: '#dice-box-canvas',
-      assetPath: '/assets/dice-box/', // Must match where we copied assets
+      assetPath: '/assets/dice-box/',
       scale: 6,
       throwForce: 6,
       gravity: 3,
       theme: 'default',
       themeColor: '#3b82f6',
-      offscreen: false, // Keep offscreen false for stability
+      offscreen: false,
     });
 
     box.init().then(() => {
@@ -48,16 +36,13 @@ export default function Dice3DOverlay({
       console.log('DiceBox initialized');
     });
 
-    // Cleanup
-    return () => {
-      // DiceBox cleanup if needed
-    };
-  }, []); // Run on mount
+    return () => { };
+  }, []);
 
   // Handle rolling when `show` becomes true and we have data
   useEffect(() => {
     if (show && isBoxReady && rollData && !animationComplete) {
-      rollUtils();
+      performRoll();
     }
   }, [show, isBoxReady, rollData, animationComplete]);
 
@@ -65,26 +50,30 @@ export default function Dice3DOverlay({
   useEffect(() => {
     if (!show) {
       setAnimationComplete(false);
+      setRollResult(null);
       if (diceBoxRef.current) {
         diceBoxRef.current.clear();
       }
     }
   }, [show]);
 
-  const rollUtils = async () => {
+  const performRoll = async () => {
     if (!diceBoxRef.current) return;
 
     try {
       setAnimationComplete(false);
+      setRollResult(null);
       diceBoxRef.current.clear();
 
-      // dice-box v1.1 expects notation strings like "2d12", "1d20", etc.
-      // NOT objects with {sides, groupId, themeColor}
+      // Build roll notation - use {qty, sides, themeColor} for per-die coloring
       let notation;
 
       if (rollData.system === 'daggerheart') {
-        // 2d12 for hope + fear
-        notation = '2d12';
+        // Two separate d12s with distinct colors: Gold for Hope, Purple for Fear
+        notation = [
+          { qty: 1, sides: 12, themeColor: '#fbbf24' }, // Hope (Gold)
+          { qty: 1, sides: 12, themeColor: '#a855f7' }, // Fear (Purple)
+        ];
       } else if (rollData.system === 'dnd5e') {
         if (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') {
           notation = '2d20';
@@ -97,43 +86,68 @@ export default function Dice3DOverlay({
         notation = `${quantity}d${sides}`;
       } else if (rollData.system === 'starwarsd6') {
         const count = rollData.numDice || 3;
-        notation = `${count}d6`;
+        // Wild die in gold, rest in blue
+        notation = [
+          { qty: 1, sides: 6, themeColor: '#fbbf24' }, // Wild die
+          ...(count > 1 ? [{ qty: count - 1, sides: 6, themeColor: '#3b82f6' }] : []),
+        ];
       } else {
-        notation = '2d12'; // Default fallback
+        notation = '2d12';
       }
 
-      console.log('Rolling with notation:', notation);
+      console.log('Rolling with notation:', JSON.stringify(notation));
       const results = await diceBoxRef.current.roll(notation);
       console.log('Roll results:', JSON.stringify(results));
 
-      // Process results - dice-box returns an array of result objects
-      // Each result has a .value property with the die face value
+      // Process results into rawResults for parent AND local rollResult for banner
       const values = results.map(r => r.value);
       const rawResults = {};
+      let localResult = { system: rollData.system };
 
       if (rollData.system === 'daggerheart') {
-        // First die = hope, second die = fear
-        rawResults.hope = values[0];
-        rawResults.fear = values[1];
+        const hopeDie = values[0];
+        const fearDie = values[1];
+        const modifier = parseInt(rollData.modifier) || 0;
+        const total = hopeDie + fearDie + modifier;
+        const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+
+        rawResults.hope = hopeDie;
+        rawResults.fear = fearDie;
+
+        localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome };
       } else if (rollData.system === 'dnd5e') {
         rawResults.d20 = values[0];
+        if (values.length > 1) rawResults.d20Second = values[1];
+        const modifier = parseInt(rollData.modifier) || 0;
+        let finalD20 = values[0];
         if (values.length > 1) {
-          rawResults.d20Second = values[1];
+          finalD20 = rollData.mode === 'advantage'
+            ? Math.max(values[0], values[1])
+            : Math.min(values[0], values[1]);
         }
+        localResult = { ...localResult, d20: values[0], d20Second: values[1], total: finalD20 + modifier, isCrit: finalD20 === 20, isCritFail: finalD20 === 1 };
       } else if (rollData.system === 'generic') {
         rawResults.rolls = values;
+        const modifier = parseInt(rollData.modifier) || 0;
+        const total = values.reduce((a, b) => a + b, 0) + modifier;
+        localResult = { ...localResult, rolls: values, total };
       } else if (rollData.system === 'starwarsd6') {
-        // First die is the wild die
         rawResults.wildDie = values[0];
         rawResults.dice = values;
+        const modifier = parseInt(rollData.modifier) || 0;
+        const total = values.reduce((a, b) => a + b, 0) + modifier;
+        localResult = { ...localResult, wildDie: values[0], dice: values, total, complication: values[0] === 1 };
       }
+
+      // Store result locally for the banner
+      setRollResult(localResult);
 
       // Delay to show result state
       setTimeout(() => {
         setAnimationComplete(true);
       }, 1000);
 
-      // Notify completion with RAW RESULTS
+      // Notify parent with RAW RESULTS, then close
       setTimeout(() => {
         if (onComplete) onComplete(rawResults);
         if (onClose) onClose();
@@ -141,15 +155,14 @@ export default function Dice3DOverlay({
 
     } catch (error) {
       console.error('DiceBox roll error:', error);
-      // Fallback: generate random results so the UI doesn't break
       if (onComplete) onComplete(null);
       if (onClose) onClose();
     }
   };
 
-  const outcomeClass = rollData?.outcome ||
-    (rollData?.isCrit ? 'crit' : '') ||
-    (rollData?.isCritFail ? 'critfail' : '');
+  const outcomeClass = rollResult?.outcome ||
+    (rollResult?.isCrit ? 'crit' : '') ||
+    (rollResult?.isCritFail ? 'critfail' : '');
 
   return (
     <div className={`dice-3d-overlay ${outcomeClass} ${show ? 'visible' : ''}`} onClick={onClose}>
@@ -158,41 +171,41 @@ export default function Dice3DOverlay({
       <div id="dice-box-canvas" ref={containerRef} className="dice-box-canvas"></div>
 
       {/* Result Banner (Overlay on top) */}
-      {animationComplete && rollData && (
+      {animationComplete && rollResult && (
         <div className={`dice-result-banner ${outcomeClass} animate-in`}>
-          {rollData.system === 'daggerheart' && (
+          {rollResult.system === 'daggerheart' && (
             <>
               <div className="dice-breakdown">
                 <span className="hope-value">
                   <span className="die-label">Hope</span>
-                  <span className="die-value">{rollData.hopeDie}</span>
+                  <span className="die-value">{rollResult.hopeDie}</span>
                 </span>
                 <span className="vs">vs</span>
                 <span className="fear-value">
                   <span className="die-label">Fear</span>
-                  <span className="die-value">{rollData.fearDie}</span>
+                  <span className="die-value">{rollResult.fearDie}</span>
                 </span>
               </div>
               <div className="result-total">
-                {rollData.total}
-                {rollData.modifier !== 0 && (
+                {rollResult.total}
+                {rollResult.modifier !== 0 && (
                   <span className="modifier-display">
-                    ({rollData.hopeDie}+{rollData.fearDie}{rollData.modifier >= 0 ? '+' : ''}{rollData.modifier})
+                    ({rollResult.hopeDie}+{rollResult.fearDie}{rollResult.modifier >= 0 ? '+' : ''}{rollResult.modifier})
                   </span>
                 )}
               </div>
-              {rollData.outcome && (
-                <div className={`result-outcome ${rollData.outcome}`}>
-                  {rollData.outcome === 'hope' ? '✨ WITH HOPE' : '💀 WITH FEAR'}
+              {rollResult.outcome && (
+                <div className={`result-outcome ${rollResult.outcome}`}>
+                  {rollResult.outcome === 'hope' ? '✨ WITH HOPE' : '💀 WITH FEAR'}
                 </div>
               )}
             </>
           )}
 
           {/* Generic / Other Layouts */}
-          {rollData.system !== 'daggerheart' && (
+          {rollResult.system !== 'daggerheart' && (
             <div className="result-total">
-              {rollData.total}
+              {rollResult.total}
             </div>
           )}
 
@@ -202,3 +215,4 @@ export default function Dice3DOverlay({
     </div>
   );
 }
+
