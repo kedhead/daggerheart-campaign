@@ -197,7 +197,22 @@ export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerhe
   const prompt = buildNPCPortraitPrompt(npc, gameSystem);
   console.log('DALL-E prompt:', prompt);
 
-  const dataUrl = await generatePortraitImage(prompt, openaiKey);
+  let dataUrl;
+  try {
+    dataUrl = await generatePortraitImage(prompt, openaiKey);
+  } catch (error) {
+    // Check for safety system rejection
+    if (error.message && error.message.includes('safety system')) {
+      console.warn(`Portrait generation for ${npc.name} blocked by safety system. Retrying with simplified prompt...`);
+      // Retry with description removed to be safe
+      const safeNpc = { ...npc, description: '' };
+      const safePrompt = buildNPCPortraitPrompt(safeNpc, gameSystem);
+      console.log('Safe DALL-E prompt:', safePrompt);
+      dataUrl = await generatePortraitImage(safePrompt, openaiKey);
+    } else {
+      throw error;
+    }
+  }
 
   // If campaignId provided, upload to Firebase Storage to avoid Firestore size limits
   if (campaignId) {
@@ -225,7 +240,22 @@ export async function generateCharacterPortrait(character, openaiKey, gameSystem
   const prompt = buildCharacterPortraitPrompt(character, gameSystem);
   console.log('DALL-E prompt:', prompt);
 
-  const dataUrl = await generatePortraitImage(prompt, openaiKey);
+  let dataUrl;
+  try {
+    dataUrl = await generatePortraitImage(prompt, openaiKey);
+  } catch (error) {
+    // Check for safety system rejection
+    if (error.message && error.message.includes('safety system')) {
+      console.warn(`Portrait generation for ${character.name} blocked by safety system. Retrying with simplified prompt...`);
+      // Retry with appearance/backstory removed to be safe
+      const safeCharacter = { ...character, appearanceDescription: '', backstory: '' };
+      const safePrompt = buildCharacterPortraitPrompt(safeCharacter, gameSystem);
+      console.log('Safe DALL-E prompt:', safePrompt);
+      dataUrl = await generatePortraitImage(safePrompt, openaiKey);
+    } else {
+      throw error;
+    }
+  }
 
   // If campaignId provided, upload to Firebase Storage to avoid Firestore size limits
   if (campaignId) {
@@ -310,7 +340,22 @@ export async function generateLocationPortrait(location, openaiKey, gameSystem =
   const prompt = buildLocationPortraitPrompt(location, gameSystem);
   console.log('DALL-E prompt:', prompt);
 
-  const dataUrl = await generatePortraitImage(prompt, openaiKey);
+  let dataUrl;
+  try {
+    dataUrl = await generatePortraitImage(prompt, openaiKey);
+  } catch (error) {
+    // Check for safety system rejection
+    if (error.message && error.message.includes('safety system')) {
+      console.warn(`Portrait generation for ${location.name} blocked by safety system. Retrying with simplified prompt...`);
+      // Retry with description removed to be safe
+      const safeLocation = { ...location, description: '' };
+      const safePrompt = buildLocationPortraitPrompt(safeLocation, gameSystem);
+      console.log('Safe DALL-E prompt:', safePrompt);
+      dataUrl = await generatePortraitImage(safePrompt, openaiKey);
+    } else {
+      throw error;
+    }
+  }
 
   // If campaignId provided, upload to Firebase Storage
   if (campaignId) {
