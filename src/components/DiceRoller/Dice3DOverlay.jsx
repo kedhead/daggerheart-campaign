@@ -84,9 +84,24 @@ export default function Dice3DOverlay({
           rollInput = [{ qty: 1, sides: 20, themeColor: '#3b82f6' }];
         }
       } else if (rollData.system === 'generic') {
-        const quantity = rollData.diceQuantity || rollData.quantity || 1;
-        const sides = rollData.selectedDie || rollData.dieType || 20;
-        rollInput = [{ qty: quantity, sides: sides, themeColor: '#3b82f6' }];
+        // Check if this is a mixed-dice roll from BattleMapDice
+        if (rollData.diceResults) {
+          // BattleMapDice passes diceResults: { d4: [...], d6: [...], d12: [...] }
+          const DICE_COLORS = { 4: '#10b981', 6: '#3b82f6', 8: '#8b5cf6', 10: '#ec4899', 12: '#f59e0b', 20: '#ef4444' };
+          rollInput = [];
+          Object.entries(rollData.diceResults).forEach(([dieKey, results]) => {
+            const sides = parseInt(dieKey.replace('d', ''));
+            if (results.length > 0 && sides) {
+              rollInput.push({ qty: results.length, sides, themeColor: DICE_COLORS[sides] || '#3b82f6' });
+            }
+          });
+          if (rollInput.length === 0) rollInput = '1d20'; // Fallback
+        } else {
+          // Simple single-type from DiceRollerFloat
+          const quantity = rollData.diceQuantity || rollData.quantity || 1;
+          const sides = parseInt(rollData.selectedDie || rollData.dieType) || 20;
+          rollInput = [{ qty: parseInt(quantity), sides: sides, themeColor: '#3b82f6' }];
+        }
       } else if (rollData.system === 'starwarsd6') {
         const count = rollData.numDice || 3;
         rollInput = [
