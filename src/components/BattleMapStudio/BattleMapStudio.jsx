@@ -15,6 +15,7 @@ import {
   Package,
   Boxes,
   Volume2,
+  Film,
   X
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
@@ -34,6 +35,7 @@ import AnimationControls from './Panels/AnimationControls';
 import TileLibrary from './Panels/TileLibrary';
 import OverlayLibrary from './Panels/OverlayLibrary';
 import AssetPackImporter from './Panels/AssetPackImporter';
+import AnimatedMapLibrary from './Panels/AnimatedMapLibrary';
 import DMSoundboard from '../Soundboard/DMSoundboard';
 
 export default function BattleMapStudio({ campaign, isDM }) {
@@ -321,6 +323,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
               { id: 'assets', icon: Layers, label: 'Tokens' },
               { id: 'tiles', icon: Grid, label: 'Tiles' },
               { id: 'overlays', icon: Route, label: 'Overlays' },
+              { id: 'animated-maps', icon: Film, label: 'Animated' },
               { id: 'ai-assets', icon: Wand2, label: 'AI' }
             ].map(tab => (
               <button
@@ -366,6 +369,9 @@ export default function BattleMapStudio({ campaign, isDM }) {
             )}
             {activePanel === 'animate' && (
               <AnimationControls />
+            )}
+            {activePanel === 'animated-maps' && (
+              <AnimatedMapLibrary />
             )}
             {activePanel === 'maps' && (
               <MapBrowser
