@@ -142,7 +142,10 @@ function FogOfWarLayer({ width, height, revealed }) {
  * Main map canvas component
  */
 function MapCanvas({ mapState }) {
-  const [mapImage] = useImage(mapState?.mapImage?.url, 'anonymous');
+  const isVideo = mapState?.mapImage?.isVideo;
+  const isYouTube = mapState?.mapImage?.isYouTube;
+  const isStaticImage = !isVideo && !isYouTube;
+  const [mapImage] = useImage(isStaticImage ? mapState?.mapImage?.url : null, 'anonymous');
 
   if (!mapState?.mapImage) {
     return (
@@ -172,21 +175,63 @@ function MapCanvas({ mapState }) {
 
   return (
     <div style={{ position: 'relative', width: mapData.width, height: mapData.height }}>
+      {/* YouTube iframe background */}
+      {isYouTube && mapData.youtubeId && (
+        <iframe
+          src={`https://www.youtube.com/embed/${mapData.youtubeId}?autoplay=1&loop=1&controls=0&mute=1&playlist=${mapData.youtubeId}&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1`}
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            border: 'none',
+            pointerEvents: 'none',
+            zIndex: 0
+          }}
+          title="Battle Map Background"
+        />
+      )}
+      {/* Video background for animated maps */}
+      {isVideo && !isYouTube && (
+        <video
+          src={mapData.url}
+          autoPlay
+          loop
+          muted
+          playsInline
+          crossOrigin={mapData.isExternal ? 'anonymous' : undefined}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            pointerEvents: 'none',
+            zIndex: 0
+          }}
+        />
+      )}
       <Stage
         width={mapData.width}
         height={mapData.height}
-        style={{ background: '#000' }}
+        style={{ background: isStaticImage ? '#000' : 'transparent', position: 'relative', zIndex: 1 }}
       >
-        {/* Background layer - map image */}
-        <Layer>
-          {mapImage && (
-            <KonvaImage
-              image={mapImage}
-              width={mapData.width}
-              height={mapData.height}
-            />
-          )}
-        </Layer>
+        {/* Background layer - only for static images */}
+        {isStaticImage && (
+          <Layer>
+            {mapImage && (
+              <KonvaImage
+                image={mapImage}
+                width={mapData.width}
+                height={mapData.height}
+              />
+            )}
+          </Layer>
+        )}
 
         {/* Grid layer */}
         {gridVisible && (

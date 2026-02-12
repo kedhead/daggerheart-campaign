@@ -221,11 +221,56 @@ export default function BattleMapDisplay({ mapState }) {
   const offsetX = (dimensions.width - mapImage.width * scale) / 2;
   const offsetY = (dimensions.height - mapImage.height * scale) / 2;
 
+  const isVideo = mapImage?.isVideo;
+  const isYouTube = mapImage?.isYouTube;
+  const isStaticImage = !isVideo && !isYouTube;
+
   return (
     <div ref={containerRef} className="battle-map-display" style={{ position: 'relative' }}>
+      {/* YouTube iframe background */}
+      {isYouTube && mapImage.youtubeId && (
+        <iframe
+          src={`https://www.youtube.com/embed/${mapImage.youtubeId}?autoplay=1&loop=1&controls=0&mute=1&playlist=${mapImage.youtubeId}&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1`}
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+          style={{
+            position: 'absolute',
+            left: offsetX,
+            top: offsetY,
+            width: mapImage.width * scale,
+            height: mapImage.height * scale,
+            border: 'none',
+            pointerEvents: 'none',
+            zIndex: 0
+          }}
+          title="Battle Map Background"
+        />
+      )}
+      {/* Video background for animated maps */}
+      {isVideo && !isYouTube && (
+        <video
+          src={mapImage.url}
+          autoPlay
+          loop
+          muted
+          playsInline
+          crossOrigin={mapImage.isExternal ? 'anonymous' : undefined}
+          style={{
+            position: 'absolute',
+            left: offsetX,
+            top: offsetY,
+            width: mapImage.width * scale,
+            height: mapImage.height * scale,
+            objectFit: 'cover',
+            pointerEvents: 'none',
+            zIndex: 0
+          }}
+        />
+      )}
       <Stage
         width={dimensions.width}
         height={dimensions.height}
+        style={{ position: 'relative', zIndex: 1 }}
       >
         <Layer
           x={offsetX}
@@ -233,8 +278,8 @@ export default function BattleMapDisplay({ mapState }) {
           scaleX={scale}
           scaleY={scale}
         >
-          {/* Background */}
-          <MapBackground url={mapImage.url} />
+          {/* Background - static images only */}
+          {isStaticImage && <MapBackground url={mapImage.url} />}
 
           {/* Grid */}
           {gridVisible !== false && gridType !== 'none' && (
