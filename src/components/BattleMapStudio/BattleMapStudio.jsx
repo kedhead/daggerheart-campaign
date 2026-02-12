@@ -201,8 +201,17 @@ export default function BattleMapStudio({ campaign, isDM }) {
 
     if (canvasMode === 'ai-generate') {
       return (
-        <div className="w-full max-w-lg p-8 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl h-[90%] overflow-y-auto">
-          <AIMapGenerator campaignId={campaignId} />
+        <div className="relative w-full h-full flex items-center justify-center p-4">
+          <button
+            onClick={() => setCanvasMode('import')}
+            className="absolute top-8 left-8 z-50 p-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors flex items-center gap-2"
+          >
+            <X size={16} />
+            <span className="text-sm">Cancel</span>
+          </button>
+          <div className="w-full max-w-lg p-8 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl h-[90%] overflow-y-auto relative z-10">
+            <AIMapGenerator campaignId={campaignId} />
+          </div>
         </div>
       );
     }
@@ -278,8 +287,8 @@ export default function BattleMapStudio({ campaign, isDM }) {
 
           <FloatingToolbar />
 
-          {/* Mode selector - only show when no map loaded */}
-          {!mapImage && (
+          {/* Mode selector - only show when no map loaded AND in import mode */}
+          {!mapImage && canvasMode === 'import' && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
               <div className="flex gap-4">
                 <button

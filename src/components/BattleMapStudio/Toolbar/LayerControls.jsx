@@ -18,7 +18,7 @@ export default function LayerControls() {
         return (
           <button
             key={layer.id}
-            className={`layer-btn ${isVisible ? 'visible' : 'hidden'}`}
+            className={`relative p-2 rounded-md transition-colors ${isVisible ? 'text-zinc-200 hover:bg-zinc-800' : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/50'}`}
             onClick={() => toggleLayerVisibility(layer.id)}
             title={`${layer.label} (${isVisible ? 'Visible' : 'Hidden'})`}
           >
@@ -26,22 +26,37 @@ export default function LayerControls() {
             {!isVisible && (
               <EyeOff
                 size={10}
-                style={{
-                  position: 'absolute',
-                  bottom: 2,
-                  right: 2,
-                  color: 'var(--danger)'
-                }}
+                className="absolute bottom-1 right-1 text-red-500 bg-zinc-900 rounded-full"
               />
             )}
           </button>
         );
       })}
 
+      {/* Fog Tools - Only show if Fog layer is visible */}
+      {layers.fog?.visible && (
+        <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-zinc-800 w-full items-center">
+          <button
+            className={`p-2 rounded-md transition-colors ${selectedTool === 'fog-paint' ? 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
+            onClick={() => useBattleMapStore.getState().setSelectedTool('fog-paint')}
+            title="Fog Brush (Paint)"
+          >
+            <Cloud size={16} />
+          </button>
+          <button
+            className={`p-2 rounded-md transition-colors ${selectedTool === 'fog-erase' ? 'bg-indigo-500/20 text-indigo-400 ring-1 ring-indigo-500' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
+            onClick={() => useBattleMapStore.getState().setSelectedTool('fog-erase')}
+            title="Fog Eraser"
+          >
+            <Eye size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Fog brush size control - only show when fog tool is selected */}
       {(selectedTool === 'fog-erase' || selectedTool === 'fog-paint') && (
-        <div className="fog-brush-control">
-          <label>Brush</label>
+        <div className="flex flex-col items-center gap-1 py-2">
+          <label className="text-[9px] text-zinc-500 uppercase font-bold">Size</label>
           <input
             type="range"
             min="10"
@@ -49,6 +64,8 @@ export default function LayerControls() {
             value={fogBrushSize}
             onChange={(e) => setFogBrushSize(Number(e.target.value))}
             title={`Brush size: ${fogBrushSize}px`}
+            className="w-1 h-16 appearance-none bg-zinc-700 rounded-full outline-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full cursor-pointer vertical-range"
+            style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
           />
         </div>
       )}

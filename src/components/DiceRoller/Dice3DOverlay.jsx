@@ -30,14 +30,16 @@ export default function Dice3DOverlay({
     // Ensure container is available
     if (!containerRef.current) return;
 
-    const box = new DiceBox('#dice-box-canvas', {
+    // Updated API for v1.1.0: Constructor accepts a single config object
+    const box = new DiceBox({
+      container: '#dice-box-canvas',
       assetPath: '/assets/dice-box/', // Must match where we copied assets
       scale: 6,
       throwForce: 6,
       gravity: 3,
       theme: 'default',
       themeColor: '#3b82f6',
-      offscreen: false, // Usage of offscreen canvas causing issues in production regarding worker communication
+      offscreen: false, // Keep offscreen false for stability
     });
 
     box.init().then(() => {
