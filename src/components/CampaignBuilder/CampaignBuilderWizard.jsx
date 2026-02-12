@@ -168,7 +168,7 @@ export default function CampaignBuilderWizard({
           try {
             setGenerationProgress(`Step 5/10: Generating portrait for ${npc.name}...`);
             const portraitUrl = await generateNPCPortrait(npc, openaiKey, campaign?.gameSystem || 'daggerheart', campaign?.id);
-            npc.portraitUrl = portraitUrl;
+            npc.avatarUrl = portraitUrl;
             console.log(`Portrait generated for ${npc.name}`);
           } catch (err) {
             console.error(`Failed to generate portrait for ${npc.name}:`, err);
@@ -194,7 +194,7 @@ export default function CampaignBuilderWizard({
           try {
             setGenerationProgress(`Step 6/10: Generating portrait for ${location.name}...`);
             const portraitUrl = await generateLocationPortrait(location, openaiKey, campaign?.gameSystem || 'daggerheart', campaign?.id);
-            location.imageUrl = portraitUrl;
+            location.mapUrl = portraitUrl;
             console.log(`Portrait generated for ${location.name}`);
           } catch (err) {
             console.error(`Failed to generate portrait for ${location.name}:`, err);
