@@ -216,6 +216,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
       );
     }
 
+    // 'importing' mode or fallback: show the MapImporter
     return <MapImporter />;
   };
 
@@ -292,8 +293,8 @@ export default function BattleMapStudio({ campaign, isDM }) {
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-sm">
               <div className="flex gap-4">
                 <button
-                  className={`flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-600 transition-all ${canvasMode === 'import' ? 'ring-2 ring-indigo-500' : ''}`}
-                  onClick={() => setCanvasMode('import')}
+                  className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:border-zinc-600 transition-all"
+                  onClick={() => setCanvasMode('importing')}
                 >
                   <Upload size={32} className="text-zinc-400" />
                   <span className="text-sm font-medium text-zinc-300">Import Map</span>

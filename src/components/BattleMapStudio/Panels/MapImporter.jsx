@@ -20,34 +20,56 @@ export default function MapImporter() {
   const { setMapImage, setGridSize } = useBattleMapStore();
 
   const processFile = useCallback(async (file) => {
-    if (!file || !file.type.startsWith('image/')) {
-      alert('Please select a valid image file');
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!file || (!isImage && !isVideo)) {
+      alert('Please select a valid image or video file (PNG, JPG, WebP, GIF, MP4, WebM)');
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Create object URL for the image
+      // Create object URL for the file
       const url = URL.createObjectURL(file);
 
-      // Get image dimensions
-      const img = new Image();
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = url;
-      });
+      let width, height;
+
+      if (isVideo) {
+        // Get video dimensions
+        const video = document.createElement('video');
+        video.preload = 'metadata';
+        await new Promise((resolve, reject) => {
+          video.onloadedmetadata = resolve;
+          video.onerror = reject;
+          video.src = url;
+        });
+        width = video.videoWidth;
+        height = video.videoHeight;
+      } else {
+        // Get image dimensions
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = url;
+        });
+        width = img.width;
+        height = img.height;
+      }
 
       setMapImage({
         url,
-        width: img.width,
-        height: img.height,
-        name: file.name
+        width,
+        height,
+        name: file.name,
+        isVideo,
+        mimeType: file.type
       });
     } catch (error) {
-      console.error('Error loading image:', error);
-      alert('Failed to load image');
+      console.error('Error loading file:', error);
+      alert('Failed to load file');
     } finally {
       setIsLoading(false);
     }
@@ -149,14 +171,17 @@ export default function MapImporter() {
             <h3>Drop your map here</h3>
             <p>or click to browse</p>
             <p style={{ marginTop: '0.5rem', opacity: 0.7 }}>
-              Supports PNG, JPG, WebP
+              Supports PNG, JPG, WebP, GIF, MP4, WebM
+            </p>
+            <p style={{ marginTop: '0.25rem', opacity: 0.5, fontSize: '0.8rem' }}>
+              🎬 Upload animated maps (video/GIF) for dynamic backgrounds
             </p>
           </>
         )}
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/mp4,video/webm"
           onChange={handleFileChange}
         />
       </div>

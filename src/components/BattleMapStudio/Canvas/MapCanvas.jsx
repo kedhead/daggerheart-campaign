@@ -213,8 +213,29 @@ export default function MapCanvas() {
     <div
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      style={{ width: '100%', height: '100%', position: 'relative' }}
+      style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}
     >
+      {/* Video background for animated maps */}
+      {mapImage.isVideo && (
+        <video
+          src={mapImage.url}
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: mapImage.width,
+            height: mapImage.height,
+            transformOrigin: '0 0',
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+            pointerEvents: 'none',
+            zIndex: 0
+          }}
+        />
+      )}
       <Stage
         ref={stageRef}
         width={stageSize.width}
@@ -232,10 +253,14 @@ export default function MapCanvas() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{ cursor: selectedTool === 'pan' ? 'grab' : 'default' }}
+        style={{
+          cursor: selectedTool === 'pan' ? 'grab' : 'default',
+          position: 'relative',
+          zIndex: 1
+        }}
       >
-        {/* Background layer */}
-        {layers.background.visible && (
+        {/* Background layer - only render image for static maps */}
+        {layers.background.visible && !mapImage.isVideo && (
           <Layer>
             <MapBackground url={mapImage.url} />
           </Layer>
