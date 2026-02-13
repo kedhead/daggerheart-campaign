@@ -122,58 +122,30 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
 
   const totalDice = Object.values(selectedDice).reduce((sum, count) => sum + count, 0);
 
-  // Roll the dice
+  // Roll the dice - let 3D physics determine values, save history after animation
   const handleRoll = async () => {
     let data;
 
     if (rollMode === 'daggerheart') {
-      const hopeDie = Math.floor(Math.random() * 12) + 1;
-      const fearDie = Math.floor(Math.random() * 12) + 1;
-      const total = hopeDie + fearDie + modifier; // Both dice added together
-      const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
-
+      // Don't pre-calculate - let 3D physics decide
       data = {
         system: 'daggerheart',
-        hopeDie,
-        fearDie,
         modifier,
-        total,
-        outcome
       };
     } else {
-      const rolls = [];
-      const diceResults = {};
-      let total = 0;
-
+      // Build dice config (counts only, no pre-calculated values)
+      const diceConfig = {};
       DICE_TYPES.forEach(die => {
         const count = selectedDice[die.id] || 0;
         if (count > 0) {
-          diceResults[die.id] = [];
-          for (let i = 0; i < count; i++) {
-            const roll = Math.floor(Math.random() * die.sides) + 1;
-            diceResults[die.id].push(roll);
-            rolls.push({ type: die.id, sides: die.sides, result: roll, color: die.color });
-            total += roll;
-          }
+          diceConfig[die.id] = count;
         }
       });
 
-      total += modifier;
-
-      const d20Rolls = diceResults.d20 || [];
-      const isCrit = d20Rolls.includes(20);
-      const isCritFail = d20Rolls.length > 0 && d20Rolls.every(r => r === 1);
-
       data = {
         system: 'generic',
-        diceResults,
-        rolls,
+        diceConfig,
         modifier,
-        total,
-        isCrit,
-        isCritFail,
-        dieType: Object.keys(selectedDice).find(k => selectedDice[k] > 0)?.replace('d', '') || 20,
-        quantity: totalDice
       };
     }
 
@@ -184,14 +156,11 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
     data.timestamp = serverTimestamp();
     data.rollId = Date.now().toString();
 
-    // Broadcast to display
+    // Broadcast to display (triggers 3D animation)
+    // History will be saved by BattleMapDisplayWindow after 3D animation completes
     if (campaignId) {
       const rollDoc = doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`);
       await setDoc(rollDoc, data);
-
-      // Also add to history
-      const historyRef = collection(db, `campaigns/${campaignId}/battleMapDisplay/rolls/history`);
-      await addDoc(historyRef, data);
     }
 
     setIsOpen(false);

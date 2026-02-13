@@ -70,87 +70,98 @@ export default function BattleMapDice({ campaignId, onRollComplete }) {
   // Calculate total dice selected
   const totalDice = Object.values(selectedDice).reduce((sum, count) => sum + count, 0);
 
-  // Roll the dice
+  // Roll the dice - let 3D physics determine values
   const handleRoll = () => {
     initAudio(); // Unlock audio context
     let data;
 
     if (rollMode === 'daggerheart') {
-      // Roll Hope and Fear dice
-      const hopeDie = Math.floor(Math.random() * 12) + 1;
-      const fearDie = Math.floor(Math.random() * 12) + 1;
-      const total = hopeDie + fearDie + modifier; // Both dice added together
-      const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
-
       data = {
         system: 'daggerheart',
-        hopeDie,
-        fearDie,
         modifier,
-        total,
-        outcome
       };
     } else {
-      // Roll generic dice
-      const rolls = [];
-      const diceResults = {};
-      let total = 0;
-
+      // Build dice config (counts only, no pre-calculated values)
+      const diceConfig = {};
       DICE_TYPES.forEach(die => {
         const count = selectedDice[die.id] || 0;
         if (count > 0) {
-          diceResults[die.id] = [];
-          for (let i = 0; i < count; i++) {
-            const roll = Math.floor(Math.random() * die.sides) + 1;
-            diceResults[die.id].push(roll);
-            rolls.push({ type: die.id, sides: die.sides, result: roll, color: die.color });
-            total += roll;
-          }
+          diceConfig[die.id] = count;
         }
       });
 
-      total += modifier;
-
-      // Check for crits on d20
-      const d20Rolls = diceResults.d20 || [];
-      const isCrit = d20Rolls.includes(20);
-      const isCritFail = d20Rolls.length > 0 && d20Rolls.every(r => r === 1);
-
       data = {
         system: 'generic',
-        diceResults,
-        rolls,
+        diceConfig,
         modifier,
-        total,
-        isCrit,
-        isCritFail,
-        // For 3D overlay compatibility
-        dieType: Object.keys(selectedDice).find(k => selectedDice[k] > 0)?.replace('d', '') || 20,
-        quantity: totalDice
       };
     }
 
     setRollData(data);
     setShow3D(true);
     setIsOpen(false);
-
-    // Broadcast to Battle Map Display
-    if (campaignId) {
-      const rollDoc = doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`);
-      setDoc(rollDoc, {
-        ...data,
-        timestamp: serverTimestamp(),
-        rollId: Date.now().toString()
-      }).catch(err => console.error('Failed to broadcast dice roll:', err));
-    }
+    // Don't broadcast yet - wait for 3D animation to complete
   };
 
-  // Handle 3D animation complete
-  const handle3DComplete = () => {
+  // Handle 3D animation complete - use physics results
+  const handle3DComplete = (rawResults) => {
     setShow3D(false);
-    if (onRollComplete && rollData) {
-      onRollComplete(rollData);
+
+    if (rawResults && rollData) {
+      let completeData;
+
+      if (rollData.system === 'daggerheart') {
+        const hopeDie = rawResults.hope;
+        const fearDie = rawResults.fear;
+        const total = hopeDie + fearDie + modifier;
+        const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+
+        completeData = {
+          system: 'daggerheart',
+          hopeDie,
+          fearDie,
+          modifier,
+          total,
+          outcome,
+        };
+      } else {
+        const DICE_COLORS = { 4: '#10b981', 6: '#3b82f6', 8: '#8b5cf6', 10: '#ec4899', 12: '#f59e0b', 20: '#ef4444' };
+        const values = rawResults.rolls || [];
+        const details = rawResults.rollDetails || values.map(v => ({ value: v, sides: 20 }));
+        const rolls = details.map(r => ({
+          type: `d${r.sides}`,
+          sides: r.sides,
+          result: r.value,
+          color: DICE_COLORS[r.sides] || '#3b82f6',
+        }));
+        const total = values.reduce((a, b) => a + b, 0) + modifier;
+        const d20Values = details.filter(r => r.sides === 20).map(r => r.value);
+
+        completeData = {
+          system: 'generic',
+          rolls,
+          modifier,
+          total,
+          isCrit: d20Values.includes(20),
+          isCritFail: d20Values.length > 0 && d20Values.every(r => r === 1),
+        };
+      }
+
+      // Broadcast AFTER animation with physics results
+      if (campaignId) {
+        const rollDoc = doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`);
+        setDoc(rollDoc, {
+          ...completeData,
+          timestamp: serverTimestamp(),
+          rollId: Date.now().toString(),
+        }).catch(err => console.error('Failed to broadcast dice roll:', err));
+      }
+
+      if (onRollComplete) {
+        onRollComplete(completeData);
+      }
     }
+
     setRollData(null);
   };
 

@@ -75,19 +75,11 @@ export default function Dice3DOverlay({
       let rollInput;
 
       if (rollData.system === 'daggerheart') {
-        if (rollData.hopeDie !== undefined && rollData.fearDie !== undefined) {
-          // Forced roll (from pre-calculated source like Map)
-          rollInput = [
-            { qty: 1, sides: 12, themeColor: '#fbbf24', value: parseInt(rollData.hopeDie) },
-            { qty: 1, sides: 12, themeColor: '#a855f7', value: parseInt(rollData.fearDie) },
-          ];
-        } else {
-          // Random roll
-          rollInput = [
-            { qty: 1, sides: 12, themeColor: '#fbbf24' },
-            { qty: 1, sides: 12, themeColor: '#a855f7' },
-          ];
-        }
+        // Always let physics determine the result
+        rollInput = [
+          { qty: 1, sides: 12, themeColor: '#fbbf24' },
+          { qty: 1, sides: 12, themeColor: '#a855f7' },
+        ];
       } else if (rollData.system === 'dnd5e') {
         if (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') {
           rollInput = [
@@ -98,22 +90,31 @@ export default function Dice3DOverlay({
           rollInput = [{ qty: 1, sides: 20, themeColor: '#3b82f6' }];
         }
       } else if (rollData.system === 'generic') {
-        // Check if this is a mixed-dice roll from BattleMapDice
-        if (rollData.diceResults) {
-          // BattleMapDice passes diceResults: { d4: [...], d6: [...], d12: [...] }
-          const DICE_COLORS = { 4: '#10b981', 6: '#3b82f6', 8: '#8b5cf6', 10: '#ec4899', 12: '#f59e0b', 20: '#ef4444' };
+        const DICE_COLORS = { 4: '#10b981', 6: '#3b82f6', 8: '#8b5cf6', 10: '#ec4899', 12: '#f59e0b', 20: '#ef4444' };
+        if (rollData.diceConfig) {
+          // Mixed dice from BattleMapDice/PlayerDicePanel - just counts, no values
+          rollInput = [];
+          Object.entries(rollData.diceConfig).forEach(([dieKey, count]) => {
+            const sides = parseInt(dieKey.replace('d', ''));
+            if (count > 0 && sides) {
+              rollInput.push({
+                qty: count,
+                sides,
+                themeColor: DICE_COLORS[sides] || '#3b82f6',
+              });
+            }
+          });
+          if (rollInput.length === 0) rollInput = '1d20'; // Fallback
+        } else if (rollData.diceResults) {
+          // Legacy path - use counts from diceResults but let physics determine values
           rollInput = [];
           Object.entries(rollData.diceResults).forEach(([dieKey, results]) => {
             const sides = parseInt(dieKey.replace('d', ''));
             if (results.length > 0 && sides) {
-              // Iterate through each result to support specific values
-              results.forEach(val => {
-                rollInput.push({
-                  qty: 1,
-                  sides,
-                  themeColor: DICE_COLORS[sides] || '#3b82f6',
-                  value: parseInt(val) // Pass the pre-calculated value
-                });
+              rollInput.push({
+                qty: results.length,
+                sides,
+                themeColor: DICE_COLORS[sides] || '#3b82f6',
               });
             }
           });
@@ -147,31 +148,18 @@ export default function Dice3DOverlay({
       const modifier = parseInt(rollData.modifier) || 0;
 
       if (rollData.system === 'daggerheart') {
-        // Use pre-calculated values if available (SOURCE OF TRUTH)
-        if (rollData.hopeDie !== undefined && rollData.fearDie !== undefined) {
-          const hopeDie = parseInt(rollData.hopeDie);
-          const fearDie = parseInt(rollData.fearDie);
-          const total = hopeDie + fearDie + modifier;
-          const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
-          const isDoubles = hopeDie === fearDie;
+        // Always use physics results - what the dice visually show
+        const hopeResult = (results || []).find(r => r.groupId === 0);
+        const fearResult = (results || []).find(r => r.groupId === 1);
+        const hopeDie = hopeResult?.value || 0;
+        const fearDie = fearResult?.value || 0;
+        const total = hopeDie + fearDie + modifier;
+        const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+        const isDoubles = hopeDie === fearDie;
 
-          rawResults.hope = hopeDie;
-          rawResults.fear = fearDie;
-          localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome, isDoubles };
-        } else {
-          // Fallback to physics results
-          const hopeResult = (results || []).find(r => r.groupId === 0);
-          const fearResult = (results || []).find(r => r.groupId === 1);
-          const hopeDie = hopeResult?.value || 0;
-          const fearDie = fearResult?.value || 0;
-          const total = hopeDie + fearDie + modifier;
-          const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
-          const isDoubles = hopeDie === fearDie;
-
-          rawResults.hope = hopeDie;
-          rawResults.fear = fearDie;
-          localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome, isDoubles };
-        }
+        rawResults.hope = hopeDie;
+        rawResults.fear = fearDie;
+        localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome, isDoubles };
       } else if (rollData.system === 'dnd5e') {
         // groupId 0 = first d20, groupId 1 = second d20 (adv/dis)
         const d20Result = (results || []).find(r => r.groupId === 0);
@@ -186,17 +174,14 @@ export default function Dice3DOverlay({
         }
         localResult = { ...localResult, d20: rawResults.d20, d20Second: rawResults.d20Second, total: finalD20 + modifier, isCrit: finalD20 === 20, isCritFail: finalD20 === 1 };
       } else if (rollData.system === 'generic') {
-        let values;
-        if (rollData.diceResults) {
-          // Use pre-calculated values (SOURCE OF TRUTH)
-          values = [];
-          Object.values(rollData.diceResults).forEach(vArr => values.push(...vArr));
-          // Flatten and match order if possible, but mainly just use the values for total
-        } else {
-          values = (results || []).map(r => r.value);
-        }
-
+        // Always use physics results - what the dice visually show
+        const values = (results || []).map(r => r.value);
         rawResults.rolls = values;
+        // Include per-die details (value + sides) for history reconstruction
+        rawResults.rollDetails = (results || []).map(r => ({
+          value: r.value,
+          sides: r.sides,
+        }));
         const total = values.reduce((a, b) => a + b, 0) + modifier;
         localResult = { ...localResult, rolls: values, total };
       } else if (rollData.system === 'starwarsd6') {
