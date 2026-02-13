@@ -1,9 +1,30 @@
-/**
- * Dice Audio — Web Audio API sound synthesis for dice rolling
- * No external audio files needed.
- */
+// Web Audio API sound synthesis for dice rolling
+// No external audio files needed (except optional roll sound override)
+
 
 let audioCtx = null;
+let rollBuffer = null;
+let isRollSoundLoading = false;
+
+async function loadRollSound() {
+    if (rollBuffer || isRollSoundLoading) return;
+    isRollSoundLoading = true;
+    try {
+        const ctx = getAudioContext();
+        const response = await fetch('/sounds/gooddiceroll.mp3');
+        const arrayBuffer = await response.arrayBuffer();
+        audioCtx.decodeAudioData(arrayBuffer, (decoded) => {
+            rollBuffer = decoded;
+            isRollSoundLoading = false;
+        }, (err) => {
+            console.warn('Audio decode failed', err);
+            isRollSoundLoading = false;
+        });
+    } catch (error) {
+        console.warn('Failed to load dice roll sound:', error);
+        isRollSoundLoading = false;
+    }
+}
 
 function getAudioContext() {
     if (!audioCtx || audioCtx.state === 'closed') {
@@ -25,6 +46,8 @@ export function initAudio() {
         if (ctx.state === 'suspended') {
             ctx.resume().catch(() => { });
         }
+        // Preload sound on first interaction
+        loadRollSound();
     } catch (e) {
         // Ignore
     }
@@ -58,6 +81,20 @@ function playTick(ctx, time, volume = 0.3) {
 export function playRollSound() {
     try {
         const ctx = getAudioContext();
+
+        // If buffer loaded, play it
+        if (rollBuffer) {
+            const source = ctx.createBufferSource();
+            source.buffer = rollBuffer;
+            const gain = ctx.createGain();
+            gain.gain.value = 0.5; // Adjust volume as needed
+            source.connect(gain);
+            gain.connect(ctx.destination);
+            source.start(0);
+            return;
+        }
+
+        // Fallback to synthesis if file not loaded yet
         const now = ctx.currentTime;
         const tickCount = 12 + Math.floor(Math.random() * 6);
 
