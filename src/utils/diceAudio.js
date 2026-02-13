@@ -4,25 +4,22 @@
 
 let audioCtx = null;
 let rollBuffer = null;
-let isRollSoundLoading = false;
+let rawAudioData = null; // Pre-fetched ArrayBuffer (before AudioContext exists)
 
-async function loadRollSound() {
-    if (rollBuffer || isRollSoundLoading) return;
-    isRollSoundLoading = true;
+// Pre-fetch the mp3 immediately on module load (no user interaction needed)
+fetch('/sounds/gooddiceroll.mp3')
+    .then(r => r.arrayBuffer())
+    .then(buf => { rawAudioData = buf; })
+    .catch(() => { });
+
+async function decodeRollSound() {
+    if (rollBuffer || !rawAudioData || !audioCtx) return;
     try {
-        const ctx = getAudioContext();
-        const response = await fetch('/sounds/gooddiceroll.mp3');
-        const arrayBuffer = await response.arrayBuffer();
-        audioCtx.decodeAudioData(arrayBuffer, (decoded) => {
-            rollBuffer = decoded;
-            isRollSoundLoading = false;
-        }, (err) => {
-            console.warn('Audio decode failed', err);
-            isRollSoundLoading = false;
-        });
-    } catch (error) {
-        console.warn('Failed to load dice roll sound:', error);
-        isRollSoundLoading = false;
+        // decodeAudioData detaches the buffer, so copy it first
+        const copy = rawAudioData.slice(0);
+        rollBuffer = await audioCtx.decodeAudioData(copy);
+    } catch (err) {
+        console.warn('Audio decode failed', err);
     }
 }
 
@@ -46,8 +43,8 @@ export function initAudio() {
         if (ctx.state === 'suspended') {
             ctx.resume().catch(() => { });
         }
-        // Preload sound on first interaction
-        loadRollSound();
+        // Decode pre-fetched mp3 now that we have an AudioContext
+        decodeRollSound();
     } catch (e) {
         // Ignore
     }
@@ -93,6 +90,9 @@ export function playRollSound() {
             source.start(0);
             return;
         }
+
+        // Try to decode for next time
+        decodeRollSound();
 
         // Fallback to synthesis if file not loaded yet
         const now = ctx.currentTime;
