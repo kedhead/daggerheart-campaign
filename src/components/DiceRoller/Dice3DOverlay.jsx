@@ -75,10 +75,19 @@ export default function Dice3DOverlay({
       let rollInput;
 
       if (rollData.system === 'daggerheart') {
-        rollInput = [
-          { qty: 1, sides: 12, themeColor: '#fbbf24' }, // Hope (Gold)
-          { qty: 1, sides: 12, themeColor: '#a855f7' }, // Fear (Purple)
-        ];
+        if (rollData.hopeDie !== undefined && rollData.fearDie !== undefined) {
+          // Forced roll (from pre-calculated source like Map)
+          rollInput = [
+            { qty: 1, sides: 12, themeColor: '#fbbf24', value: rollData.hopeDie },
+            { qty: 1, sides: 12, themeColor: '#a855f7', value: rollData.fearDie },
+          ];
+        } else {
+          // Random roll
+          rollInput = [
+            { qty: 1, sides: 12, themeColor: '#fbbf24' },
+            { qty: 1, sides: 12, themeColor: '#a855f7' },
+          ];
+        }
       } else if (rollData.system === 'dnd5e') {
         if (rollData.mode === 'advantage' || rollData.mode === 'disadvantage') {
           rollInput = [
@@ -97,7 +106,15 @@ export default function Dice3DOverlay({
           Object.entries(rollData.diceResults).forEach(([dieKey, results]) => {
             const sides = parseInt(dieKey.replace('d', ''));
             if (results.length > 0 && sides) {
-              rollInput.push({ qty: results.length, sides, themeColor: DICE_COLORS[sides] || '#3b82f6' });
+              // Iterate through each result to support specific values
+              results.forEach(val => {
+                rollInput.push({
+                  qty: 1,
+                  sides,
+                  themeColor: DICE_COLORS[sides] || '#3b82f6',
+                  value: val // Pass the pre-calculated value
+                });
+              });
             }
           });
           if (rollInput.length === 0) rollInput = '1d20'; // Fallback
