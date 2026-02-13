@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import DiceBox from '@3d-dice/dice-box';
+import { playRollSound, playCritSound, playDoublesSound, initAudio } from '../../utils/diceAudio';
+import SpecialResultOverlay from './SpecialResultOverlay';
 import './Dice3DOverlay.css';
 
 export default function Dice3DOverlay({
@@ -13,6 +15,7 @@ export default function Dice3DOverlay({
   const [animationComplete, setAnimationComplete] = useState(false);
   const [isBoxReady, setIsBoxReady] = useState(false);
   const [rollResult, setRollResult] = useState(null); // Local computed result for banner display
+  const [specialOverlay, setSpecialOverlay] = useState(null); // For crit/doubles full-screen effect
 
   // Initialize DiceBox on mount
   useEffect(() => {
@@ -64,6 +67,8 @@ export default function Dice3DOverlay({
       setAnimationComplete(false);
       setRollResult(null);
       diceBoxRef.current.clear();
+      initAudio(); // Unlock audio context
+      playRollSound();
 
       // Roll all dice at once using array of {qty, sides, themeColor} objects
       // This gives us per-die coloring AND simultaneous rolling
@@ -168,6 +173,20 @@ export default function Dice3DOverlay({
         localResult = { ...localResult, wildDie, dice: allDice, total, complication: wildDie === 1 };
       }
 
+      // Play special sounds based on result
+      if (localResult.isCrit) {
+        playCritSound();
+        setSpecialOverlay({ type: 'crit', value: 20 });
+        setTimeout(() => setSpecialOverlay(null), 2500);
+      } else if (localResult.isDoubles) {
+        playDoublesSound();
+        setSpecialOverlay({ type: 'doubles', value: localResult.hopeDie });
+        setTimeout(() => setSpecialOverlay(null), 2500);
+      } else if (localResult.isCritFail) {
+        setSpecialOverlay({ type: 'critfail', value: 1 });
+        setTimeout(() => setSpecialOverlay(null), 2500);
+      }
+
       // Store result locally for the banner
       setRollResult(localResult);
 
@@ -240,6 +259,15 @@ export default function Dice3DOverlay({
 
           <div className="result-hint">Click anywhere to close</div>
         </div>
+      )}
+
+      {/* Special Full Screen Overlay (Crit/Doubles) */}
+      {specialOverlay && (
+        <SpecialResultOverlay
+          type={specialOverlay.type}
+          value={specialOverlay.value}
+          onClose={() => setSpecialOverlay(null)}
+        />
       )}
     </div>
   );

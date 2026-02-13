@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Dices, X, Sun, Moon, Plus, Minus } from 'lucide-react';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
+import { initAudio } from '../../../utils/diceAudio';
 import Dice3DOverlay from '../../DiceRoller/Dice3DOverlay';
 
 const DICE_TYPES = [
@@ -71,6 +72,7 @@ export default function BattleMapDice({ campaignId, onRollComplete }) {
 
   // Roll the dice
   const handleRoll = () => {
+    initAudio(); // Unlock audio context
     let data;
 
     if (rollMode === 'daggerheart') {

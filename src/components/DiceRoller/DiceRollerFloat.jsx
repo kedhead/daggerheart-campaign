@@ -3,7 +3,9 @@ import { Dices, X, Sun, Moon, Swords, Star, ChevronDown, ChevronUp, Lock, Sparkl
 import { useDiceRolls } from '../../hooks/useDiceRolls';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
+import { playRollSound, playCritSound, playDoublesSound, initAudio } from '../../utils/diceAudio';
 import RollHistory from './RollHistory';
+import SpecialResultOverlay from './SpecialResultOverlay';
 import Dice3DOverlay from './Dice3DOverlay';
 import './DiceRollerFloat.css';
 
@@ -21,6 +23,7 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
   const [use3DDice, setUse3DDice] = useState(true); // Enable 3D dice by default
   const [show3DOverlay, setShow3DOverlay] = useState(false);
   const [pending3DRoll, setPending3DRoll] = useState(null);
+  const [overlay, setOverlay] = useState(null); // Special result overlay state
 
   // Roll configuration state
   const [modifier, setModifier] = useState(0);
@@ -37,13 +40,15 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     const fearDie = overrides?.fearDie ?? (Math.floor(Math.random() * 12) + 1);
     const total = hopeDie + fearDie + parseInt(modifier);
     const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+    const isDoubles = hopeDie === fearDie;
 
     return {
       hopeDie,
       fearDie,
       modifier: parseInt(modifier),
       total,
-      outcome
+      outcome,
+      isDoubles
     };
   };
 
@@ -170,13 +175,15 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     }
 
     const total = rolls.reduce((a, b) => a + b, 0) + parseInt(modifier);
+    const isDoubles = rolls.length > 1 && rolls.every(val => val === rolls[0]);
 
     return {
       dieType,
       quantity,
       rolls,
       modifier: parseInt(modifier),
-      total
+      total,
+      isDoubles
     };
   };
 
@@ -184,6 +191,7 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     if (isRolling) return;
 
     setIsRolling(true);
+    initAudio(); // Unlock audio
 
     // If 3D dice enabled, defer calculation!
     if (use3DDice) {
@@ -205,6 +213,7 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     }
 
     // 2D Logic (Immediate)
+    playRollSound();
     let rollData;
     switch (gameSystem) {
       case 'dnd5e': rollData = rollDnD5e(); break;
@@ -214,6 +223,20 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     }
 
     setTimeout(async () => {
+      // Play sounds and show overlay for significant results (2D only)
+      if (rollData.isCrit) {
+        playCritSound();
+        setOverlay({ type: 'crit', value: 20 });
+        setTimeout(() => setOverlay(null), 2500);
+      } else if (rollData.isCritFail) {
+        setOverlay({ type: 'critfail', value: 1 });
+        setTimeout(() => setOverlay(null), 2500);
+      } else if (rollData.isDoubles || (gameSystem === 'daggerheart' && rollData.hopeDie === rollData.fearDie)) {
+        playDoublesSound();
+        setOverlay({ type: 'doubles', value: rollData.hopeDie || rollData.rolls[0] });
+        setTimeout(() => setOverlay(null), 2500);
+      }
+
       setCurrentRoll({ system: gameSystem, rollData });
       await addRoll({
         system: gameSystem,
@@ -312,263 +335,273 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
   };
 
   return (
-    <div className={`dice-roller-float ${isOpen ? 'open' : ''}`}>
-      {/* Floating Action Button */}
-      <button
-        className={`dice-fab ${isRolling ? 'rolling' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label={isOpen ? 'Close dice roller' : 'Open dice roller'}
-      >
-        {isOpen ? <X size={24} /> : <Dices size={24} />}
-      </button>
+    <>
+      <div className={`dice-roller-float ${isOpen ? 'open' : ''}`}>
+        {/* Floating Action Button */}
+        <button
+          className={`dice-fab ${isRolling ? 'rolling' : ''}`}
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? 'Close dice roller' : 'Open dice roller'}
+        >
+          {isOpen ? <X size={24} /> : <Dices size={24} />}
+        </button>
 
-      {/* Expanded Panel */}
-      {isOpen && (
-        <div className="dice-panel">
-          <div className="dice-panel-header">
-            <h3>
-              <Dices size={18} />
-              {getSystemLabel()} Dice
-            </h3>
-            <button
-              className="history-toggle"
-              onClick={() => setShowHistory(!showHistory)}
-            >
-              {showHistory ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-              History
-            </button>
-          </div>
+        {/* Expanded Panel */}
+        {isOpen && (
+          <div className="dice-panel">
+            <div className="dice-panel-header">
+              <h3>
+                <Dices size={18} />
+                {getSystemLabel()} Dice
+              </h3>
+              <button
+                className="history-toggle"
+                onClick={() => setShowHistory(!showHistory)}
+              >
+                {showHistory ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                History
+              </button>
+            </div>
 
-          {/* Roll History (collapsible) */}
-          {showHistory && (
-            <RollHistory
-              rolls={rolls}
-              loading={loading}
-              onClear={handleClearHistory}
-              isDM={isDM}
-              currentUserId={currentUser?.uid}
-            />
-          )}
-
-          {/* Dice Controls */}
-          <div className="dice-controls">
-            {/* System-specific controls */}
-            {gameSystem === 'generic' && (
-              <div className="control-row">
-                <div className="control-group">
-                  <label>Die</label>
-                  <select
-                    value={selectedDie}
-                    onChange={(e) => setSelectedDie(e.target.value)}
-                  >
-                    <option value={4}>d4</option>
-                    <option value={6}>d6</option>
-                    <option value={8}>d8</option>
-                    <option value={10}>d10</option>
-                    <option value={12}>d12</option>
-                    <option value={20}>d20</option>
-                  </select>
-                </div>
-                <div className="control-group">
-                  <label>Qty</label>
-                  <input
-                    type="number"
-                    value={diceQuantity}
-                    onChange={(e) => setDiceQuantity(e.target.value)}
-                    min="1"
-                    max="10"
-                  />
-                </div>
-              </div>
+            {/* Roll History (collapsible) */}
+            {showHistory && (
+              <RollHistory
+                rolls={rolls}
+                loading={loading}
+                onClear={handleClearHistory}
+                isDM={isDM}
+                currentUserId={currentUser?.uid}
+              />
             )}
 
-            {gameSystem === 'starwarsd6' && (
-              <div className="control-row">
-                <div className="control-group">
-                  <label>Dice Pool</label>
-                  <input
-                    type="number"
-                    value={numDice}
-                    onChange={(e) => setNumDice(e.target.value)}
-                    min="1"
-                    max="10"
-                  />
-                </div>
-              </div>
-            )}
-
-            {gameSystem === 'dnd5e' && (
-              <div className="control-row">
-                <div className="control-group roll-mode-group">
-                  <label>Mode</label>
-                  <div className="roll-mode-buttons">
-                    <button
-                      className={`mode-btn ${rollMode === 'disadvantage' ? 'active dis' : ''}`}
-                      onClick={() => setRollMode('disadvantage')}
-                      title="Disadvantage"
+            {/* Dice Controls */}
+            <div className="dice-controls">
+              {/* System-specific controls */}
+              {gameSystem === 'generic' && (
+                <div className="control-row">
+                  <div className="control-group">
+                    <label>Die</label>
+                    <select
+                      value={selectedDie}
+                      onChange={(e) => setSelectedDie(e.target.value)}
                     >
-                      Dis
-                    </button>
-                    <button
-                      className={`mode-btn ${rollMode === 'normal' ? 'active' : ''}`}
-                      onClick={() => setRollMode('normal')}
-                      title="Normal"
-                    >
-                      Norm
-                    </button>
-                    <button
-                      className={`mode-btn ${rollMode === 'advantage' ? 'active adv' : ''}`}
-                      onClick={() => setRollMode('advantage')}
-                      title="Advantage"
-                    >
-                      Adv
-                    </button>
+                      <option value={4}>d4</option>
+                      <option value={6}>d6</option>
+                      <option value={8}>d8</option>
+                      <option value={10}>d10</option>
+                      <option value={12}>d12</option>
+                      <option value={20}>d20</option>
+                    </select>
+                  </div>
+                  <div className="control-group">
+                    <label>Qty</label>
+                    <input
+                      type="number"
+                      value={diceQuantity}
+                      onChange={(e) => setDiceQuantity(e.target.value)}
+                      min="1"
+                      max="10"
+                    />
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="control-row">
-              <div className="control-group">
-                <label>Modifier</label>
-                <input
-                  type="number"
-                  value={modifier}
-                  onChange={(e) => setModifier(e.target.value)}
-                  min="-10"
-                  max="20"
-                />
+              {gameSystem === 'starwarsd6' && (
+                <div className="control-row">
+                  <div className="control-group">
+                    <label>Dice Pool</label>
+                    <input
+                      type="number"
+                      value={numDice}
+                      onChange={(e) => setNumDice(e.target.value)}
+                      min="1"
+                      max="10"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {gameSystem === 'dnd5e' && (
+                <div className="control-row">
+                  <div className="control-group roll-mode-group">
+                    <label>Mode</label>
+                    <div className="roll-mode-buttons">
+                      <button
+                        className={`mode-btn ${rollMode === 'disadvantage' ? 'active dis' : ''}`}
+                        onClick={() => setRollMode('disadvantage')}
+                        title="Disadvantage"
+                      >
+                        Dis
+                      </button>
+                      <button
+                        className={`mode-btn ${rollMode === 'normal' ? 'active' : ''}`}
+                        onClick={() => setRollMode('normal')}
+                        title="Normal"
+                      >
+                        Norm
+                      </button>
+                      <button
+                        className={`mode-btn ${rollMode === 'advantage' ? 'active adv' : ''}`}
+                        onClick={() => setRollMode('advantage')}
+                        title="Advantage"
+                      >
+                        Adv
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="control-row">
+                <div className="control-group">
+                  <label>Modifier</label>
+                  <input
+                    type="number"
+                    value={modifier}
+                    onChange={(e) => setModifier(e.target.value)}
+                    min="-10"
+                    max="20"
+                  />
+                </div>
+                {isDM && (
+                  <div className="control-group private-toggle">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={isPrivate}
+                        onChange={(e) => setIsPrivate(e.target.checked)}
+                      />
+                      <Lock size={14} />
+                      Private
+                    </label>
+                  </div>
+                )}
               </div>
-              {isDM && (
-                <div className="control-group private-toggle">
+
+              <div className="control-row">
+                <div className="control-group dice-3d-toggle">
                   <label>
                     <input
                       type="checkbox"
-                      checked={isPrivate}
-                      onChange={(e) => setIsPrivate(e.target.checked)}
+                      checked={use3DDice}
+                      onChange={(e) => setUse3DDice(e.target.checked)}
                     />
-                    <Lock size={14} />
-                    Private
+                    <Sparkles size={14} />
+                    3D Dice Animation
                   </label>
                 </div>
-              )}
-            </div>
-
-            <div className="control-row">
-              <div className="control-group dice-3d-toggle">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={use3DDice}
-                    onChange={(e) => setUse3DDice(e.target.checked)}
-                  />
-                  <Sparkles size={14} />
-                  3D Dice Animation
-                </label>
               </div>
+
+              <div className="control-row">
+                <input
+                  type="text"
+                  className="roll-label-input"
+                  placeholder="Roll for... (optional)"
+                  value={rollLabel}
+                  onChange={(e) => setRollLabel(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRoll()}
+                />
+              </div>
+
+              <button
+                className={`btn btn-primary roll-btn ${isRolling ? 'rolling' : ''}`}
+                onClick={handleRoll}
+                disabled={isRolling}
+              >
+                <Dices size={20} className={isRolling ? 'spin' : ''} />
+                {isRolling ? 'Rolling...' : 'Roll Dice'}
+              </button>
             </div>
 
-            <div className="control-row">
-              <input
-                type="text"
-                className="roll-label-input"
-                placeholder="Roll for... (optional)"
-                value={rollLabel}
-                onChange={(e) => setRollLabel(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleRoll()}
-              />
-            </div>
+            {/* Current Roll Result */}
+            {currentRoll && (
+              <div className={`roll-result-mini ${currentRoll.rollData.outcome || ''} ${currentRoll.rollData.isCrit ? 'crit' : ''} ${currentRoll.rollData.isCritFail ? 'critfail' : ''} ${currentRoll.rollData.complication ? 'complication' : ''}`}>
+                {currentRoll.system === 'daggerheart' && (
+                  <>
+                    <div className="mini-dice">
+                      <span className="hope-die">
+                        <Sun size={14} /> {currentRoll.rollData.hopeDie}
+                      </span>
+                      <span className="fear-die">
+                        <Moon size={14} /> {currentRoll.rollData.fearDie}
+                      </span>
+                    </div>
+                    <div className="mini-total">{currentRoll.rollData.total}</div>
+                    <div className={`mini-outcome ${currentRoll.rollData.outcome}`}>
+                      {currentRoll.rollData.outcome === 'hope' ? '✨ Hope' : '💀 Fear'}
+                    </div>
+                  </>
+                )}
 
-            <button
-              className={`btn btn-primary roll-btn ${isRolling ? 'rolling' : ''}`}
-              onClick={handleRoll}
-              disabled={isRolling}
-            >
-              <Dices size={20} className={isRolling ? 'spin' : ''} />
-              {isRolling ? 'Rolling...' : 'Roll Dice'}
-            </button>
+                {currentRoll.system === 'dnd5e' && (
+                  <>
+                    <div className="mini-dice">
+                      <span className="d20-roll">
+                        <Swords size={14} />
+                        {currentRoll.rollData.d20Second !== undefined
+                          ? `${currentRoll.rollData.d20}, ${currentRoll.rollData.d20Second}`
+                          : currentRoll.rollData.d20
+                        }
+                      </span>
+                    </div>
+                    <div className="mini-total">{currentRoll.rollData.total}</div>
+                    {currentRoll.rollData.isCrit && (
+                      <div className="mini-outcome crit"><Star size={14} /> Crit!</div>
+                    )}
+                    {currentRoll.rollData.isCritFail && (
+                      <div className="mini-outcome critfail">Crit Fail!</div>
+                    )}
+                  </>
+                )}
+
+                {currentRoll.system === 'starwarsd6' && (
+                  <>
+                    <div className="mini-dice">
+                      <span className="wild-die">Wild: {currentRoll.rollData.wildDie}</span>
+                      <span className="other-dice">[{currentRoll.rollData.dice.join(', ')}]</span>
+                    </div>
+                    <div className="mini-total">{currentRoll.rollData.total}</div>
+                    {currentRoll.rollData.complication && (
+                      <div className="mini-outcome complication">⚠️ Complication</div>
+                    )}
+                  </>
+                )}
+
+                {currentRoll.system === 'generic' && (
+                  <>
+                    <div className="mini-dice">
+                      <span style={{ color: getDieColor(currentRoll.rollData.dieType) }}>
+                        {currentRoll.rollData.quantity}d{currentRoll.rollData.dieType}
+                      </span>
+                      <span className="other-dice">[{currentRoll.rollData.rolls.join(', ')}]</span>
+                    </div>
+                    <div className="mini-total">{currentRoll.rollData.total}</div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Current Roll Result */}
-          {currentRoll && (
-            <div className={`roll-result-mini ${currentRoll.rollData.outcome || ''} ${currentRoll.rollData.isCrit ? 'crit' : ''} ${currentRoll.rollData.isCritFail ? 'critfail' : ''} ${currentRoll.rollData.complication ? 'complication' : ''}`}>
-              {currentRoll.system === 'daggerheart' && (
-                <>
-                  <div className="mini-dice">
-                    <span className="hope-die">
-                      <Sun size={14} /> {currentRoll.rollData.hopeDie}
-                    </span>
-                    <span className="fear-die">
-                      <Moon size={14} /> {currentRoll.rollData.fearDie}
-                    </span>
-                  </div>
-                  <div className="mini-total">{currentRoll.rollData.total}</div>
-                  <div className={`mini-outcome ${currentRoll.rollData.outcome}`}>
-                    {currentRoll.rollData.outcome === 'hope' ? '✨ Hope' : '💀 Fear'}
-                  </div>
-                </>
-              )}
-
-              {currentRoll.system === 'dnd5e' && (
-                <>
-                  <div className="mini-dice">
-                    <span className="d20-roll">
-                      <Swords size={14} />
-                      {currentRoll.rollData.d20Second !== undefined
-                        ? `${currentRoll.rollData.d20}, ${currentRoll.rollData.d20Second}`
-                        : currentRoll.rollData.d20
-                      }
-                    </span>
-                  </div>
-                  <div className="mini-total">{currentRoll.rollData.total}</div>
-                  {currentRoll.rollData.isCrit && (
-                    <div className="mini-outcome crit"><Star size={14} /> Crit!</div>
-                  )}
-                  {currentRoll.rollData.isCritFail && (
-                    <div className="mini-outcome critfail">Crit Fail!</div>
-                  )}
-                </>
-              )}
-
-              {currentRoll.system === 'starwarsd6' && (
-                <>
-                  <div className="mini-dice">
-                    <span className="wild-die">Wild: {currentRoll.rollData.wildDie}</span>
-                    <span className="other-dice">[{currentRoll.rollData.dice.join(', ')}]</span>
-                  </div>
-                  <div className="mini-total">{currentRoll.rollData.total}</div>
-                  {currentRoll.rollData.complication && (
-                    <div className="mini-outcome complication">⚠️ Complication</div>
-                  )}
-                </>
-              )}
-
-              {currentRoll.system === 'generic' && (
-                <>
-                  <div className="mini-dice">
-                    <span style={{ color: getDieColor(currentRoll.rollData.dieType) }}>
-                      {currentRoll.rollData.quantity}d{currentRoll.rollData.dieType}
-                    </span>
-                    <span className="other-dice">[{currentRoll.rollData.rolls.join(', ')}]</span>
-                  </div>
-                  <div className="mini-total">{currentRoll.rollData.total}</div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+        {/* 3D Dice Overlay */}
+        <Dice3DOverlay
+          show={show3DOverlay}
+          rollData={pending3DRoll}
+          onComplete={handle3DRollComplete}
+          onClose={() => {
+            setShow3DOverlay(false);
+            setPending3DRoll(null);
+          }}
+        />
+      </div>
+      {/* Special Result Overlay (2D) */}
+      {overlay && (
+        <SpecialResultOverlay
+          type={overlay.type}
+          value={overlay.value}
+          onClose={() => setOverlay(null)}
+        />
       )}
-
-      {/* 3D Dice Overlay */}
-      <Dice3DOverlay
-        show={show3DOverlay}
-        rollData={pending3DRoll}
-        onComplete={handle3DRollComplete}
-        onClose={() => {
-          setShow3DOverlay(false);
-          setPending3DRoll(null);
-        }}
-      />
-    </div>
+    </>
   );
 }

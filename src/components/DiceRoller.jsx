@@ -3,7 +3,8 @@ import { Sun, Moon, Dices, Plus, Minus, Palette, Monitor, RotateCcw } from 'luci
 import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { playRollSound, playCritSound, playDoublesSound } from '../utils/diceAudio';
+import { playRollSound, playCritSound, playDoublesSound, initAudio } from '../utils/diceAudio';
+import SpecialResultOverlay from './DiceRoller/SpecialResultOverlay';
 import './DiceRoller.css';
 
 const DICE_TYPES = [
@@ -464,32 +465,13 @@ export default function DiceRoller({ isDM, campaignId, characters = [], currentU
       )}
 
       {/* Full-screen overlay for CRIT / DOUBLES */}
+      {/* Full-screen overlay for CRIT / DOUBLES */}
       {overlay && (
-        <div className={`dr-overlay dr-overlay-${overlay.type}`} onClick={() => setOverlay(null)}>
-          <div className="dr-overlay-content">
-            {overlay.type === 'crit' && (
-              <>
-                <div className="dr-overlay-icon">⚔️</div>
-                <div className="dr-overlay-text">CRITICAL HIT!</div>
-                <div className="dr-overlay-sub">Natural 20</div>
-              </>
-            )}
-            {overlay.type === 'critfail' && (
-              <>
-                <div className="dr-overlay-icon">💀</div>
-                <div className="dr-overlay-text">CRITICAL FAIL</div>
-                <div className="dr-overlay-sub">Natural 1</div>
-              </>
-            )}
-            {overlay.type === 'doubles' && (
-              <>
-                <div className="dr-overlay-icon">✨</div>
-                <div className="dr-overlay-text">DOUBLES!</div>
-                <div className="dr-overlay-sub">{overlay.value} & {overlay.value}</div>
-              </>
-            )}
-          </div>
-        </div>
+        <SpecialResultOverlay
+          type={overlay.type}
+          value={overlay.value}
+          onClose={() => setOverlay(null)}
+        />
       )}
     </div>
   );

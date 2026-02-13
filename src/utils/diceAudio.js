@@ -17,6 +17,20 @@ function getAudioContext() {
 }
 
 /**
+ * Initialize audio context on user interaction to unlock autoplay
+ */
+export function initAudio() {
+    try {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => { });
+        }
+    } catch (e) {
+        // Ignore
+    }
+}
+
+/**
  * Play a single click/tick sound
  */
 function playTick(ctx, time, volume = 0.3) {
