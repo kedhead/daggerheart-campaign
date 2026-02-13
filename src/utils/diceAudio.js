@@ -6,12 +6,12 @@
 let audioCtx = null;
 
 function getAudioContext() {
-    if (!audioCtx) {
+    if (!audioCtx || audioCtx.state === 'closed') {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
     // Resume if suspended (browser autoplay policy)
     if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
+        audioCtx.resume().catch(() => { });
     }
     return audioCtx;
 }
@@ -27,7 +27,8 @@ function playTick(ctx, time, volume = 0.3) {
     osc.frequency.setValueAtTime(800 + Math.random() * 1200, time);
     osc.frequency.exponentialRampToValueAtTime(200 + Math.random() * 400, time + 0.03);
 
-    gain.gain.setValueAtTime(volume, time);
+    // Use a small nonzero start value — exponentialRamp cannot ramp from 0
+    gain.gain.setValueAtTime(Math.max(volume, 0.001), time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
 
     osc.connect(gain);
@@ -47,15 +48,14 @@ export function playRollSound() {
         const tickCount = 12 + Math.floor(Math.random() * 6);
 
         for (let i = 0; i < tickCount; i++) {
-            // Accelerate then decelerate — sounds like dice settling
             const progress = i / tickCount;
-            const interval = 0.02 + progress * 0.04; // gaps get wider as dice settle
+            const interval = 0.02 + progress * 0.04;
             const time = now + i * interval;
-            const volume = 0.15 + (1 - progress) * 0.2; // quieter as they settle
+            const volume = 0.15 + (1 - progress) * 0.2;
             playTick(ctx, time, volume);
         }
     } catch (e) {
-        // Silently fail if audio not available
+        console.warn('Dice roll sound failed:', e);
     }
 }
 
@@ -67,7 +67,6 @@ export function playCritSound() {
         const ctx = getAudioContext();
         const now = ctx.currentTime;
 
-        // Three ascending notes with sparkle
         const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
         notes.forEach((freq, i) => {
             const osc = ctx.createOscillator();
@@ -76,8 +75,9 @@ export function playCritSound() {
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, now + i * 0.12);
 
-            gain.gain.setValueAtTime(0, now + i * 0.12);
-            gain.gain.linearRampToValueAtTime(0.25, now + i * 0.12 + 0.05);
+            // Start at a small nonzero value, ramp up, then decay
+            gain.gain.setValueAtTime(0.001, now + i * 0.12);
+            gain.gain.linearRampToValueAtTime(0.3, now + i * 0.12 + 0.05);
             gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.5);
 
             osc.connect(gain);
@@ -87,21 +87,21 @@ export function playCritSound() {
             osc.stop(now + i * 0.12 + 0.6);
         });
 
-        // Add a shimmer/sparkle
+        // Shimmer/sparkle
         const noise = ctx.createOscillator();
         const noiseGain = ctx.createGain();
         noise.type = 'triangle';
         noise.frequency.setValueAtTime(2000, now + 0.3);
         noise.frequency.exponentialRampToValueAtTime(4000, now + 0.8);
-        noiseGain.gain.setValueAtTime(0, now + 0.3);
-        noiseGain.gain.linearRampToValueAtTime(0.08, now + 0.4);
+        noiseGain.gain.setValueAtTime(0.001, now + 0.3);
+        noiseGain.gain.linearRampToValueAtTime(0.1, now + 0.4);
         noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
         noise.connect(noiseGain);
         noiseGain.connect(ctx.destination);
         noise.start(now + 0.3);
         noise.stop(now + 1.1);
     } catch (e) {
-        // Silently fail
+        console.warn('Crit sound failed:', e);
     }
 }
 
@@ -113,7 +113,6 @@ export function playDoublesSound() {
         const ctx = getAudioContext();
         const now = ctx.currentTime;
 
-        // Powerful chord — root + fifth + octave
         const frequencies = [261.63, 329.63, 392.0, 523.25]; // C4, E4, G4, C5
         frequencies.forEach((freq, i) => {
             const osc = ctx.createOscillator();
@@ -122,9 +121,10 @@ export function playDoublesSound() {
             osc.type = i === 0 ? 'sawtooth' : 'sine';
             osc.frequency.setValueAtTime(freq, now);
 
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.15, now + 0.08);
-            gain.gain.setValueAtTime(0.15, now + 0.3);
+            // Start at small nonzero, ramp up, sustain, then decay
+            gain.gain.setValueAtTime(0.001, now);
+            gain.gain.linearRampToValueAtTime(0.2, now + 0.08);
+            gain.gain.setValueAtTime(0.2, now + 0.3);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
 
             osc.connect(gain);
@@ -140,13 +140,13 @@ export function playDoublesSound() {
         sub.type = 'sine';
         sub.frequency.setValueAtTime(80, now);
         sub.frequency.exponentialRampToValueAtTime(40, now + 0.3);
-        subGain.gain.setValueAtTime(0.3, now);
+        subGain.gain.setValueAtTime(0.4, now);
         subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
         sub.connect(subGain);
         subGain.connect(ctx.destination);
         sub.start(now);
         sub.stop(now + 0.5);
     } catch (e) {
-        // Silently fail
+        console.warn('Doubles sound failed:', e);
     }
 }
