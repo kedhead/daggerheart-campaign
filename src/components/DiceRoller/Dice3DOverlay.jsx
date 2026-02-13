@@ -78,8 +78,8 @@ export default function Dice3DOverlay({
         if (rollData.hopeDie !== undefined && rollData.fearDie !== undefined) {
           // Forced roll (from pre-calculated source like Map)
           rollInput = [
-            { qty: 1, sides: 12, themeColor: '#fbbf24', value: rollData.hopeDie },
-            { qty: 1, sides: 12, themeColor: '#a855f7', value: rollData.fearDie },
+            { qty: 1, sides: 12, themeColor: '#fbbf24', value: parseInt(rollData.hopeDie) },
+            { qty: 1, sides: 12, themeColor: '#a855f7', value: parseInt(rollData.fearDie) },
           ];
         } else {
           // Random roll
@@ -112,7 +112,7 @@ export default function Dice3DOverlay({
                   qty: 1,
                   sides,
                   themeColor: DICE_COLORS[sides] || '#3b82f6',
-                  value: val // Pass the pre-calculated value
+                  value: parseInt(val) // Pass the pre-calculated value
                 });
               });
             }
@@ -147,19 +147,31 @@ export default function Dice3DOverlay({
       const modifier = parseInt(rollData.modifier) || 0;
 
       if (rollData.system === 'daggerheart') {
-        // groupId 0 = Hope (first in rollInput), groupId 1 = Fear (second in rollInput)
-        const hopeResult = (results || []).find(r => r.groupId === 0);
-        const fearResult = (results || []).find(r => r.groupId === 1);
-        const hopeDie = hopeResult?.value || 0;
-        const fearDie = fearResult?.value || 0;
-        const total = hopeDie + fearDie + modifier;
-        const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
-        const isDoubles = hopeDie === fearDie;
+        // Use pre-calculated values if available (SOURCE OF TRUTH)
+        if (rollData.hopeDie !== undefined && rollData.fearDie !== undefined) {
+          const hopeDie = parseInt(rollData.hopeDie);
+          const fearDie = parseInt(rollData.fearDie);
+          const total = hopeDie + fearDie + modifier;
+          const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+          const isDoubles = hopeDie === fearDie;
 
-        rawResults.hope = hopeDie;
-        rawResults.fear = fearDie;
+          rawResults.hope = hopeDie;
+          rawResults.fear = fearDie;
+          localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome, isDoubles };
+        } else {
+          // Fallback to physics results
+          const hopeResult = (results || []).find(r => r.groupId === 0);
+          const fearResult = (results || []).find(r => r.groupId === 1);
+          const hopeDie = hopeResult?.value || 0;
+          const fearDie = fearResult?.value || 0;
+          const total = hopeDie + fearDie + modifier;
+          const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+          const isDoubles = hopeDie === fearDie;
 
-        localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome, isDoubles };
+          rawResults.hope = hopeDie;
+          rawResults.fear = fearDie;
+          localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome, isDoubles };
+        }
       } else if (rollData.system === 'dnd5e') {
         // groupId 0 = first d20, groupId 1 = second d20 (adv/dis)
         const d20Result = (results || []).find(r => r.groupId === 0);
@@ -174,7 +186,16 @@ export default function Dice3DOverlay({
         }
         localResult = { ...localResult, d20: rawResults.d20, d20Second: rawResults.d20Second, total: finalD20 + modifier, isCrit: finalD20 === 20, isCritFail: finalD20 === 1 };
       } else if (rollData.system === 'generic') {
-        const values = (results || []).map(r => r.value);
+        let values;
+        if (rollData.diceResults) {
+          // Use pre-calculated values (SOURCE OF TRUTH)
+          values = [];
+          Object.values(rollData.diceResults).forEach(vArr => values.push(...vArr));
+          // Flatten and match order if possible, but mainly just use the values for total
+        } else {
+          values = (results || []).map(r => r.value);
+        }
+
         rawResults.rolls = values;
         const total = values.reduce((a, b) => a + b, 0) + modifier;
         localResult = { ...localResult, rolls: values, total };
