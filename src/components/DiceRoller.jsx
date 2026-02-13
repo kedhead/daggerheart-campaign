@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Sun, Moon, Dices, Plus, Minus, Palette, Monitor, RotateCcw } from 'lucide-react';
 import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { playRollSound, playCritSound, playDoublesSound } from '../utils/diceAudio';
 import './DiceRoller.css';
 
 const DICE_TYPES = [
@@ -47,6 +48,7 @@ export default function DiceRoller({ isDM, campaignId, characters = [], currentU
   const [playerColor, setPlayerColor] = useState('#3b82f6');
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [playerName, setPlayerName] = useState('');
+  const [overlay, setOverlay] = useState(null); // { type: 'crit' | 'critfail' | 'doubles', value?: number }
 
   // Auto-detect player name
   useEffect(() => {
@@ -114,6 +116,7 @@ export default function DiceRoller({ isDM, campaignId, characters = [], currentU
     const fearDie = Math.floor(Math.random() * 12) + 1;
     const total = hopeDie + fearDie + modifier;
     const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+    const isDoubles = hopeDie === fearDie;
 
     return {
       system: 'daggerheart',
@@ -122,6 +125,7 @@ export default function DiceRoller({ isDM, campaignId, characters = [], currentU
       modifier,
       total,
       outcome,
+      isDoubles,
       timestamp: new Date().toLocaleTimeString()
     };
   };
@@ -164,12 +168,19 @@ export default function DiceRoller({ isDM, campaignId, characters = [], currentU
     };
   };
 
+  // Show overlay helper
+  const showOverlayEffect = useCallback((type, value) => {
+    setOverlay({ type, value });
+    setTimeout(() => setOverlay(null), 2500);
+  }, []);
+
   // Main roll function
   const rollDice = async () => {
     if (isRolling) return;
     if (rollMode === 'custom' && totalDice === 0) return;
 
     setIsRolling(true);
+    playRollSound();
 
     setTimeout(async () => {
       const roll = rollMode === 'daggerheart' ? rollDaggerheart() : rollCustom();
@@ -177,6 +188,17 @@ export default function DiceRoller({ isDM, campaignId, characters = [], currentU
       setCurrentRoll(roll);
       setRollHistory([roll, ...rollHistory.slice(0, 9)]);
       setIsRolling(false);
+
+      // Check for special results and trigger effects
+      if (roll.isCrit) {
+        playCritSound();
+        showOverlayEffect('crit', 20);
+      } else if (roll.isCritFail) {
+        showOverlayEffect('critfail', 1);
+      } else if (roll.isDoubles) {
+        playDoublesSound();
+        showOverlayEffect('doubles', roll.hopeDie);
+      }
 
       // Broadcast if enabled
       if (broadcastEnabled && campaignId) {
@@ -388,6 +410,9 @@ export default function DiceRoller({ isDM, campaignId, characters = [], currentU
                   <><Moon size={14} /> With Fear</>
                 )}
               </div>
+              {currentRoll.isDoubles && (
+                <div className="dr-result-doubles">⚡ Doubles! ({currentRoll.hopeDie} & {currentRoll.fearDie})</div>
+              )}
             </>
           ) : (
             <>
@@ -434,6 +459,35 @@ export default function DiceRoller({ isDM, campaignId, characters = [], currentU
                 <span className="dr-history-total">{roll.total}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Full-screen overlay for CRIT / DOUBLES */}
+      {overlay && (
+        <div className={`dr-overlay dr-overlay-${overlay.type}`} onClick={() => setOverlay(null)}>
+          <div className="dr-overlay-content">
+            {overlay.type === 'crit' && (
+              <>
+                <div className="dr-overlay-icon">⚔️</div>
+                <div className="dr-overlay-text">CRITICAL HIT!</div>
+                <div className="dr-overlay-sub">Natural 20</div>
+              </>
+            )}
+            {overlay.type === 'critfail' && (
+              <>
+                <div className="dr-overlay-icon">💀</div>
+                <div className="dr-overlay-text">CRITICAL FAIL</div>
+                <div className="dr-overlay-sub">Natural 1</div>
+              </>
+            )}
+            {overlay.type === 'doubles' && (
+              <>
+                <div className="dr-overlay-icon">✨</div>
+                <div className="dr-overlay-text">DOUBLES!</div>
+                <div className="dr-overlay-sub">{overlay.value} & {overlay.value}</div>
+              </>
+            )}
           </div>
         </div>
       )}
