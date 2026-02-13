@@ -117,42 +117,55 @@ export default function Dice3DOverlay({
       console.log('[Dice3D] Results:', JSON.stringify(results));
 
       // Extract values - results is a flat array of individual die results
-      const values = (results || []).map(r => r.value);
-      console.log('[Dice3D] Extracted values:', values);
+      // Use groupId to correctly identify which die is which (array order is NOT guaranteed)
+      console.log('[Dice3D] Raw results:', JSON.stringify(results));
 
       const rawResults = {};
       let localResult = { system: rollData.system };
       const modifier = parseInt(rollData.modifier) || 0;
 
       if (rollData.system === 'daggerheart') {
-        const hopeDie = values[0] || 0;
-        const fearDie = values[1] || 0;
+        // groupId 0 = Hope (first in rollInput), groupId 1 = Fear (second in rollInput)
+        const hopeResult = (results || []).find(r => r.groupId === 0);
+        const fearResult = (results || []).find(r => r.groupId === 1);
+        const hopeDie = hopeResult?.value || 0;
+        const fearDie = fearResult?.value || 0;
         const total = hopeDie + fearDie + modifier;
         const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+        const isDoubles = hopeDie === fearDie;
 
         rawResults.hope = hopeDie;
         rawResults.fear = fearDie;
 
-        localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome };
+        localResult = { ...localResult, hopeDie, fearDie, modifier, total, outcome, isDoubles };
       } else if (rollData.system === 'dnd5e') {
-        rawResults.d20 = values[0] || 0;
-        if (values.length > 1) rawResults.d20Second = values[1];
-        let finalD20 = values[0] || 0;
-        if (values.length > 1) {
+        // groupId 0 = first d20, groupId 1 = second d20 (adv/dis)
+        const d20Result = (results || []).find(r => r.groupId === 0);
+        const d20SecondResult = (results || []).find(r => r.groupId === 1);
+        rawResults.d20 = d20Result?.value || 0;
+        if (d20SecondResult) rawResults.d20Second = d20SecondResult.value;
+        let finalD20 = rawResults.d20;
+        if (rawResults.d20Second !== undefined) {
           finalD20 = rollData.mode === 'advantage'
-            ? Math.max(values[0], values[1])
-            : Math.min(values[0], values[1]);
+            ? Math.max(rawResults.d20, rawResults.d20Second)
+            : Math.min(rawResults.d20, rawResults.d20Second);
         }
-        localResult = { ...localResult, d20: values[0], d20Second: values[1], total: finalD20 + modifier, isCrit: finalD20 === 20, isCritFail: finalD20 === 1 };
+        localResult = { ...localResult, d20: rawResults.d20, d20Second: rawResults.d20Second, total: finalD20 + modifier, isCrit: finalD20 === 20, isCritFail: finalD20 === 1 };
       } else if (rollData.system === 'generic') {
+        const values = (results || []).map(r => r.value);
         rawResults.rolls = values;
         const total = values.reduce((a, b) => a + b, 0) + modifier;
         localResult = { ...localResult, rolls: values, total };
       } else if (rollData.system === 'starwarsd6') {
-        rawResults.wildDie = values[0] || 0;
-        rawResults.dice = values;
-        const total = values.reduce((a, b) => a + b, 0) + modifier;
-        localResult = { ...localResult, wildDie: values[0], dice: values, total, complication: values[0] === 1 };
+        // groupId 0 = wild die, groupId 1 = other dice
+        const wildResult = (results || []).find(r => r.groupId === 0);
+        const otherResults = (results || []).filter(r => r.groupId === 1).map(r => r.value);
+        const wildDie = wildResult?.value || 0;
+        const allDice = [wildDie, ...otherResults];
+        rawResults.wildDie = wildDie;
+        rawResults.dice = allDice;
+        const total = allDice.reduce((a, b) => a + b, 0) + modifier;
+        localResult = { ...localResult, wildDie, dice: allDice, total, complication: wildDie === 1 };
       }
 
       // Store result locally for the banner
