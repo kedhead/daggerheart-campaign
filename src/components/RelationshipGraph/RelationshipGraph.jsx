@@ -41,6 +41,11 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   const dragStartPosRef = useRef(null);
   const isDraggingRef = useRef(false);
   const draggedNodeRef = useRef(null);
+  const zoomRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
+  const isPanningRef = useRef(false);
+  const panStartRef = useRef(null);
+  const panStartOffsetRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!entities) return;
@@ -318,6 +323,41 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     setDisplayEdges(edges);
   }, [allNodes, allEdges, selectedTypes, focusNode]);
 
+  // Keep refs in sync with state for use in native event handlers
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { panRef.current = pan; }, [pan]);
+
+  // Scroll wheel zoom (native listener for passive: false)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const onWheel = (e) => {
+      e.preventDefault();
+      const currentZoom = zoomRef.current;
+      const currentPan = panRef.current;
+
+      const rect = container.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.15, Math.min(5, currentZoom * zoomFactor));
+
+      // Keep the point under the mouse fixed in world coordinates
+      const newPanX = currentPan.x + screenX * (1 / currentZoom - 1 / newZoom);
+      const newPanY = currentPan.y + screenY * (1 / currentZoom - 1 / newZoom);
+
+      setZoom(newZoom);
+      setPan({ x: newPanX, y: newPanY });
+      zoomRef.current = newZoom;
+      panRef.current = { x: newPanX, y: newPanY };
+    };
+
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
+  }, []);
+
   const handleNodeClick = (node) => {
     // Only select if we weren't dragging
     if (!isDraggingRef.current) {
@@ -352,58 +392,92 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   };
 
   const handleMouseMove = (e) => {
-    if (!draggedNode || !svgRef.current) return;
-
-    // Check if moved enough to count as drag
-    if (dragStartPosRef.current) {
-      const dist = Math.hypot(e.clientX - dragStartPosRef.current.x, e.clientY - dragStartPosRef.current.y);
-      if (dist > 5) {
-        isDraggingRef.current = true;
+    if (draggedNode && svgRef.current) {
+      // Node dragging
+      if (dragStartPosRef.current) {
+        const dist = Math.hypot(e.clientX - dragStartPosRef.current.x, e.clientY - dragStartPosRef.current.y);
+        if (dist > 5) {
+          isDraggingRef.current = true;
+        }
       }
+
+      const svg = svgRef.current;
+      const rect = svg.getBoundingClientRect();
+
+      // Convert screen coords to world coords using viewBox mapping
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const worldX = panRef.current.x + screenX / zoomRef.current;
+      const worldY = panRef.current.y + screenY / zoomRef.current;
+
+      const newX = Math.max(20, worldX);
+      const newY = Math.max(20, worldY);
+
+      nodePositionsRef.current.set(draggedNode.id, { x: newX, y: newY });
+
+      setAllNodes(prev => prev.map(n =>
+        n.id === draggedNode.id
+          ? { ...n, x: newX, y: newY }
+          : n
+      ));
+    } else if (isPanningRef.current && panStartRef.current) {
+      // Canvas panning
+      const dx = (e.clientX - panStartRef.current.x) / zoomRef.current;
+      const dy = (e.clientY - panStartRef.current.y) / zoomRef.current;
+      const newPan = {
+        x: panStartOffsetRef.current.x - dx,
+        y: panStartOffsetRef.current.y - dy
+      };
+      setPan(newPan);
+      panRef.current = newPan;
     }
-
-    const svg = svgRef.current;
-    const rect = svg.getBoundingClientRect();
-    const scaleX = 800 / rect.width;
-    const scaleY = 600 / rect.height;
-
-    const x = (e.clientX - rect.left) / zoom + (pan.x / zoom);
-    const y = (e.clientY - rect.top) / zoom + (pan.y / zoom);
-
-    // Get actual dimensions for clamping
-    const width = rect.width || 800;
-    const height = rect.height || 600;
-    const padding = 50;
-
-    // Update node position locally and in ref
-    const newX = Math.max(padding, Math.min(width - padding, x));
-    const newY = Math.max(padding, Math.min(height - padding, y));
-
-    // Update ref immediately so it persists
-    nodePositionsRef.current.set(draggedNode.id, { x: newX, y: newY });
-
-    setAllNodes(prev => prev.map(n =>
-      n.id === draggedNode.id
-        ? { ...n, x: newX, y: newY }
-        : n
-    ));
   };
 
   const handleMouseUp = () => {
-    setDraggedNode(null);
-    draggedNodeRef.current = null;
-    dragStartPosRef.current = null;
-    // Reset drag flag after a short delay to allow click handler to check it
-    setTimeout(() => {
-      isDraggingRef.current = false;
-    }, 50);
+    if (draggedNode) {
+      setDraggedNode(null);
+      draggedNodeRef.current = null;
+      dragStartPosRef.current = null;
+      // Reset drag flag after a short delay to allow click handler to check it
+      setTimeout(() => {
+        isDraggingRef.current = false;
+      }, 50);
+    }
+    isPanningRef.current = false;
+    panStartRef.current = null;
   };
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 3));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.5));
+  const handleZoomIn = () => {
+    const w = containerRef.current?.offsetWidth || 800;
+    const h = containerRef.current?.offsetHeight || 600;
+    const centerX = w / 2;
+    const centerY = h / 2;
+    const newZoom = Math.min(zoom * 1.3, 5);
+    const newPanX = pan.x + centerX * (1 / zoom - 1 / newZoom);
+    const newPanY = pan.y + centerY * (1 / zoom - 1 / newZoom);
+    setZoom(newZoom);
+    setPan({ x: newPanX, y: newPanY });
+    zoomRef.current = newZoom;
+    panRef.current = { x: newPanX, y: newPanY };
+  };
+  const handleZoomOut = () => {
+    const w = containerRef.current?.offsetWidth || 800;
+    const h = containerRef.current?.offsetHeight || 600;
+    const centerX = w / 2;
+    const centerY = h / 2;
+    const newZoom = Math.max(zoom / 1.3, 0.15);
+    const newPanX = pan.x + centerX * (1 / zoom - 1 / newZoom);
+    const newPanY = pan.y + centerY * (1 / zoom - 1 / newZoom);
+    setZoom(newZoom);
+    setPan({ x: newPanX, y: newPanY });
+    zoomRef.current = newZoom;
+    panRef.current = { x: newPanX, y: newPanY };
+  };
   const handleReset = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
+    zoomRef.current = 1;
+    panRef.current = { x: 0, y: 0 };
     setFocusNode(null);
   };
 
@@ -434,28 +508,64 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     );
   }
 
-  // Manual spread function to be called by button
+  // Manual spread function - balanced force simulation
   const handleSpread = () => {
-    // We basically run the same simulation logic but on existing allNodes
-    const currentNodes = [...allNodes];
-    const iterations = 150;
-    const width = containerRef.current?.offsetWidth || window.innerWidth || 800;
-    const height = containerRef.current?.offsetHeight || window.innerHeight || 600;
-    const padding = 50;
-    const repulsionStrength = 10000; // Extra strong for spreading
-    const damping = 0.8;
+    const width = containerRef.current?.offsetWidth || 800;
+    const height = containerRef.current?.offsetHeight || 600;
+    const padding = 60;
+    const nodeCount = allNodes.length;
+    if (nodeCount === 0) return;
+
+    // Clone nodes and reset velocities
+    const currentNodes = allNodes.map(n => ({ ...n, vx: 0, vy: 0 }));
+
+    // Calculate ideal spacing based on available area
+    const usableWidth = width - padding * 2;
+    const usableHeight = height - padding * 2;
+    const area = usableWidth * usableHeight;
+    const idealDistance = Math.sqrt(area / nodeCount) * 0.7;
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // Break up overlapping nodes with random nudges
+    for (let i = 0; i < currentNodes.length; i++) {
+      for (let j = i + 1; j < currentNodes.length; j++) {
+        const dx = currentNodes[j].x - currentNodes[i].x;
+        const dy = currentNodes[j].y - currentNodes[i].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 10) {
+          const angle = Math.random() * Math.PI * 2;
+          currentNodes[j].x += Math.cos(angle) * idealDistance * 0.5;
+          currentNodes[j].y += Math.sin(angle) * idealDistance * 0.5;
+        }
+      }
+    }
+
+    const iterations = 200;
+    const repulsionStrength = idealDistance * idealDistance;
+    const attractionStrength = 0.008;
+    const centeringForce = 0.003;
+    const damping = 0.85;
 
     for (let iter = 0; iter < iterations; iter++) {
+      const alpha = 1.0 - (iter / iterations) * 0.7;
+
       for (let i = 0; i < currentNodes.length; i++) {
         const nodeA = currentNodes[i];
-        // Repulsion only loop for pure spreading (ignore attraction slightly or keep it weak)
+
+        // Centering force - pull toward center to prevent wall stacking
+        nodeA.vx += (centerX - nodeA.x) * centeringForce * alpha;
+        nodeA.vy += (centerY - nodeA.y) * centeringForce * alpha;
+
+        // Repulsion between all pairs
         for (let j = i + 1; j < currentNodes.length; j++) {
           const nodeB = currentNodes[j];
           const dx = nodeB.x - nodeA.x;
           const dy = nodeB.y - nodeA.y;
-          const distSq = dx * dx + dy * dy + 0.1;
+          const distSq = dx * dx + dy * dy + 1;
           const dist = Math.sqrt(distSq);
-          const force = repulsionStrength / distSq;
+
+          const force = (repulsionStrength / distSq) * alpha;
           const fx = (dx / dist) * force;
           const fy = (dy / dist) * force;
 
@@ -464,34 +574,68 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           nodeB.vx += fx;
           nodeB.vy += fy;
 
-          // Strict collision
-          const minDist = (nodeA.radius || 20) + (nodeB.radius || 20) + 20;
+          // Hard collision prevention
+          const minDist = (nodeA.radius || 12) + (nodeB.radius || 12) + 30;
           if (dist < minDist) {
-            const push = (minDist - dist) * 0.5;
+            const push = (minDist - dist) * 0.3;
             const px = (dx / dist) * push;
             const py = (dy / dist) * push;
-            nodeA.x -= px; nodeA.y -= py;
-            nodeB.x += px; nodeB.y += py;
+            nodeA.x -= px;
+            nodeA.y -= py;
+            nodeB.x += px;
+            nodeB.y += py;
           }
         }
       }
 
-      // Update
+      // Edge attraction - keep connected nodes at reasonable distance
+      allEdges.forEach(edge => {
+        const source = currentNodes.find(n => n.id === edge.source);
+        const target = currentNodes.find(n => n.id === edge.target);
+        if (source && target) {
+          const dx = target.x - source.x;
+          const dy = target.y - source.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          const displacement = dist - idealDistance * 0.6;
+          const force = displacement * attractionStrength * alpha;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          source.vx += fx;
+          source.vy += fy;
+          target.vx -= fx;
+          target.vy -= fy;
+        }
+      });
+
+      // Update positions with soft boundary forces (not hard clamping)
       currentNodes.forEach(node => {
         node.vx *= damping;
         node.vy *= damping;
         node.x += node.vx;
         node.y += node.vy;
-        // Bounds
-        node.x = Math.max(padding, Math.min(width - padding, node.x));
-        node.y = Math.max(padding, Math.min(height - padding, node.y));
+
+        const boundaryForce = 0.5 * alpha;
+        if (node.x < padding) node.vx += (padding - node.x) * boundaryForce;
+        if (node.x > width - padding) node.vx += (width - padding - node.x) * boundaryForce;
+        if (node.y < padding) node.vy += (padding - node.y) * boundaryForce;
+        if (node.y > height - padding) node.vy += (height - padding - node.y) * boundaryForce;
       });
     }
 
+    // Final gentle clamp to ensure nothing is off-screen
     currentNodes.forEach(node => {
+      node.x = Math.max(30, Math.min(width - 30, node.x));
+      node.y = Math.max(30, Math.min(height - 30, node.y));
       nodePositionsRef.current.set(node.id, { x: node.x, y: node.y });
     });
-    setAllNodes(currentNodes);
+
+    setAllNodes([...currentNodes]);
+
+    // Reset view to see all nodes
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    zoomRef.current = 1;
+    panRef.current = { x: 0, y: 0 };
   };
 
   return (
@@ -527,12 +671,16 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           ref={svgRef}
           width="100%"
           height="100%"
-          viewBox={`${-pan.x} ${-pan.y} ${containerRef.current?.offsetWidth / zoom || 800} ${containerRef.current?.offsetHeight / zoom || 600}`}
+          viewBox={`${pan.x} ${pan.y} ${(containerRef.current?.offsetWidth || 800) / zoom} ${(containerRef.current?.offsetHeight || 600) / zoom}`}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
           onMouseDown={(e) => {
-            // Pan logic would go here if we implemented pan-on-drag
+            if (e.button === 0) {
+              isPanningRef.current = true;
+              panStartRef.current = { x: e.clientX, y: e.clientY };
+              panStartOffsetRef.current = { ...panRef.current };
+            }
           }}
         >
           <defs>
