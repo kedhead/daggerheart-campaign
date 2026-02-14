@@ -5,7 +5,7 @@ import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionForm.css';
 
 export default function SessionForm({ session, onSave, onCancel, isDM, campaign, entities }) {
-  const { search } = useEntityRegistry(campaign, entities);
+  const { search, autoLink } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(session || {
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -115,6 +115,7 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
           value={formData.summary}
           onChange={(e) => handleChange('summary', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder={formData.status === 'planned' ? 'What do you plan for this session? Type [[ to link entities' : 'What happened in this session? Type [[ to link entities'}
           rows={6}
           required={formData.status !== 'planned'}
@@ -169,6 +170,7 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
               value={formData.dmNotes}
               onChange={(e) => handleChange('dmNotes', e.target.value)}
               searchEntities={search}
+              autoLink={autoLink}
               placeholder="Private notes for your eyes only... Type [[ to link entities"
               rows={4}
               className="w-full p-3 bg-transparent text-amber-100/90 focus:outline-none placeholder-amber-500/30"

@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import { autoLinkText } from '../utils/autoLinkText';
 
 /**
  * Creates a searchable registry of all campaign entities
@@ -244,9 +245,19 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     return result;
   };
 
+  /**
+   * Auto-link: scan text for known entity names and wrap them in [[...]]
+   * Delegates to shared autoLinkText utility.
+   */
+  const autoLink = useCallback((text) => {
+    if (!text || registry.length === 0) return text;
+    return autoLinkText(text, registry.map(e => e.name));
+  }, [registry]);
+
   return {
     entities: registry,
     search,
-    getByName
+    getByName,
+    autoLink
   };
 }

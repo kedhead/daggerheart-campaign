@@ -20,7 +20,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
     } : 'undefined'
   });
 
-  const { search } = useEntityRegistry(campaign, entities);
+  const { search, autoLink } = useEntityRegistry(campaign, entities);
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
 
   const [formData, setFormData] = useState(npc || {
@@ -231,6 +231,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="Physical appearance, personality, mannerisms... Type [[ to link entities"
           rows={4}
         />
@@ -243,6 +244,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
           value={formData.notes}
           onChange={(e) => handleChange('notes', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="Important information, quest connections, secrets... Type [[ to link entities"
           rows={4}
         />

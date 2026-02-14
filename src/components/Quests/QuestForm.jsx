@@ -26,7 +26,7 @@ export default function QuestForm({
   entityData = {}
 }) {
   // Create entity registry for wiki linking
-  const { search: searchEntities } = useEntityRegistry(campaign, entityData, isDM);
+  const { search: searchEntities, autoLink } = useEntityRegistry(campaign, entityData, isDM);
   const [formData, setFormData] = useState({
     name: quest?.name || '',
     description: quest?.description || '',
@@ -180,6 +180,7 @@ export default function QuestForm({
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
           searchEntities={searchEntities}
+          autoLink={autoLink}
           placeholder="Describe the quest... Use [[entity name]] to link to NPCs, locations, etc."
           rows={4}
         />
@@ -257,6 +258,7 @@ export default function QuestForm({
           value={formData.rewards}
           onChange={(e) => handleChange('rewards', e.target.value)}
           searchEntities={searchEntities}
+          autoLink={autoLink}
           placeholder="Describe the rewards... Use [[item name]] to link to items."
           rows={2}
         />

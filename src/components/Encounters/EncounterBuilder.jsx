@@ -17,7 +17,7 @@ export default function EncounterBuilder({
   entities,
   isDM
 }) {
-  const { search } = useEntityRegistry(campaign, entities);
+  const { search, autoLink } = useEntityRegistry(campaign, entities);
   const characterCount = characters.length;
 
   const [formData, setFormData] = useState({
@@ -80,6 +80,7 @@ export default function EncounterBuilder({
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               searchEntities={search}
+              autoLink={autoLink}
               placeholder="Brief setup description... Type [[ to link entities"
               rows={1}
               className="w-full"
@@ -175,6 +176,7 @@ export default function EncounterBuilder({
               value={formData.tactics}
               onChange={(e) => handleChange('tactics', e.target.value)}
               searchEntities={search}
+              autoLink={autoLink}
               placeholder="How enemies behave in combat..."
               rows={3}
               className="w-full"
@@ -189,6 +191,7 @@ export default function EncounterBuilder({
               value={formData.rewards}
               onChange={(e) => handleChange('rewards', e.target.value)}
               searchEntities={search}
+              autoLink={autoLink}
               placeholder="Loot, experience, story rewards..."
               rows={3}
               className="w-full"

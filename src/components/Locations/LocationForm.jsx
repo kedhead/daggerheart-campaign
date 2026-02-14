@@ -5,7 +5,7 @@ import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LocationsView.css';
 
 export default function LocationForm({ location, onSave, onCancel, campaign, entities, isDM }) {
-  const { search } = useEntityRegistry(campaign, entities);
+  const { search, autoLink } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(location || {
     name: '',
     type: 'town',
@@ -75,6 +75,7 @@ export default function LocationForm({ location, onSave, onCancel, campaign, ent
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="General description of the location... Type [[ to link entities"
           rows={4}
         />
@@ -87,6 +88,7 @@ export default function LocationForm({ location, onSave, onCancel, campaign, ent
           value={formData.notableFeatures}
           onChange={(e) => handleChange('notableFeatures', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="Important landmarks, buildings, or features... Type [[ to link entities"
           rows={3}
         />
@@ -109,6 +111,7 @@ export default function LocationForm({ location, onSave, onCancel, campaign, ent
           value={formData.secrets}
           onChange={(e) => handleChange('secrets', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="Hidden information about this location... Type [[ to link entities"
           rows={3}
         />

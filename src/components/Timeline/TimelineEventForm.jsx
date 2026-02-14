@@ -4,7 +4,7 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 
 export default function TimelineEventForm({ event, onSave, onCancel, campaign, entities, isDM }) {
-  const { search } = useEntityRegistry(campaign, entities);
+  const { search, autoLink } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(event || {
     title: '',
     date: '',
@@ -90,6 +90,7 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="What happened? Type [[ to link entities"
           rows={4}
         />
@@ -112,6 +113,7 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
           value={formData.outcome}
           onChange={(e) => handleChange('outcome', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="Consequences? Type [[ to link entities"
           rows={3}
         />

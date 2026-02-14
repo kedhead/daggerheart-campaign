@@ -5,7 +5,7 @@ import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './NotesView.css';
 
 export default function NoteForm({ note, onSave, onCancel, campaign, entities, currentUserId, isDM }) {
-  const { search } = useEntityRegistry(campaign, entities);
+  const { search, autoLink } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(note || {
     title: '',
     category: 'other',
@@ -60,6 +60,7 @@ export default function NoteForm({ note, onSave, onCancel, campaign, entities, c
           value={formData.content}
           onChange={(e) => handleChange('content', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="Write your notes here... Type [[ to link entities"
           rows={8}
         />

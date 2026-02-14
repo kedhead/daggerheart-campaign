@@ -5,7 +5,7 @@ import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 
 export default function EncounterForm({ encounter, onSave, onCancel, campaign, entities, isDM }) {
   // Create entity registry for wiki linking
-  const { search: searchEntities } = useEntityRegistry(campaign, entities, isDM);
+  const { search: searchEntities, autoLink } = useEntityRegistry(campaign, entities, isDM);
   const [formData, setFormData] = useState({
     name: encounter?.name || '',
     difficulty: encounter?.difficulty || 'medium',
@@ -80,6 +80,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
           searchEntities={searchEntities}
+          autoLink={autoLink}
           placeholder="Describe the scenario... Use [[entity name]] to link."
           rows={3}
         />
@@ -91,6 +92,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
           value={formData.enemies}
           onChange={(e) => handleChange('enemies', e.target.value)}
           searchEntities={searchEntities}
+          autoLink={autoLink}
           placeholder="List enemies and their stats..."
           rows={3}
         />
@@ -102,6 +104,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
           value={formData.environment}
           onChange={(e) => handleChange('environment', e.target.value)}
           searchEntities={searchEntities}
+          autoLink={autoLink}
           placeholder="Describe the environment/terrain..."
           rows={2}
         />
@@ -113,6 +116,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
           value={formData.tactics}
           onChange={(e) => handleChange('tactics', e.target.value)}
           searchEntities={searchEntities}
+          autoLink={autoLink}
           placeholder="Enemy strategies..."
           rows={2}
         />
@@ -124,6 +128,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
           value={formData.rewards}
           onChange={(e) => handleChange('rewards', e.target.value)}
           searchEntities={searchEntities}
+          autoLink={autoLink}
           placeholder="Loot and XP..."
           rows={2}
         />

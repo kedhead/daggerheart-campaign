@@ -21,6 +21,7 @@ import SessionZeroStep from './wizard/steps/SessionZeroStep';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { CheckCircle, Loader2, Sparkles } from 'lucide-react';
 import { generateCampaignContent } from '../../services/campaignGenerator';
+import { autoLinkText } from '../../utils/autoLinkText';
 import { generateMap } from '../../services/mapGenerator';
 import { generateNPCPortrait, generateLocationPortrait } from '../../services/portraitGenerator';
 
@@ -118,6 +119,49 @@ export default function CampaignBuilderWizard({
       console.log('Starting content generation with API key:', apiKey ? 'Yes' : 'No');
       const generatedContent = await generateCampaignContent(data, campaign, apiKey, provider);
       console.log('Generated content:', generatedContent);
+
+      // Auto-link: collect all entity names, then link text fields across all generated entities
+      const allEntityNames = [
+        ...(generatedContent.npcs || []).map(e => e.name),
+        ...(generatedContent.locations || []).map(e => e.name),
+        ...(generatedContent.lore || []).map(e => e.title),
+        ...(generatedContent.encounters || []).map(e => e.name),
+        ...(generatedContent.timelineEvents || []).map(e => e.title),
+        ...(data.startingQuests || []).map(e => e.name)
+      ].filter(Boolean);
+
+      if (allEntityNames.length > 0) {
+        const link = (text) => autoLinkText(text, allEntityNames);
+
+        for (const npc of generatedContent.npcs || []) {
+          if (npc.description) npc.description = link(npc.description);
+          if (npc.notes) npc.notes = link(npc.notes);
+          if (npc.firstMet) npc.firstMet = link(npc.firstMet);
+        }
+        for (const loc of generatedContent.locations || []) {
+          if (loc.description) loc.description = link(loc.description);
+          if (loc.notableFeatures) loc.notableFeatures = link(loc.notableFeatures);
+          if (loc.secrets) loc.secrets = link(loc.secrets);
+          if (loc.inhabitants) loc.inhabitants = link(loc.inhabitants);
+        }
+        for (const lore of generatedContent.lore || []) {
+          if (lore.content) lore.content = link(lore.content);
+        }
+        for (const enc of generatedContent.encounters || []) {
+          if (enc.description) enc.description = link(enc.description);
+          if (enc.environment) enc.environment = link(enc.environment);
+          if (enc.enemies) enc.enemies = link(enc.enemies);
+          if (enc.tactics) enc.tactics = link(enc.tactics);
+        }
+        for (const evt of generatedContent.timelineEvents || []) {
+          if (evt.description) evt.description = link(evt.description);
+        }
+        for (const quest of data.startingQuests || []) {
+          if (quest.description) quest.description = link(quest.description);
+          if (quest.rewards) quest.rewards = link(quest.rewards);
+        }
+        console.log('Auto-linked entity references across generated content');
+      }
 
       // Step 3: Import adversaries to campaign
       const adversaryIdMap = {}; // name -> firestoreId

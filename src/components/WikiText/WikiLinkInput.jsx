@@ -12,7 +12,7 @@ import './WikiLinkInput.css';
  * @param {string} placeholder - Placeholder text
  * @param {number} rows - Number of rows for textarea
  */
-export default function WikiLinkInput({ value, onChange, searchEntities, placeholder, rows = 6 }) {
+export default function WikiLinkInput({ value, onChange, searchEntities, autoLink, placeholder, rows = 6 }) {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteResults, setAutocompleteResults] = useState([]);
   const [autocompletePosition, setAutocompletePosition] = useState({ top: 0, left: 0 });
@@ -112,6 +112,16 @@ export default function WikiLinkInput({ value, onChange, searchEntities, placeho
     }
   };
 
+  // Auto-link on blur
+  const handleBlur = () => {
+    if (autoLink && value) {
+      const linked = autoLink(value);
+      if (linked !== value) {
+        onChange({ target: { value: linked } });
+      }
+    }
+  };
+
   // Insert selected entity link
   const insertLink = (entity) => {
     const textarea = textareaRef.current;
@@ -146,6 +156,7 @@ export default function WikiLinkInput({ value, onChange, searchEntities, placeho
         value={value}
         onChange={onChange}
         onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
         placeholder={placeholder}
         rows={rows}
         className="wiki-link-textarea"

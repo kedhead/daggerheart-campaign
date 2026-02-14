@@ -6,7 +6,7 @@ import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './LoreForm.css';
 
 export default function LoreForm({ lore, onSave, onCancel, isDM, campaign, entities }) {
-  const { search } = useEntityRegistry(campaign, entities);
+  const { search, autoLink } = useEntityRegistry(campaign, entities);
   const [formData, setFormData] = useState(lore || {
     title: '',
     type: 'location',
@@ -79,6 +79,7 @@ export default function LoreForm({ lore, onSave, onCancel, isDM, campaign, entit
           value={formData.content}
           onChange={(e) => handleChange('content', e.target.value)}
           searchEntities={search}
+          autoLink={autoLink}
           placeholder="Type [[ to link entities"
           rows={8}
           required
