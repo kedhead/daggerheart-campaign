@@ -189,154 +189,118 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
       node.radius = 8 + Math.min(12, importance * 1.5); // 8-20px based on importance
     });
 
-    // Run force simulation continuously
-    let animationFrameId;
-
-    const animate = () => {
-      // Get current container dimensions from ref or window
+    // Run force simulation once (static layout)
+    const runSimulation = (iterations = 300, alpha = 1.0) => {
       const width = containerRef.current?.offsetWidth || window.innerWidth || 800;
       const height = containerRef.current?.offsetHeight || window.innerHeight || 600;
       const padding = 50;
 
-      // Physics constants
-      const repulsionStrength = 5000; // Slightly lower since it runs forever
+      const repulsionStrength = 8000;
       const attractionStrength = 0.005;
-      const centeringForce = 0.0002; // Gentle pull to center
-      const damping = 0.92; // Very smooth
-      const maxVelocity = 2.0; // Cap speed
+      const centeringForce = 0.0002;
+      const damping = 0.8;
 
-      // Apply forces
-      for (let i = 0; i < graphNodes.length; i++) {
-        const nodeA = graphNodes[i];
+      // Use current positions as starting point
+      let currentNodes = [...graphNodes];
 
-        // Skip physics for dragged node
-        if (draggedNodeRef.current && nodeA.id === draggedNodeRef.current.id) continue;
+      for (let iter = 0; iter < iterations; iter++) {
+        // Apply forces
+        for (let i = 0; i < currentNodes.length; i++) {
+          const nodeA = currentNodes[i];
 
-        // 1. Random Wander (Floating Effect)
-        nodeA.vx += (Math.random() - 0.5) * 0.15;
-        nodeA.vy += (Math.random() - 0.5) * 0.15;
+          // 1. Center Gravity
+          const centerX = width / 2;
+          const centerY = height / 2;
+          nodeA.vx += (centerX - nodeA.x) * centeringForce * alpha;
+          nodeA.vy += (centerY - nodeA.y) * centeringForce * alpha;
 
-        // 2. Center Gravity (keep them on screen)
-        const centerX = width / 2;
-        const centerY = height / 2;
-        nodeA.vx += (centerX - nodeA.x) * centeringForce;
-        nodeA.vy += (centerY - nodeA.y) * centeringForce;
+          // 2. Repulsion & Collision
+          for (let j = i + 1; j < currentNodes.length; j++) {
+            const nodeB = currentNodes[j];
+            const dx = nodeB.x - nodeA.x;
+            const dy = nodeB.y - nodeA.y;
+            const distSq = dx * dx + dy * dy + 0.01;
+            const dist = Math.sqrt(distSq);
 
-        // SOFT BOUNDARY FORCE (Prevent edge sticking)
-        const margin = 100; // Start pushing back 100px from edge
-        if (nodeA.x < margin) nodeA.vx += (margin - nodeA.x) * 0.001;
-        if (nodeA.x > width - margin) nodeA.vx -= (nodeA.x - (width - margin)) * 0.001;
-        if (nodeA.y < margin) nodeA.vy += (margin - nodeA.y) * 0.001;
-        if (nodeA.y > height - margin) nodeA.vy -= (nodeA.y - (height - margin)) * 0.001;
+            const force = (repulsionStrength / distSq) * alpha;
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
 
-        // 3. Inter-node Repulsion and Collision
-        for (let j = i + 1; j < graphNodes.length; j++) {
-          const nodeB = graphNodes[j];
-          const dx = nodeB.x - nodeA.x;
-          const dy = nodeB.y - nodeA.y;
-          const distSq = dx * dx + dy * dy + 0.01;
-          const dist = Math.sqrt(distSq);
-
-          // Repulsion
-          const force = repulsionStrength / distSq;
-          const fx = (dx / dist) * force;
-          const fy = (dy / dist) * force;
-
-          nodeA.vx -= fx;
-          nodeA.vy -= fy;
-
-          if (!draggedNodeRef.current || nodeB.id !== draggedNodeRef.current.id) {
+            nodeA.vx -= fx;
+            nodeA.vy -= fy;
             nodeB.vx += fx;
             nodeB.vy += fy;
-          }
 
-          // Strict Collision Resolution (Anti-Stacking)
-          const minDistance = (nodeA.radius || 20) + (nodeB.radius || 20) + 15;
-          if (dist < minDistance) {
-            const overlap = minDistance - dist;
-            const d = dist || 1; // Avoid div/0
-            const pushX = (dx / d) * overlap * 0.05; // Gentle push per frame
-            const pushY = (dy / d) * overlap * 0.05;
+            // Strict Collision
+            const minDistance = (nodeA.radius || 20) + (nodeB.radius || 20) + 10;
+            if (dist < minDistance) {
+              const overlap = minDistance - dist;
+              const d = dist || 1;
+              const push = overlap * 0.5 * alpha;
+              const pushX = (dx / d) * push;
+              const pushY = (dy / d) * push;
 
-            nodeA.x -= pushX;
-            nodeA.y -= pushY;
-
-            if (!draggedNodeRef.current || nodeB.id !== draggedNodeRef.current.id) {
+              nodeA.x -= pushX;
+              nodeA.y -= pushY;
               nodeB.x += pushX;
               nodeB.y += pushY;
             }
           }
         }
-      }
 
-      // 4. Edge Attraction
-      graphEdges.forEach(edge => {
-        const source = graphNodes.find(n => n.id === edge.source);
-        const target = graphNodes.find(n => n.id === edge.target);
-        if (source && target) {
-          const dx = target.x - source.x;
-          const dy = target.y - source.y;
-          const dist = Math.hypot(dx, dy);
-
-          if (dist > 0) {
-            const force = attractionStrength;
+        // 3. Edges
+        graphEdges.forEach(edge => {
+          const source = currentNodes.find(n => n.id === edge.source);
+          const target = currentNodes.find(n => n.id === edge.target);
+          if (source && target) {
+            const dx = target.x - source.x;
+            const dy = target.y - source.y;
+            const force = attractionStrength * alpha;
             const fx = dx * force;
             const fy = dy * force;
-
-            if (!draggedNodeRef.current || source.id !== draggedNodeRef.current.id) {
-              source.vx += fx;
-              source.vy += fy;
-            }
-            if (!draggedNodeRef.current || target.id !== draggedNodeRef.current.id) {
-              target.vx -= fx;
-              target.vy -= fy;
-            }
+            source.vx += fx;
+            source.vy += fy;
+            target.vx -= fx;
+            target.vy -= fy;
           }
-        }
-      });
+        });
 
-      // 5. Update Positions & Constraints
-      graphNodes.forEach(node => {
-        if (draggedNodeRef.current && node.id === draggedNodeRef.current.id) return;
+        // 4. Update
+        currentNodes.forEach(node => {
+          node.vx *= damping;
+          node.vy *= damping;
+          node.x += node.vx;
+          node.y += node.vy;
 
-        // Cap velocity
-        const v = Math.hypot(node.vx, node.vy);
-        if (v > maxVelocity) {
-          node.vx = (node.vx / v) * maxVelocity;
-          node.vy = (node.vy / v) * maxVelocity;
-        }
+          // Wall Constraints
+          node.x = Math.max(padding, Math.min(width - padding, node.x));
+          node.y = Math.max(padding, Math.min(height - padding, node.y));
+        });
+      }
 
-        node.vx *= damping;
-        node.vy *= damping;
-        node.x += node.vx;
-        node.y += node.vy;
-
-        // Wall Bouncing
-        if (node.x < padding) { node.x = padding; node.vx *= -1; }
-        if (node.x > width - padding) { node.x = width - padding; node.vx *= -1; }
-        if (node.y < padding) { node.y = padding; node.vy *= -1; }
-        if (node.y > height - padding) { node.y = height - padding; node.vy *= -1; }
-      });
-
-      // Save positions for persistence
-      graphNodes.forEach(node => {
+      // Save and render
+      currentNodes.forEach(node => {
         nodePositionsRef.current.set(node.id, { x: node.x, y: node.y });
       });
-
-      // Update state to render
-      setAllNodes([...graphNodes]);
-
-      animationFrameId = requestAnimationFrame(animate);
+      setAllNodes([...currentNodes]);
     };
 
-    // Kick off animation
-    animate();
-    setAllNodes(graphNodes);
+    // Initial stabilization if needed
+    // Only run if we don't have positions, or if we want a quick settling
+    const hasHistory = nodePositionsRef.current.size > 0;
+    if (!hasHistory) {
+      runSimulation(300, 1.0);
+    } else {
+      // Just ensuring nodes array is set
+      setAllNodes(graphNodes);
+    }
+
+    // Expose spread function to parent/ref if needed, but for now we need a way to trigger it.
+    // We can use a ref or a context, but simpler is to pass it down if we lifted state.
+    // Since GraphControls is child, we can't easily pass this function *out* unless we define it outside effect.
+    // We will move runSimulation definition outside useEffect in next step.
+
     setAllEdges(graphEdges);
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-    };
   }, [entities, isDM, currentUserId]);
 
   // Apply filters whenever selection changes
@@ -470,6 +434,66 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     );
   }
 
+  // Manual spread function to be called by button
+  const handleSpread = () => {
+    // We basically run the same simulation logic but on existing allNodes
+    const currentNodes = [...allNodes];
+    const iterations = 150;
+    const width = containerRef.current?.offsetWidth || window.innerWidth || 800;
+    const height = containerRef.current?.offsetHeight || window.innerHeight || 600;
+    const padding = 50;
+    const repulsionStrength = 10000; // Extra strong for spreading
+    const damping = 0.8;
+
+    for (let iter = 0; iter < iterations; iter++) {
+      for (let i = 0; i < currentNodes.length; i++) {
+        const nodeA = currentNodes[i];
+        // Repulsion only loop for pure spreading (ignore attraction slightly or keep it weak)
+        for (let j = i + 1; j < currentNodes.length; j++) {
+          const nodeB = currentNodes[j];
+          const dx = nodeB.x - nodeA.x;
+          const dy = nodeB.y - nodeA.y;
+          const distSq = dx * dx + dy * dy + 0.1;
+          const dist = Math.sqrt(distSq);
+          const force = repulsionStrength / distSq;
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+
+          nodeA.vx -= fx;
+          nodeA.vy -= fy;
+          nodeB.vx += fx;
+          nodeB.vy += fy;
+
+          // Strict collision
+          const minDist = (nodeA.radius || 20) + (nodeB.radius || 20) + 20;
+          if (dist < minDist) {
+            const push = (minDist - dist) * 0.5;
+            const px = (dx / dist) * push;
+            const py = (dy / dist) * push;
+            nodeA.x -= px; nodeA.y -= py;
+            nodeB.x += px; nodeB.y += py;
+          }
+        }
+      }
+
+      // Update
+      currentNodes.forEach(node => {
+        node.vx *= damping;
+        node.vy *= damping;
+        node.x += node.vx;
+        node.y += node.vy;
+        // Bounds
+        node.x = Math.max(padding, Math.min(width - padding, node.x));
+        node.y = Math.max(padding, Math.min(height - padding, node.y));
+      });
+    }
+
+    currentNodes.forEach(node => {
+      nodePositionsRef.current.set(node.id, { x: node.x, y: node.y });
+    });
+    setAllNodes(currentNodes);
+  };
+
   return (
     <div className="relationship-graph-container">
       <GraphControls
@@ -494,6 +518,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onReset={handleReset}
+        onSpread={handleSpread}
         onExport={handleExportSVG}
       />
 

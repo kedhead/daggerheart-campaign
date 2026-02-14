@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Filter, X, ZoomIn, ZoomOut, Maximize2, Download, ChevronUp, ChevronDown } from 'lucide-react';
+import { Eye, EyeOff, Filter, X, ZoomIn, ZoomOut, Maximize2, Download, ChevronUp, ChevronDown, Shuffle } from 'lucide-react';
 import { getTypeLabel } from '../../utils/graphCalculations';
 import './RelationshipGraph.css';
 
@@ -14,6 +14,7 @@ export default function GraphControls({
   onZoomIn,
   onZoomOut,
   onReset,
+  onSpread,
   onExport
 }) {
   const [showFilters, setShowFilters] = useState(false);
@@ -55,6 +56,9 @@ export default function GraphControls({
             </button>
             <button className="btn-icon-bar" onClick={onReset} title="Reset View">
               <Maximize2 size={18} />
+            </button>
+            <button className="btn-icon-bar" onClick={onSpread} title="Spread Nodes">
+              <Shuffle size={18} />
             </button>
             <button className="btn-icon-bar" onClick={onZoomIn} title="Zoom In">
               <ZoomIn size={18} />
