@@ -236,15 +236,134 @@
   cursor: grabbing;
 }
 
-/* Celestial Nodes */
+/* ===== Star Node Animations ===== */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.15;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes sparkle {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes spike-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Star halo - soft ambient glow */
+.star-halo {
+  pointer-events: none;
+}
+
+/* Twinkle halo - animated pulsing ring */
+.star-twinkle {
+  pointer-events: none;
+  animation: twinkle 4s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Diffraction spikes */
+.star-spikes {
+  pointer-events: none;
+}
+
+.spike-line {
+  stroke-linecap: round;
+}
+
+.spike-line-minor {
+  stroke-linecap: round;
+}
+
+/* Core glow - main node body */
 .node-circle {
-  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+  transition: r 0.3s ease;
+}
+
+/* Bright center pulse */
+.star-center {
+  pointer-events: none;
+  animation: sparkle 3s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Sparkle point */
+.star-sparkle {
+  pointer-events: none;
+}
+
+/* ===== Node hover effects ===== */
+.node:hover .star-halo {
+  opacity: 0.18;
+}
+
+.node:hover .star-twinkle {
+  opacity: 0.5;
+  animation-play-state: paused;
+}
+
+.node:hover .spike-line {
+  opacity: 0.9;
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+.node:hover .spike-line-minor {
+  opacity: 0.5;
+  stroke: #fff;
 }
 
 .node:hover .node-circle {
-  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.8));
-  stroke: #fff;
-  stroke-width: 2px;
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 1.5px;
+}
+
+.node:hover .star-center {
+  opacity: 1;
+  animation-play-state: paused;
+}
+
+.node:hover .star-sparkle {
+  r: 2.5;
+}
+
+/* ===== Glowing Edges ===== */
+.edge-group {
+  transition: opacity 0.3s ease;
+}
+
+.edge-glow-line {
+  pointer-events: none;
+}
+
+.edge-main-line {
+  stroke-linecap: round;
+}
+
+.edge-highlighted .edge-glow-line {
+  opacity: 0.5;
+}
+
+.edge-highlighted .edge-main-line {
+  opacity: 0.95;
 }
 
 /* Node Labels - Starmap style */

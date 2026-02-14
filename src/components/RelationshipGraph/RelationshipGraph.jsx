@@ -684,18 +684,52 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           }}
         >
           <defs>
-            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
+            {/* Star glow filter - enhanced bloom for nodes */}
+            <filter id="star-glow" x="-100%" y="-100%" width="300%" height="300%">
+              <feGaussianBlur stdDeviation="4" result="blur1" />
+              <feGaussianBlur stdDeviation="2" result="blur2" />
               <feMerge>
-                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="blur1" />
+                <feMergeNode in="blur2" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
-            <radialGradient id="star-gradient">
-              <stop offset="0%" stopColor="#fff" stopOpacity="1" />
-              <stop offset="40%" stopColor="var(--node-color)" stopOpacity="0.8" />
-              <stop offset="100%" stopColor="var(--node-color)" stopOpacity="0" />
-            </radialGradient>
+            {/* Edge glow filter - softer diffuse glow */}
+            <filter id="edge-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3" result="edgeBlur" />
+              <feMerge>
+                <feMergeNode in="edgeBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            {/* Spike glow filter - subtle bloom on diffraction spikes */}
+            <filter id="spike-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.5" result="spikeBlur" />
+              <feMerge>
+                <feMergeNode in="spikeBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            {/* Per-edge gradients */}
+            {displayEdges.map((edge) => {
+              const source = displayNodes.find(n => n.id === edge.source);
+              const target = displayNodes.find(n => n.id === edge.target);
+              if (!source || !target) return null;
+              const sourceColor = getNodeColor(source.type);
+              const targetColor = getNodeColor(target.type);
+              return (
+                <linearGradient
+                  key={`grad-${edge.id}`}
+                  id={`edge-grad-${edge.id}`}
+                  x1={source.x} y1={source.y}
+                  x2={target.x} y2={target.y}
+                  gradientUnits="userSpaceOnUse"
+                >
+                  <stop offset="0%" stopColor={sourceColor} />
+                  <stop offset="100%" stopColor={targetColor} />
+                </linearGradient>
+              );
+            })}
           </defs>
 
           {/* Edges */}
@@ -707,29 +741,52 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
               const strength = edgeStrengthMap.get(edge.id) || 1;
               const isHighlighted = highlightedEdges.includes(edge.id);
-              const strokeWidth = Math.min(3, 0.5 + strength * 0.4); // Thinner, more elegant lines
-              const opacity = isHighlighted ? 0.8 : (0.15 + (strength * 0.05)); // Fainter base lines
+              const strokeWidth = Math.min(3, 0.5 + strength * 0.4);
+              const opacity = isHighlighted ? 0.9 : (0.15 + (strength * 0.05));
+              const gradientUrl = `url(#edge-grad-${edge.id})`;
 
               return (
-                <line
-                  key={edge.id}
-                  x1={source.x}
-                  y1={source.y}
-                  x2={target.x}
-                  y2={target.y}
-                  stroke={isHighlighted ? '#fbbf24' : '#94a3b8'} // Gold highlight, slate base
-                  strokeWidth={isHighlighted ? strokeWidth * 2 : strokeWidth}
-                  opacity={opacity}
-                  style={{ transition: 'all 0.3s ease' }}
-                />
+                <g key={edge.id} className={`edge-group${isHighlighted ? ' edge-highlighted' : ''}`}>
+                  {/* Glow underlay - wider, blurred */}
+                  <line
+                    x1={source.x}
+                    y1={source.y}
+                    x2={target.x}
+                    y2={target.y}
+                    stroke={isHighlighted ? '#fbbf24' : gradientUrl}
+                    strokeWidth={isHighlighted ? strokeWidth * 4 : strokeWidth * 3}
+                    opacity={isHighlighted ? 0.4 : opacity * 0.5}
+                    filter="url(#edge-glow)"
+                    className="edge-glow-line"
+                  />
+                  {/* Main crisp line */}
+                  <line
+                    x1={source.x}
+                    y1={source.y}
+                    x2={target.x}
+                    y2={target.y}
+                    stroke={isHighlighted ? '#fbbf24' : gradientUrl}
+                    strokeWidth={isHighlighted ? strokeWidth * 1.5 : strokeWidth}
+                    opacity={opacity}
+                    className="edge-main-line"
+                  />
+                </g>
               );
             })}
           </g>
 
           {/* Nodes */}
           <g className="nodes">
-            {displayNodes.map((node) => {
+            {displayNodes.map((node, index) => {
               const baseColor = getNodeColor(node.type);
+              const r = node.radius || 8;
+              // Pseudo-random delay based on node id hash
+              const hash = node.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+              const twinkleDelay = (hash % 40) / 10; // 0-4s delay
+              const sparkleDelay = ((hash * 7) % 30) / 10; // 0-3s delay
+              const twinkleDuration = 3 + (hash % 20) / 10; // 3-5s
+              const sparkleDuration = 2 + ((hash * 3) % 20) / 10; // 2-4s
+              const spikeLength = r * 2.2;
 
               return (
                 <g
@@ -744,40 +801,109 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     '--node-color': baseColor
                   }}
                 >
-                  {/* Outer Glow */}
+                  {/* 1. Soft halo - large ambient glow */}
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={(node.radius || 8) * 1.5}
+                    r={r * 3}
                     fill={baseColor}
-                    opacity="0.2"
-                    className="node-glow"
+                    opacity="0.08"
+                    className="star-halo"
                   />
 
-                  {/* Inner Core */}
+                  {/* 2. Twinkle halo - pulsing ring */}
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={node.radius || 8}
+                    r={r * 2}
                     fill={baseColor}
-                    filter="url(#glow)"
+                    opacity="0.2"
+                    className="star-twinkle"
+                    style={{
+                      animationDelay: `${twinkleDelay}s`,
+                      animationDuration: `${twinkleDuration}s`
+                    }}
+                  />
+
+                  {/* 3. Diffraction spikes - classic 4-point star cross */}
+                  <g className="star-spikes" filter="url(#spike-glow)">
+                    {/* Vertical spike */}
+                    <line
+                      x1={node.x} y1={node.y - spikeLength}
+                      x2={node.x} y2={node.y + spikeLength}
+                      stroke={baseColor}
+                      strokeWidth="1"
+                      opacity="0.5"
+                      className="spike-line"
+                    />
+                    {/* Horizontal spike */}
+                    <line
+                      x1={node.x - spikeLength} y1={node.y}
+                      x2={node.x + spikeLength} y2={node.y}
+                      stroke={baseColor}
+                      strokeWidth="1"
+                      opacity="0.5"
+                      className="spike-line"
+                    />
+                    {/* Diagonal spike (45 deg) */}
+                    <line
+                      x1={node.x - spikeLength * 0.6} y1={node.y - spikeLength * 0.6}
+                      x2={node.x + spikeLength * 0.6} y2={node.y + spikeLength * 0.6}
+                      stroke={baseColor}
+                      strokeWidth="0.5"
+                      opacity="0.25"
+                      className="spike-line-minor"
+                    />
+                    {/* Diagonal spike (135 deg) */}
+                    <line
+                      x1={node.x + spikeLength * 0.6} y1={node.y - spikeLength * 0.6}
+                      x2={node.x - spikeLength * 0.6} y2={node.y + spikeLength * 0.6}
+                      stroke={baseColor}
+                      strokeWidth="0.5"
+                      opacity="0.25"
+                      className="spike-line-minor"
+                    />
+                  </g>
+
+                  {/* 4. Core glow - main colored body */}
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={r}
+                    fill={baseColor}
+                    filter="url(#star-glow)"
                     className="node-circle"
                   />
 
-                  {/* Center Star Point */}
+                  {/* 5. Bright center - white hot core */}
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={2}
+                    r={r * 0.4}
                     fill="#fff"
-                    opacity="0.8"
+                    opacity="0.7"
+                    className="star-center"
+                    style={{
+                      animationDelay: `${sparkleDelay}s`,
+                      animationDuration: `${sparkleDuration}s`
+                    }}
+                  />
+
+                  {/* 6. Sparkle point - tiny bright dot */}
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={1.5}
+                    fill="#fff"
+                    opacity="1"
+                    className="star-sparkle"
                   />
 
                   {showLabels && (
                     <>
                       <text
                         x={node.x}
-                        y={node.y - (node.radius || 8) - 8}
+                        y={node.y - r - 8}
                         textAnchor="middle"
                         className="node-label"
                       >
@@ -785,7 +911,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                       </text>
                       <text
                         x={node.x}
-                        y={node.y - (node.radius || 8) - 22}
+                        y={node.y - r - 22}
                         textAnchor="middle"
                         className="node-type-label"
                       >
