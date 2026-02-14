@@ -327,46 +327,53 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     URL.revokeObjectURL(url);
   };
 
+  // Calculate bounding box for auto-scaling if needed, but for void view we just zoom/pan
+
   if (!entities || allNodes.length === 0) {
     return (
-      <div className="relationship-graph-empty card">
-        <Network size={64} />
-        <h3>No Relationships Yet</h3>
-        <p>Start creating wiki links between entities to see the relationship graph.</p>
-        <p className="graph-hint">Use <code>[[Entity Name]]</code> in any text field to create connections.</p>
+      <div className="relationship-graph-container">
+        <div className="relationship-graph-empty">
+          <Network size={64} style={{ opacity: 0.5, color: '#fbbf24' }} />
+          <h3>The Void Awaits</h3>
+          <p>The constellation of your world has yet to be charted. Begin scribing notes with <code>[[Wiki Links]]</code> to form the first stars.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="relationship-graph-container">
+      {/* HUD Header */}
       <div className="graph-header">
         <div>
           <h2>
-            <Network size={24} />
-            Entity Relationship Graph
+            <Network size={32} />
+            The Constellation
           </h2>
           <p className="graph-subtitle">
-            {displayNodes.length} entities, {displayEdges.length} connections
-            {focusNode && ' (focused)'}
+            {displayNodes.length} Celestial Bodies Discovered
+            {focusNode && ' (Focused View)'}
           </p>
-        </div>
-        <div className="graph-controls">
-          <button className="btn btn-icon" onClick={handleExportSVG} title="Export SVG">
-            <Download size={20} />
-          </button>
-          <button className="btn btn-icon" onClick={handleZoomOut} title="Zoom out">
-            <ZoomOut size={20} />
-          </button>
-          <button className="btn btn-icon" onClick={handleReset} title="Reset view">
-            <Maximize2 size={20} />
-          </button>
-          <button className="btn btn-icon" onClick={handleZoomIn} title="Zoom in">
-            <ZoomIn size={20} />
-          </button>
         </div>
       </div>
 
+      {/* Floating Toolbar */}
+      <div className="graph-controls">
+        <button className="btn btn-icon" onClick={handleExportSVG} title="Chart Map (Export SVG)">
+          <Download size={20} />
+        </button>
+        <button className="btn btn-icon" onClick={handleZoomOut} title="Zoom Out">
+          <ZoomOut size={20} />
+        </button>
+        <button className="btn btn-icon" onClick={handleReset} title="Reset View">
+          <Maximize2 size={20} />
+        </button>
+        <button className="btn btn-icon" onClick={handleZoomIn} title="Zoom In">
+          <ZoomIn size={20} />
+        </button>
+      </div>
+
+      {/* Toolkit Panel */}
       <GraphControls
         selectedTypes={selectedTypes}
         setSelectedTypes={setSelectedTypes}
@@ -380,13 +387,30 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         <svg
           ref={svgRef}
           width="100%"
-          height="600"
-          viewBox={`${-pan.x} ${-pan.y} ${800 / zoom} ${600 / zoom}`}
-          style={{ background: 'var(--bg-tertiary)', borderRadius: '8px' }}
+          height="100%"
+          viewBox={`${-pan.x} ${-pan.y} ${containerRef.current?.offsetWidth / zoom || 800} ${containerRef.current?.offsetHeight / zoom || 600}`}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
+          onMouseDown={(e) => {
+            // Pan logic would go here if we implemented pan-on-drag
+          }}
         >
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
+              <feMerge>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <radialGradient id="star-gradient">
+              <stop offset="0%" stopColor="#fff" stopOpacity="1" />
+              <stop offset="40%" stopColor="var(--node-color)" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="var(--node-color)" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
           {/* Edges */}
           <g className="edges">
             {displayEdges.map((edge) => {
@@ -396,8 +420,8 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
               const strength = edgeStrengthMap.get(edge.id) || 1;
               const isHighlighted = highlightedEdges.includes(edge.id);
-              const strokeWidth = Math.min(5, 1 + strength * 0.5);
-              const opacity = isHighlighted ? 0.8 : (0.3 + (strength * 0.05));
+              const strokeWidth = Math.min(3, 0.5 + strength * 0.4); // Thinner, more elegant lines
+              const opacity = isHighlighted ? 0.8 : (0.15 + (strength * 0.05)); // Fainter base lines
 
               return (
                 <line
@@ -406,9 +430,10 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                   y1={source.y}
                   x2={target.x}
                   y2={target.y}
-                  stroke={isHighlighted ? 'var(--hope-color)' : 'var(--border)'}
+                  stroke={isHighlighted ? '#fbbf24' : '#94a3b8'} // Gold highlight, slate base
                   strokeWidth={isHighlighted ? strokeWidth * 2 : strokeWidth}
                   opacity={opacity}
+                  style={{ transition: 'all 0.3s ease' }}
                 />
               );
             })}
@@ -416,54 +441,74 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
           {/* Nodes */}
           <g className="nodes">
-            {displayNodes.map((node) => (
-              <g
-                key={node.id}
-                className="node"
-                onClick={() => handleNodeClick(node)}
-                onMouseDown={(e) => handleNodeMouseDown(e, node)}
-                onMouseEnter={() => handleNodeHover(node)}
-                onMouseLeave={handleNodeLeave}
-                style={{ cursor: draggedNode?.id === node.id ? 'grabbing' : 'grab' }}
-              >
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={node.radius || 8}
-                  fill={getNodeColor(node.type)}
-                  stroke="var(--bg-primary)"
-                  strokeWidth="2"
-                  className="node-circle"
-                />
-                {showLabels && (
-                  <>
-                    <text
-                      x={node.x}
-                      y={node.y - (node.radius || 8) - 4}
-                      textAnchor="middle"
-                      fill="var(--text-primary)"
-                      fontSize="11"
-                      fontWeight="500"
-                      className="node-label"
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      {node.name.length > 20 ? node.name.substring(0, 20) + '...' : node.name}
-                    </text>
-                    <text
-                      x={node.x}
-                      y={node.y - (node.radius || 8) - 18}
-                      textAnchor="middle"
-                      fill="var(--text-muted)"
-                      fontSize="9"
-                      className="node-type-label"
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      {getTypeLabel(node.type)}
-                    </text>
-                  </>
-                )}
-              </g>
-            ))}
+            {displayNodes.map((node) => {
+              const baseColor = getNodeColor(node.type);
+
+              return (
+                <g
+                  key={node.id}
+                  className="node"
+                  onClick={() => handleNodeClick(node)}
+                  onMouseDown={(e) => handleNodeMouseDown(e, node)}
+                  onMouseEnter={() => handleNodeHover(node)}
+                  onMouseLeave={handleNodeLeave}
+                  style={{
+                    cursor: draggedNode?.id === node.id ? 'grabbing' : 'grab',
+                    '--node-color': baseColor
+                  }}
+                >
+                  {/* Outer Glow */}
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={(node.radius || 8) * 1.5}
+                    fill={baseColor}
+                    opacity="0.2"
+                    className="node-glow"
+                  />
+
+                  {/* Inner Core */}
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={node.radius || 8}
+                    fill={baseColor}
+                    filter="url(#glow)"
+                    className="node-circle"
+                  />
+
+                  {/* Center Star Point */}
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={2}
+                    fill="#fff"
+                    opacity="0.8"
+                  />
+
+                  {showLabels && (
+                    <>
+                      <text
+                        x={node.x}
+                        y={node.y - (node.radius || 8) - 8}
+                        textAnchor="middle"
+                        className="node-label"
+                      >
+                        {node.name.length > 20 ? node.name.substring(0, 20) + '...' : node.name}
+                      </text>
+                      <text
+                        x={node.x}
+                        y={node.y - (node.radius || 8) - 22}
+                        textAnchor="middle"
+                        className="node-type-label"
+                      >
+                        {getTypeLabel(node.type)}
+                      </text>
+                    </>
+                  )}
+                </g>
+              );
+            })}
           </g>
         </svg>
       </div>

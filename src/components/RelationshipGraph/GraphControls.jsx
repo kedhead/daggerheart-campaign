@@ -29,7 +29,7 @@ export default function GraphControls({
   };
 
   return (
-    <div className="graph-controls-panel card">
+    <div className="graph-controls-panel">
       <div className="graph-controls-header">
         <h3>
           <Filter size={18} />
