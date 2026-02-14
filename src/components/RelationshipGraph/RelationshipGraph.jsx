@@ -44,6 +44,12 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   useEffect(() => {
     if (!entities) return;
 
+    // Get current container dimensions from ref or window
+    // Use optional chaining and fallbacks to ensure we have numbers
+    const width = containerRef.current?.offsetWidth || window.innerWidth || 800;
+    const height = containerRef.current?.offsetHeight || window.innerHeight || 600;
+    const padding = 50;
+
     // Build graph data from entities
     const graphNodes = [];
     const graphEdges = [];
@@ -129,8 +135,8 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           name: entity.title || entity.name,
           type: entityType,
           data: entity,
-          x: savedPos ? savedPos.x : Math.random() * 800,
-          y: savedPos ? savedPos.y : Math.random() * 600,
+          x: savedPos ? savedPos.x : Math.random() * (width - 100) + 50,
+          y: savedPos ? savedPos.y : Math.random() * (height - 100) + 50,
           vx: 0,
           vy: 0
         };
@@ -240,8 +246,8 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           node.y += node.vy;
 
           // Keep in bounds (with padding)
-          node.x = Math.max(50, Math.min(750, node.x));
-          node.y = Math.max(50, Math.min(550, node.y));
+          node.x = Math.max(padding, Math.min(width - padding, node.x));
+          node.y = Math.max(padding, Math.min(height - padding, node.y));
         });
       }
 
@@ -319,12 +325,17 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     const scaleX = 800 / rect.width;
     const scaleY = 600 / rect.height;
 
-    const x = (e.clientX - rect.left) * scaleX / zoom + (pan.x / zoom);
-    const y = (e.clientY - rect.top) * scaleY / zoom + (pan.y / zoom);
+    const x = (e.clientX - rect.left) / zoom + (pan.x / zoom);
+    const y = (e.clientY - rect.top) / zoom + (pan.y / zoom);
+
+    // Get actual dimensions for clamping
+    const width = rect.width || 800;
+    const height = rect.height || 600;
+    const padding = 50;
 
     // Update node position locally and in ref
-    const newX = Math.max(50, Math.min(750, x));
-    const newY = Math.max(50, Math.min(550, y));
+    const newX = Math.max(padding, Math.min(width - padding, x));
+    const newY = Math.max(padding, Math.min(height - padding, y));
 
     // Update ref immediately so it persists
     nodePositionsRef.current.set(draggedNode.id, { x: newX, y: newY });
