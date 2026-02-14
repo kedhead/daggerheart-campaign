@@ -343,22 +343,19 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
   return (
     <div className="relationship-graph-container">
-      {/* HUD Header */}
-      <div className="graph-header">
-        <div>
-          <h2>
-            <Network size={32} />
-            The Constellation
-          </h2>
-          <p className="graph-subtitle">
-            {displayNodes.length} Celestial Bodies Discovered
-            {focusNode && ' (Focused View)'}
-          </p>
-        </div>
-      </div>
-
-      {/* Toolkit Panel - Now the Unified Control Bar */}
       <GraphControls
+        header={
+          <div className="graph-header-content">
+            <h2>
+              <Network size={28} />
+              The Constellation
+            </h2>
+            <p className="graph-subtitle">
+              {displayNodes.length} Celestial Bodies
+              {focusNode && ' (Focused View)'}
+            </p>
+          </div>
+        }
         selectedTypes={selectedTypes}
         setSelectedTypes={setSelectedTypes}
         showLabels={showLabels}
