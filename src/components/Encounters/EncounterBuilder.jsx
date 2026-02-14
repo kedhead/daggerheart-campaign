@@ -29,9 +29,7 @@ export default function EncounterBuilder({
     tactics: '',
     rewards: '',
     hidden: false,
-    ...(encounter || {}),
-    // Ensure array safety even if encounter has bad data
-    adversarySlots: Array.isArray(encounter?.adversarySlots) ? encounter.adversarySlots : []
+    ...(encounter || {})
   });
 
   // Calculate BP values
