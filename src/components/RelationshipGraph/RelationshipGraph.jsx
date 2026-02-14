@@ -40,6 +40,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   const nodePositionsRef = useRef(new Map());
   const dragStartPosRef = useRef(null);
   const isDraggingRef = useRef(false);
+  const draggedNodeRef = useRef(null);
 
   useEffect(() => {
     if (!entities) return;
@@ -374,6 +375,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   const handleNodeMouseDown = (e, node) => {
     e.stopPropagation();
     setDraggedNode(node);
+    draggedNodeRef.current = node;
     dragStartPosRef.current = { x: e.clientX, y: e.clientY };
     isDraggingRef.current = false;
   };
@@ -418,6 +420,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
   const handleMouseUp = () => {
     setDraggedNode(null);
+    draggedNodeRef.current = null;
     dragStartPosRef.current = null;
     // Reset drag flag after a short delay to allow click handler to check it
     setTimeout(() => {
