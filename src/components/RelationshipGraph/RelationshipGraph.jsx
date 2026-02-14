@@ -77,7 +77,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     const getEntityTexts = (entity, type) => {
       const texts = [];
       if (type === 'npc') {
-        texts.push(entity.description, entity.notes);
+        texts.push(entity.description, entity.notes, entity.firstMet, entity.location);
       } else if (type === 'location') {
         texts.push(entity.description, entity.notableFeatures, entity.secrets);
       } else if (type === 'lore') {

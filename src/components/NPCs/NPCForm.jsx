@@ -204,12 +204,15 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
 
       <div className="input-group">
         <label>Location</label>
-        <input
-          type="text"
+        <WikiLinkInput
           value={formData.location}
           onChange={(e) => handleChange('location', e.target.value)}
-          placeholder="e.g., Riverside Market, The Golden Lion Inn"
+          searchEntities={search}
+          autoLink={autoLink}
+          placeholder="e.g., Riverside Market, The Golden Lion Inn — Type [[ to link"
+          rows={1}
         />
+        <small className="form-hint">Type [[ to link to locations or other entities</small>
       </div>
 
       <div className="input-group">
@@ -253,12 +256,15 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
 
       <div className="input-group">
         <label>First Met</label>
-        <input
-          type="text"
+        <WikiLinkInput
           value={formData.firstMet}
           onChange={(e) => handleChange('firstMet', e.target.value)}
-          placeholder="e.g., Session 3, At the tavern in Riverdale"
+          searchEntities={search}
+          autoLink={autoLink}
+          placeholder="e.g., Session 3, At the tavern in [[Riverdale]] — Type [[ to link"
+          rows={1}
         />
+        <small className="form-hint">Type [[ to link to sessions, locations, or other entities</small>
       </div>
 
       {isDM && (

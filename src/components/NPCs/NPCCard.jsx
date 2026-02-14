@@ -74,7 +74,7 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
               {npc.location && (
                 <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
                   <MapPin size={10} className="text-rose-400/50" />
-                  {npc.location}
+                  <WikiText text={npc.location} onLinkClick={setViewingEntity} getEntity={getByName} />
                 </div>
               )}
             </div>
@@ -102,6 +102,19 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
                 <div className="prose prose-invert prose-sm font-sans font-medium text-white/50 leading-relaxed max-w-none">
                   <WikiText
                     text={npc.notes}
+                    onLinkClick={setViewingEntity}
+                    getEntity={getByName}
+                  />
+                </div>
+              </div>
+            )}
+
+            {npc.firstMet && (
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-black text-cyan-400/60 uppercase tracking-[0.3em] font-sans">First Encounter</h4>
+                <div className="prose prose-invert prose-sm font-sans font-medium text-white/50 leading-relaxed max-w-none">
+                  <WikiText
+                    text={npc.firstMet}
                     onLinkClick={setViewingEntity}
                     getEntity={getByName}
                   />
