@@ -84,6 +84,10 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     deadly: encounters.filter(e => e.difficulty === 'deadly').length
   };
 
+  const entitiesData = useMemo(() => ({
+    npcs, locations, lore, sessions, timelineEvents, encounters, notes
+  }), [npcs, locations, lore, sessions, timelineEvents, encounters, notes]);
+
   // Show tracker if there's an active encounter or user clicked "Run"
   if (showTracker || activeEncounter) {
     return (
