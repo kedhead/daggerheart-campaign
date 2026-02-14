@@ -35,8 +35,9 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   const [draggedNode, setDraggedNode] = useState(null);
   const [edgeStrengthMap, setEdgeStrengthMap] = useState(new Map());
 
-  const svgRef = useRef(null);
-  const containerRef = useRef(null);
+  const nodePositionsRef = useRef(new Map());
+  const dragStartPosRef = useRef(null);
+  const isDraggingRef = useRef(false);
 
   useEffect(() => {
     if (!entities) return;
@@ -117,13 +118,17 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           }
         }
 
+        const nodeId = `${entityType}-${entity.id}`;
+        // Recover previous position if available, else random
+        const savedPos = nodePositionsRef.current.get(nodeId);
+
         const node = {
-          id: `${entityType}-${entity.id}`,
+          id: nodeId,
           name: entity.title || entity.name,
           type: entityType,
           data: entity,
-          x: Math.random() * 800,
-          y: Math.random() * 600,
+          x: savedPos ? savedPos.x : Math.random() * 800,
+          y: savedPos ? savedPos.y : Math.random() * 600,
           vx: 0,
           vy: 0
         };
@@ -177,10 +182,12 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
     // Run force simulation
     const simulate = () => {
-      const iterations = 50;
+      // If we have saved positions for most nodes, run fewer iterations to just settle new ones
+      const hasHistory = nodePositionsRef.current.size > 0;
+      const iterations = hasHistory ? 20 : 120; // More initial iterations, fewer updates
       const repulsionStrength = 5000;
       const attractionStrength = 0.01;
-      const damping = 0.8;
+      const damping = 0.6; // Higher damping (lower value) to stop faster
 
       for (let iter = 0; iter < iterations; iter++) {
         // Apply repulsion between all nodes
@@ -235,12 +242,17 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           node.y = Math.max(50, Math.min(550, node.y));
         });
       }
+
+      // Save final positions
+      graphNodes.forEach(node => {
+        nodePositionsRef.current.set(node.id, { x: node.x, y: node.y });
+      });
     };
 
     simulate();
     setAllNodes(graphNodes);
     setAllEdges(graphEdges);
-  }, [entities]);
+  }, [entities, isDM, currentUserId]); // Removed direct dependency on entities content to some degree, but kept for updates.
 
   // Apply filters whenever selection changes
   useEffect(() => {
@@ -258,16 +270,20 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   }, [allNodes, allEdges, selectedTypes, focusNode]);
 
   const handleNodeClick = (node) => {
-    setSelectedEntity({
-      type: node.type,
-      data: node.data,
-      name: node.name,
-      displayName: node.name,
-      subtitle: node.type
-    });
+    // Only select if we weren't dragging
+    if (!isDraggingRef.current) {
+      setSelectedEntity({
+        type: node.type,
+        data: node.data,
+        name: node.name,
+        displayName: node.name,
+        subtitle: node.type
+      });
+    }
   };
 
   const handleNodeHover = (node) => {
+    if (isDraggingRef.current) return;
     const connected = displayEdges.filter(e =>
       e.source === node.id || e.target === node.id
     );
@@ -281,10 +297,20 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   const handleNodeMouseDown = (e, node) => {
     e.stopPropagation();
     setDraggedNode(node);
+    dragStartPosRef.current = { x: e.clientX, y: e.clientY };
+    isDraggingRef.current = false;
   };
 
   const handleMouseMove = (e) => {
     if (!draggedNode || !svgRef.current) return;
+
+    // Check if moved enough to count as drag
+    if (dragStartPosRef.current) {
+      const dist = Math.hypot(e.clientX - dragStartPosRef.current.x, e.clientY - dragStartPosRef.current.y);
+      if (dist > 5) {
+        isDraggingRef.current = true;
+      }
+    }
 
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
@@ -294,16 +320,27 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     const x = (e.clientX - rect.left) * scaleX / zoom + (pan.x / zoom);
     const y = (e.clientY - rect.top) * scaleY / zoom + (pan.y / zoom);
 
-    // Update node position
+    // Update node position locally and in ref
+    const newX = Math.max(50, Math.min(750, x));
+    const newY = Math.max(50, Math.min(550, y));
+
+    // Update ref immediately so it persists
+    nodePositionsRef.current.set(draggedNode.id, { x: newX, y: newY });
+
     setAllNodes(prev => prev.map(n =>
       n.id === draggedNode.id
-        ? { ...n, x: Math.max(50, Math.min(750, x)), y: Math.max(50, Math.min(550, y)) }
+        ? { ...n, x: newX, y: newY }
         : n
     ));
   };
 
   const handleMouseUp = () => {
     setDraggedNode(null);
+    dragStartPosRef.current = null;
+    // Reset drag flag after a short delay to allow click handler to check it
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 50);
   };
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 3));
