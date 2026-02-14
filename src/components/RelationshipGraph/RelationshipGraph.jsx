@@ -222,6 +222,13 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         nodeA.vx += (centerX - nodeA.x) * centeringForce;
         nodeA.vy += (centerY - nodeA.y) * centeringForce;
 
+        // SOFT BOUNDARY FORCE (Prevent edge sticking)
+        const margin = 100; // Start pushing back 100px from edge
+        if (nodeA.x < margin) nodeA.vx += (margin - nodeA.x) * 0.001;
+        if (nodeA.x > width - margin) nodeA.vx -= (nodeA.x - (width - margin)) * 0.001;
+        if (nodeA.y < margin) nodeA.vy += (margin - nodeA.y) * 0.001;
+        if (nodeA.y > height - margin) nodeA.vy -= (nodeA.y - (height - margin)) * 0.001;
+
         // 3. Inter-node Repulsion and Collision
         for (let j = i + 1; j < graphNodes.length; j++) {
           const nodeB = graphNodes[j];

@@ -238,7 +238,6 @@
 
 /* Celestial Nodes */
 .node-circle {
-  transition: all 0.3s ease;
   filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
 }
 
@@ -257,7 +256,6 @@
   font-size: 10px;
   fill: rgba(226, 232, 240, 0.8);
   text-shadow: 0 0 5px #000;
-  transition: all 0.3s ease;
 }
 
 .node:hover .node-label {
