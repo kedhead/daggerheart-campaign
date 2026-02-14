@@ -35,6 +35,8 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   const [draggedNode, setDraggedNode] = useState(null);
   const [edgeStrengthMap, setEdgeStrengthMap] = useState(new Map());
 
+  const svgRef = useRef(null);
+  const containerRef = useRef(null);
   const nodePositionsRef = useRef(new Map());
   const dragStartPosRef = useRef(null);
   const isDraggingRef = useRef(false);
