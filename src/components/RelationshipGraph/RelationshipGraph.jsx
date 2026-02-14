@@ -219,6 +219,23 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
             nodeA.vy -= fy;
             nodeB.vx += fx;
             nodeB.vy += fy;
+
+            // STRICT COLLISION RESOLUTION
+            // Determine minimum distance based on node radii + padding
+            const minDistance = (nodeA.radius || 20) + (nodeB.radius || 20) + 10;
+            if (dist < minDistance) {
+              // Push apart harder if overlapping
+              const overlap = minDistance - dist;
+              // Add a small epsilon to avoid divide by zero if stacked exactly
+              const d = dist || 0.1;
+              const pushX = (dx / d) * overlap * 0.5;
+              const pushY = (dy / d) * overlap * 0.5;
+
+              nodeA.x -= pushX;
+              nodeA.y -= pushY;
+              nodeB.x += pushX;
+              nodeB.y += pushY;
+            }
           }
         }
 
