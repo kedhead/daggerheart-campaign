@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
 import './WikiLinkInput.css';
 
@@ -22,21 +23,21 @@ export default function WikiLinkInput({ value, onChange, searchEntities, autoLin
 
   // Detect [[ typing and show autocomplete
   useEffect(() => {
-    console.log('[WikiLinkInput] useEffect triggered', {
+    /* console.log('[WikiLinkInput] useEffect triggered', {
       hasValue: !!value,
       hasSearchEntities: !!searchEntities,
       valueLength: value?.length
-    });
+    }); */
 
     if (!value || !searchEntities) {
-      console.log('[WikiLinkInput] Missing value or searchEntities, hiding autocomplete');
+      // console.log('[WikiLinkInput] Missing value or searchEntities, hiding autocomplete');
       setShowAutocomplete(false);
       return;
     }
 
     const textarea = textareaRef.current;
     if (!textarea) {
-      console.log('[WikiLinkInput] No textarea ref');
+      // console.log('[WikiLinkInput] No textarea ref');
       return;
     }
 
@@ -47,20 +48,20 @@ export default function WikiLinkInput({ value, onChange, searchEntities, autoLin
     const lastOpenBracket = textBeforeCursor.lastIndexOf('[[');
     const lastCloseBracket = textBeforeCursor.lastIndexOf(']]');
 
-    console.log('[WikiLinkInput] Bracket check', {
-      lastOpenBracket,
-      lastCloseBracket,
-      textBeforeCursor
-    });
+    // console.log('[WikiLinkInput] Bracket check', {
+    //   lastOpenBracket,
+    //   lastCloseBracket,
+    //   textBeforeCursor
+    // });
 
     if (lastOpenBracket > lastCloseBracket && lastOpenBracket !== -1) {
       // We're typing inside [[
       const searchQuery = textBeforeCursor.substring(lastOpenBracket + 2);
-      console.log('[WikiLinkInput] Inside [[, searching for:', searchQuery);
+      // console.log('[WikiLinkInput] Inside [[, searching for:', searchQuery);
 
       if (searchQuery.length >= 0) {
         const results = searchEntities(searchQuery);
-        console.log('[WikiLinkInput] Search results:', results);
+        // console.log('[WikiLinkInput] Search results:', results);
         setAutocompleteResults(results);
         setSelectedIndex(0);
 
@@ -76,10 +77,10 @@ export default function WikiLinkInput({ value, onChange, searchEntities, autoLin
             left: rect.left + 10
           });
 
-          console.log('[WikiLinkInput] Showing autocomplete with', results.length, 'results');
+          // console.log('[WikiLinkInput] Showing autocomplete with', results.length, 'results');
           setShowAutocomplete(true);
         } else {
-          console.log('[WikiLinkInput] No results, hiding autocomplete');
+          // console.log('[WikiLinkInput] No results, hiding autocomplete');
           setShowAutocomplete(false);
         }
       }
@@ -162,7 +163,7 @@ export default function WikiLinkInput({ value, onChange, searchEntities, autoLin
         className="wiki-link-textarea"
       />
 
-      {showAutocomplete && autocompleteResults.length > 0 && (
+      {showAutocomplete && autocompleteResults.length > 0 && createPortal(
         <div
           ref={autocompleteRef}
           className="wiki-autocomplete-dropdown"
@@ -195,7 +196,8 @@ export default function WikiLinkInput({ value, onChange, searchEntities, autoLin
             <span>↵ Select</span>
             <span>Esc Close</span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Swords, ExternalLink, Wand2, Play } from 'lucide-react';
 import EncounterCard from './EncounterCard';
 import EncounterForm from './EncounterForm';
