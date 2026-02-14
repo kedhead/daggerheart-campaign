@@ -19,44 +19,43 @@ export function usePendingInvites() {
       try {
         console.log('Checking for pending invites for:', userEmail);
 
-        // Get all campaigns and check manually (simpler approach)
-        const campaignsSnapshot = await getDocs(collection(db, 'campaigns'));
-        console.log('Found', campaignsSnapshot.docs.length, 'total campaigns');
+        // Query only campaigns where user is in pendingInvites
+        const q = query(
+          collection(db, 'campaigns'),
+          where('pendingInvites', 'array-contains', userEmail)
+        );
+
+        const campaignsSnapshot = await getDocs(q);
+        console.log('Found', campaignsSnapshot.docs.length, 'campaigns with pending invites');
 
         for (const campaignDoc of campaignsSnapshot.docs) {
           try {
             const campaignData = campaignDoc.data();
-            const pendingInvites = campaignData.pendingInvites || [];
 
-            console.log('Campaign:', campaignData.name, 'Pending invites:', pendingInvites);
+            console.log('Processing invite for campaign:', campaignData.name);
 
-            // Check if current user's email is in pending invites
-            if (pendingInvites.includes(userEmail)) {
-              console.log('Found matching invite! Adding user to campaign:', campaignData.name);
+            // Add user to campaign members
+            const members = campaignData.members || {};
+            members[currentUser.uid] = {
+              role: 'player',
+              email: currentUser.email,
+              displayName: currentUser.displayName || currentUser.email,
+              joinedAt: serverTimestamp()
+            };
 
-              // Add user to campaign members
-              const members = campaignData.members || {};
-              members[currentUser.uid] = {
-                role: 'player',
-                email: currentUser.email,
-                displayName: currentUser.displayName || currentUser.email,
-                joinedAt: serverTimestamp()
-              };
+            // Update campaign: add member and remove from pending invites
+            await updateDoc(doc(db, 'campaigns', campaignDoc.id), {
+              members,
+              pendingInvites: arrayRemove(userEmail),
+              updatedAt: serverTimestamp()
+            });
 
-              // Update campaign: add member and remove from pending invites
-              await updateDoc(doc(db, 'campaigns', campaignDoc.id), {
-                members,
-                pendingInvites: arrayRemove(userEmail),
-                updatedAt: serverTimestamp()
-              });
+            joined.push({
+              id: campaignDoc.id,
+              name: campaignData.name
+            });
 
-              joined.push({
-                id: campaignDoc.id,
-                name: campaignData.name
-              });
-
-              console.log('Successfully joined campaign:', campaignData.name);
-            }
+            console.log('Successfully joined campaign:', campaignData.name);
           } catch (error) {
             console.error('Error joining campaign:', error);
           }

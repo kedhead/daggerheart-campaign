@@ -95,6 +95,10 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     );
   }
 
+  const entitiesData = useMemo(() => ({
+    npcs, locations, lore, sessions, timelineEvents, encounters, notes
+  }), [npcs, locations, lore, sessions, timelineEvents, encounters, notes]);
+
   return (
     <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
       {/* Header */}
@@ -299,7 +303,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
             adversaries={adversaries}
             environments={environments}
             characters={characters}
-            entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+            entities={entitiesData}
             isDM={isDM}
           />
         ) : (
@@ -311,7 +315,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
               setEditingEncounter(null);
             }}
             campaign={campaign}
-            entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+            entities={entitiesData}
             isDM={isDM}
           />
         )}

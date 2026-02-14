@@ -13,10 +13,10 @@ import { autoLinkText } from '../utils/autoLinkText';
  */
 export function useEntityRegistry(campaign, separateEntities = null, isDM = true, currentUserId = null) {
   const registry = useMemo(() => {
-    console.log('[useEntityRegistry] Building registry for campaign:', campaign?.name);
+    // console.log('[useEntityRegistry] Building registry for campaign:', campaign?.name);
 
     if (!campaign) {
-      console.log('[useEntityRegistry] No campaign, returning empty registry');
+      // console.log('[useEntityRegistry] No campaign, returning empty registry');
       return [];
     }
 
@@ -174,7 +174,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
       });
     });
 
-    console.log('[useEntityRegistry] Registry built with', entities.length, 'entities:', {
+    /* console.log('[useEntityRegistry] Registry built with', entities.length, 'entities:', {
       npcs: source.npcs?.length || 0,
       locations: source.locations?.length || 0,
       lore: source.lore?.length || 0,
@@ -183,7 +183,7 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
       encounters: source.encounters?.length || 0,
       notes: source.notes?.length || 0,
       quests: source.quests?.length || 0
-    });
+    }); */
 
     return entities;
   }, [
@@ -206,10 +206,10 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
    * @returns {Array} Array of matching entities (max 10 results)
    */
   const search = (query) => {
-    console.log('[useEntityRegistry] search() called', {
+    /* console.log('[useEntityRegistry] search() called', {
       query,
       registrySize: registry.length
-    });
+    }); */
 
     // If no query, return all entities (for autocomplete when typing [[)
     if (!query || query.trim() === '') {
@@ -232,16 +232,16 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
    * @returns {Object|undefined} Matching entity or undefined
    */
   const getByName = (name) => {
-    console.log('[useEntityRegistry] getByName() called with:', name);
+    // console.log('[useEntityRegistry] getByName() called with:', name);
     if (!name) {
-      console.log('[useEntityRegistry] No name provided, returning undefined');
+      // console.log('[useEntityRegistry] No name provided, returning undefined');
       return undefined;
     }
     const lowerName = name.toLowerCase().trim();
-    console.log('[useEntityRegistry] Searching for:', lowerName);
-    console.log('[useEntityRegistry] Available entities:', registry.map(e => e.name));
+    // console.log('[useEntityRegistry] Searching for:', lowerName);
+    // console.log('[useEntityRegistry] Available entities:', registry.map(e => e.name));
     const result = registry.find(entity => entity.name.toLowerCase() === lowerName);
-    console.log('[useEntityRegistry] Found:', result);
+    // console.log('[useEntityRegistry] Found:', result);
     return result;
   };
 
