@@ -125,59 +125,167 @@
   pointer-events: auto;
 }
 
-/* Floating Toolbar */
-.graph-controls {
+/* Main Control Container (Bottom Center) */
+.graph-controls-container {
   position: absolute;
-  bottom: 30px;
-  right: 30px;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
   display: flex;
-  gap: 0.75rem;
-  z-index: 10;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: auto;
+  pointer-events: none;
+  /* Let clicks pass through around the bar */
 }
 
-.btn-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(15, 23, 42, 0.6);
+/* The Bar Itself */
+.graph-control-bar {
+  pointer-events: auto;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(251, 191, 36, 0.3);
-  color: #e2e8f0;
+  border-radius: 50px;
+  /* Pill shape */
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.graph-control-bar:hover {
+  border-color: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 10px 30px rgba(251, 191, 36, 0.15);
+}
+
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 0.25rem;
+}
+
+/* Bar Buttons */
+.btn-icon-bar {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(8px);
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
-.btn-icon:hover {
-  background: rgba(251, 191, 36, 0.15);
-  border-color: #fbbf24;
+.btn-icon-bar:hover {
   color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
   transform: translateY(-2px);
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
 }
 
-/* Graph Controls Panel (The "Toolkit") */
-.graph-controls-panel {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 300px;
-  background: rgba(15, 23, 42, 0.85);
-  /* Deep dark blue/black */
-  backdrop-filter: blur(12px);
+/* Toggle Buttons (Text + Icon) */
+.btn-toggle {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+}
+
+.btn-toggle:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-toggle.active {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.btn-label {
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* Filter Popover (The "Drawer") */
+.graph-filter-popover {
+  pointer-events: auto;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 16px;
+  padding: 1.25rem;
+  width: 280px;
+  margin-bottom: 0.5rem;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.btn-close:hover {
+  color: #ef4444;
+}
+
+/* Focus Group Special Styling */
+.focus-group {
+  background: rgba(251, 191, 36, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
   border: 1px solid rgba(251, 191, 36, 0.2);
-  /* Subtle gold border */
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  z-index: 20;
-  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.graph-controls-panel:hover {
-  border-color: rgba(251, 191, 36, 0.4);
+.focus-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  color: #fbbf24;
+  white-space: nowrap;
+}
+
+.btn-danger {
+  color: #ef4444;
+}
+
+.btn-danger:hover {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
 }
 
 /* Canvas - Full Screen Immersion */

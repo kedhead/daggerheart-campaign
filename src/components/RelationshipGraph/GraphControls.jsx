@@ -1,4 +1,5 @@
-import { Eye, EyeOff, Filter, X } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, EyeOff, Filter, X, ZoomIn, ZoomOut, Maximize2, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import { getTypeLabel } from '../../utils/graphCalculations';
 import './RelationshipGraph.css';
 
@@ -8,8 +9,13 @@ export default function GraphControls({
   showLabels,
   setShowLabels,
   focusNode,
-  setFocusNode
+  setFocusNode,
+  onZoomIn,
+  onZoomOut,
+  onReset,
+  onExport
 }) {
+  const [showFilters, setShowFilters] = useState(false);
   const allTypes = ['npc', 'location', 'lore', 'session', 'timelineEvent', 'encounter', 'note'];
 
   const toggleType = (type) => {
@@ -29,65 +35,91 @@ export default function GraphControls({
   };
 
   return (
-    <div className="graph-controls-panel">
-      <div className="graph-controls-header">
-        <h3>
-          <Filter size={18} />
-          Graph Controls
-        </h3>
-      </div>
-
-      <div className="graph-controls-section">
-        <div className="graph-controls-title">Entity Types</div>
-        <div className="graph-type-filters">
-          {allTypes.map(type => (
-            <label key={type} className="graph-type-checkbox">
-              <input
-                type="checkbox"
-                checked={selectedTypes.includes(type)}
-                onChange={() => toggleType(type)}
-              />
-              <span>{getTypeLabel(type)}</span>
-            </label>
-          ))}
-        </div>
-        <div className="graph-controls-actions">
-          <button className="btn btn-secondary btn-sm" onClick={selectAll}>
-            Select All
-          </button>
-          <button className="btn btn-secondary btn-sm" onClick={deselectAll}>
-            Deselect All
-          </button>
-        </div>
-      </div>
-
-      <div className="graph-controls-section">
-        <div className="graph-controls-title">Display Options</div>
-        <label className="graph-toggle">
-          <input
-            type="checkbox"
-            checked={showLabels}
-            onChange={(e) => setShowLabels(e.target.checked)}
-          />
-          <span>
-            {showLabels ? <Eye size={16} /> : <EyeOff size={16} />}
-            Show Labels
-          </span>
-        </label>
-      </div>
-
-      {focusNode && (
-        <div className="graph-controls-section">
-          <div className="graph-controls-title">Focus Mode</div>
-          <div className="focus-mode-active">
-            <p>Showing only connected entities</p>
-            <button className="btn btn-secondary btn-sm" onClick={() => setFocusNode(null)}>
+    <div className="graph-controls-container">
+      {/* Filter Popover */}
+      {showFilters && (
+        <div className="graph-filter-popover">
+          <div className="graph-controls-header">
+            <h3>
+              <Filter size={16} />
+              Filter Entities
+            </h3>
+            <button className="btn-close" onClick={() => setShowFilters(false)}>
               <X size={16} />
-              Clear Focus
             </button>
+          </div>
+
+          <div className="graph-type-filters">
+            {allTypes.map(type => (
+              <label key={type} className="graph-type-checkbox">
+                <input
+                  type="checkbox"
+                  checked={selectedTypes.includes(type)}
+                  onChange={() => toggleType(type)}
+                />
+                <span>{getTypeLabel(type)}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="graph-controls-actions">
+            <button className="btn btn-secondary btn-xs" onClick={selectAll}>All</button>
+            <button className="btn btn-secondary btn-xs" onClick={deselectAll}>None</button>
           </div>
         </div>
       )}
+
+      {/* Main Control Bar */}
+      <div className="graph-control-bar">
+        {/* Left: View Controls */}
+        <div className="control-group">
+          <button className="btn-icon-bar" onClick={onExport} title="Export Map">
+            <Download size={18} />
+          </button>
+          <div className="divider" />
+          <button className="btn-icon-bar" onClick={onZoomOut} title="Zoom Out">
+            <ZoomOut size={18} />
+          </button>
+          <button className="btn-icon-bar" onClick={onReset} title="Reset View">
+            <Maximize2 size={18} />
+          </button>
+          <button className="btn-icon-bar" onClick={onZoomIn} title="Zoom In">
+            <ZoomIn size={18} />
+          </button>
+        </div>
+
+        {/* Center: Toggles */}
+        <div className="control-group">
+          <button
+            className={`btn-toggle ${showLabels ? 'active' : ''}`}
+            onClick={() => setShowLabels(!showLabels)}
+            title="Toggle Labels"
+          >
+            {showLabels ? <Eye size={18} /> : <EyeOff size={18} />}
+            <span className="btn-label">Labels</span>
+          </button>
+
+          <button
+            className={`btn-toggle ${showFilters ? 'active' : ''}`}
+            onClick={() => setShowFilters(!showFilters)}
+            title="Filter Entities"
+          >
+            <Filter size={18} />
+            <span className="btn-label">Filters</span>
+            {showFilters ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
+        </div>
+
+        {/* Right: Context/Focus Actions */}
+        {focusNode && (
+          <div className="control-group focus-group">
+            <span className="focus-label">Focused View</span>
+            <button className="btn-icon-bar btn-danger" onClick={() => setFocusNode(null)} title="Clear Focus">
+              <X size={18} />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -357,23 +357,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         </div>
       </div>
 
-      {/* Floating Toolbar */}
-      <div className="graph-controls">
-        <button className="btn btn-icon" onClick={handleExportSVG} title="Chart Map (Export SVG)">
-          <Download size={20} />
-        </button>
-        <button className="btn btn-icon" onClick={handleZoomOut} title="Zoom Out">
-          <ZoomOut size={20} />
-        </button>
-        <button className="btn btn-icon" onClick={handleReset} title="Reset View">
-          <Maximize2 size={20} />
-        </button>
-        <button className="btn btn-icon" onClick={handleZoomIn} title="Zoom In">
-          <ZoomIn size={20} />
-        </button>
-      </div>
-
-      {/* Toolkit Panel */}
+      {/* Toolkit Panel - Now the Unified Control Bar */}
       <GraphControls
         selectedTypes={selectedTypes}
         setSelectedTypes={setSelectedTypes}
@@ -381,6 +365,10 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         setShowLabels={setShowLabels}
         focusNode={focusNode}
         setFocusNode={setFocusNode}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onReset={handleReset}
+        onExport={handleExportSVG}
       />
 
       <div className="graph-canvas" ref={containerRef}>
