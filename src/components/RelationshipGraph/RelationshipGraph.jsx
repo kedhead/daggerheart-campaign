@@ -192,10 +192,13 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     const simulate = () => {
       // If we have saved positions for most nodes, run fewer iterations to just settle new ones
       const hasHistory = nodePositionsRef.current.size > 0;
-      const iterations = hasHistory ? 20 : 120; // More initial iterations, fewer updates
-      const repulsionStrength = 5000;
+      // Increase iterations significantly to allow nodes to spread out into new space
+      const iterations = hasHistory ? 100 : 300;
+      // Stronger repulsion to prevent stacking
+      const repulsionStrength = 8000;
       const attractionStrength = 0.01;
-      const damping = 0.6; // Higher damping (lower value) to stop faster
+      // Less damping (higher value) to allow more movement before settling
+      const damping = 0.85;
 
       for (let iter = 0; iter < iterations; iter++) {
         // Apply repulsion between all nodes
