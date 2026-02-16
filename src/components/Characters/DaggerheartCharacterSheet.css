@@ -1,0 +1,620 @@
+/* Daggerheart Interactive Character Sheet */
+/* Dark blue/gold theme matching dream.png reference */
+
+/* ===== Outer Container ===== */
+.dh-sheet {
+  position: relative;
+  background: linear-gradient(180deg, #0a0e1f 0%, #0d1126 40%, #111730 100%);
+  border: 2px solid rgba(234, 179, 8, 0.3);
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow:
+    0 0 40px rgba(234, 179, 8, 0.05),
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(234, 179, 8, 0.1);
+}
+
+.dh-sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(234, 179, 8, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.03) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dh-sheet > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== Header Banner ===== */
+.dh-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.08) 0%, rgba(234, 179, 8, 0.02) 50%, rgba(234, 179, 8, 0.08) 100%);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.dh-sheet-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dh-sheet-name {
+  font-family: 'Cinzel', 'Times New Roman', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #eab308;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1.1;
+  text-shadow: 0 0 20px rgba(234, 179, 8, 0.2);
+}
+
+.dh-sheet-subtitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.dh-sheet-subtitle .dh-divider {
+  color: rgba(234, 179, 8, 0.3);
+}
+
+.dh-sheet-level {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 0.5rem;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(234, 179, 8, 0.1));
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #eab308;
+  letter-spacing: 0.05em;
+}
+
+.dh-sheet-player {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.25);
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.dh-sheet-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 1rem;
+  border: 2px solid rgba(234, 179, 8, 0.3);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dh-sheet-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dh-sheet-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  color: rgba(234, 179, 8, 0.2);
+}
+
+/* ===== Section Containers ===== */
+.dh-sheet-body {
+  padding: 1.25rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.dh-sheet-row {
+  display: grid;
+  gap: 1rem;
+}
+
+.dh-sheet-row-3 {
+  grid-template-columns: 1fr 1.2fr 1fr;
+}
+
+.dh-sheet-row-2-wide {
+  grid-template-columns: auto auto 1fr;
+}
+
+.dh-sheet-row-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ===== Section Labels ===== */
+.dh-section-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: rgba(234, 179, 8, 0.5);
+  margin-bottom: 0.5rem;
+}
+
+/* ===== Panel Base ===== */
+.dh-panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.dh-panel-gold {
+  border-color: rgba(234, 179, 8, 0.15);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.03), rgba(234, 179, 8, 0.01));
+}
+
+/* ===== Slot Buttons ===== */
+.dh-slots-row {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.dh-slot {
+  width: 32px;
+  height: 32px;
+  border-radius: 0.375rem;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.dh-slot:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* HP Slots - gold when healthy */
+.dh-slot-hp.filled {
+  background: linear-gradient(135deg, #eab308, #d69e2e);
+  border-color: #eab308;
+  color: #0d1126;
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
+}
+
+/* Stress Slots - purple when marked */
+.dh-slot-stress.filled {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+  border-color: #8b5cf6;
+  color: white;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.3);
+}
+
+/* Armor Slots - blue when marked */
+.dh-slot-armor.filled {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border-color: #3b82f6;
+  color: white;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* ===== Stat Box (Evasion, Armor Score) ===== */
+.dh-stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.04), rgba(234, 179, 8, 0.01));
+  border: 2px solid rgba(234, 179, 8, 0.25);
+  border-radius: 0.75rem;
+}
+
+.dh-stat-box-value {
+  font-family: 'Cinzel', serif;
+  font-size: 1.75rem;
+  font-weight: 900;
+  color: #eab308;
+  line-height: 1;
+  text-shadow: 0 0 12px rgba(234, 179, 8, 0.2);
+}
+
+.dh-stat-box-label {
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(234, 179, 8, 0.5);
+  margin-top: 0.2rem;
+}
+
+/* ===== Traits Grid ===== */
+.dh-traits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.dh-trait {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.5rem;
+}
+
+.dh-trait-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dh-trait-value {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: #eab308;
+  min-width: 1.5rem;
+  text-align: right;
+}
+
+.dh-trait-value.positive {
+  color: #eab308;
+}
+
+.dh-trait-value.negative {
+  color: #ef4444;
+}
+
+.dh-trait-value.zero {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== Weapons ===== */
+.dh-weapons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dh-weapon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.375rem;
+}
+
+.dh-weapon-icon {
+  color: rgba(234, 179, 8, 0.4);
+  flex-shrink: 0;
+}
+
+.dh-weapon-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dh-weapon-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+/* ===== Equipment & Inventory ===== */
+.dh-equipment-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.dh-equipment-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.dh-equipment-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(234, 179, 8, 0.4);
+}
+
+.dh-equipment-value {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.dh-inventory-text {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.dh-gold-hope-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.dh-counter {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.dh-counter-gold {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  color: #eab308;
+}
+
+.dh-counter-hope {
+  background: rgba(234, 179, 8, 0.06);
+  border: 1px solid rgba(234, 179, 8, 0.15);
+  color: #fbbf24;
+}
+
+.dh-counter-icon {
+  opacity: 0.6;
+}
+
+/* ===== Experiences & Domains ===== */
+.dh-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.dh-experience-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.75rem;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.04));
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #eab308;
+  letter-spacing: 0.03em;
+}
+
+.dh-domain-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.04));
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #a78bfa;
+  letter-spacing: 0.03em;
+}
+
+.dh-domain-notes {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+  margin-top: 0.35rem;
+  line-height: 1.4;
+}
+
+/* ===== Narrative Collapsibles ===== */
+.dh-narrative-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+}
+
+.dh-narrative-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dh-narrative-toggle-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.3);
+  transition: color 0.2s ease;
+}
+
+.dh-narrative-toggle:hover .dh-narrative-toggle-label {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dh-narrative-toggle-icon {
+  color: rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s ease;
+}
+
+.dh-narrative-toggle-icon.open {
+  transform: rotate(90deg);
+}
+
+.dh-narrative-content {
+  padding: 0.5rem 0 0.25rem 1.25rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* ===== Footer Actions ===== */
+.dh-sheet-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dh-sheet-footer-spacer {
+  flex: 1;
+}
+
+.dh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dh-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.dh-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.dh-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  background: rgba(16, 185, 129, 0.05);
+  color: rgba(16, 185, 129, 0.7);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dh-link:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* ===== Not-set / empty state ===== */
+.dh-empty {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.15);
+  font-style: italic;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .dh-sheet-header {
+    padding: 1rem 1.25rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .dh-sheet-name {
+    font-size: 1.5rem;
+  }
+
+  .dh-sheet-avatar {
+    width: 64px;
+    height: 64px;
+    align-self: flex-end;
+    margin-top: -3.5rem;
+  }
+
+  .dh-sheet-body {
+    padding: 1rem;
+  }
+
+  .dh-sheet-row-3,
+  .dh-sheet-row-2-wide,
+  .dh-sheet-row-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .dh-traits-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dh-equipment-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dh-slot {
+    width: 28px;
+    height: 28px;
+  }
+
+  .dh-sheet-footer {
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+  }
+}

@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Plus, Search, Users, Wand2 } from 'lucide-react';
+import { Plus, Search, Users, LayoutGrid, FileText } from 'lucide-react';
 import CharacterCardSimple from './CharacterCardSimple';
 import CharacterFormSimple from './CharacterFormSimple';
+import DaggerheartCharacterSheet from './DaggerheartCharacterSheet';
+import DaggerheartCharacterForm from './DaggerheartCharacterForm';
 import DnD5eForm from './forms/DnD5eForm';
 import DnD5eCard from './cards/DnD5eCard';
 import StarWarsD6Form from './forms/StarWarsD6Form';
@@ -30,11 +32,19 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'sheets'
 
   // Get the right form/card components for this campaign's game system
   const gameSystem = campaign?.gameSystem || 'daggerheart';
-  const FormComponent = FORM_COMPONENTS[gameSystem] || CharacterFormSimple;
-  const CardComponent = CARD_COMPONENTS[gameSystem] || CharacterCardSimple;
+  const isDaggerheart = gameSystem === 'daggerheart';
+  const isSheetMode = viewMode === 'sheets' && isDaggerheart;
+
+  const FormComponent = isSheetMode
+    ? DaggerheartCharacterForm
+    : (FORM_COMPONENTS[gameSystem] || CharacterFormSimple);
+  const CardComponent = isSheetMode
+    ? DaggerheartCharacterSheet
+    : (CARD_COMPONENTS[gameSystem] || CharacterCardSimple);
 
   const handleAdd = () => {
     setEditingCharacter(null);
@@ -86,14 +96,44 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           </div>
         </div>
 
-        <button
-          className="group relative flex items-center gap-3 px-8 py-4 rounded-3xl bg-white/[0.03] hover:bg-white/[0.08] text-white transition-all duration-500 border border-white/5 hover:border-white/20 overflow-hidden shadow-2xl"
-          onClick={handleAdd}
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <Plus size={20} className="relative z-10 text-emerald-400 group-hover:scale-125 transition-transform" />
-          <span className="relative z-10 font-black text-xs uppercase tracking-[0.3em] font-sans">Enlist Hero</span>
-        </button>
+        <div className="flex items-center gap-4 relative z-10">
+          {/* View Mode Toggle - Daggerheart only */}
+          {isDaggerheart && (
+            <div className="flex items-center rounded-2xl bg-white/[0.03] border border-white/5 p-1">
+              <button
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+                  viewMode === 'cards'
+                    ? 'bg-white/10 text-white/80 border border-white/10 shadow-sm'
+                    : 'text-white/25 hover:text-white/50'
+                }`}
+                onClick={() => setViewMode('cards')}
+              >
+                <LayoutGrid size={12} />
+                Cards
+              </button>
+              <button
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
+                  viewMode === 'sheets'
+                    ? 'bg-white/10 text-white/80 border border-white/10 shadow-sm'
+                    : 'text-white/25 hover:text-white/50'
+                }`}
+                onClick={() => setViewMode('sheets')}
+              >
+                <FileText size={12} />
+                Full Sheets
+              </button>
+            </div>
+          )}
+
+          <button
+            className="group relative flex items-center gap-3 px-8 py-4 rounded-3xl bg-white/[0.03] hover:bg-white/[0.08] text-white transition-all duration-500 border border-white/5 hover:border-white/20 overflow-hidden shadow-2xl"
+            onClick={handleAdd}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Plus size={20} className="relative z-10 text-emerald-400 group-hover:scale-125 transition-transform" />
+            <span className="relative z-10 font-black text-xs uppercase tracking-[0.3em] font-sans">Enlist Hero</span>
+          </button>
+        </div>
 
         {/* Subtle Background Glow for Header */}
         <div className="absolute -top-24 -left-20 w-64 h-64 bg-emerald-500/5 blur-[120px] rounded-full pointer-events-none" />
@@ -132,7 +172,11 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8 pb-20 items-start">
+        <div className={`grid gap-8 pb-20 items-start ${
+          isSheetMode
+            ? 'grid-cols-1'
+            : 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3'
+        }`}>
           {filteredCharacters.map(character => (
             <CardComponent
               key={character.id}
@@ -142,6 +186,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
               isDM={isDM}
               canEdit={canEditCharacter(character)}
               campaign={campaign}
+              updateCharacter={isSheetMode ? updateCharacter : undefined}
             />
           ))}
         </div>
@@ -154,7 +199,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           setEditingCharacter(null);
         }}
         title={editingCharacter ? 'Update Dossier' : 'New Operative'}
-        size="large"
+        size={isSheetMode ? 'full' : 'large'}
       >
         <FormComponent
           character={editingCharacter}

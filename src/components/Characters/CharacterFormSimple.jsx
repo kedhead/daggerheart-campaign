@@ -185,7 +185,7 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
 
       <div className="input-group">
         <label>
-          Demiplane Character Sheet Link *
+          Demiplane Character Sheet Link
           <a
             href="https://app.demiplane.com/nexus/daggerheart"
             target="_blank"
@@ -201,10 +201,9 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
           value={formData.demiplaneLink}
           onChange={(e) => handleChange('demiplaneLink', e.target.value)}
           placeholder="https://app.demiplane.com/nexus/daggerheart/..."
-          required
         />
         <small className="input-hint">
-          Create your character on Demiplane, then paste the link here. All stats will be managed there.
+          Optional: Link to your Demiplane character sheet. You can also use a paper sheet or the built-in character sheet instead.
         </small>
       </div>
 
