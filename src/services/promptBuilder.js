@@ -115,7 +115,7 @@ export const promptBuilder = {
    * @returns {string} Generated prompt
    */
   buildNPCPrompt(context) {
-    const { campaign, campaignFrame, existingNPCs = [], requirements = {} } = context;
+    const { campaign, campaignFrame, existingNPCs = [], existingLocations = [], requirements = {} } = context;
     const gameSystem = this._getGameSystemContext(campaign);
 
     let prompt = `You are helping create an NPC for a ${gameSystem.name} campaign set in a ${gameSystem.genre} setting.
@@ -143,16 +143,40 @@ Game System: ${gameSystem.name}`;
       prompt += this._buildStartingQuestsContext(campaignFrame);
     }
 
+    // Ancestry instructions (Daggerheart only)
+    if (gameSystem.id === 'daggerheart') {
+      const defaultAncestries = ['Clank', 'Daemon', 'Drakona', 'Dwarf', 'Elf', 'Faerie', 'Faun', 'Firbolg', 'Fungril', 'Galapa', 'Giant', 'Goblin', 'Halfling', 'Human', 'Inferis', 'Katari', 'Orc', 'Ribbet', 'Simiah'];
+      const availableAncestries = (campaignFrame?.ancestries?.length > 0) ? campaignFrame.ancestries : defaultAncestries;
+
+      prompt += `\n\nAVAILABLE ANCESTRIES: ${availableAncestries.join(', ')}`;
+      prompt += `\nIMPORTANT: Assign this NPC a random ancestry from the list above. Do NOT default to Human.`;
+
+      const usedAncestries = existingNPCs.map(n => n.ancestry).filter(Boolean);
+      if (usedAncestries.length > 0) {
+        prompt += `\nAncestries already used: [${usedAncestries.join(', ')}]. Pick a DIFFERENT one for variety.`;
+      }
+      prompt += `\nInclude ancestry-appropriate physical traits in the description.`;
+    }
+
+    // Available locations for NPC placement
+    if (existingLocations.length > 0) {
+      prompt += `\n\nAVAILABLE LOCATIONS IN THIS CAMPAIGN:`;
+      existingLocations.forEach(loc => {
+        prompt += `\n- ${loc.name}${loc.type ? ` (${loc.type})` : ''}${loc.region ? ` in ${loc.region}` : ''}`;
+      });
+      prompt += `\nIMPORTANT: Assign this NPC to one of the locations above using its exact name in the "location" field.`;
+    }
+
     prompt += `\n\nREQUIREMENTS:`;
     prompt += requirements.name ? `\nName: ${requirements.name}` : '\nName: Generate a fitting name';
     prompt += requirements.occupation ? `\nOccupation: ${requirements.occupation}` : '\nOccupation: Suggest an appropriate occupation';
     prompt += requirements.relationship ? `\nRelationship: ${requirements.relationship}` : '\nRelationship: Suggest a relationship (ally, neutral, or enemy)';
-    prompt += requirements.location ? `\nLocation: ${requirements.location}` : '\nLocation: Suggest a location';
+    prompt += requirements.location ? `\nLocation: ${requirements.location}` : '';
 
     if (existingNPCs.length > 0) {
       prompt += `\n\nEXISTING NPCs IN CAMPAIGN:`;
       existingNPCs.slice(0, 10).forEach(npc => {
-        prompt += `\n- ${npc.name} (${npc.occupation || 'Unknown'} - ${npc.relationship || 'Unknown'})`;
+        prompt += `\n- ${npc.name}${npc.ancestry ? ` (${npc.ancestry})` : ''} (${npc.occupation || 'Unknown'} - ${npc.relationship || 'Unknown'})`;
       });
       if (existingNPCs.length > 10) {
         prompt += `\n... and ${existingNPCs.length - 10} more`;
@@ -165,10 +189,11 @@ Game System: ${gameSystem.name}`;
 \`\`\`json
 {
   "name": "string",
+  "ancestry": "one of the available ancestries",
   "occupation": "string",
-  "location": "string",
+  "location": "string (use an exact location name from the list above if available)",
   "relationship": "ally" | "neutral" | "enemy",
-  "description": "2-3 sentences about appearance and personality",
+  "description": "2-3 sentences about appearance and personality, referencing ancestry traits",
   "notes": "Important details, connections, or secrets",
   "firstMet": "Suggestion for how/when the party might meet them"
 }
@@ -275,21 +300,32 @@ Game System: ${gameSystem.name}`;
       prompt += this._buildStartingQuestsContext(campaignFrame);
     }
 
+    const bpBudget = (3 * partySize) + 2;
+    const BP_COSTS = { minion: 1, horde: 1, standard: 2, bruiser: 2, skulk: 2, leader: 3, solo: 5 };
+
     prompt += `\n\nPARTY INFO:
 Party Level: ${partyLevel}
-Party Size: ${partySize} characters`;
+Party Size: ${partySize} characters
+Battle Points Budget: ${bpBudget} BP  (formula: 3 x party size + 2)`;
 
     prompt += `\n\nREQUIREMENTS:`;
     prompt += requirements.difficulty ? `\nDifficulty: ${requirements.difficulty}` : '\nDifficulty: Suggest appropriate difficulty (easy, medium, hard, or deadly)';
     prompt += requirements.environment ? `\nEnvironment: ${requirements.environment}` : '\nEnvironment: Suggest an environment';
     prompt += requirements.enemyTypes ? `\nEnemy Types: ${requirements.enemyTypes}` : '\nEnemy Types: Suggest appropriate enemies';
 
-    // Include available adversaries from the campaign's catalog
+    // Include available adversaries with BP costs and roles
     if (availableAdversaries.length > 0) {
-      prompt += `\n\nAVAILABLE ADVERSARIES (use these exact names for suggestedAdversaries):`;
-      availableAdversaries.forEach(name => {
-        prompt += `\n- ${name}`;
+      prompt += `\n\nAVAILABLE ADVERSARIES (with BP cost by role):`;
+      availableAdversaries.forEach(adv => {
+        if (typeof adv === 'string') {
+          prompt += `\n- ${adv}`;
+        } else {
+          const role = adv.role || 'standard';
+          const bpCost = BP_COSTS[role] || 2;
+          prompt += `\n- ${adv.name} [${role}, ${bpCost} BP] — Tier ${adv.tier || '?'}`;
+        }
       });
+      prompt += `\n\nBuild a balanced encounter that stays within the ${bpBudget} BP budget.`;
     }
 
     // Include available environments from the campaign's catalog
@@ -310,13 +346,13 @@ Party Size: ${partySize} characters`;
   "enemies": "List of enemies and approximate numbers",
   "tactics": "How the enemies fight and their strategy",
   "rewards": "Potential loot, experience, or other rewards",
-  "suggestedAdversaries": ["exact adversary name", "exact adversary name"],
+  "suggestedAdversaries": [{ "name": "exact adversary name", "quantity": 2 }, { "name": "exact adversary name", "quantity": 1 }],
   "suggestedEnvironment": "exact environment name or empty string",
   "freshCutGrassLink": "" (leave empty)
 }
 \`\`\`
 
-${availableAdversaries.length > 0 ? 'IMPORTANT: For suggestedAdversaries, use EXACT names from the AVAILABLE ADVERSARIES list above. Pick 2-4 adversaries that fit the encounter thematically.' : ''}
+${availableAdversaries.length > 0 ? 'IMPORTANT: For suggestedAdversaries, use EXACT names from the AVAILABLE ADVERSARIES list above. Pick adversaries that fit thematically and include a quantity for each. Stay within the BP budget.' : ''}
 ${availableEnvironments.length > 0 ? 'IMPORTANT: For suggestedEnvironment, use an EXACT name from the AVAILABLE ENVIRONMENTS list above that fits the encounter.' : ''}
 
 Balance the encounter for the party level and size. Make it thematically appropriate to the campaign.`;

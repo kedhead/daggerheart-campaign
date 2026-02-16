@@ -18,8 +18,16 @@ import { DAGGERHEART_ENVIRONMENTS } from '../data/daggerheartEnvironments';
  * @param {string} provider - API provider (anthropic/openai)
  * @returns {Promise<object>} Generated content organized by type
  */
-export async function generateCampaignContent(campaignFrame, campaign, apiKey = null, provider = 'anthropic') {
+export async function generateCampaignContent(campaignFrame, campaign, apiKey = null, provider = 'anthropic', options = {}) {
   const useAI = !!apiKey;
+
+  const counts = {
+    npcs: options.npcs ?? 5,
+    locations: options.locations ?? 4,
+    lore: options.lore ?? 3,
+    encounters: options.encounters ?? 2,
+    partySize: options.partySize ?? 4
+  };
 
   const context = {
     campaign,
@@ -40,56 +48,61 @@ export async function generateCampaignContent(campaignFrame, campaign, apiKey = 
   };
 
   try {
-    // Generate NPCs (5 starter NPCs)
-    console.log('Generating NPCs...');
-    for (let i = 0; i < 5; i++) {
-      try {
-        const npc = useAI
-          ? await generateNPCWithAI(context, apiKey, provider)
-          : templateService.generateRandomNPC(context);
-        console.log('Generated NPC:', npc);
-        generated.npcs.push(npc);
-        context.existingNPCs.push(npc);
-      } catch (err) {
-        console.error(`Failed to generate NPC ${i + 1}:`, err);
-        // Use template as fallback
-        const npc = templateService.generateRandomNPC(context);
-        generated.npcs.push(npc);
-        context.existingNPCs.push(npc);
+    // Generate Locations FIRST (so NPCs can reference them)
+    if (counts.locations > 0) {
+      console.log(`Generating ${counts.locations} Locations...`);
+      for (let i = 0; i < counts.locations; i++) {
+        try {
+          const location = useAI
+            ? await generateLocationWithAI(context, apiKey, provider)
+            : templateService.generateRandomLocation(context);
+          console.log('Generated Location:', location);
+          generated.locations.push(location);
+          context.existingLocations.push(location);
+        } catch (err) {
+          console.error(`Failed to generate Location ${i + 1}:`, err);
+          const location = templateService.generateRandomLocation(context);
+          generated.locations.push(location);
+          context.existingLocations.push(location);
+        }
       }
     }
 
-    // Generate Locations (4 starter locations)
-    console.log('Generating Locations...');
-    for (let i = 0; i < 4; i++) {
-      try {
-        const location = useAI
-          ? await generateLocationWithAI(context, apiKey, provider)
-          : templateService.generateRandomLocation(context);
-        console.log('Generated Location:', location);
-        generated.locations.push(location);
-        context.existingLocations.push(location);
-      } catch (err) {
-        console.error(`Failed to generate Location ${i + 1}:`, err);
-        const location = templateService.generateRandomLocation(context);
-        generated.locations.push(location);
-        context.existingLocations.push(location);
+    // Generate NPCs (after locations, so they can reference them)
+    if (counts.npcs > 0) {
+      console.log(`Generating ${counts.npcs} NPCs...`);
+      for (let i = 0; i < counts.npcs; i++) {
+        try {
+          const npc = useAI
+            ? await generateNPCWithAI(context, apiKey, provider)
+            : templateService.generateRandomNPC(context);
+          console.log('Generated NPC:', npc);
+          generated.npcs.push(npc);
+          context.existingNPCs.push(npc);
+        } catch (err) {
+          console.error(`Failed to generate NPC ${i + 1}:`, err);
+          const npc = templateService.generateRandomNPC(context);
+          generated.npcs.push(npc);
+          context.existingNPCs.push(npc);
+        }
       }
     }
 
-    // Generate Lore Entries (3 starter lore entries)
-    console.log('Generating Lore...');
-    for (let i = 0; i < 3; i++) {
-      try {
-        const lore = useAI
-          ? await generateLoreWithAI(context, apiKey, provider, i)
-          : generateLoreFromTemplate(campaignFrame, i);
-        console.log('Generated Lore:', lore);
-        generated.lore.push(lore);
-      } catch (err) {
-        console.error(`Failed to generate Lore ${i + 1}:`, err);
-        const lore = generateLoreFromTemplate(campaignFrame, i);
-        generated.lore.push(lore);
+    // Generate Lore Entries
+    if (counts.lore > 0) {
+      console.log(`Generating ${counts.lore} Lore entries...`);
+      for (let i = 0; i < counts.lore; i++) {
+        try {
+          const lore = useAI
+            ? await generateLoreWithAI(context, apiKey, provider, i)
+            : generateLoreFromTemplate(campaignFrame, i);
+          console.log('Generated Lore:', lore);
+          generated.lore.push(lore);
+        } catch (err) {
+          console.error(`Failed to generate Lore ${i + 1}:`, err);
+          const lore = generateLoreFromTemplate(campaignFrame, i);
+          generated.lore.push(lore);
+        }
       }
     }
 
@@ -104,19 +117,21 @@ export async function generateCampaignContent(campaignFrame, campaign, apiKey = 
       console.log(`Selected ${generated.environments.length} environments`);
     }
 
-    // Generate Encounters (2 starter encounters)
-    console.log('Generating Encounters...');
-    for (let i = 0; i < 2; i++) {
-      try {
-        const encounter = useAI
-          ? await generateEncounterWithAI(context, apiKey, provider, i, generated.adversaries, generated.environments)
-          : templateService.generateRandomEncounter({ partyLevel: 1, partySize: 4 });
-        console.log('Generated Encounter:', encounter);
-        generated.encounters.push(encounter);
-      } catch (err) {
-        console.error(`Failed to generate Encounter ${i + 1}:`, err);
-        const encounter = templateService.generateRandomEncounter({ partyLevel: 1, partySize: 4 });
-        generated.encounters.push(encounter);
+    // Generate Encounters
+    if (counts.encounters > 0) {
+      console.log(`Generating ${counts.encounters} Encounters...`);
+      for (let i = 0; i < counts.encounters; i++) {
+        try {
+          const encounter = useAI
+            ? await generateEncounterWithAI(context, apiKey, provider, i, generated.adversaries, generated.environments, counts.partySize)
+            : templateService.generateRandomEncounter({ partyLevel: 1, partySize: counts.partySize });
+          console.log('Generated Encounter:', encounter);
+          generated.encounters.push(encounter);
+        } catch (err) {
+          console.error(`Failed to generate Encounter ${i + 1}:`, err);
+          const encounter = templateService.generateRandomEncounter({ partyLevel: 1, partySize: counts.partySize });
+          generated.encounters.push(encounter);
+        }
       }
     }
 
@@ -211,16 +226,16 @@ Make it thematically consistent with the campaign. Incorporate player-establishe
 /**
  * Generate Encounter using AI
  */
-async function generateEncounterWithAI(context, apiKey, provider, index, availableAdversaries = [], availableEnvironments = []) {
+async function generateEncounterWithAI(context, apiKey, provider, index, availableAdversaries = [], availableEnvironments = [], partySize = 4) {
   const difficulties = ['easy', 'medium'];
   const difficulty = difficulties[index % difficulties.length];
 
   const encounterContext = {
     ...context,
     partyLevel: 1,
-    partySize: 4,
+    partySize,
     requirements: { difficulty },
-    availableAdversaries: availableAdversaries.map(a => a.name),
+    availableAdversaries, // full adversary objects with role/tier
     availableEnvironments: availableEnvironments.map(e => e.name)
   };
 

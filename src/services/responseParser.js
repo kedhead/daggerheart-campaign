@@ -135,6 +135,7 @@ export const responseParser = {
   _validateNPCData(data) {
     return {
       name: data.name || 'Unknown NPC',
+      ancestry: data.ancestry || '',
       occupation: data.occupation || '',
       location: data.location || '',
       relationship: this._validateRelationship(data.relationship),
@@ -168,6 +169,8 @@ export const responseParser = {
       enemies: data.enemies || '',
       tactics: data.tactics || '',
       rewards: data.rewards || '',
+      suggestedAdversaries: Array.isArray(data.suggestedAdversaries) ? data.suggestedAdversaries : [],
+      suggestedEnvironment: data.suggestedEnvironment || '',
       freshCutGrassLink: ''
     };
   },
@@ -219,6 +222,7 @@ export const responseParser = {
 
     return {
       name: extractField(['name', 'npc name']) || 'Unknown NPC',
+      ancestry: extractField(['ancestry', 'race', 'species']),
       occupation: extractField(['occupation', 'job', 'role']),
       location: extractField(['location', 'residence', 'found at']),
       relationship: this._validateRelationship(extractField(['relationship', 'allegiance', 'disposition'])),

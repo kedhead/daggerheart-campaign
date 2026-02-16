@@ -19,7 +19,7 @@ import StartingQuestsStep from './wizard/steps/StartingQuestsStep';
 import CampaignMechanicsStep from './wizard/steps/CampaignMechanicsStep';
 import SessionZeroStep from './wizard/steps/SessionZeroStep';
 import { useAPIKey } from '../../hooks/useAPIKey';
-import { CheckCircle, Loader2, Sparkles } from 'lucide-react';
+import { CheckCircle, Loader2, Sparkles, Settings2 } from 'lucide-react';
 import { generateCampaignContent } from '../../services/campaignGenerator';
 import { autoLinkText } from '../../utils/autoLinkText';
 import { generateMap } from '../../services/mapGenerator';
@@ -60,6 +60,13 @@ export default function CampaignBuilderWizard({
   const [generating, setGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState('');
   const [generationComplete, setGenerationComplete] = useState(false);
+  const [generationOptions, setGenerationOptions] = useState({
+    npcs: 5,
+    locations: 4,
+    lore: 3,
+    encounters: 2,
+    partySize: 4
+  });
 
   const handleSaveDraft = async () => {
     setSaving(true);
@@ -81,7 +88,7 @@ export default function CampaignBuilderWizard({
       await complete();
 
       // Generate campaign content
-      setGenerationProgress('Step 2/10: Generating NPCs, locations, lore, encounters...');
+      setGenerationProgress(`Step 2/10: Generating ${generationOptions.locations} locations, ${generationOptions.npcs} NPCs, ${generationOptions.lore} lore, ${generationOptions.encounters} encounters...`);
 
       // Get effective API key (user's own or shared)
       const anthropicResult = getEffectiveKey('anthropic');
@@ -117,7 +124,7 @@ export default function CampaignBuilderWizard({
       const openaiKey = openaiEffective.key;
 
       console.log('Starting content generation with API key:', apiKey ? 'Yes' : 'No');
-      const generatedContent = await generateCampaignContent(data, campaign, apiKey, provider);
+      const generatedContent = await generateCampaignContent(data, campaign, apiKey, provider, generationOptions);
       console.log('Generated content:', generatedContent);
 
       // Auto-link: collect all entity names, then link text fields across all generated entities
@@ -137,6 +144,7 @@ export default function CampaignBuilderWizard({
           if (npc.description) npc.description = link(npc.description);
           if (npc.notes) npc.notes = link(npc.notes);
           if (npc.firstMet) npc.firstMet = link(npc.firstMet);
+          if (npc.location) npc.location = link(npc.location);
         }
         for (const loc of generatedContent.locations || []) {
           if (loc.description) loc.description = link(loc.description);
@@ -272,13 +280,19 @@ export default function CampaignBuilderWizard({
         const encounter = generatedContent.encounters[i];
         console.log(`Saving Encounter ${i + 1}:`, encounter);
 
-        // Resolve suggested adversaries to adversary slots
+        // Set partySize on encounter
+        encounter.partySize = generationOptions.partySize;
+
+        // Resolve suggested adversaries to adversary slots (supports both string[] and {name, quantity}[])
         if (encounter.suggestedAdversaries && Array.isArray(encounter.suggestedAdversaries)) {
           const adversarySlots = [];
-          for (const advName of encounter.suggestedAdversaries) {
+          for (const adv of encounter.suggestedAdversaries) {
+            const advName = typeof adv === 'string' ? adv : adv.name;
+            const quantity = typeof adv === 'object' ? (adv.quantity || 1) : 1;
+            if (!advName) continue;
             const advId = adversaryIdMap[advName.toLowerCase()];
             if (advId) {
-              adversarySlots.push({ adversaryId: advId, quantity: 1 });
+              adversarySlots.push({ adversaryId: advId, quantity });
             }
           }
           if (adversarySlots.length > 0) {
@@ -575,6 +589,38 @@ export default function CampaignBuilderWizard({
                   <strong className="text-white/80 block mb-1">Touchstones:</strong>
                   <p className="text-white/60 text-sm">{data.touchstones.length > 0 ? data.touchstones.join(', ') : 'Not set'}</p>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-black/20 rounded-xl p-6 border border-white/5">
+              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                <Settings2 size={20} className="text-[rgb(var(--color-primary))]" />
+                Generation Options
+              </h3>
+              <p className="text-white/50 text-sm mb-4">Choose how much starter content to generate for your campaign.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                {[
+                  { key: 'locations', label: 'Locations', max: 10 },
+                  { key: 'npcs', label: 'NPCs', max: 10 },
+                  { key: 'lore', label: 'Lore Entries', max: 10 },
+                  { key: 'encounters', label: 'Encounters', max: 10 },
+                  { key: 'partySize', label: 'Party Size', max: 8 }
+                ].map(({ key, label, max }) => (
+                  <div key={key} className="flex flex-col items-center gap-1">
+                    <label className="text-white/70 text-xs font-medium">{label}</label>
+                    <input
+                      type="number"
+                      min={key === 'partySize' ? 1 : 0}
+                      max={max}
+                      value={generationOptions[key]}
+                      onChange={(e) => setGenerationOptions(prev => ({
+                        ...prev,
+                        [key]: Math.max(key === 'partySize' ? 1 : 0, Math.min(max, parseInt(e.target.value) || 0))
+                      }))}
+                      className="w-16 text-center bg-black/30 border border-white/10 rounded-lg px-2 py-1.5 text-white text-sm focus:border-[rgb(var(--color-primary))] focus:outline-none"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 

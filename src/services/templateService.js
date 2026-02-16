@@ -113,13 +113,31 @@ export const templateService = {
    * @returns {object} Generated NPC data
    */
   generateRandomNPC(context = {}) {
-    const { relationship, occupation, location } = context;
+    const { relationship, occupation, location, existingLocations = [], existingNPCs = [], campaignFrame } = context;
     const templates = this._getTemplateSet(context);
+    const gameSystem = context.campaign?.gameSystem || 'daggerheart';
+
+    // Pick ancestry for Daggerheart
+    let ancestry = '';
+    if (gameSystem === 'daggerheart' || !gameSystem) {
+      const defaultAncestries = ['Clank', 'Daemon', 'Drakona', 'Dwarf', 'Elf', 'Faerie', 'Faun', 'Firbolg', 'Fungril', 'Galapa', 'Giant', 'Goblin', 'Halfling', 'Human', 'Inferis', 'Katari', 'Orc', 'Ribbet', 'Simiah'];
+      const availableAncestries = (campaignFrame?.ancestries?.length > 0) ? campaignFrame.ancestries : defaultAncestries;
+      const usedAncestries = existingNPCs.map(n => n.ancestry).filter(Boolean);
+      // Prefer unused ancestries for variety
+      const unused = availableAncestries.filter(a => !usedAncestries.includes(a));
+      ancestry = randomChoice(unused.length > 0 ? unused : availableAncestries);
+    }
+
+    // Pick location from existing generated locations if available
+    const npcLocation = location || (existingLocations.length > 0
+      ? randomChoice(existingLocations).name
+      : randomChoice(templates.locations));
 
     return {
       name: randomChoice(templates.names),
+      ancestry,
       occupation: occupation || randomChoice(templates.occupations),
-      location: location || randomChoice(templates.locations),
+      location: npcLocation,
       relationship: relationship || randomChoice(['ally', 'neutral', 'enemy']),
       description: randomChoice(templates.npcDescriptions),
       notes: '',
