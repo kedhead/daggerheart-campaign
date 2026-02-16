@@ -28,7 +28,7 @@ const CARD_COMPONENTS = {
   'generic': GenericCard
 };
 
-export default function CharactersView({ campaign, characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId }) {
+export default function CharactersView({ campaign, characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId, items, partyInventory, addToCharacterInventory, removeFromCharacterInventory, toggleEquipped, transferToParty }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -187,6 +187,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
               canEdit={canEditCharacter(character)}
               campaign={campaign}
               updateCharacter={isSheetMode ? updateCharacter : undefined}
+              items={isSheetMode ? items : undefined}
             />
           ))}
         </div>
@@ -210,6 +211,11 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           }}
           isDM={isDM}
           campaign={campaign}
+          items={isSheetMode ? items : undefined}
+          partyInventory={isSheetMode ? partyInventory : undefined}
+          addToCharacterInventory={isSheetMode ? addToCharacterInventory : undefined}
+          removeFromCharacterInventory={isSheetMode ? removeFromCharacterInventory : undefined}
+          toggleEquipped={isSheetMode ? toggleEquipped : undefined}
         />
       </Modal>
     </div>

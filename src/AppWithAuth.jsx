@@ -292,6 +292,12 @@ function CampaignApp() {
             deleteCharacter={deleteCharacter}
             isDM={isDM}
             currentUserId={currentUser.uid}
+            items={items}
+            partyInventory={partyInventory}
+            addToCharacterInventory={addToCharacterInventory}
+            removeFromCharacterInventory={removeFromCharacterInventory}
+            toggleEquipped={toggleEquipped}
+            transferToParty={transferToParty}
           />
         );
       case 'lore':

@@ -90,9 +90,10 @@ export default function CommunitiesStep({ value, onChange }) {
 
             {showStandard && (
               <div className="bg-black/40 border border-white/10 rounded-xl p-3 max-h-60 overflow-y-auto space-y-2">
-                {Object.entries(COMMUNITIES).map(([name, desc]) => {
+                {Object.entries(COMMUNITIES).map(([name, data]) => {
                   const isAdded = communities.some(c => c.name === name);
                   if (isAdded) return null;
+                  const desc = typeof data === 'string' ? data : data.description;
 
                   return (
                     <button

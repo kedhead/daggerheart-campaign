@@ -46,8 +46,9 @@ export default function AncestriesStep({ value, onChange }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {Object.entries(ANCESTRIES).map(([name, description]) => {
+          {Object.entries(ANCESTRIES).map(([name, data]) => {
             const isSelected = selectedAncestries.includes(name);
+            const description = typeof data === 'string' ? data : data.description;
             return (
               <div
                 key={name}

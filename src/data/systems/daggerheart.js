@@ -49,6 +49,117 @@ const CLASSES = {
   }
 };
 
+const SUBCLASSES = {
+  'Bard': [
+    {
+      name: 'Troubadour',
+      description: 'Bards who weave magic through song and performance, inspiring allies with melodic enchantments.',
+      foundation: { name: 'Song of Inspiration', description: 'When you spend Hope to support an ally, they gain an additional +1 to their action roll.' }
+    },
+    {
+      name: 'Wordsmith',
+      description: 'Bards who command the power of language, using words as weapons and shields.',
+      foundation: { name: 'Power Word', description: 'Once per short rest, you can speak a word of power to grant an ally advantage on their next action roll or impose disadvantage on an enemy\'s next action.' }
+    }
+  ],
+  'Druid': [
+    {
+      name: 'Warden of the Elements',
+      description: 'Druids who channel the raw elemental forces of nature to devastate foes and reshape the battlefield.',
+      foundation: { name: 'Elemental Fury', description: 'When you cast a spell that deals damage, you may choose to change its damage type to fire, cold, lightning, or force.' }
+    },
+    {
+      name: 'Warden of Renewal',
+      description: 'Druids focused on growth, healing, and the restorative cycle of nature.',
+      foundation: { name: 'Nature\'s Balm', description: 'When you use an action to heal an ally, they may also clear one stress.' }
+    }
+  ],
+  'Guardian': [
+    {
+      name: 'Stalwart',
+      description: 'Guardians who specialize in immovable defense, absorbing punishment meant for their allies.',
+      foundation: { name: 'Shield Wall', description: 'When an ally within close range is attacked, you may mark an armor slot to reduce the damage they take by your armor score.' }
+    },
+    {
+      name: 'Vengeance',
+      description: 'Guardians who turn defense into offense, punishing those who dare strike their allies.',
+      foundation: { name: 'Retribution', description: 'When you or an adjacent ally takes damage from an attack, you may immediately make a melee attack against the attacker.' }
+    }
+  ],
+  'Ranger': [
+    {
+      name: 'Beastbound',
+      description: 'Rangers who forge deep bonds with animal companions, fighting as one.',
+      foundation: { name: 'Animal Companion', description: 'You gain a loyal animal companion that fights alongside you. It can take one action per round on your turn.' }
+    },
+    {
+      name: 'Wayfinder',
+      description: 'Rangers who master the wilderness itself, using terrain and tracking to gain tactical advantages.',
+      foundation: { name: 'Terrain Master', description: 'You always know true north and cannot become lost. You gain advantage on rolls to track, navigate, or survive in the wilderness.' }
+    }
+  ],
+  'Rogue': [
+    {
+      name: 'Syndicate',
+      description: 'Rogues connected to criminal networks, masters of deception and social manipulation.',
+      foundation: { name: 'Underworld Contacts', description: 'In any settlement, you can find a contact who owes you a favor. Once per long rest, call in a favor for information, goods, or assistance.' }
+    },
+    {
+      name: 'Nightwalker',
+      description: 'Rogues who embrace the shadows, becoming one with darkness to strike unseen.',
+      foundation: { name: 'Shadow Step', description: 'When you are in dim light or darkness, you may spend Hope to teleport to another point of darkness within far range.' }
+    }
+  ],
+  'Seraph': [
+    {
+      name: 'Winged Sentinel',
+      description: 'Seraphs who manifest radiant wings and serve as airborne protectors of the faithful.',
+      foundation: { name: 'Radiant Wings', description: 'You can manifest spectral wings as an action, gaining flight until the end of your next turn. Enemies you fly over take radiant damage.' }
+    },
+    {
+      name: 'Faithful',
+      description: 'Seraphs devoted to healing and divine support, channeling celestial power to mend wounds.',
+      foundation: { name: 'Divine Grace', description: 'When you heal an ally, you may spend additional Hope to also heal another ally within close range for half the amount.' }
+    }
+  ],
+  'Sorcerer': [
+    {
+      name: 'Elemental Origin',
+      description: 'Sorcerers whose power springs from a connection to the elemental planes.',
+      foundation: { name: 'Elemental Affinity', description: 'Choose an element (fire, cold, lightning, or force). Spells of that element deal +1 damage and you have resistance to that damage type.' }
+    },
+    {
+      name: 'Wild Magic',
+      description: 'Sorcerers whose unstable power surges with chaotic and unpredictable magical effects.',
+      foundation: { name: 'Chaos Surge', description: 'When you roll with Fear on a spellcast, you may trigger a wild magic surge: roll a d6 to determine a random bonus effect in addition to the spell.' }
+    }
+  ],
+  'Warrior': [
+    {
+      name: 'Call of the Brave',
+      description: 'Warriors who lead from the front, inspiring allies through acts of courage and martial prowess.',
+      foundation: { name: 'Battle Cry', description: 'Once per short rest, you may shout a battle cry. All allies within close range gain +1 to their next attack roll.' }
+    },
+    {
+      name: 'Call of the Slayer',
+      description: 'Warriors focused on dealing maximum damage, hunting the most dangerous foes.',
+      foundation: { name: 'Mark Prey', description: 'As a free action, mark an enemy you can see. You deal +2 damage to your marked prey. You may only have one prey marked at a time.' }
+    }
+  ],
+  'Wizard': [
+    {
+      name: 'School of Knowledge',
+      description: 'Wizards who pursue mastery through study, accumulating vast arcane knowledge.',
+      foundation: { name: 'Arcane Repository', description: 'You maintain a spellbook with additional spells. Once per long rest, you may cast a spell you have studied but not prepared.' }
+    },
+    {
+      name: 'School of War',
+      description: 'Wizards who blend martial training with arcane power, becoming battlemages.',
+      foundation: { name: 'Arcane Armor', description: 'You can wear light armor without penalty to spellcasting. When you cast a spell, you gain +1 to your armor score until the start of your next turn.' }
+    }
+  ]
+};
+
 const DOMAINS = [
   'Arcana',
   'Blade',
@@ -62,37 +173,121 @@ const DOMAINS = [
 ];
 
 const ANCESTRIES = {
-  'Clank': 'Mechanical beings of gears and magic, crafted with purpose and driven by logic.',
-  'Daemon': 'Beings touched by otherworldly energies, walking between mortal and supernatural realms.',
-  'Drakona': 'Dragonborn humanoids with scales, breath weapons, and draconic heritage.',
-  'Dwarf': 'Sturdy folk of mountain and forge, known for craftsmanship and resilience.',
-  'Elf': 'Graceful beings with deep connections to magic and the ancient world.',
-  'Faerie': 'Tiny fey creatures brimming with mischief, magic, and wonder.',
-  'Faun': 'Half-human, half-goat folk who embody the wild spirit of nature.',
-  'Firbolg': 'Gentle giants with deep ties to nature and the forest.',
-  'Fungril': 'Mushroom folk who thrive in darkness and decay, sprouting from the deep earth.',
-  'Galapa': 'Turtle-like beings of wisdom, patience, and ancient knowledge.',
-  'Giant': 'Towering folk whose size is matched only by their strength.',
-  'Goblin': 'Small, scrappy creatures known for cunning, chaos, and surprising ingenuity.',
-  'Halfling': 'Small folk with big hearts, known for luck, community, and courage.',
-  'Human': 'Versatile and ambitious, adaptable to any role or challenge.',
-  'Inferis': 'Beings born of infernal flame, carrying both power and temptation.',
-  'Katari': 'Feline humanoids who embody grace, curiosity, and independence.',
-  'Orc': 'Proud warriors with honor-bound cultures and fierce determination.',
-  'Ribbet': 'Amphibious frog-folk who leap between land and water with ease.',
-  'Simiah': 'Ape-like beings of strength, community, and primal wisdom.'
+  'Clank': {
+    description: 'Mechanical beings of gears and magic, crafted with purpose and driven by logic.',
+    features: [{ name: 'Constructed Resilience', description: 'You do not need to eat, drink, or breathe. You are immune to poison and disease.' }]
+  },
+  'Daemon': {
+    description: 'Beings touched by otherworldly energies, walking between mortal and supernatural realms.',
+    features: [{ name: 'Otherworldly Presence', description: 'You can see in magical darkness. Once per long rest, you may sense the presence of supernatural creatures within far range.' }]
+  },
+  'Drakona': {
+    description: 'Dragonborn humanoids with scales, breath weapons, and draconic heritage.',
+    features: [{ name: 'Breath Weapon', description: 'Once per short rest, you may use your breath weapon to deal damage in a close-range cone. Choose fire, cold, or lightning when you create your character.' }]
+  },
+  'Dwarf': {
+    description: 'Sturdy folk of mountain and forge, known for craftsmanship and resilience.',
+    features: [{ name: 'Tough as Stone', description: 'When you mark your last armor slot, roll a d6. On a 4+, the slot is not marked.' }]
+  },
+  'Elf': {
+    description: 'Graceful beings with deep connections to magic and the ancient world.',
+    features: [{ name: 'Ancient Memory', description: 'You have advantage on Knowledge rolls related to history, arcana, and ancient lore.' }]
+  },
+  'Faerie': {
+    description: 'Tiny fey creatures brimming with mischief, magic, and wonder.',
+    features: [{ name: 'Fey Flight', description: 'You have wings and can fly. You are Small-sized, which grants you advantage on stealth but limits your carrying capacity.' }]
+  },
+  'Faun': {
+    description: 'Half-human, half-goat folk who embody the wild spirit of nature.',
+    features: [{ name: 'Sure-Footed', description: 'You can move across difficult terrain without penalty and have advantage on rolls to keep your balance or resist being pushed.' }]
+  },
+  'Firbolg': {
+    description: 'Gentle giants with deep ties to nature and the forest.',
+    features: [{ name: 'Nature\'s Veil', description: 'Once per short rest, you may turn invisible until the start of your next turn or until you attack or cast a spell.' }]
+  },
+  'Fungril': {
+    description: 'Mushroom folk who thrive in darkness and decay, sprouting from the deep earth.',
+    features: [{ name: 'Spore Cloud', description: 'Once per short rest, you may release a cloud of spores. Creatures within melee range must mark a stress or become disoriented.' }]
+  },
+  'Galapa': {
+    description: 'Turtle-like beings of wisdom, patience, and ancient knowledge.',
+    features: [{ name: 'Shell Defense', description: 'You can retreat into your shell as an action, gaining +2 to your armor score but becoming unable to move until the start of your next turn.' }]
+  },
+  'Giant': {
+    description: 'Towering folk whose size is matched only by their strength.',
+    features: [{ name: 'Towering Might', description: 'You count as Large-sized. You have advantage on Strength rolls and can wield heavy weapons without penalty.' }]
+  },
+  'Goblin': {
+    description: 'Small, scrappy creatures known for cunning, chaos, and surprising ingenuity.',
+    features: [{ name: 'Nimble Escape', description: 'Once per short rest, when you would take damage, you may use your reaction to move to an adjacent space and take half damage.' }]
+  },
+  'Halfling': {
+    description: 'Small folk with big hearts, known for luck, community, and courage.',
+    features: [{ name: 'Lucky', description: 'Once per session, when you or an ally within close range rolls with Fear, you may reroll and take the new result.' }]
+  },
+  'Human': {
+    description: 'Versatile and ambitious, adaptable to any role or challenge.',
+    features: [{ name: 'Adaptable', description: 'You gain one additional Experience at character creation. Once per long rest, you may add +1 to any roll.' }]
+  },
+  'Inferis': {
+    description: 'Beings born of infernal flame, carrying both power and temptation.',
+    features: [{ name: 'Infernal Legacy', description: 'You have resistance to fire damage. Once per long rest, you may cast a fire spell without spending Hope.' }]
+  },
+  'Katari': {
+    description: 'Feline humanoids who embody grace, curiosity, and independence.',
+    features: [{ name: 'Cat\'s Grace', description: 'You always land on your feet and take reduced fall damage. You have advantage on Agility rolls for climbing and jumping.' }]
+  },
+  'Orc': {
+    description: 'Proud warriors with honor-bound cultures and fierce determination.',
+    features: [{ name: 'Relentless', description: 'Once per long rest, when you would mark your last HP slot, you may instead remain at one HP.' }]
+  },
+  'Ribbet': {
+    description: 'Amphibious frog-folk who leap between land and water with ease.',
+    features: [{ name: 'Amphibious', description: 'You can breathe underwater and have a swim speed equal to your movement speed. You can jump twice the normal distance.' }]
+  },
+  'Simiah': {
+    description: 'Ape-like beings of strength, community, and primal wisdom.',
+    features: [{ name: 'Primal Grip', description: 'You can climb at full speed and have advantage on rolls to grapple. You may use your feet to hold items or weapons.' }]
+  }
 };
 
 const COMMUNITIES = {
-  'Highborne': 'Raised in nobility, wealth, and privilege with connections to power and high society.',
-  'Loreborne': 'Scholars and sages raised among books, seeking knowledge and understanding.',
-  'Orderborne': 'Trained in discipline and structure, serving institutions of law, faith, or military.',
-  'Ridgeborne': 'Mountain folk who endure harsh climates and value independence and resilience.',
-  'Seaborne': 'Sailors and coastal dwellers who navigate the waters and embrace freedom.',
-  'Slyborne': 'Street-smart survivors from urban underbellies, skilled in deception and cunning.',
-  'Wanderborne': 'Nomads and travelers who roam the world, never settling in one place.',
-  'Wildborne': 'Raised in untamed wilderness, connected to nature and its primal ways.',
-  'Underborne': 'Dwellers of the deep earth, caves, and underground cities.'
+  'Highborne': {
+    description: 'Raised in nobility, wealth, and privilege with connections to power and high society.',
+    features: [{ name: 'Noble Bearing', description: 'You have advantage on Presence rolls when interacting with nobility or high society. You begin with an additional 10 gold.' }]
+  },
+  'Loreborne': {
+    description: 'Scholars and sages raised among books, seeking knowledge and understanding.',
+    features: [{ name: 'Well-Read', description: 'You have advantage on Knowledge rolls to recall lore, identify magical items, or decipher texts.' }]
+  },
+  'Orderborne': {
+    description: 'Trained in discipline and structure, serving institutions of law, faith, or military.',
+    features: [{ name: 'Disciplined', description: 'Once per short rest, when you would mark stress, you may instead choose not to mark it.' }]
+  },
+  'Ridgeborne': {
+    description: 'Mountain folk who endure harsh climates and value independence and resilience.',
+    features: [{ name: 'Mountain Endurance', description: 'You have advantage on rolls to resist extreme weather and exhaustion. You can carry more equipment than normal.' }]
+  },
+  'Seaborne': {
+    description: 'Sailors and coastal dwellers who navigate the waters and embrace freedom.',
+    features: [{ name: 'Sea Legs', description: 'You have advantage on Agility rolls while on boats or in water. You can hold your breath twice as long as normal.' }]
+  },
+  'Slyborne': {
+    description: 'Street-smart survivors from urban underbellies, skilled in deception and cunning.',
+    features: [{ name: 'Street Smarts', description: 'You have advantage on Instinct rolls to detect lies, spot danger in urban settings, or find black market goods.' }]
+  },
+  'Wanderborne': {
+    description: 'Nomads and travelers who roam the world, never settling in one place.',
+    features: [{ name: 'Worldly', description: 'You speak one additional language. You have advantage on rolls to navigate, find shelter, or make contacts in new places.' }]
+  },
+  'Wildborne': {
+    description: 'Raised in untamed wilderness, connected to nature and its primal ways.',
+    features: [{ name: 'Nature\'s Child', description: 'You have advantage on Instinct rolls for tracking, foraging, and surviving in the wild. Animals are not hostile to you by default.' }]
+  },
+  'Underborne': {
+    description: 'Dwellers of the deep earth, caves, and underground cities.',
+    features: [{ name: 'Darkvision', description: 'You can see in complete darkness up to far range. You have advantage on rolls to navigate underground or detect subterranean hazards.' }]
+  }
 };
 
 const LORE_TYPES = [
@@ -478,6 +673,7 @@ export default {
 
   // Game data
   classes: CLASSES,
+  subclasses: SUBCLASSES,
   domains: DOMAINS,
   ancestries: ANCESTRIES,
   communities: COMMUNITIES,
@@ -504,6 +700,7 @@ export default {
 // Also export individual constants for backwards compatibility
 export {
   CLASSES,
+  SUBCLASSES,
   DOMAINS,
   ANCESTRIES,
   COMMUNITIES,

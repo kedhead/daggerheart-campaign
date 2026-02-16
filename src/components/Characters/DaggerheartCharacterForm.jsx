@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Save, X, ExternalLink, Wand2, Loader2, Plus } from 'lucide-react';
-import { CLASSES, DOMAINS, ANCESTRIES, COMMUNITIES, TRAIT_RANGE } from '../../data/systems/daggerheart';
+import { useState, useMemo } from 'react';
+import { Save, X, ExternalLink, Wand2, Loader2, Plus, Check, Sword, Shield, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { CLASSES, SUBCLASSES, DOMAINS, ANCESTRIES, COMMUNITIES, TRAIT_RANGE } from '../../data/systems/daggerheart';
+import { getCardsForCharacter, getCardByName } from '../../data/daggerheartDomainCards';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import './CharacterForm.css';
@@ -30,6 +31,7 @@ const DEFAULT_CHARACTER = {
   primaryDomain: '',
   secondaryDomain: '',
   domainNotes: '',
+  domainCards: [],
   primaryWeapon: '',
   secondaryWeapon: '',
   equippedArmor: '',
@@ -42,7 +44,9 @@ const DEFAULT_CHARACTER = {
   demiplaneLink: ''
 };
 
-export default function DaggerheartCharacterForm({ character, onSave, onCancel, isDM, campaign }) {
+const SECTION_STYLE = { color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' };
+
+export default function DaggerheartCharacterForm({ character, onSave, onCancel, isDM, campaign, items, addToCharacterInventory, removeFromCharacterInventory, toggleEquipped }) {
   const [formData, setFormData] = useState(() => ({
     ...DEFAULT_CHARACTER,
     ...character,
@@ -51,11 +55,16 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
     stressSlots: character?.stressSlots || [...DEFAULT_STRESS],
     armorSlots: character?.armorSlots || [...DEFAULT_ARMOR_SLOTS],
     experiences: character?.experiences || [],
+    domainCards: character?.domainCards || [],
   }));
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [experienceInput, setExperienceInput] = useState('');
+  const [customSubclass, setCustomSubclass] = useState(false);
+  const [showDomainCards, setShowDomainCards] = useState(false);
+  const [showEquipPicker, setShowEquipPicker] = useState(false);
+  const [equipFilter, setEquipFilter] = useState('');
 
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
   const openaiKeyInfo = getEffectiveKey('openai');
@@ -73,6 +82,31 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       }));
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const handleClassChange = (newClass) => {
+    setFormData(prev => {
+      const update = { ...prev, class: newClass };
+      // Reset subclass if it's not valid for the new class
+      if (newClass && SUBCLASSES[newClass]) {
+        const validNames = SUBCLASSES[newClass].map(s => s.name);
+        if (!validNames.includes(prev.subclass) && prev.subclass !== '') {
+          update.subclass = '';
+          setCustomSubclass(false);
+        }
+      }
+      return update;
+    });
+  };
+
+  const handleSubclassSelect = (value) => {
+    if (value === '__custom__') {
+      setCustomSubclass(true);
+      handleChange('subclass', '');
+    } else {
+      setCustomSubclass(false);
+      handleChange('subclass', value);
     }
   };
 
@@ -97,6 +131,17 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       ...prev,
       experiences: prev.experiences.filter((_, i) => i !== index)
     }));
+  };
+
+  const toggleDomainCard = (cardName) => {
+    setFormData(prev => {
+      const current = prev.domainCards || [];
+      if (current.includes(cardName)) {
+        return { ...prev, domainCards: current.filter(n => n !== cardName) };
+      } else {
+        return { ...prev, domainCards: [...current, cardName] };
+      }
+    });
   };
 
   const handleAvatarUpload = (e) => {
@@ -148,12 +193,54 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
 
   const selectedClassInfo = formData.class ? CLASSES[formData.class] : null;
 
+  // Subclass options for current class
+  const subclassOptions = formData.class && SUBCLASSES[formData.class]
+    ? SUBCLASSES[formData.class]
+    : [];
+
+  // Check if current subclass is a known one or custom
+  const isKnownSubclass = subclassOptions.some(s => s.name === formData.subclass);
+  const selectedSubclassInfo = subclassOptions.find(s => s.name === formData.subclass);
+
+  // Determine if we should show custom input
+  const showCustomInput = customSubclass || (formData.subclass && !isKnownSubclass && formData.class);
+
+  // Domain cards available for this character
+  const availableDomainCards = useMemo(() =>
+    getCardsForCharacter(formData.primaryDomain, formData.secondaryDomain, formData.level || 1),
+    [formData.primaryDomain, formData.secondaryDomain, formData.level]
+  );
+
+  // Group available cards by domain
+  const cardsByDomain = useMemo(() => {
+    const grouped = {};
+    availableDomainCards.forEach(card => {
+      if (!grouped[card.domain]) grouped[card.domain] = [];
+      grouped[card.domain].push(card);
+    });
+    return grouped;
+  }, [availableDomainCards]);
+
+  // Heritage features
+  const ancestryData = formData.ancestry ? ANCESTRIES[formData.ancestry] : null;
+  const ancestryDesc = ancestryData ? (typeof ancestryData === 'string' ? ancestryData : ancestryData.description) : '';
+  const ancestryFeatures = ancestryData && typeof ancestryData === 'object' ? ancestryData.features || [] : [];
+  const communityData = formData.community ? COMMUNITIES[formData.community] : null;
+  const communityDesc = communityData ? (typeof communityData === 'string' ? communityData : communityData.description) : '';
+  const communityFeatures = communityData && typeof communityData === 'object' ? communityData.features || [] : [];
+
+  // Items for equip picker
+  const campaignItems = items || [];
+  const characterInventory = Array.isArray(formData.equippedItems) ? formData.equippedItems : [];
+  const filteredItems = campaignItems.filter(item =>
+    !equipFilter || item.name.toLowerCase().includes(equipFilter.toLowerCase()) ||
+    (item.type && item.type.toLowerCase().includes(equipFilter.toLowerCase()))
+  );
+
   return (
     <form className="character-form" onSubmit={handleSubmit}>
       {/* ===== Section 1: Identity ===== */}
-      <h4 style={{ color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem' }}>
-        Identity
-      </h4>
+      <h4 style={{ ...SECTION_STYLE, marginTop: 0 }}>Identity</h4>
 
       <div className="avatar-section">
         <div className="avatar-preview">
@@ -209,14 +296,12 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       </div>
 
       {/* ===== Section 2: Class & Background ===== */}
-      <h4 style={{ color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' }}>
-        Class & Background
-      </h4>
+      <h4 style={SECTION_STYLE}>Class & Background</h4>
 
       <div className="form-grid">
         <div className="input-group">
           <label>Class</label>
-          <select value={formData.class || ''} onChange={(e) => handleChange('class', e.target.value)}>
+          <select value={formData.class || ''} onChange={(e) => handleClassChange(e.target.value)}>
             <option value="">-- Select Class --</option>
             {Object.keys(CLASSES).map(cls => (
               <option key={cls} value={cls}>{cls}</option>
@@ -228,7 +313,41 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
         </div>
         <div className="input-group">
           <label>Subclass</label>
-          <input type="text" value={formData.subclass || ''} onChange={(e) => handleChange('subclass', e.target.value)} placeholder="e.g., College of Lore" />
+          {!showCustomInput ? (
+            <select
+              value={formData.subclass || ''}
+              onChange={(e) => handleSubclassSelect(e.target.value)}
+              disabled={!formData.class}
+            >
+              <option value="">-- Select Subclass --</option>
+              {subclassOptions.map(sc => (
+                <option key={sc.name} value={sc.name}>{sc.name}</option>
+              ))}
+              <option value="__custom__">Custom...</option>
+            </select>
+          ) : (
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input
+                type="text"
+                value={formData.subclass || ''}
+                onChange={(e) => handleChange('subclass', e.target.value)}
+                placeholder="Enter custom subclass"
+                style={{ flex: 1 }}
+              />
+              <button type="button" className="btn btn-secondary" onClick={() => { setCustomSubclass(false); handleChange('subclass', ''); }} style={{ padding: '0.25rem 0.5rem', fontSize: '0.7rem' }}>
+                <X size={12} />
+              </button>
+            </div>
+          )}
+          {selectedSubclassInfo && (
+            <small className="input-hint">{selectedSubclassInfo.description}</small>
+          )}
+          {selectedSubclassInfo?.foundation && (
+            <div className="dh-form-feature-card">
+              <div className="dh-form-feature-name">{selectedSubclassInfo.foundation.name}</div>
+              <div className="dh-form-feature-desc">{selectedSubclassInfo.foundation.description}</div>
+            </div>
+          )}
         </div>
         <div className="input-group">
           <label>Level</label>
@@ -238,32 +357,51 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
           <label>Ancestry</label>
           <select value={formData.ancestry || ''} onChange={(e) => handleChange('ancestry', e.target.value)}>
             <option value="">-- Select Ancestry --</option>
-            {Object.entries(ANCESTRIES).map(([name, desc]) => (
-              <option key={name} value={name} title={desc}>{name}</option>
+            {Object.entries(ANCESTRIES).map(([name, data]) => (
+              <option key={name} value={name}>{name}</option>
             ))}
           </select>
-          {formData.ancestry && ANCESTRIES[formData.ancestry] && (
-            <small className="input-hint">{ANCESTRIES[formData.ancestry]}</small>
+          {ancestryDesc && (
+            <small className="input-hint">{ancestryDesc}</small>
           )}
         </div>
         <div className="input-group full-width">
           <label>Community</label>
           <select value={formData.community || ''} onChange={(e) => handleChange('community', e.target.value)}>
             <option value="">-- Select Community --</option>
-            {Object.entries(COMMUNITIES).map(([name, desc]) => (
-              <option key={name} value={name} title={desc}>{name}</option>
+            {Object.entries(COMMUNITIES).map(([name, data]) => (
+              <option key={name} value={name}>{name}</option>
             ))}
           </select>
-          {formData.community && COMMUNITIES[formData.community] && (
-            <small className="input-hint">{COMMUNITIES[formData.community]}</small>
+          {communityDesc && (
+            <small className="input-hint">{communityDesc}</small>
           )}
         </div>
       </div>
 
+      {/* Heritage Features */}
+      {(ancestryFeatures.length > 0 || communityFeatures.length > 0) && (
+        <div className="dh-form-heritage">
+          <h4 style={{ ...SECTION_STYLE, marginTop: '0.25rem', marginBottom: '0.25rem', fontSize: '0.65rem', color: 'rgba(234, 179, 8, 0.5)' }}>Heritage Features</h4>
+          {ancestryFeatures.map((f, i) => (
+            <div key={`a-${i}`} className="dh-form-feature-card">
+              <div className="dh-form-feature-tag">Ancestry</div>
+              <div className="dh-form-feature-name">{f.name}</div>
+              <div className="dh-form-feature-desc">{f.description}</div>
+            </div>
+          ))}
+          {communityFeatures.map((f, i) => (
+            <div key={`c-${i}`} className="dh-form-feature-card">
+              <div className="dh-form-feature-tag">Community</div>
+              <div className="dh-form-feature-name">{f.name}</div>
+              <div className="dh-form-feature-desc">{f.description}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ===== Section 3: Traits ===== */}
-      <h4 style={{ color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' }}>
-        Traits
-      </h4>
+      <h4 style={SECTION_STYLE}>Traits</h4>
 
       <div className="traits-form-grid">
         {Object.keys(DEFAULT_TRAITS).map(trait => (
@@ -282,9 +420,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       </div>
 
       {/* ===== Section 4: Combat & Vitals ===== */}
-      <h4 style={{ color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' }}>
-        Combat & Vitals
-      </h4>
+      <h4 style={SECTION_STYLE}>Combat & Vitals</h4>
 
       <div className="slots-section">
         <div className="slot-group">
@@ -350,10 +486,8 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
         </div>
       </div>
 
-      {/* ===== Section 5: Domains ===== */}
-      <h4 style={{ color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' }}>
-        Domains
-      </h4>
+      {/* ===== Section 5: Domains & Domain Cards ===== */}
+      <h4 style={SECTION_STYLE}>Domains</h4>
 
       <div className="form-grid">
         <div className="input-group">
@@ -385,10 +519,140 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
         </div>
       </div>
 
+      {/* Domain Cards Picker */}
+      {(formData.primaryDomain || formData.secondaryDomain) && (
+        <div className="dh-form-domain-cards">
+          <button
+            type="button"
+            className="dh-form-section-toggle"
+            onClick={() => setShowDomainCards(!showDomainCards)}
+          >
+            {showDomainCards ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            Domain Cards ({(formData.domainCards || []).length} selected)
+          </button>
+
+          {showDomainCards && (
+            <div className="dh-form-cards-picker">
+              {Object.entries(cardsByDomain).map(([domain, cards]) => (
+                <div key={domain} className="dh-form-cards-domain">
+                  <div className="dh-form-cards-domain-label">{domain}</div>
+                  {cards.map(card => {
+                    const isSelected = (formData.domainCards || []).includes(card.name);
+                    return (
+                      <div
+                        key={card.name}
+                        className={`dh-form-card-option ${isSelected ? 'selected' : ''}`}
+                        onClick={() => toggleDomainCard(card.name)}
+                      >
+                        <div className="dh-form-card-header">
+                          <div className={`dh-form-card-check ${isSelected ? 'checked' : ''}`}>
+                            {isSelected && <Check size={10} />}
+                          </div>
+                          <span className="dh-form-card-name">{card.name}</span>
+                          <span className="dh-form-card-level">Lv {card.level}</span>
+                        </div>
+                        <div className="dh-form-card-desc">{card.description}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              {availableDomainCards.length === 0 && (
+                <div className="dh-form-cards-empty">Select domains above to see available cards.</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ===== Section 6: Equipment ===== */}
-      <h4 style={{ color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' }}>
-        Equipment
-      </h4>
+      <h4 style={SECTION_STYLE}>Equipment</h4>
+
+      {/* Item Equip Picker */}
+      {campaignItems.length > 0 && (
+        <div className="dh-form-equip-section">
+          <button
+            type="button"
+            className="dh-form-section-toggle"
+            onClick={() => setShowEquipPicker(!showEquipPicker)}
+          >
+            {showEquipPicker ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            Equip from Campaign Catalog
+          </button>
+
+          {showEquipPicker && (
+            <div className="dh-form-equip-picker">
+              <input
+                type="text"
+                value={equipFilter}
+                onChange={(e) => setEquipFilter(e.target.value)}
+                placeholder="Search items..."
+                className="dh-form-equip-search"
+              />
+              <div className="dh-form-equip-list">
+                {filteredItems.map(item => {
+                  const isEquipped = characterInventory.some(ei => ei.itemId === item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={`dh-form-equip-item ${isEquipped ? 'equipped' : ''}`}
+                    >
+                      <div className="dh-form-equip-item-info">
+                        <span className="dh-form-equip-item-icon">
+                          {item.type === 'weapon' ? <Sword size={12} /> :
+                           item.type === 'armor' ? <Shield size={12} /> :
+                           <Package size={12} />}
+                        </span>
+                        <span className="dh-form-equip-item-name">{item.name}</span>
+                        <span className="dh-form-equip-item-type">{item.type}</span>
+                      </div>
+                      {!isEquipped ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem' }}
+                          onClick={() => {
+                            if (addToCharacterInventory && character?.id) {
+                              addToCharacterInventory(character.id, item.id);
+                            }
+                            // Also track locally for form state
+                            setFormData(prev => ({
+                              ...prev,
+                              equippedItems: [...(prev.equippedItems || []), { itemId: item.id, quantity: 1, equipped: true }]
+                            }));
+                          }}
+                        >
+                          <Plus size={10} /> Add
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', color: '#ef4444' }}
+                          onClick={() => {
+                            if (removeFromCharacterInventory && character?.id) {
+                              removeFromCharacterInventory(character.id, item.id);
+                            }
+                            setFormData(prev => ({
+                              ...prev,
+                              equippedItems: (prev.equippedItems || []).filter(ei => ei.itemId !== item.id)
+                            }));
+                          }}
+                        >
+                          <X size={10} /> Remove
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {filteredItems.length === 0 && (
+                  <div className="dh-form-cards-empty">No items match your search.</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="form-grid">
         <div className="input-group">
@@ -410,7 +674,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
         <div className="input-group full-width">
           <label>Inventory</label>
           <textarea
-            value={formData.inventory || ''}
+            value={typeof formData.inventory === 'string' ? formData.inventory : ''}
             onChange={(e) => handleChange('inventory', e.target.value)}
             rows="3"
             placeholder="Healing potions, rope, torches, etc."
@@ -419,9 +683,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       </div>
 
       {/* ===== Section 7: Growth ===== */}
-      <h4 style={{ color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' }}>
-        Growth
-      </h4>
+      <h4 style={SECTION_STYLE}>Growth</h4>
 
       <div className="experiences-form-section">
         <div className="experience-input-group">
@@ -452,9 +714,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       </div>
 
       {/* ===== Section 8: Narrative ===== */}
-      <h4 style={{ color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' }}>
-        Narrative
-      </h4>
+      <h4 style={SECTION_STYLE}>Narrative</h4>
 
       <div className="input-group">
         <label>Backstory</label>
