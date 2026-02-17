@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Save, X, ExternalLink, Wand2, Loader2, Plus, Check, Sword, Shield, Package, ChevronDown, ChevronUp } from 'lucide-react';
-import { CLASSES, SUBCLASSES, DOMAINS, ANCESTRIES, COMMUNITIES, TRAIT_RANGE } from '../../data/systems/daggerheart';
+import { CLASSES, SUBCLASSES, DOMAINS, ANCESTRIES, COMMUNITIES, TRAIT_RANGE, STANDARD_ARRAY } from '../../data/systems/daggerheart';
 import { getCardsForCharacter, getCardByName } from '../../data/daggerheartDomainCards';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -97,6 +97,14 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
           update.subclass = '';
           setCustomSubclass(false);
         }
+      }
+      // Auto-set evasion, HP, and domains from class data
+      if (newClass && CLASSES[newClass]) {
+        const classData = CLASSES[newClass];
+        update.evasion = classData.baseEvasion;
+        update.hpSlots = Array(classData.baseHp).fill(true);
+        update.primaryDomain = classData.domains[0];
+        update.secondaryDomain = classData.domains[1];
       }
       return update;
     });
@@ -403,23 +411,63 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       )}
 
       {/* ===== Section 3: Traits ===== */}
-      <h4 style={SECTION_STYLE}>Traits</h4>
+      <h4 style={SECTION_STYLE}>Traits {(formData.level || 1) === 1 && '(Standard Array)'}</h4>
 
       <div className="traits-form-grid">
-        {Object.keys(DEFAULT_TRAITS).map(trait => (
-          <div key={trait} className="input-group">
-            <label>{trait.charAt(0).toUpperCase() + trait.slice(1)}</label>
-            <select
-              value={formData.traits[trait] ?? 0}
-              onChange={(e) => handleChange(`traits.${trait}`, parseInt(e.target.value))}
-            >
-              {TRAIT_RANGE.map(val => (
-                <option key={val} value={val}>{val >= 0 ? '+' : ''}{val}</option>
-              ))}
-            </select>
-          </div>
-        ))}
+        {Object.keys(DEFAULT_TRAITS).map(trait => {
+          const isLevel1 = (formData.level || 1) === 1;
+          let options;
+          if (isLevel1) {
+            // Pool-based: figure out which values are still available
+            const pool = [...STANDARD_ARRAY]; // [-1, 0, 0, 1, 1, 2]
+            // Remove values already assigned to OTHER traits
+            Object.entries(formData.traits).forEach(([t, v]) => {
+              if (t !== trait) {
+                const idx = pool.indexOf(v);
+                if (idx !== -1) pool.splice(idx, 1);
+              }
+            });
+            // Available options = unique values remaining in pool, plus current value (always valid)
+            const currentVal = formData.traits[trait] ?? 0;
+            const uniqueAvailable = [...new Set(pool)].sort((a, b) => a - b);
+            if (!uniqueAvailable.includes(currentVal)) {
+              uniqueAvailable.push(currentVal);
+              uniqueAvailable.sort((a, b) => a - b);
+            }
+            options = uniqueAvailable;
+          } else {
+            options = TRAIT_RANGE;
+          }
+          return (
+            <div key={trait} className="input-group">
+              <label>{trait.charAt(0).toUpperCase() + trait.slice(1)}</label>
+              <select
+                value={formData.traits[trait] ?? 0}
+                onChange={(e) => handleChange(`traits.${trait}`, parseInt(e.target.value))}
+              >
+                {options.map(val => (
+                  <option key={val} value={val}>{val >= 0 ? '+' : ''}{val}</option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
       </div>
+      {(formData.level || 1) === 1 && (() => {
+        const pool = [...STANDARD_ARRAY];
+        Object.values(formData.traits).forEach(v => {
+          const idx = pool.indexOf(v);
+          if (idx !== -1) pool.splice(idx, 1);
+        });
+        if (pool.length > 0) {
+          return (
+            <small className="form-hint" style={{ marginTop: '-0.25rem' }}>
+              Remaining: {pool.sort((a, b) => a - b).map(v => v >= 0 ? `+${v}` : `${v}`).join(', ')}
+            </small>
+          );
+        }
+        return null;
+      })()}
 
       {/* ===== Section 4: Combat & Vitals ===== */}
       <h4 style={SECTION_STYLE}>Combat & Vitals</h4>
@@ -491,8 +539,8 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
 
       <div className="form-grid">
         <div className="input-group">
-          <label>Evasion (base)</label>
-          <input type="number" value={formData.evasion ?? 10} onChange={(e) => handleChange('evasion', parseInt(e.target.value) || 0)} min="0" />
+          <label>Evasion {formData.class ? `(from ${formData.class})` : '(base)'}</label>
+          <input type="number" value={formData.evasion ?? 10} onChange={(e) => handleChange('evasion', parseInt(e.target.value) || 0)} min="0" readOnly={!!formData.class} />
         </div>
         <div className="input-group">
           <label>Armor Score (base)</label>
@@ -514,10 +562,10 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
           </select>
         </div>
         <div className="input-group">
-          <label>Secondary Domain</label>
+          <label>Secondary Domain {formData.class && `(${formData.class} domains)`}</label>
           <select value={formData.secondaryDomain || ''} onChange={(e) => handleChange('secondaryDomain', e.target.value)}>
             <option value="">-- Select Domain --</option>
-            {DOMAINS.map(d => (
+            {availableDomains.map(d => (
               <option key={d} value={d}>{d}</option>
             ))}
           </select>

@@ -3,47 +3,65 @@
 
 const CLASSES = {
   'Bard': {
-    domains: ['Codex', 'Grace', 'Midnight', 'Splendor'],
+    domains: ['Grace', 'Codex'],
+    baseEvasion: 10,
+    baseHp: 5,
     description: 'Masters of performance and magic who inspire allies and manipulate the battlefield through music, words, and arcane arts.',
     features: 'Bardic Inspiration, versatile magic, social expertise'
   },
   'Druid': {
-    domains: ['Arcana', 'Sage', 'Blade', 'Bone'],
+    domains: ['Sage', 'Arcana'],
+    baseEvasion: 10,
+    baseHp: 6,
     description: 'Nature-bound spellcasters who can shapeshift into beasts and command the primal forces of the natural world.',
     features: 'Wild Shape, nature magic, environmental control'
   },
   'Guardian': {
-    domains: ['Blade', 'Bone', 'Grace', 'Valor'],
+    domains: ['Valor', 'Blade'],
+    baseEvasion: 9,
+    baseHp: 7,
     description: 'Stalwart defenders who protect their allies and control the battlefield through martial prowess and protective abilities.',
     features: 'Tank role, protective abilities, high armor'
   },
   'Ranger': {
-    domains: ['Sage', 'Blade', 'Grace', 'Midnight'],
+    domains: ['Bone', 'Sage'],
+    baseEvasion: 12,
+    baseHp: 6,
     description: 'Wilderness experts who excel at tracking, survival, and ranged combat while forging bonds with animal companions.',
     features: 'Ranged expertise, tracking, animal companion'
   },
   'Rogue': {
-    domains: ['Midnight', 'Blade', 'Grace', 'Splendor'],
+    domains: ['Midnight', 'Grace'],
+    baseEvasion: 12,
+    baseHp: 6,
     description: 'Cunning and agile specialists in stealth, deception, and precision strikes who excel at exploiting enemy weaknesses.',
     features: 'Sneak attack, stealth, skills and tricks'
   },
   'Seraph': {
-    domains: ['Codex', 'Grace', 'Splendor', 'Valor'],
+    domains: ['Splendor', 'Valor'],
+    baseEvasion: 9,
+    baseHp: 7,
     description: 'Divine warriors who channel celestial power to heal allies and smite foes with radiant energy.',
     features: 'Healing magic, divine power, support abilities'
   },
   'Sorcerer': {
-    domains: ['Arcana', 'Midnight', 'Bone', 'Codex'],
+    domains: ['Arcana', 'Midnight'],
+    baseEvasion: 10,
+    baseHp: 6,
     description: 'Innate spellcasters whose magic flows from within, allowing them to bend and shape magical energy in unique ways.',
     features: 'Raw magical power, metamagic, spontaneous casting'
   },
   'Warrior': {
-    domains: ['Blade', 'Bone', 'Grace', 'Valor'],
+    domains: ['Blade', 'Bone'],
+    baseEvasion: 11,
+    baseHp: 6,
     description: 'Masters of combat who excel in both offense and defense through superior weapon skills and battle tactics.',
     features: 'Martial superiority, weapon mastery, combat tactics'
   },
   'Wizard': {
-    domains: ['Arcana', 'Codex', 'Sage', 'Splendor'],
+    domains: ['Codex', 'Splendor'],
+    baseEvasion: 11,
+    baseHp: 5,
     description: 'Scholarly mages who study the arcane arts and command a vast repertoire of spells through knowledge and preparation.',
     features: 'Versatile spellcasting, ritual magic, knowledge'
   }
@@ -117,9 +135,9 @@ const SUBCLASSES = {
       foundation: { name: 'Radiant Wings', description: 'You can manifest spectral wings as an action, gaining flight until the end of your next turn. Enemies you fly over take radiant damage.' }
     },
     {
-      name: 'Faithful',
-      description: 'Seraphs devoted to healing and divine support, channeling celestial power to mend wounds.',
-      foundation: { name: 'Divine Grace', description: 'When you heal an ally, you may spend additional Hope to also heal another ally within close range for half the amount.' }
+      name: 'Divine Wielder',
+      description: 'Seraphs who channel divine energy through their weapons, smiting foes with celestial power.',
+      foundation: { name: 'Divine Strike', description: 'Once per short rest, when you make a weapon attack, you may spend Hope to add radiant damage equal to your Splendor domain level to the attack.' }
     }
   ],
   'Sorcerer': [
@@ -129,9 +147,9 @@ const SUBCLASSES = {
       foundation: { name: 'Elemental Affinity', description: 'Choose an element (fire, cold, lightning, or force). Spells of that element deal +1 damage and you have resistance to that damage type.' }
     },
     {
-      name: 'Wild Magic',
-      description: 'Sorcerers whose unstable power surges with chaotic and unpredictable magical effects.',
-      foundation: { name: 'Chaos Surge', description: 'When you roll with Fear on a spellcast, you may trigger a wild magic surge: roll a d6 to determine a random bonus effect in addition to the spell.' }
+      name: 'Primal Origin',
+      description: 'Sorcerers whose power draws from the raw, untamed forces of the natural world.',
+      foundation: { name: 'Primal Surge', description: 'When you cast a spell, you may spend Hope to draw on primal energy: the spell deals additional damage equal to your proficiency and you may push the target one range band away.' }
     }
   ],
   'Warrior': [
@@ -301,6 +319,9 @@ const LORE_TYPES = [
 ];
 
 const TRAIT_RANGE = [-1, 0, 1, 2, 3];
+
+// Standard array for level 1 trait assignment: exactly -1, 0, 0, +1, +1, +2
+const STANDARD_ARRAY = [-1, 0, 0, 1, 1, 2];
 
 // Weapon features from Daggerheart SRD
 const WEAPON_FEATURES = [
@@ -706,6 +727,7 @@ export {
   COMMUNITIES,
   LORE_TYPES,
   TRAIT_RANGE,
+  STANDARD_ARRAY,
   EXTERNAL_TOOLS,
   ITEM_TEMPLATES,
   WEAPON_FEATURES,

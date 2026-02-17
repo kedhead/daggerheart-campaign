@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Edit3, Trash2, ExternalLink, ChevronRight, Sword, Shield, Star, Sparkles, BookOpen, Users } from 'lucide-react';
-import { SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../data/systems/daggerheart';
+import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
 import './DaggerheartCharacterSheet.css';
 
@@ -90,7 +90,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const ancestry = character.ancestry || '';
   const community = character.community || '';
   const level = character.level || 1;
-  const baseEvasion = character.evasion ?? 10;
+  const baseEvasion = (charClass && CLASSES[charClass]?.baseEvasion) || character.evasion || 10;
   const baseArmorScore = character.armor ?? 0;
   const gold = character.gold ?? 0;
   const primaryWeapon = character.primaryWeapon || '';
