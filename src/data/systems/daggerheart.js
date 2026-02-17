@@ -71,109 +71,123 @@ const SUBCLASSES = {
   'Bard': [
     {
       name: 'Troubadour',
-      description: 'Bards who weave magic through song and performance, inspiring allies with melodic enchantments.',
-      foundation: { name: 'Song of Inspiration', description: 'When you spend Hope to support an ally, they gain an additional +1 to their action roll.' }
+      description: 'Play the Troubadour if you want to play music to bolster your allies.',
+      spellcastTrait: 'Presence',
+      foundation: { name: 'Gifted Performer', description: 'Describe how you perform for others. You can play each song once per long rest: Relaxing Song (you and allies within Close range clear a Hit Point), Epic Song (make a target within Close range temporarily Vulnerable), Heartbreaking Song (you and allies within Close range gain a Hope).' }
     },
     {
       name: 'Wordsmith',
-      description: 'Bards who command the power of language, using words as weapons and shields.',
-      foundation: { name: 'Power Word', description: 'Once per short rest, you can speak a word of power to grant an ally advantage on their next action roll or impose disadvantage on an enemy\'s next action.' }
+      description: 'Play the Wordsmith if you want to use clever wordplay and captivate crowds.',
+      spellcastTrait: 'Presence',
+      foundation: { name: 'Rousing Speech / Heart of a Poet', description: 'Rousing Speech: Once per long rest, give an inspiring speech. All allies within Far range clear 2 Stress. Heart of a Poet: After you make an action roll to impress, persuade, or offend someone, you can spend a Hope to add a d4 to the roll.' }
     }
   ],
   'Druid': [
     {
       name: 'Warden of the Elements',
-      description: 'Druids who channel the raw elemental forces of nature to devastate foes and reshape the battlefield.',
-      foundation: { name: 'Elemental Fury', description: 'When you cast a spell that deals damage, you may choose to change its damage type to fire, cold, lightning, or force.' }
+      description: 'Play the Warden of the Elements if you want to embody the natural elements of the wild.',
+      spellcastTrait: 'Instinct',
+      foundation: { name: 'Elemental Incarnation', description: 'Mark a Stress to Channel one of the following elements until you take Severe damage or until your next rest: Fire (adversaries within Melee range that damage you take 1d10 magic damage), Earth (bonus to damage thresholds equal to your Proficiency), Water (when you damage an adversary within Melee range, all others within Very Close range mark a Stress), Air (you can hover, gaining advantage on Agility Rolls).' }
     },
     {
       name: 'Warden of Renewal',
-      description: 'Druids focused on growth, healing, and the restorative cycle of nature.',
-      foundation: { name: 'Nature\'s Balm', description: 'When you use an action to heal an ally, they may also clear one stress.' }
+      description: 'Play the Warden of Renewal if you want to use powerful magic to heal your party.',
+      spellcastTrait: 'Instinct',
+      foundation: { name: 'Clarity of Nature / Regeneration', description: 'Clarity of Nature: Once per long rest, create a space of natural serenity within Close range. Resting within it clears Stress equal to your Instinct, distributed between you and allies. Regeneration: Touch a creature and spend 3 Hope. That creature clears 1d4 Hit Points.' }
     }
   ],
   'Guardian': [
     {
       name: 'Stalwart',
-      description: 'Guardians who specialize in immovable defense, absorbing punishment meant for their allies.',
-      foundation: { name: 'Shield Wall', description: 'When an ally within close range is attacked, you may mark an armor slot to reduce the damage they take by your armor score.' }
+      description: 'Play the Stalwart if you want to take heavy blows and keep fighting.',
+      foundation: { name: 'Unwavering / Iron Will', description: 'Unwavering: Gain a permanent +1 bonus to your damage thresholds. Iron Will: When you take physical damage, you can mark an additional Armor Slot to reduce the severity.' }
     },
     {
       name: 'Vengeance',
-      description: 'Guardians who turn defense into offense, punishing those who dare strike their allies.',
-      foundation: { name: 'Retribution', description: 'When you or an adjacent ally takes damage from an attack, you may immediately make a melee attack against the attacker.' }
+      description: 'Play the Vengeance if you want to strike down enemies who harm you or your allies.',
+      foundation: { name: 'At Ease / Revenge', description: 'At Ease: Gain an additional Stress slot. Revenge: When an adversary within Melee range succeeds on an attack against you, you can mark 2 Stress to force the attacker to mark a Hit Point.' }
     }
   ],
   'Ranger': [
     {
       name: 'Beastbound',
-      description: 'Rangers who forge deep bonds with animal companions, fighting as one.',
-      foundation: { name: 'Animal Companion', description: 'You gain a loyal animal companion that fights alongside you. It can take one action per round on your turn.' }
+      description: 'Play the Beastbound if you want to form a deep bond with an animal ally.',
+      spellcastTrait: 'Agility',
+      foundation: { name: 'Companion', description: 'You have an animal companion of your choice (at the GM\'s discretion). They stay by your side unless you tell them otherwise. Take the Ranger Companion sheet.' }
     },
     {
       name: 'Wayfinder',
-      description: 'Rangers who master the wilderness itself, using terrain and tracking to gain tactical advantages.',
-      foundation: { name: 'Terrain Master', description: 'You always know true north and cannot become lost. You gain advantage on rolls to track, navigate, or survive in the wilderness.' }
+      description: 'Play the Wayfinder if you want to hunt your prey and strike with deadly force.',
+      spellcastTrait: 'Agility',
+      foundation: { name: 'Ruthless Predator / Path Forward', description: 'Ruthless Predator: When you make a damage roll, you can mark a Stress to gain a +1 bonus to your Proficiency. When you deal Severe damage to an adversary, they must mark a Stress. Path Forward: When traveling to a previously visited place or carrying an object from that location, you can identify the shortest path to your destination.' }
     }
   ],
   'Rogue': [
     {
-      name: 'Syndicate',
-      description: 'Rogues connected to criminal networks, masters of deception and social manipulation.',
-      foundation: { name: 'Underworld Contacts', description: 'In any settlement, you can find a contact who owes you a favor. Once per long rest, call in a favor for information, goods, or assistance.' }
+      name: 'Nightwalker',
+      description: 'Play the Nightwalker if you want to manipulate shadows to maneuver through the environment.',
+      spellcastTrait: 'Finesse',
+      foundation: { name: 'Shadow Stepper', description: 'You can move from shadow to shadow. When you move into an area of darkness or a shadow cast by another creature or object, you can mark a Stress to disappear and reappear inside another shadow within Far range. When you reappear, you are Cloaked.' }
     },
     {
-      name: 'Nightwalker',
-      description: 'Rogues who embrace the shadows, becoming one with darkness to strike unseen.',
-      foundation: { name: 'Shadow Step', description: 'When you are in dim light or darkness, you may spend Hope to teleport to another point of darkness within far range.' }
+      name: 'Syndicate',
+      description: 'Play the Syndicate if you want to have a web of contacts everywhere you go.',
+      spellcastTrait: 'Finesse',
+      foundation: { name: 'Well-Connected', description: 'When you arrive in a prominent town or environment, you know somebody who calls this place home. Give them a name, note how you think they could be useful, and choose one fact: they owe you a favor but are hard to find, they\'ll ask for something in exchange, they\'re always in trouble, you used to be together, or you didn\'t part on great terms.' }
     }
   ],
   'Seraph': [
     {
-      name: 'Winged Sentinel',
-      description: 'Seraphs who manifest radiant wings and serve as airborne protectors of the faithful.',
-      foundation: { name: 'Radiant Wings', description: 'You can manifest spectral wings as an action, gaining flight until the end of your next turn. Enemies you fly over take radiant damage.' }
+      name: 'Divine Wielder',
+      description: 'Play the Divine Wielder if you want to dominate the battlefield with a legendary weapon.',
+      spellcastTrait: 'Strength',
+      foundation: { name: 'Spirit Weapon / Sparing Touch', description: 'Spirit Weapon: When you have an equipped weapon with Melee or Very Close range, it can fly from your hand to attack an adversary within Close range and return. Mark a Stress to target an additional adversary within range with the same attack roll. Sparing Touch: Once per long rest, touch a creature and clear 2 Hit Points or 2 Stress from them.' }
     },
     {
-      name: 'Divine Wielder',
-      description: 'Seraphs who channel divine energy through their weapons, smiting foes with celestial power.',
-      foundation: { name: 'Divine Strike', description: 'Once per short rest, when you make a weapon attack, you may spend Hope to add radiant damage equal to your Splendor domain level to the attack.' }
+      name: 'Winged Sentinel',
+      description: 'Play the Winged Sentinel if you want to take flight and strike crushing blows from the sky.',
+      spellcastTrait: 'Strength',
+      foundation: { name: 'Wings of Light', description: 'You can fly. While flying: mark a Stress to pick up and carry another willing creature approximately your size or smaller; spend a Hope to deal an extra 1d8 damage on a successful attack.' }
     }
   ],
   'Sorcerer': [
     {
       name: 'Elemental Origin',
-      description: 'Sorcerers whose power springs from a connection to the elemental planes.',
-      foundation: { name: 'Elemental Affinity', description: 'Choose an element (fire, cold, lightning, or force). Spells of that element deal +1 damage and you have resistance to that damage type.' }
+      description: 'Play the Elemental Origin if you want to channel raw magic to take the shape of a particular element.',
+      spellcastTrait: 'Instinct',
+      foundation: { name: 'Elementalist', description: 'Choose one element at character creation: air, earth, fire, lightning, or water. You can shape this element into harmless effects. Spend a Hope and describe how your control over this element helps an action roll, then gain a +2 bonus to the roll or a +3 bonus to the roll\'s damage.' }
     },
     {
       name: 'Primal Origin',
-      description: 'Sorcerers whose power draws from the raw, untamed forces of the natural world.',
-      foundation: { name: 'Primal Surge', description: 'When you cast a spell, you may spend Hope to draw on primal energy: the spell deals additional damage equal to your proficiency and you may push the target one range band away.' }
+      description: 'Play the Primal Origin if you want to extend the versatility of your spells in powerful ways.',
+      spellcastTrait: 'Instinct',
+      foundation: { name: 'Manipulate Magic', description: 'After you cast a spell or make an attack using a weapon that deals magic damage, you can mark a Stress to do one of the following: extend the reach by one range, gain a +2 bonus to the action roll\'s result, double a damage die of your choice, or hit an additional target within range.' }
     }
   ],
   'Warrior': [
     {
       name: 'Call of the Brave',
-      description: 'Warriors who lead from the front, inspiring allies through acts of courage and martial prowess.',
-      foundation: { name: 'Battle Cry', description: 'Once per short rest, you may shout a battle cry. All allies within close range gain +1 to their next attack roll.' }
+      description: 'Play the Call of the Brave if you want to use the might of your enemies to fuel your own power.',
+      foundation: { name: 'Courage / Battle Ritual', description: 'Courage: When you fail a roll with Fear, you gain a Hope. Battle Ritual: Once per long rest, before attempting something incredibly dangerous or facing a foe who outmatches you, describe your ritual or preparations. Clear 2 Stress and gain 2 Hope.' }
     },
     {
       name: 'Call of the Slayer',
-      description: 'Warriors focused on dealing maximum damage, hunting the most dangerous foes.',
-      foundation: { name: 'Mark Prey', description: 'As a free action, mark an enemy you can see. You deal +2 damage to your marked prey. You may only have one prey marked at a time.' }
+      description: 'Play the Call of the Slayer if you want to strike down adversaries with immense force.',
+      foundation: { name: 'Slayer', description: 'You gain a pool of Slayer Dice. On a roll with Hope, you can place a d6 on this card instead of gaining a Hope. You can store a number of Slayer Dice equal to your Proficiency. When you make an attack or damage roll, spend any number of Slayer Dice, rolling them and adding the result. At end of session, clear unspent dice and gain a Hope per die cleared.' }
     }
   ],
   'Wizard': [
     {
       name: 'School of Knowledge',
-      description: 'Wizards who pursue mastery through study, accumulating vast arcane knowledge.',
-      foundation: { name: 'Arcane Repository', description: 'You maintain a spellbook with additional spells. Once per long rest, you may cast a spell you have studied but not prepared.' }
+      description: 'Play the School of Knowledge if you want a keen understanding of the world around you.',
+      spellcastTrait: 'Knowledge',
+      foundation: { name: 'Prepared / Adept', description: 'Prepared: Take an additional domain card of your level or lower from a domain you have access to. Adept: When you Utilize an Experience, you can mark a Stress instead of spending a Hope. If you do, double your Experience modifier for that roll.' }
     },
     {
       name: 'School of War',
-      description: 'Wizards who blend martial training with arcane power, becoming battlemages.',
-      foundation: { name: 'Arcane Armor', description: 'You can wear light armor without penalty to spellcasting. When you cast a spell, you gain +1 to your armor score until the start of your next turn.' }
+      description: 'Play the School of War if you want to utilize trained magic for violence.',
+      spellcastTrait: 'Knowledge',
+      foundation: { name: 'Battlemage / Face Your Fear', description: 'Battlemage: Gain an additional Hit Point slot. Face Your Fear: When you succeed with Fear on an attack roll, you deal an extra 1d10 magic damage.' }
     }
   ]
 };
