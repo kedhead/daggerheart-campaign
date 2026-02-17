@@ -10,6 +10,7 @@ const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, prese
 const DEFAULT_HP = [true, true, true, true, true, true];
 const DEFAULT_STRESS = [false, false, false, false, false, false];
 const DEFAULT_ARMOR_SLOTS = [false, false, false, false, false, false];
+const DEFAULT_HOPE_SLOTS = [false, false, false, false, false, false];
 
 const DEFAULT_CHARACTER = {
   name: '',
@@ -27,7 +28,7 @@ const DEFAULT_CHARACTER = {
   armorSlots: [...DEFAULT_ARMOR_SLOTS],
   evasion: 10,
   armor: 0,
-  hope: 0,
+  hopeSlots: [...DEFAULT_HOPE_SLOTS],
   primaryDomain: '',
   secondaryDomain: '',
   domainNotes: '',
@@ -54,6 +55,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
     hpSlots: character?.hpSlots || [...DEFAULT_HP],
     stressSlots: character?.stressSlots || [...DEFAULT_STRESS],
     armorSlots: character?.armorSlots || [...DEFAULT_ARMOR_SLOTS],
+    hopeSlots: character?.hopeSlots || [...DEFAULT_HOPE_SLOTS],
     experiences: character?.experiences || [],
     domainCards: character?.domainCards || [],
   }));
@@ -469,20 +471,32 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             ))}
           </div>
         </div>
+        <div className="slot-group">
+          <h4>Hope Slots (amber = available)</h4>
+          <div className="slot-toggles">
+            {formData.hopeSlots.map((filled, index) => (
+              <button
+                key={index}
+                type="button"
+                className={`slot-toggle ${filled ? 'filled' : 'empty'}`}
+                style={filled ? { background: '#f59e0b', borderColor: '#f59e0b', color: '#0d1126' } : {}}
+                onClick={() => handleSlotToggle('hopeSlots', index)}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="form-grid">
         <div className="input-group">
-          <label>Evasion</label>
+          <label>Evasion (base)</label>
           <input type="number" value={formData.evasion ?? 10} onChange={(e) => handleChange('evasion', parseInt(e.target.value) || 0)} min="0" />
         </div>
         <div className="input-group">
-          <label>Armor Score</label>
+          <label>Armor Score (base)</label>
           <input type="number" value={formData.armor ?? 0} onChange={(e) => handleChange('armor', parseInt(e.target.value) || 0)} min="0" />
-        </div>
-        <div className="input-group">
-          <label>Hope</label>
-          <input type="number" value={formData.hope ?? 0} onChange={(e) => handleChange('hope', parseInt(e.target.value) || 0)} min="0" />
         </div>
       </div>
 
@@ -604,6 +618,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
                            <Package size={12} />}
                         </span>
                         <span className="dh-form-equip-item-name">{item.name}</span>
+                        {item.systemData?.tier != null && <span className="dh-form-equip-item-tier">T{item.systemData.tier}</span>}
                         <span className="dh-form-equip-item-type">{item.type}</span>
                       </div>
                       {!isEquipped ? (

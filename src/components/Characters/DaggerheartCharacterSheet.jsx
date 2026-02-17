@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Edit3, Trash2, ExternalLink, ChevronRight, Sword, Shield, Sun, Star, Sparkles, BookOpen, Users } from 'lucide-react';
+import { Edit3, Trash2, ExternalLink, ChevronRight, Sword, Shield, Star, Sparkles, BookOpen, Users } from 'lucide-react';
 import { SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
 import './DaggerheartCharacterSheet.css';
@@ -8,12 +8,31 @@ const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, prese
 const DEFAULT_HP = [true, true, true, true, true, true];
 const DEFAULT_STRESS = [false, false, false, false, false, false];
 const DEFAULT_ARMOR_SLOTS = [false, false, false, false, false, false];
+const DEFAULT_HOPE_SLOTS = [false, false, false, false, false, false];
+
+const getTierForLevel = (level) => {
+  if (level <= 4) return 1;
+  if (level <= 7) return 2;
+  if (level <= 9) return 3;
+  return 4;
+};
+
+const getWeaponDamage = (weapon, level) => {
+  const sd = weapon.systemData;
+  if (!sd) return null;
+  const tier = getTierForLevel(level);
+  const dice = sd[`damageTier${tier}Dice`];
+  const mod = sd[`damageTier${tier}Modifier`];
+  if (!dice) return null;
+  return mod ? `${dice}+${mod}` : dice;
+};
 
 export default function DaggerheartCharacterSheet({ character, onEdit, onDelete, isDM, canEdit, campaign, updateCharacter, items }) {
   // Local optimistic state for slot toggling
   const [localHp, setLocalHp] = useState(null);
   const [localStress, setLocalStress] = useState(null);
   const [localArmor, setLocalArmor] = useState(null);
+  const [localHope, setLocalHope] = useState(null);
   const [expandedSections, setExpandedSections] = useState({});
 
   // Reset local overrides when Firestore data changes
@@ -21,12 +40,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     setLocalHp(null);
     setLocalStress(null);
     setLocalArmor(null);
-  }, [character.hpSlots, character.stressSlots, character.armorSlots]);
+    setLocalHope(null);
+  }, [character.hpSlots, character.stressSlots, character.armorSlots, character.hopeSlots]);
 
   // Resolved values: local override or Firestore or default
   const hpSlots = localHp || character.hpSlots || DEFAULT_HP;
   const stressSlots = localStress || character.stressSlots || DEFAULT_STRESS;
   const armorSlots = localArmor || character.armorSlots || DEFAULT_ARMOR_SLOTS;
+  const hopeSlots = localHope || character.hopeSlots || DEFAULT_HOPE_SLOTS;
   const traits = { ...DEFAULT_TRAITS, ...character.traits };
 
   const handleSlotToggle = (type, index) => {
@@ -34,6 +55,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
     const currentSlots = type === 'hpSlots' ? [...hpSlots]
       : type === 'stressSlots' ? [...stressSlots]
+      : type === 'hopeSlots' ? [...hopeSlots]
       : [...armorSlots];
 
     currentSlots[index] = !currentSlots[index];
@@ -41,6 +63,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     // Optimistic local update
     if (type === 'hpSlots') setLocalHp(currentSlots);
     else if (type === 'stressSlots') setLocalStress(currentSlots);
+    else if (type === 'hopeSlots') setLocalHope(currentSlots);
     else setLocalArmor(currentSlots);
 
     // Persist to Firestore
@@ -67,9 +90,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const ancestry = character.ancestry || '';
   const community = character.community || '';
   const level = character.level || 1;
-  const evasion = character.evasion ?? 10;
-  const armorScore = character.armor ?? 0;
-  const hope = character.hope ?? 0;
+  const baseEvasion = character.evasion ?? 10;
+  const baseArmorScore = character.armor ?? 0;
   const gold = character.gold ?? 0;
   const primaryWeapon = character.primaryWeapon || '';
   const secondaryWeapon = character.secondaryWeapon || '';
@@ -129,6 +151,31 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
   const equippedEquipment = equippedItems.filter(i => i.type === 'equipment');
 
+  // Auto-calculate effective armor score from equipped armor
+  const effectiveArmorScore = useMemo(() => {
+    if (equippedArmorItems.length === 0) return baseArmorScore;
+    const maxFromEquipped = Math.max(...equippedArmorItems.map(a => a.systemData?.armorScore ?? 0));
+    return Math.max(maxFromEquipped, baseArmorScore);
+  }, [equippedArmorItems, baseArmorScore]);
+
+  // Auto-calculate effective evasion from equipped armor features
+  const effectiveEvasion = useMemo(() => {
+    let ev = baseEvasion;
+    equippedArmorItems.forEach(armor => {
+      const features = armor.systemData?.features || [];
+      features.forEach(f => {
+        const fl = f.toLowerCase();
+        if (fl === 'flexible') ev += 1;
+        else if (fl === 'heavy') ev -= 1;
+        else if (fl === 'very-heavy' || fl === 'very heavy') ev -= 2;
+      });
+    });
+    return ev;
+  }, [equippedArmorItems, baseEvasion]);
+
+  const armorModified = effectiveArmorScore !== baseArmorScore;
+  const evasionModified = effectiveEvasion !== baseEvasion;
+
   return (
     <div className="dh-sheet">
       {/* Header Banner */}
@@ -181,8 +228,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
       )}
 
       <div className="dh-sheet-body">
-        {/* Top Row: Armor Slots | Active Weapons | HP & Stress */}
-        <div className="dh-sheet-row dh-sheet-row-3">
+        {/* Top Row: Armor Slots | Hope Slots | Active Weapons | HP & Stress */}
+        <div className="dh-sheet-row dh-sheet-row-4">
           {/* Armor Slots */}
           <div className="dh-panel">
             <div className="dh-section-label">Armor Slots</div>
@@ -201,24 +248,62 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             </div>
           </div>
 
+          {/* Hope Slots */}
+          <div className="dh-panel">
+            <div className="dh-section-label">Hope</div>
+            <div className="dh-slots-row">
+              {hopeSlots.map((filled, i) => (
+                <button
+                  key={i}
+                  className={`dh-slot dh-slot-hope ${filled ? 'filled' : ''}`}
+                  onClick={() => handleSlotToggle('hopeSlots', i)}
+                  disabled={!canEdit}
+                  title={filled ? 'Hope available' : 'Hope spent'}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Active Weapons */}
           <div className="dh-panel">
             <div className="dh-section-label">Active Weapons</div>
             <div className="dh-weapons">
               {/* Show equipped catalog weapons first */}
-              {equippedWeapons.map(weapon => (
-                <div key={weapon.id} className="dh-weapon dh-weapon-equipped">
-                  <Sword size={14} className="dh-weapon-icon" />
-                  <div>
-                    <div className="dh-weapon-name">{weapon.name}</div>
-                    <div className="dh-weapon-stats">
-                      {weapon.trait && <span>{weapon.trait}</span>}
-                      {weapon.range && <span>{weapon.range}</span>}
-                      {weapon.damageTier1Dice && <span>{weapon.damageTier1Dice}{weapon.damageTier1Modifier ? `+${weapon.damageTier1Modifier}` : ''}</span>}
+              {equippedWeapons.map(weapon => {
+                const sd = weapon.systemData || {};
+                const dmg = getWeaponDamage(weapon, level);
+                const tier = getTierForLevel(level);
+                return (
+                  <div key={weapon.id} className="dh-weapon dh-weapon-equipped">
+                    <Sword size={14} className="dh-weapon-icon" />
+                    <div className="dh-weapon-details">
+                      <div className="dh-weapon-header">
+                        <div className="dh-weapon-name">{weapon.name}</div>
+                        <span className="dh-item-tier">T{tier}</span>
+                      </div>
+                      <div className="dh-weapon-stats">
+                        {sd.trait && <span>{sd.trait}</span>}
+                        {sd.range && <span>{sd.range}</span>}
+                        {dmg && <span>{dmg}</span>}
+                        {sd.damageType && <span>{sd.damageType}</span>}
+                        {sd.burden && <span>{sd.burden}</span>}
+                      </div>
+                      {sd.features?.length > 0 && (
+                        <div className="dh-weapon-features">
+                          {sd.features.map((f, i) => (
+                            <span key={i} className="dh-weapon-feature-badge">{f}</span>
+                          ))}
+                        </div>
+                      )}
+                      {weapon.description && (
+                        <div className="dh-weapon-description">{weapon.description}</div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {/* Fallback to text weapons */}
               {equippedWeapons.length === 0 && (
                 <>
@@ -276,14 +361,16 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
         {/* Middle Row: Evasion | Armor Score | Traits */}
         <div className="dh-sheet-row dh-sheet-row-2-wide">
-          <div className="dh-stat-box">
-            <div className="dh-stat-box-value">{evasion}</div>
+          <div className={`dh-stat-box ${evasionModified ? 'dh-stat-modified' : ''}`}>
+            <div className="dh-stat-box-value">{effectiveEvasion}</div>
             <div className="dh-stat-box-label">Evasion</div>
+            {evasionModified && <div className="dh-stat-base">base {baseEvasion}</div>}
           </div>
 
-          <div className="dh-stat-box">
-            <div className="dh-stat-box-value">{armorScore}</div>
+          <div className={`dh-stat-box ${armorModified ? 'dh-stat-modified' : ''}`}>
+            <div className="dh-stat-box-value">{effectiveArmorScore}</div>
             <div className="dh-stat-box-label">Armor</div>
+            {armorModified && <div className="dh-stat-base">base {baseArmorScore}</div>}
           </div>
 
           <div className="dh-panel">
@@ -308,34 +395,43 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           {/* Equipped armor from catalog */}
           {equippedArmorItems.length > 0 && (
             <div className="dh-equipped-section">
-              {equippedArmorItems.map(armor => (
-                <div key={armor.id} className="dh-equipped-item">
-                  <Shield size={14} className="dh-equipped-item-icon" />
-                  <div>
-                    <div className="dh-equipped-item-name">{armor.name}</div>
-                    <div className="dh-equipped-item-stats">
-                      {armor.armorScore != null && <span>Score {armor.armorScore}</span>}
-                      {armor.armorSlots != null && <span>{armor.armorSlots} slots</span>}
-                      {armor.features?.length > 0 && <span>{armor.features.join(', ')}</span>}
+              {equippedArmorItems.map(armor => {
+                const sd = armor.systemData || {};
+                return (
+                  <div key={armor.id} className="dh-equipped-item">
+                    <Shield size={14} className="dh-equipped-item-icon" />
+                    <div>
+                      <div className="dh-equipped-item-header">
+                        <span className="dh-equipped-item-name">{armor.name}</span>
+                        {sd.tier != null && <span className="dh-item-tier">T{sd.tier}</span>}
+                      </div>
+                      <div className="dh-equipped-item-stats">
+                        {sd.armorScore != null && <span>Score {sd.armorScore}</span>}
+                        {sd.armorSlots != null && <span>{sd.armorSlots} slots</span>}
+                        {sd.features?.length > 0 && <span>{sd.features.join(', ')}</span>}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           {/* Equipped equipment from catalog */}
           {equippedEquipment.length > 0 && (
             <div className="dh-equipped-section">
-              {equippedEquipment.map(eq => (
-                <div key={eq.id} className="dh-equipped-item">
-                  <Star size={14} className="dh-equipped-item-icon" />
-                  <div>
-                    <div className="dh-equipped-item-name">{eq.name}</div>
-                    {eq.mechanicalEffect && <div className="dh-equipped-item-stats">{eq.mechanicalEffect}</div>}
+              {equippedEquipment.map(eq => {
+                const sd = eq.systemData || {};
+                return (
+                  <div key={eq.id} className="dh-equipped-item">
+                    <Star size={14} className="dh-equipped-item-icon" />
+                    <div>
+                      <div className="dh-equipped-item-name">{eq.name}</div>
+                      {sd.mechanicalEffect && <div className="dh-equipped-item-stats">{sd.mechanicalEffect}</div>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -356,10 +452,6 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <div className="dh-counter dh-counter-gold">
               <Star size={14} className="dh-counter-icon" />
               <span>{gold} Gold</span>
-            </div>
-            <div className="dh-counter dh-counter-hope">
-              <Sun size={14} className="dh-counter-icon" />
-              <span>{hope} Hope</span>
             </div>
           </div>
         </div>

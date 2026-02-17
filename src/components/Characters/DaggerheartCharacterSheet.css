@@ -143,6 +143,10 @@
   grid-template-columns: 1fr 1.2fr 1fr;
 }
 
+.dh-sheet-row-4 {
+  grid-template-columns: 1fr 1fr 1.4fr 1fr;
+}
+
 .dh-sheet-row-2-wide {
   grid-template-columns: auto auto 1fr;
 }
@@ -224,6 +228,14 @@
   border-color: #3b82f6;
   color: white;
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Hope Slots - amber/golden when filled */
+.dh-slot-hope.filled {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border-color: #f59e0b;
+  color: #0d1126;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
 }
 
 /* ===== Stat Box (Evasion, Armor Score) ===== */
@@ -756,6 +768,84 @@
   content: '';
 }
 
+/* Weapon details layout */
+.dh-weapon-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.dh-weapon-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dh-weapon-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.dh-weapon-feature-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.4rem;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 999px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #a78bfa;
+  text-transform: capitalize;
+  letter-spacing: 0.03em;
+}
+
+.dh-weapon-description {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1.4;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+/* Item tier badge */
+.dh-item-tier {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem 0.35rem;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(234, 179, 8, 0.05));
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 0.25rem;
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: #eab308;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+/* Equipped item header with tier */
+.dh-equipped-item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Stat modified indicator */
+.dh-stat-modified {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02));
+}
+
+.dh-stat-base {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.25);
+  margin-top: 0.15rem;
+  letter-spacing: 0.05em;
+}
+
 /* ===== Form-specific styles for new sections ===== */
 /* Feature cards in form */
 .dh-form-feature-card {
@@ -1018,6 +1108,17 @@
   text-overflow: ellipsis;
 }
 
+.dh-form-equip-item-tier {
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: #eab308;
+  background: rgba(234, 179, 8, 0.1);
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.2rem;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
 .dh-form-equip-item-type {
   font-size: 0.6rem;
   font-weight: 600;
@@ -1052,6 +1153,7 @@
   }
 
   .dh-sheet-row-3,
+  .dh-sheet-row-4,
   .dh-sheet-row-2-wide,
   .dh-sheet-row-2 {
     grid-template-columns: 1fr;
