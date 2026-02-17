@@ -27,8 +27,10 @@ export default function ItemsView({
   const [filterType, setFilterType] = useState('all');
   const [showImportModal, setShowImportModal] = useState(false);
   const [importCategory, setImportCategory] = useState('all');
+  const [importTier, setImportTier] = useState('all');
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
+  const [catalogTier, setCatalogTier] = useState('all');
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -56,20 +58,53 @@ export default function ItemsView({
     }
   };
 
-  // Get items to show in import modal based on category
+  // Get items to show in import modal based on category and tier/rarity
   const getImportItems = () => {
     const system = campaign?.gameSystem || 'daggerheart';
     if (system !== 'daggerheart') return [];
+    let items;
     switch (importCategory) {
-      case 'weapons': return DAGGERHEART_WEAPONS;
-      case 'armor': return DAGGERHEART_ARMOR;
-      case 'equipment': return DAGGERHEART_EQUIPMENT;
-      case 'consumables': return DAGGERHEART_CONSUMABLES;
-      default: return ALL_DAGGERHEART_ITEMS;
+      case 'weapons': items = DAGGERHEART_WEAPONS; break;
+      case 'armor': items = DAGGERHEART_ARMOR; break;
+      case 'equipment': items = DAGGERHEART_EQUIPMENT; break;
+      case 'consumables': items = DAGGERHEART_CONSUMABLES; break;
+      default: items = ALL_DAGGERHEART_ITEMS;
     }
+
+    // Apply tier/rarity filter
+    if (importTier !== 'all') {
+      const isEquipmentCategory = importCategory === 'equipment' || importCategory === 'consumables';
+      if (isEquipmentCategory) {
+        // Filter by rarity for equipment/consumables
+        items = items.filter(i => (i.systemData?.rarity || 'common') === importTier);
+      } else if (importCategory === 'all') {
+        // For "All Items", filter by tier for weapons/armor, pass through equipment
+        const tierNum = parseInt(importTier);
+        if (!isNaN(tierNum)) {
+          items = items.filter(i => {
+            if (i.type === 'weapon' || i.type === 'armor') {
+              return (i.systemData?.tier || 1) === tierNum;
+            }
+            return true; // show all equipment/consumables when filtering by tier
+          });
+        }
+      } else {
+        // Filter by tier for weapons/armor categories
+        const tierNum = parseInt(importTier);
+        items = items.filter(i => {
+          const itemTier = i.systemData?.tier || 1;
+          return itemTier === tierNum;
+        });
+      }
+    }
+
+    return items;
   };
 
   const importItems = getImportItems();
+
+  // Determine if current import category should show rarity or tier filter
+  const showRarityFilter = importCategory === 'equipment' || importCategory === 'consumables';
   const existingItemNames = new Set(items.map(i => i.name.toLowerCase()));
 
   const toggleImportItem = (itemName) => {
@@ -120,7 +155,14 @@ export default function ItemsView({
 
     const matchesFilter = filterType === 'all' || item.type === filterType;
 
-    return matchesSearch && matchesFilter;
+    // Tier filter for catalog (weapons and armor only)
+    let matchesTier = true;
+    if (catalogTier !== 'all' && (filterType === 'weapon' || filterType === 'armor')) {
+      const itemTier = item.systemData?.tier || 1;
+      matchesTier = itemTier === parseInt(catalogTier);
+    }
+
+    return matchesSearch && matchesFilter && matchesTier;
   });
 
   // Count by type
@@ -172,7 +214,7 @@ export default function ItemsView({
         <div className="filter-tabs">
           <button
             className={`filter-tab ${filterType === 'all' ? 'active' : ''}`}
-            onClick={() => setFilterType('all')}
+            onClick={() => { setFilterType('all'); setCatalogTier('all'); }}
           >
             <Package size={16} />
             All ({counts.all})
@@ -198,6 +240,20 @@ export default function ItemsView({
             <Backpack size={16} />
             Equipment ({counts.equipment})
           </button>
+
+          {(filterType === 'weapon' || filterType === 'armor') && (
+            <select
+              className="catalog-tier-select"
+              value={catalogTier}
+              onChange={(e) => setCatalogTier(e.target.value)}
+            >
+              <option value="all">All Tiers</option>
+              <option value="1">Tier 1</option>
+              <option value="2">Tier 2</option>
+              <option value="3">Tier 3</option>
+              <option value="4">Tier 4</option>
+            </select>
+          )}
         </div>
       </div>
 
@@ -284,11 +340,51 @@ export default function ItemsView({
               <button
                 key={cat.value}
                 className={`import-tab ${importCategory === cat.value ? 'active' : ''}`}
-                onClick={() => setImportCategory(cat.value)}
+                onClick={() => { setImportCategory(cat.value); setImportTier('all'); }}
               >
                 {cat.label}
               </button>
             ))}
+          </div>
+
+          <div className="import-tier-filter">
+            {showRarityFilter ? (
+              <>
+                {[
+                  { value: 'all', label: 'All Rarities' },
+                  { value: 'common', label: 'Common' },
+                  { value: 'uncommon', label: 'Uncommon' },
+                  { value: 'rare', label: 'Rare' },
+                  { value: 'legendary', label: 'Legendary' }
+                ].map(r => (
+                  <button
+                    key={r.value}
+                    className={`import-tier-tab ${importTier === r.value ? 'active' : ''}`}
+                    onClick={() => setImportTier(r.value)}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <>
+                {[
+                  { value: 'all', label: 'All Tiers' },
+                  { value: '1', label: 'Tier 1' },
+                  { value: '2', label: 'Tier 2' },
+                  { value: '3', label: 'Tier 3' },
+                  { value: '4', label: 'Tier 4' }
+                ].map(t => (
+                  <button
+                    key={t.value}
+                    className={`import-tier-tab ${importTier === t.value ? 'active' : ''}`}
+                    onClick={() => setImportTier(t.value)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
 
           <div className="import-actions-bar">
@@ -327,6 +423,12 @@ export default function ItemsView({
                     <div className="import-item-name">
                       {item.name}
                       <span className={`import-item-type ${item.type}`}>{item.type}</span>
+                      {(item.type === 'weapon' || item.type === 'armor') && (
+                        <span className="import-item-tier">T{item.systemData?.tier || 1}</span>
+                      )}
+                      {item.type === 'equipment' && item.systemData?.rarity && item.systemData.rarity !== 'common' && (
+                        <span className={`import-item-rarity ${item.systemData.rarity}`}>{item.systemData.rarity}</span>
+                      )}
                     </div>
                     <div className="import-item-desc">{item.description}</div>
                   </div>
