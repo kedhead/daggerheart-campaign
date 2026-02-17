@@ -5,6 +5,32 @@
 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../config/firebase';
+import { ANCESTRIES } from '../data/systems/daggerheart';
+
+/**
+ * Visual appearance hints for Daggerheart ancestries.
+ * Used to enrich DALL-E prompts so the AI knows what each fantasy race looks like.
+ */
+const ANCESTRY_VISUAL_HINTS = {
+  'Clank': 'a mechanical automaton made of gears, brass, and enchanted metal plates, with glowing eyes and articulated joints',
+  'Dragonborn': 'a dragon-like humanoid with scaled skin, a reptilian snout, and small horns',
+  'Dwarf': 'a short, stocky humanoid with a thick beard and sturdy build',
+  'Elf': 'a tall, graceful humanoid with pointed ears and angular features',
+  'Faerie': 'a tiny winged fey creature with iridescent butterfly or dragonfly wings, delicate features',
+  'Faun': 'a humanoid with goat legs, small curved horns, and pointed ears',
+  'Firbolg': 'a large, gentle giant humanoid with broad features, slightly pointed ears, and a connection to nature',
+  'Fungril': 'a mushroom-like humanoid with a cap-shaped head, spore-covered skin, and bioluminescent patches',
+  'Galapa': 'a turtle-like humanoid with a large shell on their back, leathery green skin, and a wise weathered face',
+  'Giant': 'a very tall and muscular humanoid towering over others',
+  'Goblin': 'a small, scrappy green-skinned creature with large pointed ears and sharp teeth',
+  'Halfling': 'a small, cheerful humanoid with curly hair and bare feet',
+  'Human': 'a human',
+  'Inferis': 'a humanoid with reddish or dark skin, small horns, and faintly glowing eyes suggesting infernal heritage',
+  'Katari': 'a feline humanoid with cat-like ears, whiskers, a tail, and fur-covered skin',
+  'Orc': 'a tall, muscular humanoid with tusks, strong jaw, and green or gray skin',
+  'Ribbet': 'a frog-like humanoid with smooth amphibious skin, wide eyes, and webbed hands',
+  'Simiah': 'an ape-like humanoid with long arms, a broad chest, and primate facial features',
+};
 
 /**
  * Download an image from a URL and convert to data URL
@@ -128,12 +154,27 @@ function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
   if (charClass) {
     characterContext += `, a ${charClass}`;
   }
+
+  // Enrich ancestry with visual description so DALL-E knows what the race looks like
+  let ancestryDesc = '';
   if (ancestry) {
-    characterContext += ` of ${ancestry} ancestry`;
+    const visualHint = ANCESTRY_VISUAL_HINTS[ancestry];
+    if (visualHint) {
+      ancestryDesc = `They are ${visualHint}.`;
+    } else {
+      // Fall back to the data file description if no visual hint exists
+      const ancestryData = ANCESTRIES[ancestry];
+      const fallbackDesc = ancestryData && typeof ancestryData === 'object' ? ancestryData.description : '';
+      if (fallbackDesc) {
+        ancestryDesc = `They are ${ancestry} — ${fallbackDesc}.`;
+      } else {
+        characterContext += ` of ${ancestry} ancestry`;
+      }
+    }
   }
 
   // Construct the full prompt
-  const prompt = `${styleBase}. Portrait of ${characterContext}. ${appearance}. Heroic and determined expression. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
+  const prompt = `${styleBase}. Portrait of ${characterContext}. ${ancestryDesc} ${appearance}. Heroic and determined expression. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
 
   return prompt;
 }
