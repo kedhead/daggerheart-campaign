@@ -1,0 +1,420 @@
+/* ─── Level Up Wizard Modal ─── */
+
+.luw-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.luw-modal {
+  background: #1a1f3a;
+  border: 1px solid #2a3055;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+/* Header */
+.luw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #2a3055;
+}
+
+.luw-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #c8a44e;
+  margin: 0;
+}
+
+.luw-close {
+  background: none;
+  border: none;
+  color: #8899aa;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+.luw-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+/* Progress bar */
+.luw-progress {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #2a3055;
+  overflow-x: auto;
+}
+
+.luw-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: #667;
+  cursor: default;
+  white-space: nowrap;
+}
+.luw-progress-step.done {
+  color: #6ea;
+  cursor: pointer;
+}
+.luw-progress-step.active {
+  background: rgba(200, 164, 78, 0.15);
+  color: #c8a44e;
+}
+
+.luw-progress-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2a3055;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+.luw-progress-step.active .luw-progress-num { background: #c8a44e; color: #1a1f3a; }
+.luw-progress-step.done .luw-progress-num { background: #3a6; color: #fff; }
+
+.luw-progress-label { font-weight: 500; }
+
+/* Body */
+.luw-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+/* Step content */
+.luw-step-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #e4e8f0;
+  margin: 0 0 0.35rem;
+}
+
+.luw-step-desc {
+  font-size: 0.82rem;
+  color: #8899aa;
+  margin: 0 0 1rem;
+}
+
+/* Achievements */
+.luw-achievement-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(58, 170, 102, 0.1);
+  border: 1px solid rgba(58, 170, 102, 0.2);
+  border-radius: 8px;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  color: #b0c8b8;
+}
+
+.luw-check-icon { color: #6ea; flex-shrink: 0; }
+
+/* Input groups */
+.luw-input-group {
+  margin-top: 1rem;
+}
+
+.luw-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #8899aa;
+  margin-bottom: 0.3rem;
+  margin-top: 0.6rem;
+}
+
+.luw-input, .luw-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: #141828;
+  border: 1px solid #2a3055;
+  border-radius: 8px;
+  color: #e4e8f0;
+  font-size: 0.85rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.luw-input:focus, .luw-select:focus {
+  outline: none;
+  border-color: #c8a44e;
+}
+
+.luw-hint {
+  font-size: 0.72rem;
+  color: #667;
+  margin-top: 0.25rem;
+}
+
+/* Advancement options */
+.luw-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.luw-option {
+  border: 1px solid #2a3055;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.luw-option.selected {
+  border-color: #c8a44e;
+  background: rgba(200, 164, 78, 0.05);
+}
+.luw-option.disabled { opacity: 0.45; }
+.luw-option.crossed-out { opacity: 0.3; text-decoration: line-through; }
+
+.luw-option-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  cursor: pointer;
+  color: #e4e8f0;
+  font-family: inherit;
+}
+.luw-option-btn:disabled { cursor: not-allowed; }
+
+.luw-option-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.luw-option-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.luw-option-meta {
+  font-size: 0.72rem;
+  color: #8899aa;
+}
+
+.luw-option-desc {
+  font-size: 0.78rem;
+  color: #8899aa;
+  margin-top: 0.2rem;
+}
+
+/* Detail panel (expanded when selected) */
+.luw-detail-panel {
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid #2a3055;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Trait/experience pick buttons */
+.luw-trait-picks, .luw-experience-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.3rem;
+}
+
+.luw-trait-btn {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid #2a3055;
+  border-radius: 6px;
+  background: #141828;
+  color: #e4e8f0;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.luw-trait-btn.selected {
+  border-color: #c8a44e;
+  background: rgba(200, 164, 78, 0.15);
+  color: #c8a44e;
+}
+.luw-trait-btn.marked {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.luw-trait-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Subclass preview */
+.luw-subclass-preview {
+  padding: 0.5rem 0;
+}
+.luw-subclass-level {
+  font-size: 0.72rem;
+  color: #c8a44e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+.luw-subclass-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e4e8f0;
+  margin-bottom: 0.25rem;
+}
+.luw-subclass-desc {
+  font-size: 0.8rem;
+  color: #8899aa;
+  line-height: 1.4;
+}
+
+/* Domain card grid */
+.luw-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.luw-card-option {
+  text-align: left;
+  background: #141828;
+  border: 1px solid #2a3055;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  color: #e4e8f0;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+.luw-card-option:hover { border-color: #445; }
+.luw-card-option.selected {
+  border-color: #c8a44e;
+  background: rgba(200, 164, 78, 0.08);
+}
+
+.luw-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.luw-card-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.luw-card-meta {
+  font-size: 0.7rem;
+  color: #8899aa;
+}
+
+.luw-card-desc {
+  font-size: 0.78rem;
+  color: #8899aa;
+  line-height: 1.4;
+}
+
+.luw-empty {
+  text-align: center;
+  color: #667;
+  font-size: 0.85rem;
+  padding: 2rem;
+}
+
+/* Summary */
+.luw-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.luw-summary-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: #141828;
+  border-radius: 8px;
+  border: 1px solid #2a3055;
+}
+
+.luw-summary-label {
+  font-size: 0.8rem;
+  color: #8899aa;
+}
+
+.luw-summary-value {
+  font-size: 0.85rem;
+  color: #e4e8f0;
+  font-weight: 500;
+}
+
+/* Footer */
+.luw-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #2a3055;
+}
+
+.luw-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #2a3055;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.luw-btn-secondary {
+  background: transparent;
+  color: #8899aa;
+}
+.luw-btn-secondary:hover { background: rgba(255,255,255,0.05); color: #e4e8f0; }
+
+.luw-btn-primary {
+  background: #c8a44e;
+  color: #1a1f3a;
+  border-color: #c8a44e;
+}
+.luw-btn-primary:hover { background: #d4b35e; }
+.luw-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 600px) {
+  .luw-modal {
+    max-height: 95vh;
+    border-radius: 8px;
+  }
+  .luw-progress {
+    padding: 0.5rem 0.75rem;
+  }
+  .luw-progress-label {
+    display: none;
+  }
+  .luw-body {
+    padding: 1rem;
+  }
+}

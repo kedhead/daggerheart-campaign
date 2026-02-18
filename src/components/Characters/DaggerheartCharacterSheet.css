@@ -1243,3 +1243,75 @@
     height: 26px;
   }
 }
+
+/* ─── Level Up Button ─── */
+.dh-btn-levelup {
+  width: 100%;
+  justify-content: center;
+  background: rgba(200, 164, 78, 0.12);
+  border-color: rgba(200, 164, 78, 0.3);
+  color: #c8a44e;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.dh-btn-levelup:hover {
+  background: rgba(200, 164, 78, 0.2);
+}
+
+/* ─── Portrait Generate Button ─── */
+.dh-sidebar-generate-portrait {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid rgba(200, 164, 78, 0.2);
+  border-radius: 6px;
+  background: rgba(200, 164, 78, 0.08);
+  color: #c8a44e;
+  font-size: 0.68rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.dh-sidebar-generate-portrait:hover { background: rgba(200, 164, 78, 0.15); }
+.dh-sidebar-generate-portrait:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── Proficiency & Multiclass in Sidebar ─── */
+.dh-sidebar-proficiency {
+  font-size: 0.72rem;
+  color: #c8a44e;
+  font-weight: 500;
+}
+
+.dh-sidebar-multiclass {
+  font-size: 0.72rem;
+  color: #8899aa;
+  font-style: italic;
+}
+
+/* ─── Proficiency threshold box ─── */
+.dh-threshold-prof {
+  border-color: rgba(200, 164, 78, 0.3);
+}
+
+/* ─── Multiclass domain badge ─── */
+.dh-domain-multiclass {
+  border-style: dashed;
+  opacity: 0.8;
+}
+
+/* ─── Hope feature card ─── */
+.dh-feature-hope {
+  border-left: 3px solid #c8a44e;
+}
+
+/* ─── Feature tag styling ─── */
+.dh-feature-tag {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8899aa;
+  margin-bottom: 0.15rem;
+}

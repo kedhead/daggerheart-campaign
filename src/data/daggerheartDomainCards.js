@@ -221,6 +221,10 @@ export const getCardsForCharacter = (primaryDomain, secondaryDomain, level) =>
     (c.domain === primaryDomain || c.domain === secondaryDomain) && c.level <= level
   );
 
+// Helper: get cards for a multiclass domain (capped at half character level, rounded up)
+export const getCardsForMulticlass = (domain, level) =>
+  DOMAIN_CARDS.filter(c => c.domain === domain && c.level <= Math.ceil(level / 2));
+
 // Helper: get a card by name
 export const getCardByName = (name) =>
   DOMAIN_CARDS.find(c => c.name === name);

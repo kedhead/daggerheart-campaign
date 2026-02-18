@@ -359,6 +359,43 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             </div>
           )}
         </div>
+
+        {/* Companion fields for Beastbound Rangers */}
+        {formData.class === 'Ranger' && formData.subclass === 'Beastbound' && (
+          <div className="input-group full-width" style={{ background: 'rgba(200,164,78,0.06)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(200,164,78,0.15)' }}>
+            <label style={{ ...SECTION_STYLE, marginTop: 0, marginBottom: '0.25rem' }}>Companion</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Companion Name</label>
+                <input
+                  type="text"
+                  value={formData.companion?.name || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, companion: { ...prev.companion, name: e.target.value, stressSlots: prev.companion?.stressSlots || [false,false,false,false,false,false], evasion: 10, damageDie: 'd6', range: 'Melee', experiences: prev.companion?.experiences || [], upgrades: prev.companion?.upgrades || [] } }))}
+                  placeholder="e.g., Fang, Shadow..."
+                />
+              </div>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Companion Type</label>
+                <input
+                  type="text"
+                  value={formData.companion?.type || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, companion: { ...prev.companion, type: e.target.value } }))}
+                  placeholder="e.g., Wolf, Hawk..."
+                />
+              </div>
+            </div>
+            <div className="input-group" style={{ marginBottom: 0, marginTop: '0.5rem' }}>
+              <label>Attack Description</label>
+              <input
+                type="text"
+                value={formData.companion?.attackDescription || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, companion: { ...prev.companion, attackDescription: e.target.value } }))}
+                placeholder="e.g., Bite, Claw, Peck..."
+              />
+            </div>
+          </div>
+        )}
+
         <div className="input-group">
           <label>Level</label>
           <input type="number" value={formData.level || 1} onChange={(e) => handleChange('level', parseInt(e.target.value) || 1)} min="1" max="10" />

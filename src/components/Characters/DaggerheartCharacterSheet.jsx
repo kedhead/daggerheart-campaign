@@ -1,7 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users } from 'lucide-react';
-import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../data/systems/daggerheart';
+import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2 } from 'lucide-react';
+import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
+import { generateCharacterPortrait } from '../../services/portraitGenerator';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import LevelUpWizard from './LevelUpWizard';
+import BeastformPanel from './BeastformPanel';
+import CompanionSheet from './CompanionSheet';
 import './DaggerheartCharacterSheet.css';
 
 const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 };
@@ -15,12 +20,7 @@ const TRAIT_ABBREV = {
   instinct: 'INS', presence: 'PRE', knowledge: 'KNO'
 };
 
-const getTierForLevel = (level) => {
-  if (level <= 4) return 1;
-  if (level <= 7) return 2;
-  if (level <= 9) return 3;
-  return 4;
-};
+// getTierForLevel imported from daggerheart.js
 
 const getWeaponDamage = (weapon, level) => {
   const sd = weapon.systemData;
@@ -38,6 +38,11 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [localArmor, setLocalArmor] = useState(null);
   const [localHope, setLocalHope] = useState(null);
   const [activeTab, setActiveTab] = useState('core');
+  const [showLevelUp, setShowLevelUp] = useState(false);
+  const [generatingPortrait, setGeneratingPortrait] = useState(false);
+
+  const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
+  const openaiKeyInfo = getEffectiveKey('openai');
 
   useEffect(() => {
     setLocalHp(null);
@@ -74,6 +79,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const ancestry = character.ancestry || '';
   const community = character.community || '';
   const level = character.level || 1;
+  const proficiency = character.proficiency || getBaseProficiency(level);
+  const isDruid = charClass === 'Druid' || character.multiclass?.class === 'Druid';
+  const isBeastbound = charClass === 'Ranger' && subclass === 'Beastbound';
+  const subclassLevel = character.subclassLevel || 'foundation';
   const baseEvasion = (charClass && CLASSES[charClass]?.baseEvasion) || character.evasion || 10;
   const baseArmorScore = character.armor ?? 0;
   const gold = character.gold ?? 0;
@@ -159,12 +168,39 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const hpFilledCount = hpSlots.filter(Boolean).length;
   const stressFilledCount = stressSlots.filter(Boolean).length;
 
-  const TABS = [
-    { key: 'core', label: 'Core' },
-    { key: 'abilities', label: 'Abilities' },
-    { key: 'equipment', label: 'Equipment' },
-    { key: 'backstory', label: 'Backstory' },
-  ];
+  const handleGeneratePortrait = async () => {
+    if (!openaiKeyInfo?.key || generatingPortrait) return;
+    setGeneratingPortrait(true);
+    try {
+      const imageUrl = await generateCharacterPortrait(character, openaiKeyInfo.key, campaign?.id);
+      if (imageUrl && updateCharacter) {
+        updateCharacter(character.id, { avatarUrl: imageUrl });
+      }
+    } catch (err) {
+      console.error('Portrait generation failed:', err);
+    } finally {
+      setGeneratingPortrait(false);
+    }
+  };
+
+  const handleLevelUp = (updates) => {
+    if (updateCharacter) {
+      updateCharacter(character.id, updates);
+    }
+  };
+
+  const TABS = useMemo(() => {
+    const tabs = [
+      { key: 'core', label: 'Core' },
+      { key: 'abilities', label: 'Abilities' },
+      { key: 'equipment', label: 'Equipment' },
+      { key: 'backstory', label: 'Backstory' },
+    ];
+    if (isBeastbound && character.companion) {
+      tabs.splice(2, 0, { key: 'companion', label: 'Companion' });
+    }
+    return tabs;
+  }, [isBeastbound, character.companion]);
 
   // ─── Sidebar ───
   const renderSidebar = () => (
@@ -178,6 +214,17 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             {character.name.charAt(0)}
           </div>
         )}
+        {canEdit && openaiKeyInfo?.key && (
+          <button
+            className="dh-sidebar-generate-portrait"
+            onClick={handleGeneratePortrait}
+            disabled={generatingPortrait}
+            title="Generate AI Portrait"
+          >
+            <Wand2 size={12} />
+            {generatingPortrait ? 'Generating...' : 'Generate'}
+          </button>
+        )}
       </div>
 
       {/* Name & Info */}
@@ -186,7 +233,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         <div className="dh-sidebar-subtitle">
           Lv {level}{subtitleParts.length > 0 && ` · ${subtitleParts.join(' · ')}`}
         </div>
+        {character.multiclass && (
+          <div className="dh-sidebar-multiclass">
+            + {character.multiclass.class} ({character.multiclass.subclass})
+          </div>
+        )}
         {community && <div className="dh-sidebar-community">{community}</div>}
+        <div className="dh-sidebar-proficiency">Proficiency +{proficiency}</div>
         <div className="dh-sidebar-player">{character.playerName || 'Unknown Player'}</div>
       </div>
 
@@ -267,6 +320,11 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
       {/* Footer actions */}
       <div className="dh-sidebar-actions">
+        {canEdit && level < 10 && (
+          <button className="dh-btn dh-btn-levelup" onClick={() => setShowLevelUp(true)}>
+            <ArrowUp size={14} /> Level Up
+          </button>
+        )}
         {character.demiplaneLink && (
           <a href={character.demiplaneLink} target="_blank" rel="noopener noreferrer" className="dh-link dh-sidebar-link">
             <ExternalLink size={14} />
@@ -320,6 +378,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <div className="dh-threshold-value">{severeThreshold}</div>
           <div className="dh-threshold-label">Severe</div>
         </div>
+        <div className="dh-threshold-box dh-threshold-prof">
+          <div className="dh-threshold-value">+{proficiency}</div>
+          <div className="dh-threshold-label">Prof</div>
+        </div>
       </div>
 
       {/* Experiences */}
@@ -327,12 +389,15 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         <>
           <div className="dh-section-label">Experiences</div>
           <div className="dh-experiences-list">
-            {experiences.map((exp, i) => (
-              <div key={i} className="dh-experience-card">
-                <span className="dh-experience-name">{exp}</span>
-                <span className="dh-experience-mod">+2</span>
-              </div>
-            ))}
+            {experiences.map((exp, i) => {
+              const boost = (character.experienceBoosts || {})[exp] || 0;
+              return (
+                <div key={i} className="dh-experience-card">
+                  <span className="dh-experience-name">{exp}</span>
+                  <span className="dh-experience-mod">+{2 + boost}</span>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -351,8 +416,16 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               <span className="dh-domain-badge">{secondaryDomain}</span>
             )}
           </div>
+          {character.multiclass?.domain && (
+            <span className="dh-domain-badge dh-domain-multiclass">{character.multiclass.domain} (MC)</span>
+          )}
           {domainNotes && <div className="dh-domain-notes">{domainNotes}</div>}
         </>
+      )}
+
+      {/* Beastform (Druid only) */}
+      {isDruid && (
+        <BeastformPanel character={character} canEdit={canEdit} updateCharacter={updateCharacter} />
       )}
 
       {/* Active Weapons */}
@@ -412,15 +485,72 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   );
 
   // ─── Abilities Tab ───
-  const renderAbilitiesTab = () => (
+  const renderAbilitiesTab = () => {
+    const classFeatures = classData?.classFeatures || [];
+    const hopeFeature = classData?.hopeFeature;
+    // Multiclass subclass info
+    const mcSubclassInfo = character.multiclass && SUBCLASSES[character.multiclass.class]
+      ? SUBCLASSES[character.multiclass.class].find(s => s.name === character.multiclass.subclass)
+      : null;
+
+    return (
     <div className="dh-tab-content">
-      {/* Subclass Foundation */}
-      {subclassInfo?.foundation && (
+      {/* Class Features */}
+      {(classFeatures.length > 0 || hopeFeature) && (
         <div className="dh-ability-section">
-          <div className="dh-section-label">{subclassInfo.name} Foundation</div>
+          <div className="dh-section-label">{charClass} Features</div>
+          {hopeFeature && (
+            <div className="dh-feature-card dh-feature-hope">
+              <div className="dh-feature-tag">Hope Feature</div>
+              <div className="dh-feature-name">{hopeFeature.name}</div>
+              <div className="dh-feature-desc">{hopeFeature.description}</div>
+            </div>
+          )}
+          {classFeatures.map((f, i) => (
+            <div key={i} className="dh-feature-card">
+              <div className="dh-feature-name">{f.name}</div>
+              <div className="dh-feature-desc">{f.description}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Subclass Features — show all unlocked levels */}
+      {subclassInfo && (
+        <div className="dh-ability-section">
+          <div className="dh-section-label">{subclassInfo.name}</div>
+          {subclassInfo.foundation && (
+            <div className="dh-feature-card">
+              <div className="dh-feature-tag">Foundation</div>
+              <div className="dh-feature-name">{subclassInfo.foundation.name}</div>
+              <div className="dh-feature-desc">{subclassInfo.foundation.description}</div>
+            </div>
+          )}
+          {(subclassLevel === 'specialization' || subclassLevel === 'mastery') && subclassInfo.specialization && (
+            <div className="dh-feature-card">
+              <div className="dh-feature-tag">Specialization</div>
+              <div className="dh-feature-name">{subclassInfo.specialization.name}</div>
+              <div className="dh-feature-desc">{subclassInfo.specialization.description}</div>
+            </div>
+          )}
+          {subclassLevel === 'mastery' && subclassInfo.mastery && (
+            <div className="dh-feature-card">
+              <div className="dh-feature-tag">Mastery</div>
+              <div className="dh-feature-name">{subclassInfo.mastery.name}</div>
+              <div className="dh-feature-desc">{subclassInfo.mastery.description}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Multiclass Foundation */}
+      {mcSubclassInfo?.foundation && (
+        <div className="dh-ability-section">
+          <div className="dh-section-label">{character.multiclass.class} — {mcSubclassInfo.name} (Multiclass)</div>
           <div className="dh-feature-card">
-            <div className="dh-feature-name">{subclassInfo.foundation.name}</div>
-            <div className="dh-feature-desc">{subclassInfo.foundation.description}</div>
+            <div className="dh-feature-tag">Foundation</div>
+            <div className="dh-feature-name">{mcSubclassInfo.foundation.name}</div>
+            <div className="dh-feature-desc">{mcSubclassInfo.foundation.description}</div>
           </div>
         </div>
       )}
@@ -479,11 +609,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         </div>
       )}
 
-      {!subclassInfo?.foundation && !hasHeritage && domainCards.length === 0 && (
+      {!subclassInfo && !hasHeritage && domainCards.length === 0 && !classFeatures.length && (
         <div className="dh-empty-tab">No abilities configured yet.</div>
       )}
     </div>
-  );
+    );
+  };
 
   // ─── Equipment Tab ───
   const renderEquipmentTab = () => (
@@ -616,6 +747,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     </div>
   );
 
+  // ─── Companion Tab ───
+  const renderCompanionTab = () => (
+    <div className="dh-tab-content">
+      <CompanionSheet character={character} canEdit={canEdit} updateCharacter={updateCharacter} />
+    </div>
+  );
+
   return (
     <div className="dh-sheet">
       <div className="dh-layout">
@@ -639,11 +777,22 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <div className="dh-tab-panel">
             {activeTab === 'core' && renderCoreTab()}
             {activeTab === 'abilities' && renderAbilitiesTab()}
+            {activeTab === 'companion' && renderCompanionTab()}
             {activeTab === 'equipment' && renderEquipmentTab()}
             {activeTab === 'backstory' && renderBackstoryTab()}
           </div>
         </div>
       </div>
+
+      {/* Level Up Wizard Modal */}
+      {showLevelUp && (
+        <LevelUpWizard
+          character={character}
+          items={items}
+          onComplete={handleLevelUp}
+          onClose={() => setShowLevelUp(false)}
+        />
+      )}
     </div>
   );
 }
