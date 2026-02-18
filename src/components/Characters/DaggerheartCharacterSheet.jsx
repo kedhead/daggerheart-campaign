@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Edit3, Trash2, ExternalLink, ChevronRight, Sword, Shield, Star, Sparkles, BookOpen, Users } from 'lucide-react';
+import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
 import './DaggerheartCharacterSheet.css';
@@ -9,6 +9,11 @@ const DEFAULT_HP = [true, true, true, true, true, true];
 const DEFAULT_STRESS = [false, false, false, false, false, false];
 const DEFAULT_ARMOR_SLOTS = [false, false, false, false, false, false];
 const DEFAULT_HOPE_SLOTS = [false, false, false, false, false, false];
+
+const TRAIT_ABBREV = {
+  agility: 'AGI', strength: 'STR', finesse: 'FIN',
+  instinct: 'INS', presence: 'PRE', knowledge: 'KNO'
+};
 
 const getTierForLevel = (level) => {
   if (level <= 4) return 1;
@@ -28,14 +33,12 @@ const getWeaponDamage = (weapon, level) => {
 };
 
 export default function DaggerheartCharacterSheet({ character, onEdit, onDelete, isDM, canEdit, campaign, updateCharacter, items }) {
-  // Local optimistic state for slot toggling
   const [localHp, setLocalHp] = useState(null);
   const [localStress, setLocalStress] = useState(null);
   const [localArmor, setLocalArmor] = useState(null);
   const [localHope, setLocalHope] = useState(null);
-  const [expandedSections, setExpandedSections] = useState({});
+  const [activeTab, setActiveTab] = useState('core');
 
-  // Reset local overrides when Firestore data changes
   useEffect(() => {
     setLocalHp(null);
     setLocalStress(null);
@@ -43,7 +46,6 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     setLocalHope(null);
   }, [character.hpSlots, character.stressSlots, character.armorSlots, character.hopeSlots]);
 
-  // Resolved values: local override or Firestore or default
   const hpSlots = localHp || character.hpSlots || DEFAULT_HP;
   const stressSlots = localStress || character.stressSlots || DEFAULT_STRESS;
   const armorSlots = localArmor || character.armorSlots || DEFAULT_ARMOR_SLOTS;
@@ -52,38 +54,20 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const handleSlotToggle = (type, index) => {
     if (!canEdit || !updateCharacter) return;
-
     const currentSlots = type === 'hpSlots' ? [...hpSlots]
       : type === 'stressSlots' ? [...stressSlots]
       : type === 'hopeSlots' ? [...hopeSlots]
       : [...armorSlots];
-
     currentSlots[index] = !currentSlots[index];
-
-    // Optimistic local update
     if (type === 'hpSlots') setLocalHp(currentSlots);
     else if (type === 'stressSlots') setLocalStress(currentSlots);
     else if (type === 'hopeSlots') setLocalHope(currentSlots);
     else setLocalArmor(currentSlots);
-
-    // Persist to Firestore
     updateCharacter(character.id, { [type]: currentSlots });
   };
 
-  const toggleSection = (key) => {
-    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const formatTraitValue = (val) => {
-    if (val > 0) return `+${val}`;
-    return `${val}`;
-  };
-
-  const traitClass = (val) => {
-    if (val > 0) return 'positive';
-    if (val < 0) return 'negative';
-    return 'zero';
-  };
+  const formatTraitValue = (val) => val > 0 ? `+${val}` : `${val}`;
+  const traitClass = (val) => val > 0 ? 'positive' : val < 0 ? 'negative' : 'zero';
 
   const charClass = character.class || '';
   const subclass = character.subclass || '';
@@ -103,29 +87,24 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const domainNotes = character.domainNotes || '';
   const domainCardNames = character.domainCards || [];
 
-  const subtitleParts = [charClass, subclass, ancestry, community].filter(Boolean);
-  const hasNarrative = character.backstory || character.playerNotes || (isDM && character.dmNotes);
+  const subtitleParts = [charClass, subclass, ancestry].filter(Boolean);
 
-  // Subclass foundation feature
   const subclassInfo = useMemo(() => {
     if (!charClass || !subclass || !SUBCLASSES[charClass]) return null;
     return SUBCLASSES[charClass].find(s => s.name === subclass);
   }, [charClass, subclass]);
 
-  // Heritage features
   const ancestryData = ancestry ? ANCESTRIES[ancestry] : null;
   const ancestryFeatures = ancestryData && typeof ancestryData === 'object' ? ancestryData.features || [] : [];
   const communityData = community ? COMMUNITIES[community] : null;
   const communityFeatures = communityData && typeof communityData === 'object' ? communityData.features || [] : [];
   const hasHeritage = ancestryFeatures.length > 0 || communityFeatures.length > 0;
 
-  // Resolved domain cards
   const domainCards = useMemo(() =>
     domainCardNames.map(name => getCardByName(name)).filter(Boolean),
     [domainCardNames]
   );
 
-  // Group domain cards by domain for display
   const domainCardsGrouped = useMemo(() => {
     const grouped = {};
     domainCards.forEach(card => {
@@ -135,7 +114,6 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     return grouped;
   }, [domainCards]);
 
-  // Equipped items from campaign catalog
   const equippedItems = useMemo(() => {
     if (!items || !Array.isArray(character.equippedItems)) return [];
     return character.equippedItems
@@ -151,14 +129,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
   const equippedEquipment = equippedItems.filter(i => i.type === 'equipment');
 
-  // Auto-calculate effective armor score from equipped armor
   const effectiveArmorScore = useMemo(() => {
     if (equippedArmorItems.length === 0) return baseArmorScore;
     const maxFromEquipped = Math.max(...equippedArmorItems.map(a => a.systemData?.armorScore ?? 0));
     return Math.max(maxFromEquipped, baseArmorScore);
   }, [equippedArmorItems, baseArmorScore]);
 
-  // Auto-calculate effective evasion from equipped armor features
   const effectiveEvasion = useMemo(() => {
     let ev = baseEvasion;
     equippedArmorItems.forEach(armor => {
@@ -173,457 +149,500 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     return ev;
   }, [equippedArmorItems, baseEvasion]);
 
-  const armorModified = effectiveArmorScore !== baseArmorScore;
-  const evasionModified = effectiveEvasion !== baseEvasion;
+  // Damage thresholds from class data
+  const classData = charClass ? CLASSES[charClass] : null;
+  const hpThresholds = classData?.hpThresholds || {};
+  const minorThreshold = hpThresholds.minor || Math.ceil(hpSlots.length / 3);
+  const majorThreshold = hpThresholds.major || Math.ceil((hpSlots.length * 2) / 3);
+  const severeThreshold = hpThresholds.severe || hpSlots.length;
 
-  return (
-    <div className="dh-sheet">
-      {/* Header Banner */}
-      <div className="dh-sheet-header">
-        <div className="dh-sheet-header-info">
-          <div className="dh-sheet-name">{character.name}</div>
-          {subtitleParts.length > 0 && (
-            <div className="dh-sheet-subtitle">
-              {subtitleParts.map((part, i) => (
-                <span key={i}>
-                  {i > 0 && <span className="dh-divider"> / </span>}
-                  {part}
-                </span>
-              ))}
-              <span className="dh-divider"> </span>
-              <span className="dh-sheet-level">Lv {level}</span>
-            </div>
-          )}
-          {!subtitleParts.length && (
-            <div className="dh-sheet-subtitle">
-              <span className="dh-sheet-level">Lv {level}</span>
-            </div>
-          )}
-          <div className="dh-sheet-player">
-            {character.playerName || 'Unknown Player'}
-          </div>
-        </div>
-        <div className="dh-sheet-avatar">
-          {character.avatarUrl ? (
-            <img src={character.avatarUrl} alt={character.name} />
-          ) : (
-            <div className="dh-sheet-avatar-placeholder">
-              {character.name.charAt(0)}
-            </div>
-          )}
-        </div>
-      </div>
+  const hpFilledCount = hpSlots.filter(Boolean).length;
+  const stressFilledCount = stressSlots.filter(Boolean).length;
 
-      {/* Subclass Foundation Feature */}
-      {subclassInfo?.foundation && (
-        <div className="dh-subclass-feature">
-          <button className="dh-narrative-toggle" onClick={() => toggleSection('foundation')}>
-            <ChevronRight size={14} className={`dh-narrative-toggle-icon ${expandedSections.foundation ? 'open' : ''}`} />
-            <span className="dh-narrative-toggle-label">{subclassInfo.name} — {subclassInfo.foundation.name}</span>
-          </button>
-          {expandedSections.foundation && (
-            <div className="dh-narrative-content">{subclassInfo.foundation.description}</div>
-          )}
-        </div>
-      )}
+  const TABS = [
+    { key: 'core', label: 'Core' },
+    { key: 'abilities', label: 'Abilities' },
+    { key: 'equipment', label: 'Equipment' },
+    { key: 'backstory', label: 'Backstory' },
+  ];
 
-      <div className="dh-sheet-body">
-        {/* Top Row: Armor Slots | Hope Slots | Active Weapons | HP & Stress */}
-        <div className="dh-sheet-row dh-sheet-row-4">
-          {/* Armor Slots */}
-          <div className="dh-panel">
-            <div className="dh-section-label">Armor Slots</div>
-            <div className="dh-slots-row">
-              {armorSlots.map((filled, i) => (
-                <button
-                  key={i}
-                  className={`dh-slot dh-slot-armor ${filled ? 'filled' : ''}`}
-                  onClick={() => handleSlotToggle('armorSlots', i)}
-                  disabled={!canEdit}
-                  title={filled ? 'Armor slot used' : 'Armor slot available'}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Hope Slots */}
-          <div className="dh-panel">
-            <div className="dh-section-label">Hope</div>
-            <div className="dh-slots-row">
-              {hopeSlots.map((filled, i) => (
-                <button
-                  key={i}
-                  className={`dh-slot dh-slot-hope ${filled ? 'filled' : ''}`}
-                  onClick={() => handleSlotToggle('hopeSlots', i)}
-                  disabled={!canEdit}
-                  title={filled ? 'Hope available' : 'Hope spent'}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Active Weapons */}
-          <div className="dh-panel">
-            <div className="dh-section-label">Active Weapons</div>
-            <div className="dh-weapons">
-              {/* Show equipped catalog weapons first */}
-              {equippedWeapons.map(weapon => {
-                const sd = weapon.systemData || {};
-                const dmg = getWeaponDamage(weapon, level);
-                const tier = getTierForLevel(level);
-                return (
-                  <div key={weapon.id} className="dh-weapon dh-weapon-equipped">
-                    <Sword size={14} className="dh-weapon-icon" />
-                    <div className="dh-weapon-details">
-                      <div className="dh-weapon-header">
-                        <div className="dh-weapon-name">{weapon.name}</div>
-                        <span className="dh-item-tier">T{tier}</span>
-                      </div>
-                      <div className="dh-weapon-stats">
-                        {sd.trait && <span>{sd.trait}</span>}
-                        {sd.range && <span>{sd.range}</span>}
-                        {dmg && <span>{dmg}</span>}
-                        {sd.damageType && <span>{sd.damageType}</span>}
-                        {sd.burden && <span>{sd.burden}</span>}
-                      </div>
-                      {sd.features?.length > 0 && (
-                        <div className="dh-weapon-features">
-                          {sd.features.map((f, i) => (
-                            <span key={i} className="dh-weapon-feature-badge">{f}</span>
-                          ))}
-                        </div>
-                      )}
-                      {weapon.description && (
-                        <div className="dh-weapon-description">{weapon.description}</div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {/* Fallback to text weapons */}
-              {equippedWeapons.length === 0 && (
-                <>
-                  <div className="dh-weapon">
-                    <Sword size={14} className="dh-weapon-icon" />
-                    <div>
-                      <div className="dh-weapon-label">Primary</div>
-                      <div className="dh-weapon-name">{primaryWeapon || <span className="dh-empty">Not set</span>}</div>
-                    </div>
-                  </div>
-                  <div className="dh-weapon">
-                    <Sword size={14} className="dh-weapon-icon" style={{ opacity: 0.5 }} />
-                    <div>
-                      <div className="dh-weapon-label">Secondary</div>
-                      <div className="dh-weapon-name">{secondaryWeapon || <span className="dh-empty">Not set</span>}</div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* HP & Stress */}
-          <div className="dh-panel">
-            <div className="dh-section-label">Hit Points</div>
-            <div className="dh-slots-row">
-              {hpSlots.map((filled, i) => (
-                <button
-                  key={i}
-                  className={`dh-slot dh-slot-hp ${filled ? 'filled' : ''}`}
-                  onClick={() => handleSlotToggle('hpSlots', i)}
-                  disabled={!canEdit}
-                  title={filled ? 'Healthy' : 'Damaged'}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-            <div className="dh-section-label" style={{ marginTop: '0.5rem' }}>Stress</div>
-            <div className="dh-slots-row">
-              {stressSlots.map((filled, i) => (
-                <button
-                  key={i}
-                  className={`dh-slot dh-slot-stress ${filled ? 'filled' : ''}`}
-                  onClick={() => handleSlotToggle('stressSlots', i)}
-                  disabled={!canEdit}
-                  title={filled ? 'Stressed' : 'Clear'}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Middle Row: Evasion | Armor Score | Traits */}
-        <div className="dh-sheet-row dh-sheet-row-2-wide">
-          <div className={`dh-stat-box ${evasionModified ? 'dh-stat-modified' : ''}`}>
-            <div className="dh-stat-box-value">{effectiveEvasion}</div>
-            <div className="dh-stat-box-label">Evasion</div>
-            {evasionModified && <div className="dh-stat-base">base {baseEvasion}</div>}
-          </div>
-
-          <div className={`dh-stat-box ${armorModified ? 'dh-stat-modified' : ''}`}>
-            <div className="dh-stat-box-value">{effectiveArmorScore}</div>
-            <div className="dh-stat-box-label">Armor</div>
-            {armorModified && <div className="dh-stat-base">base {baseArmorScore}</div>}
-          </div>
-
-          <div className="dh-panel">
-            <div className="dh-section-label">Traits</div>
-            <div className="dh-traits-grid">
-              {Object.entries(traits).map(([name, value]) => (
-                <div key={name} className="dh-trait">
-                  <span className="dh-trait-name">{name.slice(0, 3).toUpperCase()}</span>
-                  <span className={`dh-trait-value ${traitClass(value)}`}>
-                    {formatTraitValue(value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Equipment & Inventory */}
-        <div className="dh-panel">
-          <div className="dh-section-label">Equipment & Inventory</div>
-
-          {/* Equipped armor from catalog */}
-          {equippedArmorItems.length > 0 && (
-            <div className="dh-equipped-section">
-              {equippedArmorItems.map(armor => {
-                const sd = armor.systemData || {};
-                return (
-                  <div key={armor.id} className="dh-equipped-item">
-                    <Shield size={14} className="dh-equipped-item-icon" />
-                    <div>
-                      <div className="dh-equipped-item-header">
-                        <span className="dh-equipped-item-name">{armor.name}</span>
-                        {sd.tier != null && <span className="dh-item-tier">T{sd.tier}</span>}
-                      </div>
-                      <div className="dh-equipped-item-stats">
-                        {sd.armorScore != null && <span>Score {sd.armorScore}</span>}
-                        {sd.armorSlots != null && <span>{sd.armorSlots} slots</span>}
-                        {sd.features?.length > 0 && <span>{sd.features.join(', ')}</span>}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Equipped equipment from catalog */}
-          {equippedEquipment.length > 0 && (
-            <div className="dh-equipped-section">
-              {equippedEquipment.map(eq => {
-                const sd = eq.systemData || {};
-                return (
-                  <div key={eq.id} className="dh-equipped-item">
-                    <Star size={14} className="dh-equipped-item-icon" />
-                    <div>
-                      <div className="dh-equipped-item-name">{eq.name}</div>
-                      {sd.mechanicalEffect && <div className="dh-equipped-item-stats">{sd.mechanicalEffect}</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Text-based equipment fallback */}
-          <div className="dh-equipment-grid">
-            {(equippedArmorItems.length === 0) && (
-              <div className="dh-equipment-item">
-                <span className="dh-equipment-label">Equipped Armor</span>
-                <span className="dh-equipment-value">{equippedArmor || <span className="dh-empty">None</span>}</span>
-              </div>
-            )}
-            <div className="dh-equipment-item">
-              <span className="dh-equipment-label">Inventory</span>
-              <span className="dh-inventory-text">{inventoryText || <span className="dh-empty">Empty</span>}</span>
-            </div>
-          </div>
-          <div className="dh-gold-hope-row">
-            <div className="dh-counter dh-counter-gold">
-              <Star size={14} className="dh-counter-icon" />
-              <span>{gold} Gold</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Heritage Features Section */}
-        {hasHeritage && (
-          <div className="dh-panel">
-            <button className="dh-narrative-toggle" onClick={() => toggleSection('heritage')} style={{ paddingBottom: expandedSections.heritage ? '0.5rem' : 0 }}>
-              <ChevronRight size={14} className={`dh-narrative-toggle-icon ${expandedSections.heritage ? 'open' : ''}`} />
-              <span className="dh-narrative-toggle-label">
-                <Users size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle' }} />
-                Heritage Features
-              </span>
-            </button>
-            {expandedSections.heritage && (
-              <div className="dh-heritage-content">
-                {ancestryFeatures.map((f, i) => (
-                  <div key={`a-${i}`} className="dh-feature-card">
-                    <div className="dh-feature-tag">Ancestry — {ancestry}</div>
-                    <div className="dh-feature-name">{f.name}</div>
-                    <div className="dh-feature-desc">{f.description}</div>
-                  </div>
-                ))}
-                {communityFeatures.map((f, i) => (
-                  <div key={`c-${i}`} className="dh-feature-card">
-                    <div className="dh-feature-tag">Community — {community}</div>
-                    <div className="dh-feature-name">{f.name}</div>
-                    <div className="dh-feature-desc">{f.description}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Domain Cards Section */}
-        {domainCards.length > 0 && (
-          <div className="dh-panel">
-            <button className="dh-narrative-toggle" onClick={() => toggleSection('domainCards')} style={{ paddingBottom: expandedSections.domainCards ? '0.5rem' : 0 }}>
-              <ChevronRight size={14} className={`dh-narrative-toggle-icon ${expandedSections.domainCards ? 'open' : ''}`} />
-              <span className="dh-narrative-toggle-label">
-                <BookOpen size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle' }} />
-                Domain Cards ({domainCards.length})
-              </span>
-            </button>
-            {expandedSections.domainCards && (
-              <div className="dh-domain-cards-content">
-                {Object.entries(domainCardsGrouped).map(([domain, cards]) => (
-                  <div key={domain} className="dh-domain-cards-group">
-                    <div className="dh-domain-cards-group-label">{domain}</div>
-                    <div className="dh-domain-cards-grid">
-                      {cards.map(card => (
-                        <div key={card.name} className="dh-domain-card">
-                          <div className="dh-domain-card-header">
-                            <span className="dh-domain-card-name">{card.name}</span>
-                            <span className="dh-domain-card-level">Lv {card.level}</span>
-                          </div>
-                          <div className="dh-domain-card-desc">{card.description}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Experiences & Domains */}
-        <div className="dh-sheet-row dh-sheet-row-2">
-          <div className="dh-panel">
-            <div className="dh-section-label">Experiences</div>
-            {experiences.length > 0 ? (
-              <div className="dh-badges-row">
-                {experiences.map((exp, i) => (
-                  <span key={i} className="dh-experience-badge">{exp}</span>
-                ))}
-              </div>
-            ) : (
-              <span className="dh-empty">No experiences yet</span>
-            )}
-          </div>
-
-          <div className="dh-panel">
-            <div className="dh-section-label">Domains</div>
-            <div className="dh-badges-row">
-              {primaryDomain && (
-                <span className="dh-domain-badge">
-                  <Sparkles size={10} />
-                  {primaryDomain}
-                </span>
-              )}
-              {secondaryDomain && (
-                <span className="dh-domain-badge">
-                  {secondaryDomain}
-                </span>
-              )}
-              {!primaryDomain && !secondaryDomain && (
-                <span className="dh-empty">No domains selected</span>
-              )}
-            </div>
-            {domainNotes && <div className="dh-domain-notes">{domainNotes}</div>}
-          </div>
-        </div>
-
-        {/* Narrative Sections */}
-        {hasNarrative && (
-          <div className="dh-narrative-section">
-            {character.backstory && (
-              <div>
-                <button className="dh-narrative-toggle" onClick={() => toggleSection('backstory')}>
-                  <ChevronRight size={14} className={`dh-narrative-toggle-icon ${expandedSections.backstory ? 'open' : ''}`} />
-                  <span className="dh-narrative-toggle-label">Backstory</span>
-                </button>
-                {expandedSections.backstory && (
-                  <div className="dh-narrative-content">{character.backstory}</div>
-                )}
-              </div>
-            )}
-
-            {character.playerNotes && (
-              <div>
-                <button className="dh-narrative-toggle" onClick={() => toggleSection('notes')}>
-                  <ChevronRight size={14} className={`dh-narrative-toggle-icon ${expandedSections.notes ? 'open' : ''}`} />
-                  <span className="dh-narrative-toggle-label">Player Notes</span>
-                </button>
-                {expandedSections.notes && (
-                  <div className="dh-narrative-content">{character.playerNotes}</div>
-                )}
-              </div>
-            )}
-
-            {isDM && character.dmNotes && (
-              <div>
-                <button className="dh-narrative-toggle" onClick={() => toggleSection('dm')}>
-                  <ChevronRight size={14} className={`dh-narrative-toggle-icon ${expandedSections.dm ? 'open' : ''}`} />
-                  <span className="dh-narrative-toggle-label">DM Notes (Private)</span>
-                </button>
-                {expandedSections.dm && (
-                  <div className="dh-narrative-content">{character.dmNotes}</div>
-                )}
-              </div>
-            )}
+  // ─── Sidebar ───
+  const renderSidebar = () => (
+    <div className="dh-sidebar">
+      {/* Avatar */}
+      <div className="dh-sidebar-avatar">
+        {character.avatarUrl ? (
+          <img src={character.avatarUrl} alt={character.name} />
+        ) : (
+          <div className="dh-sidebar-avatar-placeholder">
+            {character.name.charAt(0)}
           </div>
         )}
       </div>
 
-      {/* Footer */}
-      <div className="dh-sheet-footer">
+      {/* Name & Info */}
+      <div className="dh-sidebar-identity">
+        <div className="dh-sidebar-name">{character.name}</div>
+        <div className="dh-sidebar-subtitle">
+          Lv {level}{subtitleParts.length > 0 && ` · ${subtitleParts.join(' · ')}`}
+        </div>
+        {community && <div className="dh-sidebar-community">{community}</div>}
+        <div className="dh-sidebar-player">{character.playerName || 'Unknown Player'}</div>
+      </div>
+
+      {/* Vitals */}
+      <div className="dh-sidebar-vitals">
+        {/* Hope */}
+        <div className="dh-sidebar-vital-group">
+          <div className="dh-sidebar-vital-header">
+            <span className="dh-sidebar-vital-label">Hope</span>
+            <span className="dh-sidebar-vital-count">{hopeSlots.filter(Boolean).length}/{hopeSlots.length}</span>
+          </div>
+          <div className="dh-sidebar-slots">
+            {hopeSlots.map((filled, i) => (
+              <button
+                key={i}
+                className={`dh-slot dh-slot-hope ${filled ? 'filled' : ''}`}
+                onClick={() => handleSlotToggle('hopeSlots', i)}
+                disabled={!canEdit}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* HP */}
+        <div className="dh-sidebar-vital-group">
+          <div className="dh-sidebar-vital-header">
+            <span className="dh-sidebar-vital-label">Hit Points</span>
+            <span className="dh-sidebar-vital-count">{hpFilledCount}/{hpSlots.length}</span>
+          </div>
+          <div className="dh-sidebar-slots">
+            {hpSlots.map((filled, i) => (
+              <button
+                key={i}
+                className={`dh-slot dh-slot-hp ${filled ? 'filled' : ''}`}
+                onClick={() => handleSlotToggle('hpSlots', i)}
+                disabled={!canEdit}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Stress */}
+        <div className="dh-sidebar-vital-group">
+          <div className="dh-sidebar-vital-header">
+            <span className="dh-sidebar-vital-label">Stress</span>
+            <span className="dh-sidebar-vital-count">{stressFilledCount}/{stressSlots.length}</span>
+          </div>
+          <div className="dh-sidebar-slots">
+            {stressSlots.map((filled, i) => (
+              <button
+                key={i}
+                className={`dh-slot dh-slot-stress ${filled ? 'filled' : ''}`}
+                onClick={() => handleSlotToggle('stressSlots', i)}
+                disabled={!canEdit}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Armor Slots */}
+        <div className="dh-sidebar-vital-group">
+          <div className="dh-sidebar-vital-header">
+            <span className="dh-sidebar-vital-label">Armor</span>
+            <span className="dh-sidebar-vital-count">{armorSlots.filter(Boolean).length}/{armorSlots.length}</span>
+          </div>
+          <div className="dh-sidebar-slots">
+            {armorSlots.map((filled, i) => (
+              <button
+                key={i}
+                className={`dh-slot dh-slot-armor ${filled ? 'filled' : ''}`}
+                onClick={() => handleSlotToggle('armorSlots', i)}
+                disabled={!canEdit}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer actions */}
+      <div className="dh-sidebar-actions">
         {character.demiplaneLink && (
-          <a
-            href={character.demiplaneLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="dh-link"
-          >
+          <a href={character.demiplaneLink} target="_blank" rel="noopener noreferrer" className="dh-link dh-sidebar-link">
             <ExternalLink size={14} />
             Demiplane
           </a>
         )}
-        <div className="dh-sheet-footer-spacer" />
         {canEdit && (
-          <>
+          <div className="dh-sidebar-buttons">
             <button className="dh-btn" onClick={onEdit}>
-              <Edit3 size={14} />
-              Edit
+              <Edit3 size={14} /> Edit
             </button>
             <button className="dh-btn dh-btn-danger" onClick={onDelete}>
               <Trash2 size={14} />
             </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // ─── Core Tab ───
+  const renderCoreTab = () => (
+    <div className="dh-tab-content">
+      {/* Attribute Circles */}
+      <div className="dh-section-label">Attributes</div>
+      <div className="dh-attributes-row">
+        {Object.entries(traits).map(([name, value]) => (
+          <div key={name} className={`dh-attribute-circle ${traitClass(value)}`}>
+            <span className="dh-attribute-abbrev">{TRAIT_ABBREV[name] || name.slice(0, 3).toUpperCase()}</span>
+            <span className="dh-attribute-value">{formatTraitValue(value)}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Damage Thresholds */}
+      <div className="dh-section-label">Damage Thresholds</div>
+      <div className="dh-thresholds-row">
+        <div className="dh-threshold-box dh-threshold-evasion">
+          <div className="dh-threshold-value">{effectiveEvasion}</div>
+          <div className="dh-threshold-label">Evasion</div>
+        </div>
+        <div className="dh-threshold-box">
+          <div className="dh-threshold-value">{minorThreshold}</div>
+          <div className="dh-threshold-label">Minor</div>
+        </div>
+        <div className="dh-threshold-box">
+          <div className="dh-threshold-value">{majorThreshold}</div>
+          <div className="dh-threshold-label">Major</div>
+        </div>
+        <div className="dh-threshold-box">
+          <div className="dh-threshold-value">{severeThreshold}</div>
+          <div className="dh-threshold-label">Severe</div>
+        </div>
+      </div>
+
+      {/* Experiences */}
+      {experiences.length > 0 && (
+        <>
+          <div className="dh-section-label">Experiences</div>
+          <div className="dh-experiences-list">
+            {experiences.map((exp, i) => (
+              <div key={i} className="dh-experience-card">
+                <span className="dh-experience-name">{exp}</span>
+                <span className="dh-experience-mod">+2</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Domains */}
+      {(primaryDomain || secondaryDomain) && (
+        <>
+          <div className="dh-section-label">Domains</div>
+          <div className="dh-badges-row">
+            {primaryDomain && (
+              <span className="dh-domain-badge">
+                <Sparkles size={10} /> {primaryDomain}
+              </span>
+            )}
+            {secondaryDomain && (
+              <span className="dh-domain-badge">{secondaryDomain}</span>
+            )}
+          </div>
+          {domainNotes && <div className="dh-domain-notes">{domainNotes}</div>}
+        </>
+      )}
+
+      {/* Active Weapons */}
+      <div className="dh-section-label">Active Weapons</div>
+      <div className="dh-weapons-grid">
+        {equippedWeapons.map(weapon => {
+          const sd = weapon.systemData || {};
+          const dmg = getWeaponDamage(weapon, level);
+          const tier = getTierForLevel(level);
+          return (
+            <div key={weapon.id} className="dh-weapon-card">
+              <div className="dh-weapon-card-header">
+                <Sword size={16} className="dh-weapon-icon" />
+                <span className="dh-weapon-name">{weapon.name}</span>
+                <span className="dh-item-tier">T{tier}</span>
+              </div>
+              <div className="dh-weapon-stats">
+                {sd.trait && <span>{sd.trait}</span>}
+                {sd.range && <span>{sd.range}</span>}
+                {dmg && <span>{dmg}</span>}
+                {sd.damageType && <span>{sd.damageType}</span>}
+                {sd.burden && <span>{sd.burden}</span>}
+              </div>
+              {sd.features?.length > 0 && (
+                <div className="dh-weapon-features">
+                  {sd.features.map((f, i) => (
+                    <span key={i} className="dh-weapon-feature-badge">{f}</span>
+                  ))}
+                </div>
+              )}
+              {weapon.description && (
+                <div className="dh-weapon-description">{weapon.description}</div>
+              )}
+            </div>
+          );
+        })}
+        {equippedWeapons.length === 0 && (
+          <>
+            <div className="dh-weapon-card">
+              <div className="dh-weapon-card-header">
+                <Sword size={16} className="dh-weapon-icon" />
+                <span className="dh-weapon-name">{primaryWeapon || <span className="dh-empty">Primary not set</span>}</span>
+              </div>
+            </div>
+            {secondaryWeapon && (
+              <div className="dh-weapon-card">
+                <div className="dh-weapon-card-header">
+                  <Sword size={16} className="dh-weapon-icon" style={{ opacity: 0.5 }} />
+                  <span className="dh-weapon-name">{secondaryWeapon}</span>
+                </div>
+              </div>
+            )}
           </>
         )}
+      </div>
+    </div>
+  );
+
+  // ─── Abilities Tab ───
+  const renderAbilitiesTab = () => (
+    <div className="dh-tab-content">
+      {/* Subclass Foundation */}
+      {subclassInfo?.foundation && (
+        <div className="dh-ability-section">
+          <div className="dh-section-label">{subclassInfo.name} Foundation</div>
+          <div className="dh-feature-card">
+            <div className="dh-feature-name">{subclassInfo.foundation.name}</div>
+            <div className="dh-feature-desc">{subclassInfo.foundation.description}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Heritage Features */}
+      {hasHeritage && (
+        <div className="dh-ability-section">
+          <div className="dh-section-label">
+            <Users size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle' }} />
+            Heritage Features
+          </div>
+          <div className="dh-features-list">
+            {ancestryFeatures.map((f, i) => (
+              <div key={`a-${i}`} className="dh-feature-card">
+                <div className="dh-feature-tag">Ancestry — {ancestry}</div>
+                <div className="dh-feature-name">{f.name}</div>
+                <div className="dh-feature-desc">{f.description}</div>
+              </div>
+            ))}
+            {communityFeatures.map((f, i) => (
+              <div key={`c-${i}`} className="dh-feature-card">
+                <div className="dh-feature-tag">Community — {community}</div>
+                <div className="dh-feature-name">{f.name}</div>
+                <div className="dh-feature-desc">{f.description}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Domain Cards */}
+      {domainCards.length > 0 && (
+        <div className="dh-ability-section">
+          <div className="dh-section-label">
+            <BookOpen size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle' }} />
+            Domain Cards ({domainCards.length})
+          </div>
+          <div className="dh-domain-cards-content">
+            {Object.entries(domainCardsGrouped).map(([domain, cards]) => (
+              <div key={domain} className="dh-domain-cards-group">
+                <div className="dh-domain-cards-group-label">{domain}</div>
+                <div className="dh-domain-cards-grid">
+                  {cards.map(card => (
+                    <div key={card.name} className="dh-domain-card">
+                      <div className="dh-domain-card-header">
+                        <span className="dh-domain-card-name">{card.name}</span>
+                        <span className="dh-domain-card-level">Lv {card.level}</span>
+                      </div>
+                      <div className="dh-domain-card-desc">{card.description}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!subclassInfo?.foundation && !hasHeritage && domainCards.length === 0 && (
+        <div className="dh-empty-tab">No abilities configured yet.</div>
+      )}
+    </div>
+  );
+
+  // ─── Equipment Tab ───
+  const renderEquipmentTab = () => (
+    <div className="dh-tab-content">
+      {/* Equipped Weapons */}
+      {equippedWeapons.length > 0 && (
+        <div className="dh-equip-section">
+          <div className="dh-section-label">Weapons</div>
+          {equippedWeapons.map(weapon => {
+            const sd = weapon.systemData || {};
+            const dmg = getWeaponDamage(weapon, level);
+            const tier = getTierForLevel(level);
+            return (
+              <div key={weapon.id} className="dh-equipped-item">
+                <Sword size={14} className="dh-equipped-item-icon" />
+                <div>
+                  <div className="dh-equipped-item-header">
+                    <span className="dh-equipped-item-name">{weapon.name}</span>
+                    <span className="dh-item-tier">T{tier}</span>
+                  </div>
+                  <div className="dh-equipped-item-stats">
+                    {sd.trait && <span>{sd.trait}</span>}
+                    {sd.range && <span>{sd.range}</span>}
+                    {dmg && <span>{dmg}</span>}
+                    {sd.damageType && <span>{sd.damageType}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Equipped Armor */}
+      {equippedArmorItems.length > 0 && (
+        <div className="dh-equip-section">
+          <div className="dh-section-label">Armor</div>
+          {equippedArmorItems.map(armor => {
+            const sd = armor.systemData || {};
+            return (
+              <div key={armor.id} className="dh-equipped-item">
+                <Shield size={14} className="dh-equipped-item-icon" />
+                <div>
+                  <div className="dh-equipped-item-header">
+                    <span className="dh-equipped-item-name">{armor.name}</span>
+                    {sd.tier != null && <span className="dh-item-tier">T{sd.tier}</span>}
+                  </div>
+                  <div className="dh-equipped-item-stats">
+                    {sd.armorScore != null && <span>Score {sd.armorScore}</span>}
+                    {sd.armorSlots != null && <span>{sd.armorSlots} slots</span>}
+                    {sd.features?.length > 0 && <span>{sd.features.join(', ')}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Equipped Equipment */}
+      {equippedEquipment.length > 0 && (
+        <div className="dh-equip-section">
+          <div className="dh-section-label">Equipment</div>
+          {equippedEquipment.map(eq => {
+            const sd = eq.systemData || {};
+            return (
+              <div key={eq.id} className="dh-equipped-item">
+                <Star size={14} className="dh-equipped-item-icon" />
+                <div>
+                  <div className="dh-equipped-item-name">{eq.name}</div>
+                  {sd.mechanicalEffect && <div className="dh-equipped-item-stats">{sd.mechanicalEffect}</div>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Text fallbacks */}
+      {equippedArmorItems.length === 0 && equippedArmor && (
+        <div className="dh-equip-section">
+          <div className="dh-section-label">Equipped Armor</div>
+          <div className="dh-text-value">{equippedArmor}</div>
+        </div>
+      )}
+
+      {/* Inventory */}
+      <div className="dh-equip-section">
+        <div className="dh-section-label">Inventory</div>
+        <div className="dh-inventory-text">{inventoryText || <span className="dh-empty">Empty</span>}</div>
+      </div>
+
+      {/* Gold */}
+      <div className="dh-gold-row">
+        <div className="dh-counter dh-counter-gold">
+          <Star size={14} className="dh-counter-icon" />
+          <span>{gold} Gold</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── Backstory Tab ───
+  const renderBackstoryTab = () => (
+    <div className="dh-tab-content">
+      {character.backstory && (
+        <div className="dh-narrative-block">
+          <div className="dh-section-label">Backstory</div>
+          <div className="dh-narrative-text">{character.backstory}</div>
+        </div>
+      )}
+
+      {character.playerNotes && (
+        <div className="dh-narrative-block">
+          <div className="dh-section-label">Player Notes</div>
+          <div className="dh-narrative-text">{character.playerNotes}</div>
+        </div>
+      )}
+
+      {isDM && character.dmNotes && (
+        <div className="dh-narrative-block">
+          <div className="dh-section-label">DM Notes (Private)</div>
+          <div className="dh-narrative-text">{character.dmNotes}</div>
+        </div>
+      )}
+
+      {!character.backstory && !character.playerNotes && !(isDM && character.dmNotes) && (
+        <div className="dh-empty-tab">No backstory or notes added yet.</div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="dh-sheet">
+      <div className="dh-layout">
+        {renderSidebar()}
+
+        <div className="dh-main">
+          {/* Tab Bar */}
+          <div className="dh-tab-bar">
+            {TABS.map(tab => (
+              <button
+                key={tab.key}
+                className={`dh-tab ${activeTab === tab.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Panels */}
+          <div className="dh-tab-panel">
+            {activeTab === 'core' && renderCoreTab()}
+            {activeTab === 'abilities' && renderAbilitiesTab()}
+            {activeTab === 'equipment' && renderEquipmentTab()}
+            {activeTab === 'backstory' && renderBackstoryTab()}
+          </div>
+        </div>
       </div>
     </div>
   );
