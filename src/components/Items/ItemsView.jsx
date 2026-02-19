@@ -77,28 +77,17 @@ export default function ItemsView({
       if (isEquipmentCategory) {
         // Filter by rarity for equipment/consumables
         items = items.filter(i => (i.systemData?.rarity || 'common') === importTier);
-      } else if (importCategory === 'all') {
-        // For "All Items", filter by tier for armor only — weapons scale across all tiers
+      } else {
+        // Filter by tier for weapons and armor
         const tierNum = parseInt(importTier);
         if (!isNaN(tierNum)) {
           items = items.filter(i => {
-            if (i.type === 'weapon') return true; // weapons scale across all tiers
-            if (i.type === 'armor') {
+            if (i.type === 'weapon' || i.type === 'armor') {
               return (i.systemData?.tier || 1) === tierNum;
             }
             return true; // show all equipment/consumables when filtering by tier
           });
         }
-      } else if (importCategory === 'weapons') {
-        // Weapons scale across all tiers — don't filter by tier
-        // (no-op, show all weapons)
-      } else {
-        // Filter by tier for armor categories
-        const tierNum = parseInt(importTier);
-        items = items.filter(i => {
-          const itemTier = i.systemData?.tier || 1;
-          return itemTier === tierNum;
-        });
       }
     }
 
