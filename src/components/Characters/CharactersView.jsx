@@ -4,6 +4,7 @@ import CharacterCardSimple from './CharacterCardSimple';
 import CharacterFormSimple from './CharacterFormSimple';
 import DaggerheartCharacterSheet from './DaggerheartCharacterSheet';
 import DaggerheartCharacterForm from './DaggerheartCharacterForm';
+import CharacterCreationWizard from './CharacterCreationWizard';
 import DnD5eForm from './forms/DnD5eForm';
 import DnD5eCard from './cards/DnD5eCard';
 import StarWarsD6Form from './forms/StarWarsD6Form';
@@ -33,6 +34,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'sheets'
+  const [showCreationWizard, setShowCreationWizard] = useState(false);
 
   // Get the right form/card components for this campaign's game system
   const gameSystem = campaign?.gameSystem || 'daggerheart';
@@ -47,8 +49,12 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
     : (CARD_COMPONENTS[gameSystem] || CharacterCardSimple);
 
   const handleAdd = () => {
-    setEditingCharacter(null);
-    setIsModalOpen(true);
+    if (isDaggerheart) {
+      setShowCreationWizard(true);
+    } else {
+      setEditingCharacter(null);
+      setIsModalOpen(true);
+    }
   };
 
   const handleEdit = (character) => {
@@ -64,6 +70,11 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
     }
     setIsModalOpen(false);
     setEditingCharacter(null);
+  };
+
+  const handleWizardComplete = (characterData) => {
+    addCharacter(characterData);
+    setShowCreationWizard(false);
   };
 
   // Players can only edit their own characters, DMs can edit all
@@ -101,22 +112,20 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           {isDaggerheart && (
             <div className="flex items-center rounded-2xl bg-white/[0.03] border border-white/5 p-1">
               <button
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
-                  viewMode === 'cards'
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'cards'
                     ? 'bg-white/10 text-white/80 border border-white/10 shadow-sm'
                     : 'text-white/25 hover:text-white/50'
-                }`}
+                  }`}
                 onClick={() => setViewMode('cards')}
               >
                 <LayoutGrid size={12} />
                 Cards
               </button>
               <button
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${
-                  viewMode === 'sheets'
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'sheets'
                     ? 'bg-white/10 text-white/80 border border-white/10 shadow-sm'
                     : 'text-white/25 hover:text-white/50'
-                }`}
+                  }`}
                 onClick={() => setViewMode('sheets')}
               >
                 <FileText size={12} />
@@ -172,11 +181,10 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           )}
         </div>
       ) : (
-        <div className={`grid gap-8 pb-20 items-start ${
-          isSheetMode
+        <div className={`grid gap-8 pb-20 items-start ${isSheetMode
             ? 'grid-cols-1'
             : 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3'
-        }`}>
+          }`}>
           {filteredCharacters.map(character => (
             <CardComponent
               key={character.id}
@@ -218,6 +226,16 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           toggleEquipped={isSheetMode ? toggleEquipped : undefined}
         />
       </Modal>
+
+      {/* Character Creation Wizard (Daggerheart only) */}
+      {showCreationWizard && (
+        <CharacterCreationWizard
+          onComplete={handleWizardComplete}
+          onClose={() => setShowCreationWizard(false)}
+          isDM={isDM}
+          campaign={campaign}
+        />
+      )}
     </div>
   );
 }
