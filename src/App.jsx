@@ -5,6 +5,7 @@ import CharactersView from './components/Characters/CharactersView';
 import LoreView from './components/Lore/LoreView';
 import SessionsView from './components/Sessions/SessionsView';
 import ToolsView from './components/Tools/ToolsView';
+import GMCheatsheetView from './components/GMCheatsheet/GMCheatsheetView';
 import { useCampaign } from './hooks/useCampaign';
 import './App.css';
 
@@ -74,6 +75,8 @@ function App() {
         );
       case 'tools':
         return <ToolsView />;
+      case 'gm-cheatsheet':
+        return <GMCheatsheetView />;
       default:
         return <DashboardView campaign={campaign} updateCampaign={updateCampaign} characters={characters} lore={lore} sessions={sessions} isDM={isDM} />;
     }
