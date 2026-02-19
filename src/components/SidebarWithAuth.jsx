@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target, Monitor, Skull, Grid, TreePine, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target, Monitor, Skull, Grid, TreePine, PanelLeftClose, PanelLeft, BookMarked } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import { applyTheme } from '../config/themes.js';
@@ -108,7 +108,8 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         { id: 'environments', label: 'Environment Catalog', icon: TreePine },
         { id: 'files', label: 'Maps & Files', icon: FolderUp },
         { id: 'tools', label: 'Tools', icon: Wrench },
-        { id: 'help', label: 'Features & Help', icon: HelpCircle }
+        { id: 'help', label: 'Features & Help', icon: HelpCircle },
+        ...(isDM ? [{ id: 'gm-cheatsheet', label: 'GM Screen', icon: BookMarked }] : []),
       ]
     },
     {

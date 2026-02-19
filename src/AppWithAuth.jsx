@@ -15,6 +15,7 @@ import SessionsView from './components/Sessions/SessionsView';
 import FilesView from './components/Files/FilesView';
 import ToolsView from './components/Tools/ToolsView';
 import HelpView from './components/Help/HelpView';
+import GMCheatsheetView from './components/GMCheatsheet/GMCheatsheetView';
 import NPCsView from './components/NPCs/NPCsView';
 import TimelineView from './components/Timeline/TimelineView';
 import LocationsView from './components/Locations/LocationsView';
@@ -349,6 +350,8 @@ function CampaignApp() {
         return <ToolsView campaign={campaign} />;
       case 'help':
         return <HelpView campaign={campaign} />;
+      case 'gm-cheatsheet':
+        return <GMCheatsheetView />;
       case 'members':
         return <CampaignMembers campaign={campaign} currentUserId={currentUser.uid} />;
       case 'npcs':
