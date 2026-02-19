@@ -78,18 +78,22 @@ export default function ItemsView({
         // Filter by rarity for equipment/consumables
         items = items.filter(i => (i.systemData?.rarity || 'common') === importTier);
       } else if (importCategory === 'all') {
-        // For "All Items", filter by tier for weapons/armor, pass through equipment
+        // For "All Items", filter by tier for armor only — weapons scale across all tiers
         const tierNum = parseInt(importTier);
         if (!isNaN(tierNum)) {
           items = items.filter(i => {
-            if (i.type === 'weapon' || i.type === 'armor') {
+            if (i.type === 'weapon') return true; // weapons scale across all tiers
+            if (i.type === 'armor') {
               return (i.systemData?.tier || 1) === tierNum;
             }
             return true; // show all equipment/consumables when filtering by tier
           });
         }
+      } else if (importCategory === 'weapons') {
+        // Weapons scale across all tiers — don't filter by tier
+        // (no-op, show all weapons)
       } else {
-        // Filter by tier for weapons/armor categories
+        // Filter by tier for armor categories
         const tierNum = parseInt(importTier);
         items = items.filter(i => {
           const itemTier = i.systemData?.tier || 1;
@@ -151,7 +155,7 @@ export default function ItemsView({
     if (!isDM && item.hidden) return false;
 
     const matchesSearch = item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      item.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesFilter = filterType === 'all' || item.type === filterType;
 

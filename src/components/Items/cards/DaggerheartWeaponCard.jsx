@@ -62,7 +62,7 @@ export default function DaggerheartWeaponCard({ item, onEdit, onDelete, isDM, is
               {TRAIT_LABELS[trait]} • {RANGE_LABELS[range]} • {burden === 'two-handed' ? '2H' : '1H'}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.85rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
             <span style={{
               padding: '0.15rem 0.5rem',
               background: damageType === 'physical' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(139, 92, 246, 0.1)',
@@ -71,9 +71,11 @@ export default function DaggerheartWeaponCard({ item, onEdit, onDelete, isDM, is
             }}>
               {damageType}
             </span>
-            <span style={{ color: 'var(--hope-color)', fontWeight: '600' }}>
-              T1: {formatDamage(1)}
-            </span>
+            {[1, 2, 3, 4].map(t => (
+              <span key={t} style={{ color: 'var(--text-muted)', fontWeight: t === 1 ? '600' : '400' }}>
+                <span style={{ color: 'var(--hope-color)', fontWeight: 600 }}>T{t}:</span> {formatDamage(t)}
+              </span>
+            ))}
           </div>
         </div>
 
