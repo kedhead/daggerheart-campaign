@@ -105,9 +105,9 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-            <Swords className="text-[rgb(var(--color-primary))]" size={32} />
+        <div className="space-y-1 w-full max-w-full">
+          <h2 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2 md:gap-3 flex-wrap">
+            <Swords className="text-[rgb(var(--color-primary))] shrink-0" size={32} />
             Combat Scenarios
           </h2>
           <p className="text-white/60 text-lg">
@@ -167,7 +167,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-2 pb-2 md:pb-0">
           <button
             onClick={() => setFilterDifficulty('all')}
             className={`

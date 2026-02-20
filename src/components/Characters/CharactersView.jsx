@@ -92,18 +92,18 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
   return (
     <div className="min-h-screen bg-transparent p-6 space-y-10 animate-in fade-in duration-1000">
       {/* Immersive View Header */}
-      <div className="flex items-center justify-between gap-8 pb-8 border-b border-white/5 relative overflow-hidden">
-        <div className="space-y-2 relative z-10">
-          <h2 className="font-serif text-4xl font-black text-white/95 tracking-tight italic lowercase">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-8 pb-8 border-b border-white/5 relative overflow-hidden">
+        <div className="space-y-2 relative z-10 w-full max-w-full">
+          <h2 className="font-serif text-3xl md:text-4xl font-black text-white/95 tracking-tight italic lowercase break-words">
             Party Manifest
           </h2>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/10">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/10 shrink-0">
               <Users size={10} className="text-white/40" />
               <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{characters.length} Operatives</span>
             </div>
-            <div className="w-1 h-1 rounded-full bg-white/20"></div>
-            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest italic">The Heroes of the Realm</p>
+            <div className="w-1 h-1 rounded-full bg-white/20 shrink-0"></div>
+            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest italic truncate">The Heroes of the Realm</p>
           </div>
         </div>
 
@@ -113,8 +113,8 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
             <div className="flex items-center rounded-2xl bg-white/[0.03] border border-white/5 p-1">
               <button
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'cards'
-                    ? 'bg-white/10 text-white/80 border border-white/10 shadow-sm'
-                    : 'text-white/25 hover:text-white/50'
+                  ? 'bg-white/10 text-white/80 border border-white/10 shadow-sm'
+                  : 'text-white/25 hover:text-white/50'
                   }`}
                 onClick={() => setViewMode('cards')}
               >
@@ -123,8 +123,8 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
               </button>
               <button
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${viewMode === 'sheets'
-                    ? 'bg-white/10 text-white/80 border border-white/10 shadow-sm'
-                    : 'text-white/25 hover:text-white/50'
+                  ? 'bg-white/10 text-white/80 border border-white/10 shadow-sm'
+                  : 'text-white/25 hover:text-white/50'
                   }`}
                 onClick={() => setViewMode('sheets')}
               >
@@ -182,8 +182,8 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
         </div>
       ) : (
         <div className={`grid gap-8 pb-20 items-start ${isSheetMode
-            ? 'grid-cols-1'
-            : 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3'
+          ? 'grid-cols-1'
+          : 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3'
           }`}>
           {filteredCharacters.map(character => (
             <CardComponent

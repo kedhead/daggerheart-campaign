@@ -216,7 +216,11 @@
     padding: 2rem 1.5rem;
   }
 
+  .auth-brand {
+    margin-bottom: 1.5rem;
+  }
+
   .auth-brand h1 {
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
 }

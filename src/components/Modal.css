@@ -9,8 +9,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 0.5rem; /* Mobile: smaller padding */
+  z-index: 2000;
+  padding: 0.5rem;
+  /* Mobile: smaller padding */
   animation: fadeIn 0.2s ease;
 }
 
@@ -37,6 +38,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -69,7 +71,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem; /* Mobile: smaller padding */
+  padding: 1rem;
+  /* Mobile: smaller padding */
   border-bottom: 1px solid var(--border);
 }
 
@@ -80,7 +83,8 @@
 }
 
 .modal-header h2 {
-  font-size: 1.25rem; /* Mobile: smaller font */
+  font-size: 1.25rem;
+  /* Mobile: smaller font */
   margin: 0;
 }
 
@@ -91,7 +95,8 @@
 }
 
 .modal-body {
-  padding: 1rem; /* Mobile: smaller padding */
+  padding: 1rem;
+  /* Mobile: smaller padding */
   overflow-y: auto;
 }
 
@@ -117,7 +122,8 @@
 /* Modal actions utility (for button containers in modals) */
 .modal-actions {
   display: flex;
-  flex-direction: column; /* Mobile: stack buttons */
+  flex-direction: column;
+  /* Mobile: stack buttons */
   gap: 0.75rem;
   padding-top: 1rem;
   margin-top: 1rem;
@@ -125,12 +131,14 @@
 }
 
 .modal-actions .btn {
-  width: 100%; /* Mobile: full-width buttons */
+  width: 100%;
+  /* Mobile: full-width buttons */
 }
 
 @media (min-width: 768px) {
   .modal-actions {
-    flex-direction: row; /* Tablet+: side-by-side */
+    flex-direction: row;
+    /* Tablet+: side-by-side */
     justify-content: flex-end;
     gap: 1rem;
   }

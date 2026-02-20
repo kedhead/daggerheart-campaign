@@ -78,7 +78,14 @@
       "Bash(cd:*)",
       "Bash(git -C \"K:\\\\AI-Projects\\\\Daggerheart\" add src/data/soundEffectsLibrary.js src/components/Soundboard/DMSoundboard.jsx src/components/Soundboard/DMSoundboard.css)",
       "Bash(git -C \"K:\\\\AI-Projects\\\\Daggerheart\" commit -m \"$\\(cat <<''EOF''\nAdd curated sound effects library with 166 RPG sounds to DM Soundboard\n\nAdds instant-play sound effects from MaterialFoundry/SoundFxLibrary served\nvia jsDelivr CDN. 48 grouped sounds across 5 categories \\(combat, magic,\nnature, ambient, creatures\\) with random variant selection. Loop sounds\ntoggle on/off. Curated sounds appear above AI presets in each category tab.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "WebFetch(domain:fantasticdice.games)"
+      "WebFetch(domain:fantasticdice.games)",
+      "WebFetch(domain:daggerheartsrd.com)",
+      "WebFetch(domain:daggerheart.fandom.com)",
+      "WebFetch(domain:seansbox.github.io)",
+      "WebFetch(domain:notebooklm.google.com)",
+      "Bash(where:*)",
+      "Bash(pdftotext:*)",
+      "WebFetch(domain:www.figma.com)"
     ],
     "deny": [],
     "ask": []
