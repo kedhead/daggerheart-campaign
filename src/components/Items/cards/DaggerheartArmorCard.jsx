@@ -18,12 +18,17 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isE
   const setIsExpanded = setControlledExpanded || setLocalExpanded;
 
   const { systemData = {} } = item;
-  const {
+  let {
     armorScore = 2,
     armorSlots = armorScore,
     tier = 1,
     features = []
   } = systemData;
+
+  // Fix for legacy database items exported with the buggy default of 6 slots
+  if (armorSlots === 6 && armorScore !== 6 && !features.includes('Fortified')) {
+    armorSlots = armorScore;
+  }
 
   return (
     <div className={`item-card card ${item.hidden ? 'hidden-item' : ''}`} style={{

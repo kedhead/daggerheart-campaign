@@ -4,16 +4,25 @@ import { ARMOR_FEATURES } from '../../../data/systems/daggerheart';
 import '../ItemsView.css';
 
 export default function DaggerheartArmorForm({ item, formData, setFormData, onSave, onCancel, onChangeType, isDM }) {
+  // Fix for legacy database items exported with the buggy default of 6 slots
+  const initialArmorScore = item?.systemData?.armorScore || 2;
+  const initialFeatures = item?.systemData?.features || [];
+  let initialArmorSlots = item?.systemData?.armorSlots || initialArmorScore;
+
+  if (initialArmorSlots === 6 && initialArmorScore !== 6 && !initialFeatures.includes('Fortified')) {
+    initialArmorSlots = initialArmorScore;
+  }
+
   const [localData, setLocalData] = useState({
     name: formData?.name || item?.name || '',
     description: formData?.description || item?.description || '',
     hidden: formData?.hidden || item?.hidden || false,
     type: 'armor',
     systemData: {
-      armorScore: item?.systemData?.armorScore || 2,
-      armorSlots: item?.systemData?.armorSlots || item?.systemData?.armorScore || 2,
+      armorScore: initialArmorScore,
+      armorSlots: initialArmorSlots,
       tier: item?.systemData?.tier || 1,
-      features: item?.systemData?.features || []
+      features: initialFeatures
     }
   });
 
