@@ -1152,7 +1152,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Flexible padded armor. +1 to Evasion.',
     systemData: {
       armorScore: 3,
-      armorSlots: 6,
+      armorSlots: 3,
       tier: 1,
       thresholds: { minor: 5, major: 11 },
       features: ['flexible']
@@ -1164,7 +1164,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Standard leather protection.',
     systemData: {
       armorScore: 3,
-      armorSlots: 6,
+      armorSlots: 3,
       tier: 1,
       thresholds: { minor: 6, major: 13 },
       features: []
@@ -1176,7 +1176,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Heavy metal rings. -1 to Evasion.',
     systemData: {
       armorScore: 4,
-      armorSlots: 6,
+      armorSlots: 4,
       tier: 1,
       thresholds: { minor: 7, major: 15 },
       features: ['heavy']
@@ -1188,7 +1188,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Very heavy armor. -2 to Evasion, -1 to Agility.',
     systemData: {
       armorScore: 4,
-      armorSlots: 6,
+      armorSlots: 4,
       tier: 1,
       thresholds: { minor: 8, major: 17 },
       features: ['very-heavy']
@@ -1201,7 +1201,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Enhanced flexible armor. +1 to Evasion.',
     systemData: {
       armorScore: 4,
-      armorSlots: 6,
+      armorSlots: 4,
       tier: 2,
       thresholds: { minor: 7, major: 16 },
       features: ['flexible']
@@ -1213,7 +1213,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Enhanced leather protection.',
     systemData: {
       armorScore: 4,
-      armorSlots: 6,
+      armorSlots: 4,
       tier: 2,
       thresholds: { minor: 9, major: 20 },
       features: []
@@ -1225,7 +1225,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Enhanced chainmail. -1 to Evasion.',
     systemData: {
       armorScore: 5,
-      armorSlots: 6,
+      armorSlots: 5,
       tier: 2,
       thresholds: { minor: 11, major: 24 },
       features: ['heavy']
@@ -1237,7 +1237,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Enhanced full plate. -2 to Evasion, -1 to Agility.',
     systemData: {
       armorScore: 5,
-      armorSlots: 6,
+      armorSlots: 5,
       tier: 2,
       thresholds: { minor: 13, major: 28 },
       features: ['very-heavy']
@@ -1249,7 +1249,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Magical armor that reduces incoming magic damage by armor score.',
     systemData: {
       armorScore: 4,
-      armorSlots: 6,
+      armorSlots: 4,
       tier: 2,
       thresholds: { minor: 9, major: 21 },
       features: []
@@ -1261,7 +1261,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Roll d6 on final slot; result of 6 reduces severity.',
     systemData: {
       armorScore: 4,
-      armorSlots: 6,
+      armorSlots: 4,
       tier: 2,
       thresholds: { minor: 9, major: 21 },
       features: []
@@ -1273,7 +1273,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'When marking final slot, damage thresholds increase by +2.',
     systemData: {
       armorScore: 4,
-      armorSlots: 6,
+      armorSlots: 4,
       tier: 2,
       thresholds: { minor: 9, major: 20 },
       features: []
@@ -1285,7 +1285,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Mark Armor Slot instead of spending Hope.',
     systemData: {
       armorScore: 5,
-      armorSlots: 6,
+      armorSlots: 5,
       tier: 2,
       thresholds: { minor: 11, major: 23 },
       features: []
@@ -1298,7 +1298,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'High-quality flexible armor. +1 to Evasion.',
     systemData: {
       armorScore: 5,
-      armorSlots: 6,
+      armorSlots: 5,
       tier: 3,
       thresholds: { minor: 9, major: 23 },
       features: ['flexible']
@@ -1310,7 +1310,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'High-quality leather protection.',
     systemData: {
       armorScore: 5,
-      armorSlots: 6,
+      armorSlots: 5,
       tier: 3,
       thresholds: { minor: 11, major: 27 },
       features: []
@@ -1346,7 +1346,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Once per rest, mark Stress instead of final HP.',
     systemData: {
       armorScore: 5,
-      armorSlots: 6,
+      armorSlots: 5,
       tier: 3,
       thresholds: { minor: 11, major: 27 },
       features: []
@@ -1383,7 +1383,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Masterwork chainmail. -1 to Evasion.',
     systemData: {
       armorScore: 7,
-      armorSlots: 6,
+      armorSlots: 7,
       tier: 4,
       thresholds: { minor: 15, major: 40 },
       features: ['heavy']
@@ -1395,7 +1395,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Masterwork full plate. -2 to Evasion, -1 to Agility.',
     systemData: {
       armorScore: 7,
-      armorSlots: 6,
+      armorSlots: 7,
       tier: 4,
       thresholds: { minor: 17, major: 44 },
       features: ['very-heavy']
@@ -1407,7 +1407,7 @@ export const DAGGERHEART_ARMOR = [
     description: 'Ultimate protection. -1 to all traits and Evasion.',
     systemData: {
       armorScore: 8,
-      armorSlots: 6,
+      armorSlots: 8,
       tier: 4,
       thresholds: { minor: 18, major: 48 },
       features: []
@@ -1417,23 +1417,23 @@ export const DAGGERHEART_ARMOR = [
   {
     name: 'Runetan Floating Armor', type: 'armor',
     description: 'Armor that shifts to deflect attacks. When targeted, mark an Armor Slot to give the attack roll disadvantage.',
-    systemData: { armorScore: 4, armorSlots: 6, tier: 2, thresholds: { minor: 9, major: 20 }, features: ['shifting'] }
+    systemData: { armorScore: 4, armorSlots: 4, tier: 2, thresholds: { minor: 9, major: 20 }, features: ['shifting'] }
   },
   {
     name: 'Tyris Soft Armor', type: 'armor',
     description: 'Silent armor. +2 bonus to rolls you make to move silently.',
-    systemData: { armorScore: 5, armorSlots: 6, tier: 2, thresholds: { minor: 8, major: 18 }, features: ['quiet'] }
+    systemData: { armorScore: 5, armorSlots: 5, tier: 2, thresholds: { minor: 8, major: 18 }, features: ['quiet'] }
   },
   // TIER 3 - UNIQUE ARMOR
   {
     name: 'Bellamoi Fine Armor', type: 'armor',
     description: 'Exquisitely gilded armor. +1 to Presence.',
-    systemData: { armorScore: 5, armorSlots: 6, tier: 3, thresholds: { minor: 11, major: 27 }, features: ['gilded'] }
+    systemData: { armorScore: 5, armorSlots: 5, tier: 3, thresholds: { minor: 11, major: 27 }, features: ['gilded'] }
   },
   {
     name: 'Spiked Plate Armor', type: 'armor',
     description: 'Armor covered in spikes. On a melee attack, add d4 to damage. Cannot reduce magic damage with Armor Slots.',
-    systemData: { armorScore: 5, armorSlots: 6, tier: 3, thresholds: { minor: 10, major: 25 }, features: ['sharp', 'physical'] }
+    systemData: { armorScore: 5, armorSlots: 5, tier: 3, thresholds: { minor: 10, major: 25 }, features: ['sharp', 'physical'] }
   },
   {
     name: 'Bladefare Armor', type: 'armor',
@@ -1454,12 +1454,12 @@ export const DAGGERHEART_ARMOR = [
   {
     name: 'Dunamis Silkchain', type: 'armor',
     description: 'Time-slowing silkchain armor. Mark an Armor Slot to roll a d4 and add it to your Evasion against an incoming attack.',
-    systemData: { armorScore: 7, armorSlots: 6, tier: 4, thresholds: { minor: 13, major: 36 }, features: ['timeslowing'] }
+    systemData: { armorScore: 7, armorSlots: 7, tier: 4, thresholds: { minor: 13, major: 36 }, features: ['timeslowing'] }
   },
   {
     name: 'Channeling Armor', type: 'armor',
     description: 'Armor that channels magical energy. +1 to Spellcast Rolls.',
-    systemData: { armorScore: 5, armorSlots: 6, tier: 4, thresholds: { minor: 13, major: 36 }, features: ['channeling'] }
+    systemData: { armorScore: 5, armorSlots: 5, tier: 4, thresholds: { minor: 13, major: 36 }, features: ['channeling'] }
   },
   {
     name: 'Emberwoven Armor', type: 'armor',
@@ -1469,7 +1469,7 @@ export const DAGGERHEART_ARMOR = [
   {
     name: 'Full Fortified Armor', type: 'armor',
     description: 'Fully fortified armor. When you mark an Armor Slot, reduce severity by two thresholds instead of one.',
-    systemData: { armorScore: 4, armorSlots: 6, tier: 4, thresholds: { minor: 15, major: 40 }, features: ['fortified'] }
+    systemData: { armorScore: 4, armorSlots: 4, tier: 4, thresholds: { minor: 15, major: 40 }, features: ['fortified'] }
   },
   {
     name: 'Veritas Opal Armor', type: 'armor',

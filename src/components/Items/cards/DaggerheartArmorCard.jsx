@@ -20,7 +20,7 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isE
   const { systemData = {} } = item;
   const {
     armorScore = 2,
-    armorSlots = 6,
+    armorSlots = armorScore,
     tier = 1,
     features = []
   } = systemData;

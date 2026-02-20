@@ -11,7 +11,7 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
     type: 'armor',
     systemData: {
       armorScore: item?.systemData?.armorScore || 2,
-      armorSlots: item?.systemData?.armorSlots || 6,
+      armorSlots: item?.systemData?.armorSlots || item?.systemData?.armorScore || 2,
       tier: item?.systemData?.tier || 1,
       features: item?.systemData?.features || []
     }
@@ -96,7 +96,7 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
           <input
             type="number"
             value={localData.systemData.armorSlots}
-            onChange={(e) => handleSystemDataChange('armorSlots', parseInt(e.target.value) || 6)}
+            onChange={(e) => handleSystemDataChange('armorSlots', parseInt(e.target.value) || localData.systemData.armorScore)}
             min="1"
             max="12"
             required
