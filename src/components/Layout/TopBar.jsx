@@ -33,17 +33,17 @@ export default function TopBar({ currentView, presenceList }) {
     };
 
     return (
-        <header className="h-16 flex items-center justify-between px-6 bg-[#0d1126]/70 backdrop-blur-xl border-b border-white/5 sticky top-0 z-40 transition-all duration-300">
-            <div className="flex items-center gap-4">
-                <nav className="flex items-center text-sm font-medium">
-                    <span className="text-white/40 hover:text-white/80 transition-colors cursor-default">Lorelich</span>
-                    <ChevronRight size={14} className="mx-2 text-white/20" />
-                    <span className="text-white font-semibold tracking-wide">{getBreadcrumbs()}</span>
+        <header className="h-14 md:h-16 flex items-center justify-between px-3 md:px-6 bg-[#0d1126]/70 backdrop-blur-xl border-b border-white/5 sticky top-0 z-40 transition-all duration-300">
+            <div className="flex items-center gap-4 min-w-0">
+                <nav className="flex items-center text-sm font-medium min-w-0">
+                    <span className="hidden sm:inline text-white/40 hover:text-white/80 transition-colors cursor-default shrink-0">Lorelich</span>
+                    <ChevronRight size={14} className="hidden sm:inline mx-2 text-white/20 shrink-0" />
+                    <span className="text-white font-semibold tracking-wide truncate">{getBreadcrumbs()}</span>
                 </nav>
             </div>
 
-            <div className="flex-1 max-w-2xl px-12">
-                <div className="relative group">
+            <div className="hidden md:flex flex-1 max-w-2xl px-12">
+                <div className="relative group w-full">
                     <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white/60 transition-colors" />
                     <input
                         type="text"
@@ -56,9 +56,9 @@ export default function TopBar({ currentView, presenceList }) {
                 </div>
             </div>
 
-            <div className="flex items-center gap-6">
-                <div className="flex items-center gap-3 pl-4 border-l border-white/10">
-                    <div className="flex flex-col items-end">
+            <div className="flex items-center gap-2 md:gap-6 shrink-0">
+                <div className="flex items-center gap-2 md:gap-3 pl-2 md:pl-4 border-l border-white/10">
+                    <div className="hidden sm:flex flex-col items-end">
                         <span className="text-xs font-bold text-white/90 tracking-tight">
                             {currentUser?.displayName || currentUser?.email?.split('@')[0]}
                         </span>
@@ -67,7 +67,7 @@ export default function TopBar({ currentView, presenceList }) {
                             <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Active</span>
                         </div>
                     </div>
-                    <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 p-0.5 ring-1 ring-white/5">
+                    <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 p-0.5 ring-1 ring-white/5">
                         {currentUser?.photoURL ? (
                             <img src={currentUser.photoURL} alt="Profile" className="w-full h-full object-cover rounded-lg" />
                         ) : (

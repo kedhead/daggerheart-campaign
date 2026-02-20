@@ -161,6 +161,12 @@
   border-color: #c8a44e;
 }
 
+/* Dark background for native select options (desktop only — mobile ignores this) */
+.luw-select option {
+  background: #141828;
+  color: #e4e8f0;
+}
+
 .luw-hint {
   font-size: 0.72rem;
   color: #667;
@@ -179,23 +185,26 @@
   border-radius: 8px;
   overflow: hidden;
   transition: border-color 0.15s;
+  background: #141828;
 }
 .luw-option.selected {
   border-color: #c8a44e;
-  background: rgba(200, 164, 78, 0.05);
+  background: rgba(200, 164, 78, 0.08);
 }
 .luw-option.disabled { opacity: 0.45; }
 .luw-option.crossed-out { opacity: 0.3; text-decoration: line-through; }
 
 .luw-option-btn {
   width: 100%;
-  background: none;
+  background: transparent;
   border: none;
   padding: 0.6rem 0.75rem;
   text-align: left;
   cursor: pointer;
   color: #e4e8f0;
   font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .luw-option-btn:disabled { cursor: not-allowed; }
 
@@ -208,6 +217,7 @@
 .luw-option-label {
   font-size: 0.85rem;
   font-weight: 500;
+  color: #e4e8f0;
 }
 
 .luw-option-meta {
@@ -402,6 +412,13 @@
   cursor: not-allowed;
 }
 
+/* Responsive 2-column grid (collapses on mobile) */
+.luw-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 600px) {
   .luw-modal {
@@ -416,5 +433,29 @@
   }
   .luw-body {
     padding: 1rem;
+  }
+  .luw-two-col {
+    grid-template-columns: 1fr;
+  }
+  .luw-footer {
+    padding: 0.6rem 1rem;
+  }
+  .luw-btn {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .luw-progress-num {
+    width: 18px;
+    height: 18px;
+    font-size: 0.65rem;
+  }
+  .luw-step-title {
+    font-size: 0.95rem;
+  }
+  .luw-option-btn {
+    padding: 0.5rem 0.6rem;
   }
 }

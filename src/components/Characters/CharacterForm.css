@@ -111,8 +111,15 @@
 
 .traits-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr); /* Mobile: 2 columns */
-  gap: 1rem;
+  grid-template-columns: 1fr; /* Mobile: single column */
+  gap: 0.75rem;
+}
+
+@media (min-width: 480px) {
+  .traits-form-grid {
+    grid-template-columns: repeat(2, 1fr); /* Phone landscape+: 2 columns */
+    gap: 1rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -254,6 +261,24 @@
     width: 100px;
     height: 100px;
   }
+}
+
+@media (max-width: 400px) {
+  .avatar-section {
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .avatar-preview {
+    width: 80px;
+    height: 80px;
+  }
+}
+
+/* Native select option styling for better dark-mode visibility on desktop */
+.input-group select option {
+  background: var(--bg-tertiary, #1a2340);
+  color: var(--text-primary, #e8e6e3);
 }
 
 /* AI Generate Avatar button */

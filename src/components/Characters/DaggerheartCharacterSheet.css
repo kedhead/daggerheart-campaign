@@ -402,7 +402,7 @@
 /* ===== Weapons Grid (Core Tab) ===== */
 .dh-weapons-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
   gap: 0.5rem;
 }
 
@@ -632,7 +632,7 @@
 
 .dh-domain-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
   gap: 0.5rem;
 }
 
@@ -1241,6 +1241,37 @@
   .dh-slot {
     width: 26px;
     height: 26px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dh-sidebar-avatar {
+    width: 70px;
+    height: 70px;
+  }
+
+  .dh-sidebar {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+
+  .dh-tab {
+    padding: 0.55rem 0.35rem;
+    font-size: 0.55rem;
+    letter-spacing: 0.06em;
+  }
+
+  .dh-tab-content {
+    padding: 0.75rem;
+  }
+
+  .dh-attribute-circle {
+    width: 52px;
+    height: 52px;
+  }
+
+  .dh-attribute-value {
+    font-size: 1rem;
   }
 }
 

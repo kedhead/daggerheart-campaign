@@ -503,7 +503,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             <p className="luw-step-desc">Your ancestry and community define where you come from and grant unique features.</p>
 
             <div className="luw-label" style={{ marginBottom: '0.5rem' }}>Ancestry *</div>
-            <div className="luw-options-list" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+            <div className="luw-options-list">
                 {Object.entries(ANCESTRIES).map(([ancestryName, data]) => {
                     const isSelected = ancestry === ancestryName;
                     const desc = typeof data === 'string' ? data : data.description;
@@ -511,13 +511,15 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                     return (
                         <div key={ancestryName} className={`luw-option ${isSelected ? 'selected' : ''}`}>
                             <button
+                                type="button"
                                 className="luw-option-btn"
                                 onClick={() => setAncestry(ancestryName)}
                             >
                                 <div className="luw-option-header">
                                     <span className="luw-option-label">{ancestryName}</span>
+                                    {isSelected && <span style={{ color: '#c8a44e', fontSize: '0.7rem' }}>✓ Selected</span>}
                                 </div>
-                                <div className="luw-option-desc" style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.15rem' }}>
+                                <div className="luw-option-desc" style={{ fontSize: '0.75rem', color: 'rgba(228,232,240,0.6)', marginTop: '0.15rem' }}>
                                     {desc}
                                 </div>
                             </button>
@@ -525,8 +527,8 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                                 <div className="luw-detail-panel">
                                     {features.map((f, i) => (
                                         <div key={i} style={{ marginBottom: '0.25rem' }}>
-                                            <span style={{ fontWeight: 700, color: 'var(--hope-color, #fbbf24)', fontSize: '0.8rem' }}>{f.name}: </span>
-                                            <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{f.description}</span>
+                                            <span style={{ fontWeight: 700, color: '#c8a44e', fontSize: '0.8rem' }}>{f.name}: </span>
+                                            <span style={{ fontSize: '0.75rem', color: 'rgba(228,232,240,0.8)' }}>{f.description}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -536,8 +538,8 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                 })}
             </div>
 
-            <div className="luw-label" style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>Community *</div>
-            <div className="luw-options-list" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+            <div className="luw-label" style={{ marginTop: '1.25rem', marginBottom: '0.5rem' }}>Community *</div>
+            <div className="luw-options-list">
                 {Object.entries(COMMUNITIES).map(([commName, data]) => {
                     const isSelected = community === commName;
                     const desc = typeof data === 'string' ? data : data.description;
@@ -545,13 +547,15 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                     return (
                         <div key={commName} className={`luw-option ${isSelected ? 'selected' : ''}`}>
                             <button
+                                type="button"
                                 className="luw-option-btn"
                                 onClick={() => setCommunity(commName)}
                             >
                                 <div className="luw-option-header">
                                     <span className="luw-option-label">{commName}</span>
+                                    {isSelected && <span style={{ color: '#c8a44e', fontSize: '0.7rem' }}>✓ Selected</span>}
                                 </div>
-                                <div className="luw-option-desc" style={{ fontSize: '0.75rem', opacity: 0.7, marginTop: '0.15rem' }}>
+                                <div className="luw-option-desc" style={{ fontSize: '0.75rem', color: 'rgba(228,232,240,0.6)', marginTop: '0.15rem' }}>
                                     {desc}
                                 </div>
                             </button>
@@ -559,8 +563,8 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                                 <div className="luw-detail-panel">
                                     {features.map((f, i) => (
                                         <div key={i} style={{ marginBottom: '0.25rem' }}>
-                                            <span style={{ fontWeight: 700, color: 'var(--hope-color, #fbbf24)', fontSize: '0.8rem' }}>{f.name}: </span>
-                                            <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{f.description}</span>
+                                            <span style={{ fontWeight: 700, color: '#c8a44e', fontSize: '0.8rem' }}>{f.name}: </span>
+                                            <span style={{ fontSize: '0.75rem', color: 'rgba(228,232,240,0.8)' }}>{f.description}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -580,7 +584,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                 Each value can only be used the number of times it appears in the array.
             </p>
 
-            <div className="luw-trait-picks" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            <div className="luw-trait-picks luw-two-col">
                 {TRAIT_NAMES.map(trait => {
                     const options = getTraitOptions(trait);
                     return (
@@ -617,7 +621,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                     : 'Choose your primary and secondary domains, then pick your starting domain cards.'}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            <div className="luw-two-col">
                 <div className="luw-input-group">
                     <label className="luw-label">Primary Domain *</label>
                     <select className="luw-select" value={primaryDomain} onChange={(e) => setPrimaryDomain(e.target.value)}>
@@ -676,7 +680,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             <h3 className="luw-step-title">Equipment & Story</h3>
             <p className="luw-step-desc">Fill in your starting equipment, experiences, and backstory. All fields are optional — you can always add more later.</p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            <div className="luw-two-col">
                 <div className="luw-input-group">
                     <label className="luw-label">Primary Weapon</label>
                     <input className="luw-input" type="text" placeholder="e.g., Longsword (Str, Melee, d8+3)" value={primaryWeapon} onChange={(e) => setPrimaryWeapon(e.target.value)} />

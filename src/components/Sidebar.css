@@ -439,6 +439,24 @@
   }
 }
 
+@media (max-width: 480px) {
+  /* Narrow phone: cap sidebar width */
+  .sidebar {
+    width: min(280px, 80vw);
+    left: min(-280px, -80vw);
+  }
+
+  .sidebar.mobile-open {
+    left: 0;
+  }
+
+  /* Safe area for notched phones */
+  .mobile-menu-toggle {
+    top: max(1rem, env(safe-area-inset-top));
+    left: max(1rem, env(safe-area-inset-left));
+  }
+}
+
 /* Tablet+: Normal sidebar, hide mobile elements */
 @media (min-width: 768px) {
   .mobile-menu-toggle {
