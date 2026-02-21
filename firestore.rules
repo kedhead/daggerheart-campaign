@@ -67,12 +67,17 @@ service cloud.firestore {
       // Create: anyone authenticated
       allow create: if isAuthenticated();
 
-      // Update: DM/creator can update anything, or users can update joinRequests on public campaigns
+      // Update: DM/creator can update anything, members can update joinRequests on public campaigns,
+      // or any member can update only their own displayName inside the members map.
       allow update: if isAuthenticated() && (
         isDM(resource.data) ||
         getUserId() == resource.data.createdBy ||
         (resource.data.isPublic == true &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinRequests', 'updatedAt']))
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinRequests', 'updatedAt'])) ||
+        (isMember(resource.data) &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) &&
+         request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([getUserId()]) &&
+         request.resource.data.members[getUserId()].diff(resource.data.members[getUserId()]).affectedKeys().hasOnly(['displayName']))
       );
 
       // Delete: only DM/creator or superadmin
