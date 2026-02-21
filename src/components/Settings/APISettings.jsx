@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Check, X, Key, ExternalLink, Zap, Calendar } from 'lucide-react';
+import { Eye, EyeOff, Check, X, Key, ExternalLink, Zap, Calendar, User } from 'lucide-react';
+import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../../config/firebase';
+import { useAuth } from '../../contexts/AuthContext';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { aiService } from '../../services/aiService';
 import './APISettings.css';
 
 export default function APISettings({ userId }) {
+  const { currentUser, updateUserProfile } = useAuth();
   const {
     keys,
     saveKey,
@@ -27,6 +31,43 @@ export default function APISettings({ userId }) {
   const [testResult, setTestResult] = useState(null);
   const [saving, setSaving] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
+
+  // Display name state
+  const [displayNameInput, setDisplayNameInput] = useState(currentUser?.displayName || '');
+  const [savingDisplayName, setSavingDisplayName] = useState(false);
+  const [displayNameResult, setDisplayNameResult] = useState(null);
+
+  const handleSaveDisplayName = async () => {
+    const newName = displayNameInput.trim();
+    if (!newName || newName === currentUser?.displayName) return;
+
+    setSavingDisplayName(true);
+    setDisplayNameResult(null);
+    try {
+      // Update Firebase Auth profile
+      await updateUserProfile({ displayName: newName });
+
+      // Update displayName in all campaign member documents
+      const q = query(
+        collection(db, 'campaigns'),
+        where(`members.${userId}.role`, 'in', ['dm', 'player', 'co-dm'])
+      );
+      const snapshot = await getDocs(q);
+      await Promise.all(
+        snapshot.docs.map(campaignDoc =>
+          updateDoc(doc(db, 'campaigns', campaignDoc.id), {
+            [`members.${userId}.displayName`]: newName
+          })
+        )
+      );
+
+      setDisplayNameResult({ success: true, message: 'Display name updated successfully!' });
+    } catch (err) {
+      setDisplayNameResult({ success: false, message: err.message });
+    } finally {
+      setSavingDisplayName(false);
+    }
+  };
 
   // Debug info
   const storageKey = 'dh_ai_api_keys';
@@ -94,8 +135,56 @@ export default function APISettings({ userId }) {
   return (
     <div className="api-settings">
       <div className="settings-header">
-        <h2>API Settings</h2>
-        <p className="settings-subtitle">Configure your AI API keys for seamless generation</p>
+        <h2>Settings</h2>
+        <p className="settings-subtitle">Manage your profile and AI API keys</p>
+      </div>
+
+      {/* Profile Section */}
+      <div className="api-section card">
+        <div className="api-section-header">
+          <div>
+            <h3>Profile</h3>
+            <p className="api-description">Change the name displayed to other players</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+            <User size={16} />
+            {currentUser?.email}
+          </div>
+        </div>
+        <div className="key-input-section">
+          <div className="form-group">
+            <label>Display Name</label>
+            <input
+              type="text"
+              value={displayNameInput}
+              onChange={(e) => {
+                setDisplayNameInput(e.target.value);
+                setDisplayNameResult(null);
+              }}
+              placeholder="Enter your preferred name"
+              className="key-input"
+              style={{ fontFamily: 'inherit' }}
+              maxLength={50}
+            />
+          </div>
+          <button
+            className="btn btn-primary"
+            onClick={handleSaveDisplayName}
+            disabled={!displayNameInput.trim() || displayNameInput.trim() === currentUser?.displayName || savingDisplayName}
+          >
+            <User size={16} />
+            {savingDisplayName ? 'Saving...' : 'Save Display Name'}
+          </button>
+          {displayNameResult && (
+            <div className={`test-result card ${displayNameResult.success ? 'success' : 'error'}`}>
+              <div className="test-result-header">
+                {displayNameResult.success ? <Check size={16} /> : <X size={16} />}
+                <strong>{displayNameResult.success ? 'Success!' : 'Error'}</strong>
+              </div>
+              <p>{displayNameResult.message}</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="api-info card">
