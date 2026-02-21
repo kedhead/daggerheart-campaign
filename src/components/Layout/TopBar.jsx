@@ -1,9 +1,36 @@
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Search, Bell, User, ChevronRight } from 'lucide-react';
+import { Search, Bell, ChevronRight } from 'lucide-react';
 import PresenceIndicator from '../PresenceIndicator/PresenceIndicator';
+import NotificationPanel from '../Notifications/NotificationPanel';
+import { useNotifications } from '../../hooks/useNotifications';
 
-export default function TopBar({ currentView, presenceList }) {
+export default function TopBar({ currentView, presenceList, currentCampaignId, campaign, isDM, setCurrentView }) {
     const { currentUser } = useAuth();
+    const [panelOpen, setPanelOpen] = useState(false);
+    const bellRef = useRef(null);
+    const panelRef = useRef(null);
+
+    const { unreadConversations, pendingJoinRequests, totalCount } = useNotifications(
+        currentCampaignId,
+        campaign,
+        isDM
+    );
+
+    // Close panel when clicking outside
+    useEffect(() => {
+        if (!panelOpen) return;
+        const handleClick = (e) => {
+            if (
+                bellRef.current && !bellRef.current.contains(e.target) &&
+                panelRef.current && !panelRef.current.contains(e.target)
+            ) {
+                setPanelOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [panelOpen]);
 
     const getBreadcrumbs = () => {
         const views = {
@@ -77,10 +104,38 @@ export default function TopBar({ currentView, presenceList }) {
                         )}
                     </div>
                 </div>
-                <button className="relative p-2 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-all duration-200">
-                    <Bell size={20} />
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0d1126]"></span>
-                </button>
+
+                {/* Notification Bell */}
+                <div className="relative">
+                    <button
+                        ref={bellRef}
+                        onClick={() => setPanelOpen(prev => !prev)}
+                        className={`relative p-2 rounded-xl transition-all duration-200 ${
+                            panelOpen
+                                ? 'bg-white/10 text-white'
+                                : 'hover:bg-white/5 text-white/40 hover:text-white'
+                        }`}
+                        aria-label="Notifications"
+                    >
+                        <Bell size={20} />
+                        {totalCount > 0 && (
+                            <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center bg-red-500 rounded-full border-2 border-[#0d1126] text-[9px] font-black text-white leading-none">
+                                {totalCount > 9 ? '9+' : totalCount}
+                            </span>
+                        )}
+                    </button>
+
+                    {panelOpen && (
+                        <div ref={panelRef}>
+                            <NotificationPanel
+                                unreadConversations={unreadConversations}
+                                pendingJoinRequests={pendingJoinRequests}
+                                onNavigate={(view) => setCurrentView && setCurrentView(view)}
+                                onClose={() => setPanelOpen(false)}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
     );

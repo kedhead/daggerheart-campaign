@@ -627,7 +627,14 @@ function CampaignApp() {
           onSwitchCampaign={() => setCurrentCampaignId(null)}
         />
         <div className="flex-1 flex flex-col min-w-0 min-h-screen relative">
-          <TopBar currentView={currentView} presenceList={presenceList} />
+          <TopBar
+            currentView={currentView}
+            presenceList={presenceList}
+            currentCampaignId={currentCampaignId}
+            campaign={campaign}
+            isDM={isDM}
+            setCurrentView={setCurrentView}
+          />
           <main className="flex-1 overflow-y-auto custom-scrollbar relative">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
             {renderView()}
