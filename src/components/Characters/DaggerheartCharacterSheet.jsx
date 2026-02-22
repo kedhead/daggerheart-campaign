@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
@@ -55,8 +55,16 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
   const [expPickerActive, setExpPickerActive] = useState(null); // name of experience with open trait picker
   const [rollingKey, setRollingKey] = useState(null); // key of item currently rolling (flash feedback)
+  const [lastRoll, setLastRoll] = useState(null); // { label, type, ...rollData }
+  const rollResultTimer = useRef(null);
 
   const { roll, rollDamage } = useQuickRoll(campaign?.id);
+
+  const showRollResult = (label, type, data) => {
+    if (rollResultTimer.current) clearTimeout(rollResultTimer.current);
+    setLastRoll({ label, type, ...data });
+    rollResultTimer.current = setTimeout(() => setLastRoll(null), 6000);
+  };
 
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
   const openaiKeyInfo = getEffectiveKey('openai');
@@ -229,7 +237,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const mod = (traits[traitName] ?? 0) + proficiency;
     const label = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} Check`;
     flashRoll(`attr-${traitName}`);
-    await roll({ label, modifier: mod });
+    const result = await roll({ label, modifier: mod });
+    if (result) showRollResult(label, 'daggerheart', result);
   };
 
   const handleExperienceRoll = async (expName, expBonus, traitName) => {
@@ -238,7 +247,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const label = `${expName} (${TRAIT_ABBREV[traitName]})`;
     flashRoll(`exp-${expName}`);
     setExpPickerActive(null);
-    await roll({ label, modifier: mod });
+    const result = await roll({ label, modifier: mod });
+    if (result) showRollResult(label, 'daggerheart', result);
   };
 
   const handleWeaponAttack = async (weapon) => {
@@ -247,7 +257,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const mod = traitMod + proficiency;
     const label = `Attack: ${weapon.name}`;
     flashRoll(`atk-${weapon.id}`);
-    await roll({ label, modifier: mod });
+    const result = await roll({ label, modifier: mod });
+    if (result) showRollResult(label, 'daggerheart', result);
   };
 
   const handleWeaponDamage = async (weapon) => {
@@ -256,7 +267,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (!parsed) return;
     const label = `Damage: ${weapon.name}`;
     flashRoll(`dmg-${weapon.id}`);
-    await rollDamage({ label, ...parsed });
+    const result = await rollDamage({ label, ...parsed });
+    if (result) showRollResult(label, 'generic', result);
   };
 
   // ─── Sidebar ───
@@ -923,6 +935,53 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           </div>
         </div>
       </div>
+
+      {/* Roll Result Overlay */}
+      {lastRoll && (
+        <div className={`dh-roll-result-overlay ${lastRoll.type === 'generic' ? 'dh-roll-result-damage' : lastRoll.outcome}`}>
+          <button className="dh-roll-result-dismiss" onClick={() => { clearTimeout(rollResultTimer.current); setLastRoll(null); }}>×</button>
+          <div className="dh-roll-result-label">{lastRoll.label}</div>
+
+          {lastRoll.type === 'daggerheart' ? (
+            <>
+              <div className="dh-roll-result-dice-row">
+                <div className={`dh-roll-die dh-roll-die-hope ${lastRoll.outcome === 'hope' ? 'dh-die-winner' : ''}`}>
+                  <span className="dh-roll-die-label">Hope</span>
+                  <span className="dh-roll-die-val">{lastRoll.hopeDie}</span>
+                </div>
+                <span className="dh-roll-die-vs">vs</span>
+                <div className={`dh-roll-die dh-roll-die-fear ${lastRoll.outcome === 'fear' ? 'dh-die-winner' : ''}`}>
+                  <span className="dh-roll-die-label">Fear</span>
+                  <span className="dh-roll-die-val">{lastRoll.fearDie}</span>
+                </div>
+                {lastRoll.modifier !== 0 && (
+                  <span className="dh-roll-modifier">{lastRoll.modifier >= 0 ? '+' : ''}{lastRoll.modifier}</span>
+                )}
+              </div>
+              <div className="dh-roll-result-total">{lastRoll.total}</div>
+              <div className={`dh-roll-result-outcome ${lastRoll.outcome}`}>
+                {lastRoll.outcome === 'hope' ? '✨ With Hope' : '💀 With Fear'}
+                {lastRoll.isDoubles && <span className="dh-roll-doubles"> · Critical!</span>}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="dh-roll-result-dice-row dh-roll-generic-dice">
+                {lastRoll.rolls?.map((r, i) => (
+                  <div key={i} className="dh-roll-die dh-roll-die-dmg">
+                    <span className="dh-roll-die-label">d{lastRoll.dieType}</span>
+                    <span className="dh-roll-die-val">{r}</span>
+                  </div>
+                ))}
+                {lastRoll.modifier !== 0 && (
+                  <span className="dh-roll-modifier">{lastRoll.modifier >= 0 ? '+' : ''}{lastRoll.modifier}</span>
+                )}
+              </div>
+              <div className="dh-roll-result-total">{lastRoll.total}</div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Level Up Wizard Modal */}
       {showLevelUp && (

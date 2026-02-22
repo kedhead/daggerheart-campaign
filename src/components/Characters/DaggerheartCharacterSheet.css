@@ -1514,3 +1514,171 @@
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+/* ===== Roll Result Overlay ===== */
+@keyframes dh-result-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(20px) scale(0.92); }
+  60%  { opacity: 1; transform: translateX(-50%) translateY(-4px) scale(1.02); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes dh-result-out {
+  from { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.95); }
+}
+
+.dh-roll-result-overlay {
+  position: absolute;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 1rem 1.25rem 0.85rem;
+  border-radius: 1rem;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255,255,255,0.08);
+  animation: dh-result-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  /* Default (hope) colours */
+  background: linear-gradient(135deg, rgba(8,20,50,0.97), rgba(10,16,40,0.97));
+  border: 1.5px solid rgba(234, 179, 8, 0.4);
+}
+.dh-roll-result-overlay.hope {
+  border-color: rgba(234, 179, 8, 0.5);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 30px rgba(234,179,8,0.12), inset 0 1px 0 rgba(234,179,8,0.15);
+}
+.dh-roll-result-overlay.fear {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 30px rgba(139,92,246,0.12), inset 0 1px 0 rgba(139,92,246,0.12);
+}
+.dh-roll-result-overlay.dh-roll-result-damage {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 24px rgba(239,68,68,0.1), inset 0 1px 0 rgba(239,68,68,0.1);
+}
+
+.dh-roll-result-dismiss {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.25);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.1rem 0.3rem;
+  transition: color 0.15s;
+}
+.dh-roll-result-dismiss:hover { color: rgba(255,255,255,0.7); }
+
+.dh-roll-result-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 0.6rem;
+}
+
+/* Dice row */
+.dh-roll-result-dice-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.dh-roll-generic-dice { flex-wrap: wrap; }
+
+.dh-roll-die {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  min-width: 42px;
+  transition: all 0.2s;
+}
+.dh-roll-die-label {
+  font-size: 0.55rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.3);
+}
+.dh-roll-die-val {
+  font-size: 1.4rem;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Winning die glows */
+.dh-roll-die-hope.dh-die-winner {
+  border-color: rgba(234, 179, 8, 0.5);
+  background: rgba(234, 179, 8, 0.08);
+  box-shadow: 0 0 12px rgba(234,179,8,0.25);
+}
+.dh-roll-die-hope.dh-die-winner .dh-roll-die-val { color: #eab308; }
+.dh-roll-die-hope.dh-die-winner .dh-roll-die-label { color: rgba(234,179,8,0.7); }
+
+.dh-roll-die-fear.dh-die-winner {
+  border-color: rgba(139, 92, 246, 0.5);
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: 0 0 12px rgba(139,92,246,0.25);
+}
+.dh-roll-die-fear.dh-die-winner .dh-roll-die-val { color: #a78bfa; }
+.dh-roll-die-fear.dh-die-winner .dh-roll-die-label { color: rgba(167,139,250,0.7); }
+
+.dh-roll-die-dmg { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.05); }
+.dh-roll-die-dmg .dh-roll-die-val { color: #f87171; }
+
+.dh-roll-die-vs {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.2);
+}
+
+.dh-roll-modifier {
+  font-size: 1rem;
+  font-weight: 800;
+  color: rgba(255,255,255,0.4);
+  align-self: center;
+}
+
+/* Total number */
+.dh-roll-result-total {
+  font-size: 2.8rem;
+  font-weight: 900;
+  line-height: 1;
+  margin: 0.1rem 0 0.4rem;
+  color: white;
+  text-shadow: 0 0 20px rgba(255,255,255,0.2);
+}
+
+/* Outcome badge */
+.dh-roll-result-outcome {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  display: inline-block;
+}
+.dh-roll-result-outcome.hope {
+  background: rgba(234,179,8,0.15);
+  color: #eab308;
+  border: 1px solid rgba(234,179,8,0.3);
+}
+.dh-roll-result-outcome.fear {
+  background: rgba(139,92,246,0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(139,92,246,0.3);
+}
+.dh-roll-doubles {
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
