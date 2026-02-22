@@ -1346,3 +1346,171 @@
   color: #8899aa;
   margin-bottom: 0.15rem;
 }
+
+/* ===== Quick Roll — Attribute Circles ===== */
+.dh-attribute-rollable {
+  cursor: pointer;
+  background: none;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.dh-attribute-rollable .dh-attribute-roll-icon {
+  position: absolute;
+  bottom: 4px;
+  color: rgba(234, 179, 8, 0.0);
+  transition: color 0.2s, opacity 0.2s;
+  font-size: 0;
+}
+.dh-attribute-circle {
+  position: relative; /* needed for icon positioning */
+}
+.dh-attribute-rollable:hover {
+  border-color: rgba(234, 179, 8, 0.8) !important;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.3);
+  transform: scale(1.07);
+}
+.dh-attribute-rollable:hover .dh-attribute-roll-icon {
+  color: rgba(234, 179, 8, 0.8);
+}
+.dh-attribute-rollable:active {
+  transform: scale(0.96);
+}
+
+/* ===== Quick Roll — Experience Cards ===== */
+.dh-experience-rollable {
+  cursor: default;
+}
+.dh-exp-roll-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 50%;
+  background: rgba(234, 179, 8, 0.06);
+  color: rgba(234, 179, 8, 0.5);
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+}
+.dh-exp-roll-btn:hover {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.6);
+  color: #eab308;
+}
+
+/* ─── Experience Trait Picker ─── */
+.dh-exp-trait-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 50;
+  background: #0d1126;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 0.75rem;
+  padding: 0.6rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  min-width: 240px;
+  animation: dh-fade-in 0.15s ease;
+}
+.dh-exp-trait-picker-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.25);
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+.dh-exp-trait-picker-row {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.dh-exp-trait-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  border-radius: 0.4rem;
+  background: rgba(234, 179, 8, 0.04);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font-size: 0.6rem;
+  font-weight: 800;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.15s;
+  min-width: 34px;
+}
+.dh-exp-trait-btn span:last-child {
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #eab308;
+}
+.dh-exp-trait-btn:hover {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.5);
+  color: white;
+  transform: scale(1.05);
+}
+
+/* ===== Quick Roll — Weapon Buttons ===== */
+.dh-weapon-roll-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  padding-left: 1.5rem;
+}
+.dh-weapon-roll-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid;
+}
+.dh-weapon-roll-atk {
+  background: rgba(234, 179, 8, 0.08);
+  border-color: rgba(234, 179, 8, 0.3);
+  color: #eab308;
+}
+.dh-weapon-roll-atk:hover {
+  background: rgba(234, 179, 8, 0.18);
+  border-color: rgba(234, 179, 8, 0.6);
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.2);
+}
+.dh-weapon-roll-dmg {
+  background: rgba(239, 68, 68, 0.07);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+.dh-weapon-roll-dmg:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
+}
+
+/* ===== Quick Roll — Flash Feedback ===== */
+@keyframes dh-roll-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.6); transform: scale(1); }
+  40%  { box-shadow: 0 0 18px 6px rgba(234, 179, 8, 0.4); transform: scale(1.08); }
+  100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0); transform: scale(1); }
+}
+.dh-roll-flash {
+  animation: dh-roll-flash 0.5s ease-out;
+}
+
+@keyframes dh-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

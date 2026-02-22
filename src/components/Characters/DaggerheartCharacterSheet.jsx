@@ -1,13 +1,26 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2 } from 'lucide-react';
+import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
+import { useQuickRoll } from '../../hooks/useQuickRoll';
 import LevelUpWizard from './LevelUpWizard';
 import BeastformPanel from './BeastformPanel';
 import CompanionSheet from './CompanionSheet';
 import './DaggerheartCharacterSheet.css';
+
+// Parse a damage string like "d8+3" or "2d6" into parts for rolling
+const parseDamageString = (dmgStr) => {
+  if (!dmgStr) return null;
+  const match = dmgStr.match(/^(\d+)?d(\d+)(?:\+(\d+))?$/);
+  if (!match) return null;
+  return {
+    quantity: parseInt(match[1] || '1', 10),
+    dieType: parseInt(match[2], 10),
+    modifier: parseInt(match[3] || '0', 10),
+  };
+};
 
 const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 };
 const DEFAULT_HP = [true, true, true, true, true, true];
@@ -40,6 +53,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [activeTab, setActiveTab] = useState('core');
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
+  const [expPickerActive, setExpPickerActive] = useState(null); // name of experience with open trait picker
+  const [rollingKey, setRollingKey] = useState(null); // key of item currently rolling (flash feedback)
+
+  const { roll, rollDamage } = useQuickRoll(campaign?.id);
 
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
   const openaiKeyInfo = getEffectiveKey('openai');
@@ -202,6 +219,46 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     return tabs;
   }, [isBeastbound, character.companion]);
 
+  // ─── Quick Roll Helpers ───
+  const flashRoll = (key) => {
+    setRollingKey(key);
+    setTimeout(() => setRollingKey(null), 600);
+  };
+
+  const handleAttributeRoll = async (traitName) => {
+    const mod = (traits[traitName] ?? 0) + proficiency;
+    const label = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} Check`;
+    flashRoll(`attr-${traitName}`);
+    await roll({ label, modifier: mod });
+  };
+
+  const handleExperienceRoll = async (expName, expBonus, traitName) => {
+    const traitMod = traits[traitName] ?? 0;
+    const mod = traitMod + expBonus + proficiency;
+    const label = `${expName} (${TRAIT_ABBREV[traitName]})`;
+    flashRoll(`exp-${expName}`);
+    setExpPickerActive(null);
+    await roll({ label, modifier: mod });
+  };
+
+  const handleWeaponAttack = async (weapon) => {
+    const traitName = (weapon.systemData?.trait || '').toLowerCase();
+    const traitMod = traits[traitName] ?? 0;
+    const mod = traitMod + proficiency;
+    const label = `Attack: ${weapon.name}`;
+    flashRoll(`atk-${weapon.id}`);
+    await roll({ label, modifier: mod });
+  };
+
+  const handleWeaponDamage = async (weapon) => {
+    const dmgStr = getWeaponDamage(weapon, level);
+    const parsed = parseDamageString(dmgStr);
+    if (!parsed) return;
+    const label = `Damage: ${weapon.name}`;
+    flashRoll(`dmg-${weapon.id}`);
+    await rollDamage({ label, ...parsed });
+  };
+
   // ─── Sidebar ───
   const renderSidebar = () => (
     <div className="dh-sidebar">
@@ -352,10 +409,16 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
       <div className="dh-section-label">Attributes</div>
       <div className="dh-attributes-row">
         {Object.entries(traits).map(([name, value]) => (
-          <div key={name} className={`dh-attribute-circle ${traitClass(value)}`}>
+          <button
+            key={name}
+            className={`dh-attribute-circle dh-attribute-rollable ${traitClass(value)} ${rollingKey === `attr-${name}` ? 'dh-roll-flash' : ''}`}
+            onClick={() => campaign?.id && handleAttributeRoll(name)}
+            title={`Roll ${name.charAt(0).toUpperCase() + name.slice(1)} Check (${formatTraitValue(value)} + Prof ${proficiency})`}
+          >
             <span className="dh-attribute-abbrev">{TRAIT_ABBREV[name] || name.slice(0, 3).toUpperCase()}</span>
             <span className="dh-attribute-value">{formatTraitValue(value)}</span>
-          </div>
+            <Dices size={10} className="dh-attribute-roll-icon" />
+          </button>
         ))}
       </div>
 
@@ -391,10 +454,41 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <div className="dh-experiences-list">
             {experiences.map((exp, i) => {
               const boost = (character.experienceBoosts || {})[exp] || 0;
+              const bonus = 2 + boost;
+              const isPickerOpen = expPickerActive === exp;
               return (
-                <div key={i} className="dh-experience-card">
+                <div key={i} className={`dh-experience-card dh-experience-rollable ${rollingKey === `exp-${exp}` ? 'dh-roll-flash' : ''}`}
+                  style={{ position: 'relative' }}
+                >
                   <span className="dh-experience-name">{exp}</span>
-                  <span className="dh-experience-mod">+{2 + boost}</span>
+                  <span className="dh-experience-mod">+{bonus}</span>
+                  {campaign?.id && (
+                    <button
+                      className="dh-exp-roll-btn"
+                      title="Roll with this experience — pick a trait"
+                      onClick={(e) => { e.stopPropagation(); setExpPickerActive(isPickerOpen ? null : exp); }}
+                    >
+                      <Dices size={11} />
+                    </button>
+                  )}
+                  {isPickerOpen && (
+                    <div className="dh-exp-trait-picker" onClick={e => e.stopPropagation()}>
+                      <div className="dh-exp-trait-picker-label">Pick trait to pair with</div>
+                      <div className="dh-exp-trait-picker-row">
+                        {Object.entries(traits).map(([tName, tVal]) => (
+                          <button
+                            key={tName}
+                            className="dh-exp-trait-btn"
+                            title={`Roll: ${TRAIT_ABBREV[tName]} ${formatTraitValue(tVal)} + Exp ${bonus >= 0 ? `+${bonus}` : bonus} + Prof +${proficiency}`}
+                            onClick={() => handleExperienceRoll(exp, bonus, tName)}
+                          >
+                            <span>{TRAIT_ABBREV[tName]}</span>
+                            <span>{formatTraitValue(tVal)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -435,6 +529,9 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           const sd = weapon.systemData || {};
           const dmg = getWeaponDamage(weapon, level);
           const tier = getTierForLevel(level);
+          const traitName = (sd.trait || '').toLowerCase();
+          const traitMod = traits[traitName] ?? 0;
+          const atkModTotal = traitMod + proficiency;
           return (
             <div key={weapon.id} className="dh-weapon-card">
               <div className="dh-weapon-card-header">
@@ -458,6 +555,26 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               )}
               {weapon.description && (
                 <div className="dh-weapon-description">{weapon.description}</div>
+              )}
+              {campaign?.id && (
+                <div className="dh-weapon-roll-row">
+                  <button
+                    className={`dh-weapon-roll-btn dh-weapon-roll-atk ${rollingKey === `atk-${weapon.id}` ? 'dh-roll-flash' : ''}`}
+                    onClick={() => handleWeaponAttack(weapon)}
+                    title={`Attack roll: ${sd.trait || '?'} ${formatTraitValue(atkModTotal)} (${formatTraitValue(traitMod)} + Prof +${proficiency})`}
+                  >
+                    <Dices size={12} /> Attack
+                  </button>
+                  {dmg && (
+                    <button
+                      className={`dh-weapon-roll-btn dh-weapon-roll-dmg ${rollingKey === `dmg-${weapon.id}` ? 'dh-roll-flash' : ''}`}
+                      onClick={() => handleWeaponDamage(weapon)}
+                      title={`Damage roll: ${dmg}`}
+                    >
+                      <Sword size={12} /> {dmg}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           );
@@ -627,10 +744,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             const sd = weapon.systemData || {};
             const dmg = getWeaponDamage(weapon, level);
             const tier = getTierForLevel(level);
+            const traitName = (sd.trait || '').toLowerCase();
+            const traitMod = traits[traitName] ?? 0;
+            const atkModTotal = traitMod + proficiency;
             return (
               <div key={weapon.id} className="dh-equipped-item">
                 <Sword size={14} className="dh-equipped-item-icon" />
-                <div>
+                <div style={{ flex: 1 }}>
                   <div className="dh-equipped-item-header">
                     <span className="dh-equipped-item-name">{weapon.name}</span>
                     <span className="dh-item-tier">T{tier}</span>
@@ -641,6 +761,26 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                     {dmg && <span>{dmg}</span>}
                     {sd.damageType && <span>{sd.damageType}</span>}
                   </div>
+                  {campaign?.id && (
+                    <div className="dh-weapon-roll-row" style={{ marginTop: '0.4rem' }}>
+                      <button
+                        className={`dh-weapon-roll-btn dh-weapon-roll-atk ${rollingKey === `atk-${weapon.id}` ? 'dh-roll-flash' : ''}`}
+                        onClick={() => handleWeaponAttack(weapon)}
+                        title={`Attack: ${sd.trait || '?'} ${formatTraitValue(atkModTotal)}`}
+                      >
+                        <Dices size={12} /> Attack
+                      </button>
+                      {dmg && (
+                        <button
+                          className={`dh-weapon-roll-btn dh-weapon-roll-dmg ${rollingKey === `dmg-${weapon.id}` ? 'dh-roll-flash' : ''}`}
+                          onClick={() => handleWeaponDamage(weapon)}
+                          title={`Damage: ${dmg}`}
+                        >
+                          <Sword size={12} /> {dmg}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );
