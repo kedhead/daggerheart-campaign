@@ -3,6 +3,7 @@ import { Radio, Square, Star, Copy, Trash2, ArrowLeft, FileText, CheckCircle } f
 import { useSessionLive } from '../../hooks/useSessionLive';
 import LiveNoteInput from './LiveNoteInput';
 import LiveNoteFeed from './LiveNoteFeed';
+import LiveTranscriptionPanel from './LiveTranscriptionPanel';
 import Modal from '../Modal';
 import './SessionLive.css';
 
@@ -188,6 +189,14 @@ export default function SessionLive({
           </div>
         </div>
       </div>
+
+      {isDM && (
+        <div className="px-4 pt-4 shrink-0">
+          <LiveTranscriptionPanel 
+            onNotesGenerated={(notes) => handleAddNote(`🎙️ **AI Transcription Notes:**\n\n${notes}`, true)} 
+          />
+        </div>
+      )}
 
       <LiveNoteFeed
         notes={liveNotes}
