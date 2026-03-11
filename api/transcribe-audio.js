@@ -1,11 +1,10 @@
 import OpenAI, { toFile } from 'openai';
+import busboy from 'busboy';
 
 export const config = {
   maxDuration: 60,
   api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
+    bodyParser: false, // Must disable body parser to use Busboy
   },
 };
 
@@ -23,51 +22,77 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  try {
-    const { audioData, mimeType = 'audio/webm' } = req.body;
-    
-    if (!audioData) {
-      return res.status(400).json({ error: 'No audio data provided' });
-    }
+  return new Promise((resolve, reject) => {
+    let audioBuffer = null;
+    let fileName = 'audio.webm';
+    let mimeType = 'audio/webm';
 
-    console.log('Received audio transcription request, length:', audioData.length);
+    const bb = busboy({ headers: req.headers });
 
-    // Extract base64 payload 
-    // Handle both raw base64 and data URIs (e.g., 'data:audio/webm;codecs=opus;base64,...')
-    let base64Data = audioData;
-    if (audioData.includes('base64,')) {
-      base64Data = audioData.split('base64,')[1];
-    } else if (audioData.includes(',')) {
-      base64Data = audioData.substring(audioData.indexOf(',') + 1);
-    }
-    
-    const buffer = Buffer.from(base64Data, 'base64');
-    
-    if (buffer.length < 100) {
-      throw new Error(`Audio buffer too small (${buffer.length} bytes), recording failed.`);
-    }
-    
-    // Choose extension based on mimeType
-    const ext = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('mpeg') ? 'mp3' : 'webm';
-    
-    // OpenAI SDK utility to convert buffer to File-like object
-    const file = await toFile(buffer, `audio.${ext}`, { type: mimeType });
-    
-    console.log('Sending to OpenAI Whisper API...');
-    const transcription = await openai.audio.transcriptions.create({
-      file: file,
-      model: 'whisper-1',
-      prompt: 'This is a tabletop RPG session. The transcript may contain fantasy words, dice rolls, and game mechanics.',
+    bb.on('file', (name, file, info) => {
+      const { filename, encoding, mimeType: _mimeType } = info;
+      const chunks = [];
+      file.on('data', (data) => {
+        chunks.push(data);
+      }).on('end', () => {
+        audioBuffer = Buffer.concat(chunks);
+        fileName = filename;
+        if (_mimeType) mimeType = _mimeType;
+      });
     });
 
-    console.log('Transcription successful:', transcription.text);
-    return res.status(200).json({ text: transcription.text });
-
-  } catch (error) {
-    console.error('Transcription error:', error);
-    return res.status(500).json({ 
-      error: 'Failed to transcribe audio', 
-      message: error.message 
+    bb.on('field', (name, val) => {
+      if (name === 'mimeType') {
+        mimeType = val;
+      }
     });
-  }
+
+    bb.on('finish', async () => {
+      try {
+        if (!audioBuffer) {
+           res.status(400).json({ error: 'No audio file found in request' });
+           return resolve();
+        }
+
+        if (audioBuffer.length < 100) {
+           res.status(400).json({ error: `Audio buffer too small (${audioBuffer.length} bytes), recording failed.` });
+           return resolve();
+        }
+        
+        console.log(`Received audio upload: ${fileName}, size: ${audioBuffer.length}, type: ${mimeType}`);
+
+        // Choose extension based on mimeType
+        const ext = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('mpeg') ? 'mp3' : 'webm';
+        
+        // OpenAI SDK utility to convert buffer to File-like object
+        const file = await toFile(audioBuffer, `audio.${ext}`, { type: mimeType });
+        
+        console.log('Sending to OpenAI Whisper API...');
+        const transcription = await openai.audio.transcriptions.create({
+          file: file,
+          model: 'whisper-1',
+          prompt: 'This is a tabletop RPG session. The transcript may contain fantasy words, dice rolls, and game mechanics.',
+        });
+
+        console.log('Transcription successful:', transcription.text);
+        res.status(200).json({ text: transcription.text });
+        return resolve();
+      } catch (error) {
+        console.error('Transcription error:', error);
+        res.status(500).json({ 
+          error: 'Failed to transcribe audio', 
+          message: error.message 
+        });
+        return resolve();
+      }
+    });
+
+    bb.on('error', (err) => {
+       console.error('Busboy error:', err);
+       res.status(500).json({ error: 'Error parsing form data' });
+       return resolve();
+    });
+
+    req.pipe(bb);
+  });
 }

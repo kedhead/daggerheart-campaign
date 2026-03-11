@@ -95,45 +95,47 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
 
   const processAudio = async (blob, mimeType = 'audio/webm') => {
     try {
-      // 1. Convert blob to base64
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = async () => {
-        const base64Audio = reader.result;
+      const formData = new FormData();
+      // Whisper usually expects .webm, .mp3, .mp4, .m4a
+      const ext = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('mpeg') ? 'mp3' : 'webm';
+      formData.append('audio', blob, `audio.${ext}`);
+      formData.append('mimeType', mimeType);
 
-        // 2. Transcribe Audio
-        const transcribeRes = await fetch('/api/transcribe-audio', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioData: base64Audio, mimeType })
-        });
+      // 2. Transcribe Audio
+      const transcribeRes = await fetch('/api/transcribe-audio', {
+        method: 'POST',
+        body: formData // Note: Content-Type is set automatically by the browser for FormData
+      });
 
-        if (!transcribeRes.ok) {
-          const errData = await transcribeRes.json();
-          throw new Error(errData.error || 'Failed to transcribe audio');
-        }
+      if (!transcribeRes.ok) {
+        const errData = await transcribeRes.json();
+        throw new Error(errData.error || 'Failed to transcribe audio');
+      }
 
-        const { text: transcript } = await transcribeRes.json();
+      const { text: transcript } = await transcribeRes.json();
+      
+      if (!transcript || transcript.trim() === '') {
+        throw new Error('Transcription returned empty text. Please try speaking closer to the microphone.');
+      }
 
-        // 3. Generate Notes from Transcript
-        const notesRes = await fetch('/api/generate-notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ transcript })
-        });
+      // 3. Generate Notes from Transcript
+      const notesRes = await fetch('/api/generate-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript })
+      });
 
-        if (!notesRes.ok) {
-          const errData = await notesRes.json();
-          throw new Error(errData.error || 'Failed to generate notes');
-        }
+      if (!notesRes.ok) {
+        const errData = await notesRes.json();
+        throw new Error(errData.error || 'Failed to generate notes');
+      }
 
-        const { notes } = await notesRes.json();
-        setGeneratedNotes(notes);
-        if (onNotesGenerated) {
-          onNotesGenerated(notes);
-        }
-        setIsProcessing(false);
-      };
+      const { notes } = await notesRes.json();
+      setGeneratedNotes(notes);
+      if (onNotesGenerated) {
+        onNotesGenerated(notes);
+      }
+      setIsProcessing(false);
     } catch (err) {
       console.error('Processing error:', err);
       setError(err.message || 'An error occurred during processing.');
