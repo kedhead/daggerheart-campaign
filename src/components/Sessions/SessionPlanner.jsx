@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { Plus, Edit2, Trash2, Save, X, Calendar, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import LiveTranscriptionPanel from './LiveTranscriptionPanel';
 import './SessionPlanner.css';
 
 export default function SessionPlanner({ campaign, isDM }) {
@@ -104,6 +105,15 @@ export default function SessionPlanner({ campaign, isDM }) {
     }
   };
 
+  const handleNotesGenerated = (generatedNotes) => {
+    if (isAdding) {
+      setFormData(prev => ({
+        ...prev,
+        notes: prev.notes ? prev.notes + '\n\n' + generatedNotes : generatedNotes
+      }));
+    }
+  };
+
   if (!isDM) {
     return (
       <div className="max-w-7xl mx-auto p-4 space-y-6">
@@ -133,6 +143,8 @@ export default function SessionPlanner({ campaign, isDM }) {
           </button>
         )}
       </div>
+
+      <LiveTranscriptionPanel onNotesGenerated={handleNotesGenerated} />
 
       {isAdding && (
         <div className="p-6 bg-[var(--bg-secondary)] border border-white/5 rounded-xl space-y-6 animate-in slide-in-from-top-4 duration-300">
