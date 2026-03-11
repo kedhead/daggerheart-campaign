@@ -71,7 +71,6 @@ export default async function handler(req, res) {
         const transcription = await openai.audio.transcriptions.create({
           file: file,
           model: 'whisper-1',
-          prompt: 'This is a tabletop RPG session. The transcript may contain fantasy words, dice rolls, and game mechanics.',
         });
 
         console.log('Transcription successful:', transcription.text);
