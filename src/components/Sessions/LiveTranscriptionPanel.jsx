@@ -56,7 +56,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
         await processAudio(audioBlob);
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000);
       setIsRecording(true);
       setRecordingTime(0);
     } catch (err) {

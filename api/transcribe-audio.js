@@ -32,9 +32,14 @@ export default async function handler(req, res) {
 
     console.log('Received audio transcription request, length:', audioData.length);
 
-    // Convert base64 data URL or raw base64 to buffer
-    const base64Data = audioData.replace(/^data:audio\/\w+;base64,/, "");
+    // Extract base64 payload by taking everything after the first comma
+    // This safely handles complex MIME types like 'data:audio/webm;codecs=opus;base64,'
+    const base64Data = audioData.includes(',') ? audioData.split(',')[1] : audioData;
     const buffer = Buffer.from(base64Data, 'base64');
+    
+    if (buffer.length < 100) {
+      throw new Error(`Audio buffer too small (${buffer.length} bytes), recording failed.`);
+    }
     
     // Choose extension based on mimeType
     const ext = mimeType.includes('mp4') ? 'm4a' : mimeType.includes('mpeg') ? 'mp3' : 'webm';
@@ -46,9 +51,10 @@ export default async function handler(req, res) {
     const transcription = await openai.audio.transcriptions.create({
       file: file,
       model: 'whisper-1',
+      prompt: 'This is a tabletop RPG session. The transcript may contain fantasy words, dice rolls, and game mechanics.',
     });
 
-    console.log('Transcription successful');
+    console.log('Transcription successful:', transcription.text);
     return res.status(200).json({ text: transcription.text });
 
   } catch (error) {
