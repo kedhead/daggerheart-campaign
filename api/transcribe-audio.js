@@ -32,9 +32,15 @@ export default async function handler(req, res) {
 
     console.log('Received audio transcription request, length:', audioData.length);
 
-    // Extract base64 payload by taking everything after the first comma
-    // This safely handles complex MIME types like 'data:audio/webm;codecs=opus;base64,'
-    const base64Data = audioData.includes(',') ? audioData.split(',')[1] : audioData;
+    // Extract base64 payload 
+    // Handle both raw base64 and data URIs (e.g., 'data:audio/webm;codecs=opus;base64,...')
+    let base64Data = audioData;
+    if (audioData.includes('base64,')) {
+      base64Data = audioData.split('base64,')[1];
+    } else if (audioData.includes(',')) {
+      base64Data = audioData.substring(audioData.indexOf(',') + 1);
+    }
+    
     const buffer = Buffer.from(base64Data, 'base64');
     
     if (buffer.length < 100) {

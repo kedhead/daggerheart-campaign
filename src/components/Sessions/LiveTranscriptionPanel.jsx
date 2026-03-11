@@ -36,7 +36,24 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
     setGeneratedNotes('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      
+      const supportedMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus'
+      ];
+      
+      let selectedMimeType = 'audio/webm';
+      for (const mimeType of supportedMimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          selectedMimeType = mimeType;
+          break;
+        }
+      }
+
+      console.log('Using MIME type:', selectedMimeType);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: selectedMimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -48,15 +65,19 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
 
       mediaRecorder.onstop = async () => {
         setIsProcessing(true);
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // Wait a tiny bit for the final ondataavailable to fire
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const audioBlob = new Blob(audioChunksRef.current, { type: selectedMimeType });
         
         // Stop all tracks to release microphone
         stream.getTracks().forEach((track) => track.stop());
 
-        await processAudio(audioBlob);
+        await processAudio(audioBlob, selectedMimeType);
       };
 
-      mediaRecorder.start(1000);
+      mediaRecorder.start(1000); // Record in 1-second chunks
       setIsRecording(true);
       setRecordingTime(0);
     } catch (err) {
@@ -72,7 +93,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
     }
   };
 
-  const processAudio = async (blob) => {
+  const processAudio = async (blob, mimeType = 'audio/webm') => {
     try {
       // 1. Convert blob to base64
       const reader = new FileReader();
@@ -84,7 +105,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
         const transcribeRes = await fetch('/api/transcribe-audio', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioData: base64Audio, mimeType: 'audio/webm' })
+          body: JSON.stringify({ audioData: base64Audio, mimeType })
         });
 
         if (!transcribeRes.ok) {
