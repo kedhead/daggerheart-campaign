@@ -34,7 +34,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
 
         {/* Player Attribution */}
         <div className="absolute bottom-6 left-8 z-30">
-          <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] block mb-1">Authenticated Operative</span>
+          <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] block mb-1">Player Character</span>
           <span className="text-sm font-bold text-white/60 tracking-widest">{character.playerName || 'Unknown Player'}</span>
         </div>
       </div>
@@ -55,7 +55,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
               {character.demiplaneLink && (
                 <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-[10px] font-bold text-emerald-400/60 uppercase tracking-widest">
                   <Zap size={10} />
-                  Demiplane Uplink Proxy
+                  Demiplane Sheet
                 </div>
               )}
             </div>
@@ -78,8 +78,8 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
                       <ExternalLink size={24} />
                     </div>
                     <div>
-                      <span className="text-[10px] font-black text-emerald-500/40 uppercase tracking-[0.3em] block mb-1">Live Synchronization</span>
-                      <span className="text-sm font-bold text-emerald-400 tracking-wide uppercase">Open Demiplane Dossier</span>
+                      <span className="text-[10px] font-black text-emerald-500/40 uppercase tracking-[0.3em] block mb-1">Character Sheet</span>
+                      <span className="text-sm font-bold text-emerald-400 tracking-wide uppercase">Open on Demiplane</span>
                     </div>
                   </div>
                   <ChevronRight size={20} className="text-emerald-500/40 group-hover/link:translate-x-1 transition-transform" />
@@ -90,7 +90,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
 
             {character.playerNotes && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-blue-400/60 uppercase tracking-[0.3em] font-sans">Mission Notes</h4>
+                <h4 className="text-[10px] font-black text-blue-400/60 uppercase tracking-[0.3em] font-sans">Character Notes</h4>
                 <div className="prose prose-invert prose-sm font-sans font-medium text-white/50 leading-relaxed max-w-none">
                   <p>{character.playerNotes}</p>
                 </div>
@@ -99,7 +99,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
 
             {character.backstory && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Origin Log</h4>
+                <h4 className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Backstory</h4>
                 <div className="prose prose-invert prose-sm font-sans font-medium text-white/40 leading-relaxed max-w-none italic">
                   <p>{character.backstory}</p>
                 </div>
@@ -110,7 +110,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
               <div className="space-y-3 p-5 rounded-2xl bg-white/[0.02] border border-white/5 border-dashed">
                 <h4 className="flex items-center gap-2 text-[10px] font-black text-rose-400/60 uppercase tracking-[0.3em] font-sans">
                   <EyeOff size={10} />
-                  Restricted DM Intel
+                  DM Notes
                 </h4>
                 <div className="prose prose-invert prose-sm font-sans font-medium text-white/30 leading-relaxed max-w-none">
                   <p>{character.dmNotes}</p>
@@ -125,7 +125,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
                   onClick={(e) => { e.stopPropagation(); onEdit(); }}
                 >
                   <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
-                  Modify Data
+                  Edit Character
                 </button>
                 <button
                   className="flex items-center justify-center p-3 rounded-2xl bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-500 hover:text-white transition-all shadow-lg shadow-red-500/0 hover:shadow-red-500/20"

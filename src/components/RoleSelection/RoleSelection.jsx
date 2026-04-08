@@ -22,7 +22,7 @@ export default function RoleSelection({ onSelectRole }) {
           <h1 className="font-serif text-6xl font-black text-white italic lowercase tracking-tighter">
             Welcome to Lorelich
           </h1>
-          <p className="text-[11px] font-black text-white/30 uppercase tracking-[0.5em]">Digital Campaign Orchestrator</p>
+          <p className="text-[11px] font-black text-white/30 uppercase tracking-[0.5em]">Your Adventure Companion</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -41,7 +41,7 @@ export default function RoleSelection({ onSelectRole }) {
             </div>
             <h3 className="font-serif text-2xl font-black text-white/90 italic lowercase mb-3">Dungeon Master</h3>
             <p className="text-xs font-medium text-white/30 leading-relaxed">
-              Create and manage operational theaters, synchronize player nodes, and archive the campaign chronicle.
+              Create and manage campaigns, guide your players through the story, and chronicle your adventures.
             </p>
             {selectedRole === 'dm' && (
               <div className="absolute inset-0 border-2 border-indigo-500/50 rounded-[3rem] animate-pulse pointer-events-none" />
@@ -61,9 +61,9 @@ export default function RoleSelection({ onSelectRole }) {
             <div className={`w-24 h-24 rounded-3xl mb-8 flex items-center justify-center transition-all duration-700 ${selectedRole === 'player' ? 'bg-sky-500 text-white shadow-lg' : 'bg-white/5 text-white/20 group-hover:text-white/40'}`}>
               <User size={48} className="group-hover:scale-110 transition-transform" />
             </div>
-            <h3 className="font-serif text-2xl font-black text-white/90 italic lowercase mb-3">Player Node</h3>
+            <h3 className="font-serif text-2xl font-black text-white/90 italic lowercase mb-3">Player</h3>
             <p className="text-xs font-medium text-white/30 leading-relaxed">
-              Join active campaigns, configure character manifestations, and synchronize with the campaign collective.
+              Join active campaigns, build your character, and adventure with your party.
             </p>
             {selectedRole === 'player' && (
               <div className="absolute inset-0 border-2 border-sky-500/50 rounded-[3rem] animate-pulse pointer-events-none" />
@@ -82,7 +82,7 @@ export default function RoleSelection({ onSelectRole }) {
           </button>
 
           <p className="text-[10px] text-white/20 font-medium italic max-w-xs text-center leading-relaxed">
-            Note: Role classification is non-binding and can be overridden within specific campaign parameters.
+            Note: You can switch your role within a campaign's settings at any time.
           </p>
         </div>
       </div>

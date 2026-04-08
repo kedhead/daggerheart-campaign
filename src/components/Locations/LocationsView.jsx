@@ -185,7 +185,7 @@ export default function LocationsView({ campaign, locations = [], updateCampaign
               <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{locations.length} Cartographed Sites</span>
             </div>
             <div className="w-1 h-1 rounded-full bg-white/20"></div>
-            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest italic">Coordinate system stabilized</p>
+            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest italic">Locations ready</p>
           </div>
         </div>
 

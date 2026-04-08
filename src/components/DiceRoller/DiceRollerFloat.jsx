@@ -163,6 +163,51 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     };
   };
 
+  const handleRollSingleDie = async (dieType) => {
+    if (isRolling) return;
+    setIsRolling(true);
+    initAudio();
+
+    if (use3DDice) {
+      // Sync selectedDie state so handle3DRollComplete uses the right die type
+      setSelectedDie(dieType);
+      setDiceQuantity(1);
+      const config = {
+        system: 'generic',
+        selectedDie: dieType,
+        diceQuantity: 1,
+        modifier: parseInt(modifier) || 0
+      };
+      setPending3DRoll(config);
+      setShow3DOverlay(true);
+      setIsRolling(false);
+      return;
+    }
+
+    playRollSound();
+    const rollValue = Math.floor(Math.random() * dieType) + 1;
+    const rollData = {
+      dieType,
+      quantity: 1,
+      rolls: [rollValue],
+      modifier: parseInt(modifier),
+      total: rollValue + parseInt(modifier),
+      isDoubles: false
+    };
+
+    setTimeout(async () => {
+      setCurrentRoll({ system: 'generic', rollData });
+      await addRoll({
+        system: 'generic',
+        rollData,
+        label: rollLabel || `d${dieType}`,
+        isPrivate: isDM ? isPrivate : false
+      });
+      setRollLabel('');
+      setIsRolling(false);
+    }, 800);
+  };
+
   const rollGeneric = (overrides = null) => {
     const dieType = parseInt(selectedDie);
     const quantity = parseInt(diceQuantity) || 1;
@@ -377,6 +422,29 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
             {/* Dice Controls */}
             <div className="dice-controls">
               {/* System-specific controls */}
+              {gameSystem === 'daggerheart' && (
+                <div className="control-row">
+                  <div className="control-group">
+                    <label>Extra Dice</label>
+                    <div className="extra-dice-buttons">
+                      {[4, 6, 8, 10, 12, 20].map(dieType => (
+                        <button
+                          key={dieType}
+                          type="button"
+                          className="die-btn"
+                          style={{ borderColor: getDieColor(dieType), color: getDieColor(dieType) }}
+                          onClick={() => handleRollSingleDie(dieType)}
+                          disabled={isRolling}
+                          title={`Roll d${dieType}`}
+                        >
+                          d{dieType}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {gameSystem === 'generic' && (
                 <div className="control-row">
                   <div className="control-group">

@@ -256,8 +256,8 @@ function CampaignApp() {
           </div>
 
           <div className="text-center space-y-2 relative">
-            <h2 className="font-serif text-2xl font-black text-white/90 italic lowercase tracking-tighter">Syncing Archives...</h2>
-            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Establishing uplink to campaign nodes</p>
+            <h2 className="font-serif text-2xl font-black text-white/90 italic lowercase tracking-tighter">Loading...</h2>
+            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Gathering your campaign data</p>
           </div>
         </div>
       );

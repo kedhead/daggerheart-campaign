@@ -382,8 +382,8 @@
   }
 
   .dh-chat-widget-container {
-    right: 80px;
-    bottom: 20px;
+    right: 1rem;
+    bottom: 5rem; /* Stack above the dice FAB (48px button + 16px bottom + gap) */
   }
 
   /* When open, widget takes full screen, so toggle needs to move */
