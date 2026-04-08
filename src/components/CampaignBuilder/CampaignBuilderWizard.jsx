@@ -20,7 +20,7 @@ import CampaignMechanicsStep from './wizard/steps/CampaignMechanicsStep';
 import SessionZeroStep from './wizard/steps/SessionZeroStep';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { CheckCircle, Loader2, Sparkles, Settings2 } from 'lucide-react';
-import { generateCampaignContent } from '../../services/campaignGenerator';
+import { generateCampaignContent, fleshOutLocationWithAI } from '../../services/campaignGenerator';
 import { autoLinkText } from '../../utils/autoLinkText';
 import { generateMap } from '../../services/mapGenerator';
 import { generateNPCPortrait, generateLocationPortrait } from '../../services/portraitGenerator';
@@ -87,9 +87,6 @@ export default function CampaignBuilderWizard({
       setGenerationProgress('Step 1/10: Saving campaign frame...');
       await complete();
 
-      // Generate campaign content
-      setGenerationProgress(`Step 2/10: Generating ${generationOptions.locations} locations, ${generationOptions.npcs} NPCs, ${generationOptions.lore} lore, ${generationOptions.encounters} encounters...`);
-
       // Get effective API key (user's own or shared)
       const anthropicResult = getEffectiveKey('anthropic');
       const openaiResult = getEffectiveKey('openai');
@@ -123,14 +120,76 @@ export default function CampaignBuilderWizard({
       const openaiEffective = getEffectiveKey('openai');
       const openaiKey = openaiEffective.key;
 
+      // Step 2: Flesh out player-specified locations first
+      // If the user added locations during session zero, expand their descriptions with AI,
+      // generate portraits, and save them — then NPCs will only be placed in these locations.
+      const rawPlayerLocations = data.sessionZero?.playerLocations?.filter(l => l.createAsLocation && l.name) || [];
+      const fleshedOutLocations = [];
+
+      if (rawPlayerLocations.length > 0) {
+        setGenerationProgress(`Step 2/10: Expanding ${rawPlayerLocations.length} location${rawPlayerLocations.length > 1 ? 's' : ''} you specified...`);
+        for (let i = 0; i < rawPlayerLocations.length; i++) {
+          const loc = rawPlayerLocations[i];
+          let fleshedLocation;
+
+          // Flesh out with AI if we have an API key and a description to expand
+          if (apiKey && loc.description?.trim()) {
+            try {
+              setGenerationProgress(`Step 2/10: Writing full description for ${loc.name}...`);
+              fleshedLocation = await fleshOutLocationWithAI(loc, data, campaign, apiKey, provider);
+            } catch (err) {
+              console.error(`Failed to flesh out ${loc.name}:`, err);
+              fleshedLocation = { name: loc.name, type: loc.type || 'other', region: loc.region || '', description: loc.description || '', source: 'session-zero' };
+            }
+          } else {
+            fleshedLocation = { name: loc.name, type: loc.type || 'other', region: loc.region || '', description: loc.description || '', source: 'session-zero' };
+          }
+
+          // Generate portrait for location
+          try {
+            setGenerationProgress(`Step 2/10: Generating image for ${loc.name}...`);
+            const portraitUrl = await generateLocationPortrait(fleshedLocation, openaiKey || null, campaign?.gameSystem || 'daggerheart', campaign?.id);
+            fleshedLocation.mapUrl = portraitUrl;
+          } catch (err) {
+            console.error(`Failed to generate portrait for ${loc.name}:`, err);
+          }
+
+          // Save to Firestore immediately
+          try {
+            await addLocation(fleshedLocation);
+            console.log(`Player location saved: ${loc.name}`);
+          } catch (err) {
+            console.error(`Failed to save player location ${loc.name}:`, err);
+          }
+
+          fleshedOutLocations.push(fleshedLocation);
+        }
+      }
+
+      // Step 3: Generate remaining content
+      // If player locations exist, skip generating new ones and only place NPCs in those
+      const hasPlayerLocations = fleshedOutLocations.length > 0;
+      const contentOptions = {
+        ...generationOptions,
+        preExistingLocations: hasPlayerLocations ? fleshedOutLocations : undefined
+      };
+
+      setGenerationProgress(
+        hasPlayerLocations
+          ? `Step 3/10: Generating ${generationOptions.npcs} NPCs for your locations, ${generationOptions.lore} lore, ${generationOptions.encounters} encounters...`
+          : `Step 3/10: Generating ${generationOptions.locations} locations, ${generationOptions.npcs} NPCs, ${generationOptions.lore} lore, ${generationOptions.encounters} encounters...`
+      );
+
       console.log('Starting content generation with API key:', apiKey ? 'Yes' : 'No');
-      const generatedContent = await generateCampaignContent(data, campaign, apiKey, provider, generationOptions);
+      const generatedContent = await generateCampaignContent(data, campaign, apiKey, provider, contentOptions);
       console.log('Generated content:', generatedContent);
 
       // Auto-link: collect all entity names, then link text fields across all generated entities
+      // Include player-specified locations so their names get linked too
       const allEntityNames = [
         ...(generatedContent.npcs || []).map(e => e.name),
         ...(generatedContent.locations || []).map(e => e.name),
+        ...fleshedOutLocations.map(e => e.name),
         ...(generatedContent.lore || []).map(e => e.title),
         ...(generatedContent.encounters || []).map(e => e.name),
         ...(generatedContent.timelineEvents || []).map(e => e.title),
@@ -350,28 +409,6 @@ export default function CampaignBuilderWizard({
         }
       }
 
-      // Create Locations from Session Zero
-      const playerLocations = data.sessionZero?.playerLocations?.filter(l => l.createAsLocation && l.name) || [];
-      if (playerLocations.length > 0) {
-        setGenerationProgress(`Creating ${playerLocations.length} player locations...`);
-        for (let i = 0; i < playerLocations.length; i++) {
-          const loc = playerLocations[i];
-          console.log(`Creating Player Location ${i + 1}:`, loc);
-          try {
-            await addLocation({
-              name: loc.name,
-              type: loc.type || 'other',
-              region: loc.region || '',
-              description: loc.description || `Established during session zero${loc.mentionedBy ? ` by ${loc.mentionedBy}` : ''}.`,
-              source: 'session-zero'
-            });
-            console.log(`Player Location ${i + 1} created successfully`);
-          } catch (err) {
-            console.error(`Failed to create Player Location ${i + 1}:`, err);
-          }
-        }
-      }
-
       // Step 10: Generate World Map
       setGenerationProgress('Step 10/10: Generating world map...');
       try {
@@ -386,10 +423,15 @@ export default function CampaignBuilderWizard({
           toneAndFeel: data.toneAndFeel || campaign.toneAndFeel
         };
 
+        // Use player locations if provided, otherwise use AI-generated ones
+        const mapLocations = fleshedOutLocations.length > 0
+          ? fleshedOutLocations
+          : generatedContent.locations;
+
         const mapData = await generateMap(
           {
             campaign: campaignWithFrame,
-            locations: generatedContent.locations,
+            locations: mapLocations,
             mapType: 'world',
             mapName: `${campaign.name} World Map`
           },

@@ -11,19 +11,75 @@ import { DAGGERHEART_ADVERSARIES } from '../data/daggerheartAdversaries';
 import { DAGGERHEART_ENVIRONMENTS } from '../data/daggerheartEnvironments';
 
 /**
+ * Flesh out a brief player-provided location description into a full location entry using AI
+ * @param {object} locationData - Basic location data from session zero
+ * @param {object} campaignFrame - The campaign frame for context
+ * @param {object} campaign - The campaign document
+ * @param {string} apiKey - API key for generation
+ * @param {string} provider - API provider
+ * @returns {Promise<object>} Fully fleshed-out location data
+ */
+export async function fleshOutLocationWithAI(locationData, campaignFrame, campaign, apiKey, provider) {
+  const prompt = `Expand this brief location description into a detailed location entry for the campaign "${campaign?.name || 'Untitled Campaign'}".
+
+CAMPAIGN CONTEXT:
+${campaignFrame?.pitch ? `Pitch: ${campaignFrame.pitch}` : ''}
+${campaignFrame?.themes?.length ? `Themes: ${campaignFrame.themes.join(', ')}` : ''}
+${campaignFrame?.toneAndFeel?.length ? `Tone: ${campaignFrame.toneAndFeel.join(', ')}` : ''}
+${campaignFrame?.overview ? `Overview: ${campaignFrame.overview.substring(0, 200)}` : ''}
+
+LOCATION TO EXPAND:
+Name: ${locationData.name}
+Type: ${locationData.type || 'unknown'}
+${locationData.region ? `Region: ${locationData.region}` : ''}
+Brief Description: ${locationData.description || 'No description provided'}
+
+Flesh this out into a rich location with this JSON structure:
+\`\`\`json
+{
+  "name": "${locationData.name}",
+  "type": "${locationData.type || 'other'}",
+  "region": "string (keep existing region or suggest one that fits)",
+  "description": "2-3 evocative sentences that expand on the brief description",
+  "notableFeatures": "Key landmarks, unique characteristics, or interesting details",
+  "secrets": "Hidden elements, mysteries, or DM-only information",
+  "inhabitants": "Who lives here — what peoples, creatures, or factions call this place home"
+}
+\`\`\`
+
+Preserve the core concept from the brief description. Make it richer and more evocative for a fantasy campaign.`;
+
+  const response = await aiService.generate(prompt, apiKey, provider);
+  const parsed = responseParser.parse('location', response);
+
+  return {
+    ...parsed,
+    name: locationData.name, // Always preserve exact user-entered name
+    type: locationData.type || parsed.type,
+    region: locationData.region || parsed.region,
+    source: 'session-zero'
+  };
+}
+
+/**
  * Generate starter content for a campaign based on its frame
  * @param {object} campaignFrame - The completed campaign frame
  * @param {object} campaign - The campaign document
  * @param {string} apiKey - Optional API key for AI generation
  * @param {string} provider - API provider (anthropic/openai)
+ * @param {object} options - Generation options including preExistingLocations
  * @returns {Promise<object>} Generated content organized by type
  */
 export async function generateCampaignContent(campaignFrame, campaign, apiKey = null, provider = 'anthropic', options = {}) {
   const useAI = !!apiKey;
 
+  // If the user provided their own locations, don't generate extra ones
+  const preExistingLocations = options.preExistingLocations || [];
+  const hasPreExistingLocations = preExistingLocations.length > 0;
+
   const counts = {
     npcs: options.npcs ?? 5,
-    locations: options.locations ?? 4,
+    locations: hasPreExistingLocations ? 0 : (options.locations ?? 4),
     lore: options.lore ?? 3,
     encounters: options.encounters ?? 2,
     partySize: options.partySize ?? 4
@@ -33,7 +89,8 @@ export async function generateCampaignContent(campaignFrame, campaign, apiKey = 
     campaign,
     campaignFrame,
     existingNPCs: [],
-    existingLocations: [],
+    // Seed with player-provided locations so NPCs reference them
+    existingLocations: [...preExistingLocations],
     existingLore: []
   };
 
