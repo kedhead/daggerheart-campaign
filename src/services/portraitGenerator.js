@@ -12,24 +12,26 @@ import { ANCESTRIES } from '../data/systems/daggerheart';
  * Used to enrich DALL-E prompts so the AI knows what each fantasy race looks like.
  */
 const ANCESTRY_VISUAL_HINTS = {
-  'Clank': 'a mechanical automaton made of gears, brass, and enchanted metal plates, with glowing eyes and articulated joints',
-  'Dragonborn': 'a dragon-like humanoid with scaled skin, a reptilian snout, and small horns',
-  'Dwarf': 'a short, stocky humanoid with a thick beard and sturdy build',
-  'Elf': 'a tall, graceful humanoid with pointed ears and angular features',
-  'Faerie': 'a tiny winged fey creature with iridescent butterfly or dragonfly wings, delicate features',
-  'Faun': 'a humanoid with goat legs, small curved horns, and pointed ears',
-  'Firbolg': 'a large, gentle giant humanoid with broad features, slightly pointed ears, and a connection to nature',
-  'Fungril': 'a mushroom-like humanoid with a cap-shaped head, spore-covered skin, and bioluminescent patches',
-  'Galapa': 'a turtle-like humanoid with a large shell on their back, leathery green skin, and a wise weathered face',
-  'Giant': 'a very tall and muscular humanoid towering over others',
-  'Goblin': 'a small, scrappy green-skinned creature with large pointed ears and sharp teeth',
-  'Halfling': 'a small, cheerful humanoid with curly hair and bare feet',
-  'Human': 'a human',
-  'Inferis': 'a humanoid with reddish or dark skin, small horns, and faintly glowing eyes suggesting infernal heritage',
-  'Katari': 'a feline humanoid with cat-like ears, whiskers, a tail, and fur-covered skin',
-  'Orc': 'a tall, muscular humanoid with tusks, strong jaw, and green or gray skin',
-  'Ribbet': 'a frog-like humanoid with smooth amphibious skin, wide eyes, and webbed hands',
-  'Simiah': 'an ape-like humanoid with long arms, a broad chest, and primate facial features',
+  'Clank': 'a mechanical automaton made of gears, brass, and enchanted metal plates, with glowing eyes and articulated joints. NOT organic, NOT human-skinned',
+  'Daemon': 'a humanoid with dark or luminous otherworldly skin bearing subtle glowing markings, faintly glowing eyes, and an aura of supernatural energy',
+  'Drakona': 'a humanoid covered in reptilian scales with a draconic snout, ridged brow, fanged teeth, and a powerful tail. Clearly dragon-like, NOT elf-like',
+  'Dragonborn': 'a humanoid covered in reptilian scales with a draconic snout, ridged brow, fanged teeth, and a powerful tail. Clearly dragon-like, NOT elf-like',
+  'Dwarf': 'a short stocky humanoid standing about 4-5 feet tall with a thick beard, broad shoulders, and a sturdy powerful build',
+  'Elf': 'a tall graceful humanoid with distinctly long pointed ears, angular features, and an ethereal quality',
+  'Faerie': 'a tiny winged fey creature no larger than a hand, with iridescent dragonfly or butterfly wings and delicate fine-boned features',
+  'Faun': 'a humanoid with the furry legs and hooves of a goat, small curved horns on the forehead, and pointed ears',
+  'Firbolg': 'a massive 7-to-8-foot-tall gentle giant humanoid with a wide flat bovine-like nose, thick earth-toned gray-green or brown skin, a heavy muscular frame, shaggy hair, small round ears (NOT pointed), and a peaceful wise expression. Enormous and nature-connected, resembling a gentle giant more than any elf',
+  'Fungril': 'a mushroom-like humanoid with a large cap-shaped head, spore-covered mottled skin, and bioluminescent patches of light across the body',
+  'Galapa': 'a turtle-like humanoid with a large domed shell on the back, leathery green-brown skin, a turtle-like face with a beak, and a wise weathered expression',
+  'Giant': 'an enormous humanoid standing over 10 feet tall, massively muscular, towering over everything around them',
+  'Goblin': 'a small scrappy humanoid about 3 feet tall with large pointed ears, a wide mouth with sharp teeth, and mottled green or gray skin',
+  'Halfling': 'a cheerful small humanoid about 3 feet tall with curly hair, large bare feet, and a round friendly face',
+  'Human': 'a human with normal human features',
+  'Inferis': 'a humanoid with deep reddish or charcoal-dark skin, small curved horns on the head, a pointed tail, and faintly glowing eyes hinting at infernal power',
+  'Katari': 'a feline humanoid with cat-like pointed ears, visible whiskers, a long tail, and fur-covered skin with cat-like facial features',
+  'Orc': 'a tall powerfully-built humanoid with prominent upward-jutting tusks, a strong jaw, thick neck, and green or gray skin',
+  'Ribbet': 'a frog-like humanoid with smooth moist amphibious skin in green or blue-gray, very wide eyes on a broad flat head, wide mouth, and webbed hands',
+  'Simiah': 'an ape-like humanoid with long powerful arms reaching the ground, a broad chest, dark fur, and primate facial features with a prominent brow',
 };
 
 /**
@@ -163,8 +165,9 @@ function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
     }
   }
 
-  // Construct the full prompt
-  const prompt = `${styleBase}. Portrait of ${characterContext}. ${ancestryDesc} ${appearance}. Heroic and determined expression. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
+  // Construct the full prompt — ancestry goes first so DALL-E prioritises it
+  const ancestryPrefix = ancestryDesc ? `${ancestryDesc} ` : '';
+  const prompt = `${ancestryPrefix}${styleBase}. Portrait of ${characterContext}. ${appearance}. Heroic and determined expression. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
 
   return prompt;
 }
