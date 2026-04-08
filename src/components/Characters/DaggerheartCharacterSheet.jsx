@@ -165,9 +165,19 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   // Resize armor slots to match the equipped armor's slot count.
   // If no armor is equipped, fall back to the character's stored slot count.
-  const equippedArmorSlotCount = equippedArmorItems.length > 0
-    ? (equippedArmorItems[0].systemData?.armorSlots ?? rawArmorSlots.length)
-    : rawArmorSlots.length;
+  // Apply the same legacy-slot correction used in DaggerheartArmorForm: items
+  // saved before the armorSlots field was introduced defaulted to 6 slots.
+  // Detect those by checking armorSlots === 6 while armorScore !== 6 and no
+  // 'Fortified' feature, then substitute armorScore as the correct slot count.
+  const equippedArmorSlotCount = (() => {
+    if (equippedArmorItems.length === 0) return rawArmorSlots.length;
+    const sd = equippedArmorItems[0].systemData || {};
+    let slots = sd.armorSlots ?? rawArmorSlots.length;
+    if (slots === 6 && (sd.armorScore ?? 0) !== 6 && !(sd.features || []).includes('Fortified')) {
+      slots = sd.armorScore || slots;
+    }
+    return slots > 0 ? slots : rawArmorSlots.length;
+  })();
   const armorSlots = Array.from({ length: equippedArmorSlotCount }, (_, i) => rawArmorSlots[i] ?? false);
 
   const effectiveArmorScore = useMemo(() => {
