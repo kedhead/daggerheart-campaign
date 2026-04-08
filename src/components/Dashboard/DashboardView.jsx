@@ -59,12 +59,12 @@ export default function DashboardView({
       {/* Campaign Terminal Header */}
       <div className="relative rounded-[3rem] border border-white/5 bg-white/[0.01] backdrop-blur-md overflow-hidden p-10 flex flex-col md:flex-row items-center justify-between gap-8 transition-all hover:bg-white/[0.03] hover:border-white/10 group">
         <div className="relative z-10 flex flex-col gap-3 max-w-2xl">
-          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] block animate-pulse">Campaign uplink established</span>
+          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] block animate-pulse">Campaign Overview</span>
           <h1 className="font-serif text-5xl font-black text-white/95 leading-none italic lowercase tracking-tighter">
             {campaign.name}
           </h1>
           <p className="text-sm font-medium text-white/30 leading-relaxed">
-            {campaign.description || 'No system-level description provided for this operational theater.'}
+            {campaign.description || 'No description has been written for this campaign yet.'}
           </p>
         </div>
 
@@ -84,9 +84,9 @@ export default function DashboardView({
       {/* Stats Cluster */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {[
-          { label: 'Synchronized Souls', value: safeCharacters.length, icon: Users, color: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/20' },
-          { label: 'Archived Lore', value: safeLore.length, icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' },
-          { label: 'Recorded Sessions', value: safeSessions.length, icon: ScrollText, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' }
+          { label: 'Adventurers', value: safeCharacters.length, icon: Users, color: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/20' },
+          { label: 'Lore Entries', value: safeLore.length, icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' },
+          { label: 'Sessions Played', value: safeSessions.length, icon: ScrollText, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' }
         ].map((stat, i) => (
           <div key={i} className="group relative flex items-center gap-6 p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl transition-all duration-500 hover:bg-white/[0.05] hover:border-white/10 hover:-translate-y-1 overflow-hidden">
             <div className={`w-16 h-16 rounded-2xl ${stat.bg} ${stat.border} border flex items-center justify-center ${stat.color} transition-transform group-hover:scale-110 duration-500 shadow-lg`}>
@@ -108,7 +108,7 @@ export default function DashboardView({
         <div className="lg:col-span-8 space-y-10">
           <section className="space-y-6">
             <div className="flex items-center gap-4">
-              <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">External Relays</h2>
+              <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">Quick Links</h2>
               <div className="h-px flex-1 bg-white/5"></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -137,14 +137,14 @@ export default function DashboardView({
           {recentSessions.length > 0 && (
             <section className="space-y-6">
               <div className="flex items-center gap-4">
-                <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">Recent Transmissions</h2>
+                <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">Recent Sessions</h2>
                 <div className="h-px flex-1 bg-white/5"></div>
               </div>
               <div className="space-y-4">
                 {recentSessions.map(session => (
                   <div key={session.id} className="group flex items-center gap-6 p-6 rounded-3xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-500">
                     <div className="w-14 h-14 shrink-0 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex flex-col items-center justify-center">
-                      <span className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">SEC</span>
+                      <span className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">SES</span>
                       <span className="text-xl font-serif font-black text-white">#{session.number}</span>
                     </div>
                     <div className="flex-1 min-w-0 space-y-1">
@@ -163,7 +163,7 @@ export default function DashboardView({
           {/* Relationship Graph - Full Width Integration */}
           <section className="space-y-6">
             <div className="flex items-center gap-4">
-              <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">Network Topology</h2>
+              <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">Relationship Map</h2>
               <div className="h-px flex-1 bg-white/5"></div>
             </div>
             <div className="rounded-[3rem] border border-white/5 bg-white/[0.01] overflow-hidden p-2">
@@ -208,12 +208,12 @@ export default function DashboardView({
       <Modal
         isOpen={isEditingCampaign}
         onClose={() => setIsEditingCampaign(false)}
-        title="Override Campaign Parameters"
+        title="Edit Campaign"
         size="medium"
       >
         <form onSubmit={handleSaveCampaign} className="space-y-6 pt-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Designated Alias</label>
+            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Campaign Name</label>
             <input
               type="text"
               value={campaignForm.name}
@@ -223,7 +223,7 @@ export default function DashboardView({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Mission Intel</label>
+            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Description</label>
             <textarea
               value={campaignForm.description}
               onChange={(e) => setCampaignForm({ ...campaignForm, description: e.target.value })}
@@ -239,18 +239,18 @@ export default function DashboardView({
                 onChange={(e) => setCampaignForm({ ...campaignForm, isPublic: e.target.checked })}
                 className="w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
               />
-              <span className="text-xs font-bold text-white/60 group-hover:text-white transition-colors">Broadcast to Public Channels</span>
+              <span className="text-xs font-bold text-white/60 group-hover:text-white transition-colors">Make Campaign Public</span>
             </label>
             <p className="text-[10px] text-white/20 font-medium ml-8 italic">
-              Enabling this flag allows unsolicited join requests from external nodes.
+              Anyone can discover and request to join this campaign.
             </p>
           </div>
           <div className="flex gap-3 pt-6 border-t border-white/5">
             <button type="button" className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 font-black text-xs uppercase tracking-widest transition-all" onClick={() => setIsEditingCampaign(false)}>
-              Abort
+              Cancel
             </button>
             <button type="submit" className="flex-[2] py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95">
-              Force Sync
+              Save Changes
             </button>
           </div>
         </form>

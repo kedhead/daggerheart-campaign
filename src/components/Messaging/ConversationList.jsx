@@ -95,7 +95,7 @@ export default function ConversationList({
               <Megaphone size={20} />
               <div>
                 <strong>Create Announcements</strong>
-                <small>Broadcast to all members</small>
+                <small>Send a message to all members</small>
               </div>
             </button>
           )}

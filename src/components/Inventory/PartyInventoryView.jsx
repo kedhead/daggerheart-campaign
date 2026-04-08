@@ -122,12 +122,12 @@ export default function PartyInventoryView({
             <Backpack size={48} />
           </div>
           <h3 className="text-2xl font-serif font-black text-white/40 mb-3 italic lowercase">Vault Empty</h3>
-          <p className="text-sm text-white/20 font-medium tracking-wide mb-10">No synchronized equipment found in the shared partition.</p>
+          <p className="text-sm text-white/20 font-medium tracking-wide mb-10">The party stash is empty. Add items to share with the group.</p>
           <button
             className="px-10 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-[0.3em] transition-all shadow-xl active:scale-95 border border-indigo-400/20"
             onClick={() => setIsAddModalOpen(true)}
           >
-            Add Initial Payload
+            Add First Item
           </button>
         </div>
       ) : (
@@ -163,14 +163,14 @@ export default function PartyInventoryView({
                 )}
 
                 <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-4">
-                  <span className="text-[9px] font-bold text-white/10 uppercase tracking-tighter">Owned by {entry.addedByName || 'Sync'}</span>
+                  <span className="text-[9px] font-bold text-white/10 uppercase tracking-tighter">Owned by {entry.addedByName || 'Party'}</span>
                   <div className="flex items-center gap-2">
                     <button
                       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-black uppercase tracking-widest text-white/40 hover:text-white transition-all active:scale-95"
                       onClick={() => handleTransfer(entry)}
                     >
                       <ArrowRight size={14} className="text-indigo-400" />
-                      Dispatch
+                      Transfer
                     </button>
                     {isDM && (
                       <button
@@ -199,7 +199,7 @@ export default function PartyInventoryView({
       >
         <form onSubmit={handleAddToParty} className="space-y-6 pt-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Manifest Selection</label>
+            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Select Item</label>
             <select
               value={selectedItemId}
               onChange={(e) => setSelectedItemId(e.target.value)}
@@ -217,7 +217,7 @@ export default function PartyInventoryView({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Payload Units</label>
+              <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Quantity</label>
               <input
                 type="number"
                 value={addQuantity}
@@ -230,19 +230,19 @@ export default function PartyInventoryView({
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Sync Notes</label>
+            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Notes</label>
             <input
               type="text"
               value={addNotes}
               onChange={(e) => setAddNotes(e.target.value)}
-              placeholder="Optional metadata..."
+              placeholder="Optional notes..."
               className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-sky-500/40 transition-all"
             />
           </div>
 
           <div className="flex gap-3 pt-6 border-t border-white/5">
             <button type="button" className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 font-black text-xs uppercase tracking-widest transition-all" onClick={() => setIsAddModalOpen(false)}>
-              Abort
+              Cancel
             </button>
             <button type="submit" className="flex-[2] py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50" disabled={!selectedItemId}>
               Confirm Deposit
