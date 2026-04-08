@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { Search, Bell, ChevronRight } from 'lucide-react';
 import PresenceIndicator from '../PresenceIndicator/PresenceIndicator';
 import NotificationPanel from '../Notifications/NotificationPanel';
@@ -7,15 +8,70 @@ import { useNotifications } from '../../hooks/useNotifications';
 
 export default function TopBar({ currentView, presenceList, currentCampaignId, campaign, isDM, setCurrentView }) {
     const { currentUser } = useAuth();
+    const { info } = useToast();
     const [panelOpen, setPanelOpen] = useState(false);
     const bellRef = useRef(null);
     const panelRef = useRef(null);
+    const prevUnreadIdsRef = useRef(null);
 
     const { unreadConversations, pendingJoinRequests, totalCount } = useNotifications(
         currentCampaignId,
         campaign,
         isDM
     );
+
+    // Request browser notification permission on first load
+    useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, []);
+
+    // Alert when new unread messages arrive
+    useEffect(() => {
+        const currentIds = new Set(unreadConversations.map(c => c.id));
+
+        // On first run, just initialise the ref — don't fire alerts for pre-existing unreads
+        if (prevUnreadIdsRef.current === null) {
+            prevUnreadIdsRef.current = currentIds;
+            return;
+        }
+
+        const newConvs = unreadConversations.filter(c => !prevUnreadIdsRef.current.has(c.id));
+        prevUnreadIdsRef.current = currentIds;
+
+        if (newConvs.length === 0) return;
+
+        // Don't toast if user is already looking at messaging
+        if (currentView === 'messaging') return;
+
+        newConvs.forEach(conv => {
+            const senderName = conv.type === 'announcement'
+                ? 'Announcement'
+                : Object.entries(conv.participantNames || {})
+                    .filter(([uid]) => uid !== currentUser?.uid)
+                    .map(([, name]) => name)
+                    .join(', ') || 'Someone';
+
+            const preview = conv.lastMessage
+                ? conv.lastMessage.substring(0, 60) + (conv.lastMessage.length > 60 ? '…' : '')
+                : 'New message';
+
+            // In-app toast
+            info(`${senderName}: ${preview}`, {
+                duration: 7000,
+                action: { label: 'View', onClick: () => setCurrentView('messaging') }
+            });
+
+            // Browser / desktop notification when tab is not focused
+            if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+                new Notification(`New message from ${senderName}`, {
+                    body: preview,
+                    icon: '/favicon.ico'
+                });
+            }
+        });
+    }, [unreadConversations]);
 
     // Close panel when clicking outside
     useEffect(() => {
