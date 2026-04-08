@@ -31,32 +31,22 @@ async function downloadImageAsDataUrl(imageUrl) {
 }
 
 /**
- * Generate a lore visual using DALL-E
+ * Generate a lore visual using DALL-E via backend proxy
  */
 async function generateLoreVisual(prompt, apiKey) {
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
+    const response = await fetch('/api/generate-portrait', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model: 'dall-e-3',
-            prompt: prompt,
-            n: 1,
-            size: '1024x1024',
-            quality: 'standard',
-            style: 'vivid'
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, apiKey: apiKey || null })
     });
 
     if (!response.ok) {
-        const error = await response.json();
-        throw new Error(`DALL-E API error: ${error.error?.message || 'Unknown error'}`);
+        const error = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(`Image generation error: ${error.error || 'Unknown error'}`);
     }
 
     const data = await response.json();
-    const imageUrl = data.data[0].url;
+    const imageUrl = data.imageUrl;
 
     console.log('Downloading DALL-E lore visual to convert to data URL...');
     const dataUrl = await downloadImageAsDataUrl(imageUrl);
@@ -107,8 +97,6 @@ async function uploadToStorage(dataUrl, campaignId, loreTitle) {
  * Main entry point for lore visual generation
  */
 export async function generateLoreImage(lore, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
-    if (!openaiKey) throw new Error('OpenAI API key required');
-
     const prompt = buildLorePrompt(lore, gameSystem);
     const dataUrl = await generateLoreVisual(prompt, openaiKey);
 

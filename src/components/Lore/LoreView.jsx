@@ -39,11 +39,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
   };
 
   const handleGenerateImage = async (loreEntry) => {
-    const openaiKey = keys.openai || keys.openai_shared;
-    if (!openaiKey) {
-      alert('OpenAI API key required for image generation.');
-      return;
-    }
+    const openaiKey = keys?.openai || keys?.openai_shared || null;
 
     setGeneratingImageFor(loreEntry.id);
     try {
