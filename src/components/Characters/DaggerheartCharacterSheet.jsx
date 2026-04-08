@@ -197,7 +197,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (!openaiKeyInfo?.key || generatingPortrait) return;
     setGeneratingPortrait(true);
     try {
-      const imageUrl = await generateCharacterPortrait(character, openaiKeyInfo.key, campaign?.id);
+      const imageUrl = await generateCharacterPortrait(character, openaiKeyInfo.key, campaign?.gameSystem || 'daggerheart', campaign?.id);
       if (imageUrl && updateCharacter) {
         updateCharacter(character.id, { avatarUrl: imageUrl });
       }

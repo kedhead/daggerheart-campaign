@@ -156,7 +156,7 @@ ${contextText}
                 const key = effectiveKey || process.env.ANTHROPIC_API_KEY;
                 if (!key) throw new Error('Missing Anthropic API Key');
 
-                const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20240620';
+                const model = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
 
                 const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
@@ -182,7 +182,7 @@ ${contextText}
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
                     body: JSON.stringify({
-                        model: 'gpt-4-turbo-preview',
+                        model: 'gpt-4o',
                         messages: [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: message }],
                         max_tokens: 4096
                     })

@@ -14,7 +14,7 @@ export const aiService = {
    * @param {string} model - Model to use (default: claude-3-5-sonnet-20241022)
    * @returns {Promise<string>} Generated text
    */
-  async generateWithClaude(prompt, apiKey, model = 'claude-sonnet-4-5-20250929') {
+  async generateWithClaude(prompt, apiKey, model = 'claude-haiku-4-5-20251001') {
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
@@ -49,7 +49,7 @@ export const aiService = {
    * @param {string} model - Model to use (default: gpt-4-turbo-preview)
    * @returns {Promise<string>} Generated text
    */
-  async generateWithOpenAI(prompt, apiKey, model = 'gpt-4-turbo-preview') {
+  async generateWithOpenAI(prompt, apiKey, model = 'gpt-4o') {
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',

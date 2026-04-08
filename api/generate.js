@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
     if (provider === 'anthropic') {
       // Call Anthropic API
-      const apiModel = model || 'claude-sonnet-4-5-20250929';
+      const apiModel = model || 'claude-haiku-4-5-20251001';
 
       const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
 
     } else if (provider === 'openai') {
       // Call OpenAI API
-      const apiModel = model || 'gpt-4-turbo-preview';
+      const apiModel = model || 'gpt-4o';
 
       const apiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
