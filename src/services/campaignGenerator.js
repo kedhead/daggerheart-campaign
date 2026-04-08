@@ -209,9 +209,14 @@ export async function generateCampaignContent(campaignFrame, campaign, apiKey = 
       }
     }
 
-    // Generate Timeline Events (3 starter timeline events)
+    // Generate Timeline Events using AI
     console.log('Generating Timeline Events...');
-    generated.timelineEvents = generateTimelineEvents(campaignFrame);
+    try {
+      generated.timelineEvents = await generateTimelineEventsWithAI(context, apiKey, provider);
+    } catch (err) {
+      console.error('Failed to generate timeline events with AI, using fallback:', err);
+      generated.timelineEvents = generateTimelineEventsFallback(campaignFrame);
+    }
     console.log('Generated Timeline Events:', generated.timelineEvents);
 
     console.log('Final generated content:', generated);
@@ -363,34 +368,75 @@ function generateLoreFromTemplate(campaignFrame, index) {
 }
 
 /**
- * Generate Timeline Events based on campaign frame
+ * Generate Timeline Events using AI — tied directly to the campaign's specific world
  */
-function generateTimelineEvents(campaignFrame) {
+async function generateTimelineEventsWithAI(context, apiKey, provider) {
+  const frame = context.campaignFrame;
+
+  // Build session zero context for extra specificity
+  let sessionZeroContext = '';
+  if (frame?.sessionZero?.worldFacts?.length > 0) {
+    sessionZeroContext += '\n\nPLAYER-ESTABLISHED WORLD FACTS:';
+    frame.sessionZero.worldFacts.forEach(fact => {
+      if (fact.fact) sessionZeroContext += `\n- ${fact.fact}`;
+    });
+  }
+
+  const prompt = `Create 3-4 timeline events for the campaign "${context.campaign?.name || 'Untitled Campaign'}".
+
+CAMPAIGN CONTEXT:
+${frame.pitch ? `Pitch: ${frame.pitch}` : ''}
+${frame.overview ? `Overview: ${frame.overview}` : ''}
+${frame.themes?.length ? `Themes: ${frame.themes.join(', ')}` : ''}
+${frame.toneAndFeel?.length ? `Tone: ${frame.toneAndFeel.join(', ')}` : ''}
+${frame.incitingIncident ? `Inciting Incident (the campaign's starting hook): ${frame.incitingIncident}` : ''}${sessionZeroContext}
+
+Generate timeline events that build a historical backdrop SPECIFIC to this campaign. Span different eras (ancient, recent past, present). The final event should be the inciting incident or the moment the adventure begins.
+
+IMPORTANT: Every event must reference specific elements from this campaign — named factions, places, conflicts, or themes from the pitch and overview. Do NOT write generic fantasy history like "ancient civilizations rose to power."
+
+Return a JSON array:
+\`\`\`json
+[
+  {
+    "title": "string (specific, evocative name for this event in this campaign's history)",
+    "date": "string (e.g., '-500 years', '-20 years', 'Six months ago', 'Present')",
+    "era": "Ancient" | "Recent" | "Present",
+    "description": "2-3 sentences describing the event and its lasting impact on this specific world",
+    "importance": "major" | "critical",
+    "category": "historical" | "campaign"
+  }
+]
+\`\`\``;
+
+  const response = await aiService.generate(prompt, apiKey, provider);
+
+  // Parse the JSON array response
+  const jsonMatch = response.match(/```json\s*\n([\s\S]*?)\n```/);
+  if (jsonMatch) {
+    return JSON.parse(jsonMatch[1]);
+  }
+  // Try direct parse if no code block
+  return JSON.parse(response);
+}
+
+/**
+ * Fallback timeline events when AI generation fails
+ */
+function generateTimelineEventsFallback(campaignFrame) {
   const events = [];
 
-  // Ancient Past event
-  events.push({
-    title: 'The Age of Legends',
-    date: '-1000 years',
-    era: 'Ancient',
-    description: 'The foundations of the world were laid. Ancient civilizations rose to power, wielding magic and technology long since lost.',
-    importance: 'major',
-    category: 'historical'
-  });
+  if (campaignFrame.overview) {
+    events.push({
+      title: 'Before the Present Day',
+      date: '-10 years',
+      era: 'Recent',
+      description: campaignFrame.overview.substring(0, 300),
+      importance: 'major',
+      category: 'historical'
+    });
+  }
 
-  // Recent Past event
-  events.push({
-    title: 'The Turning Point',
-    date: '-10 years',
-    era: 'Recent',
-    description: campaignFrame.overview
-      ? `Events that set the stage for the current situation: ${campaignFrame.overview.substring(0, 150)}...`
-      : 'A significant event that changed the political and social landscape of the realm.',
-    importance: 'major',
-    category: 'historical'
-  });
-
-  // Present Day event (Inciting Incident)
   if (campaignFrame.incitingIncident) {
     events.push({
       title: 'The Adventure Begins',
