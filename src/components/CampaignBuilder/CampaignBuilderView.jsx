@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Wand2, FileText, Sparkles, Edit, Eye, CheckCircle, Info } from 'lucide-react';
+import { Wand2, FileText, Sparkles, Edit, Eye, CheckCircle, Info, RefreshCw } from 'lucide-react';
 import CampaignBuilderWizard from './CampaignBuilderWizard';
 import { useCampaignBuilder } from '../../hooks/useCampaignBuilder';
 import { getAvailableTemplates } from '../../data/campaignFrameTemplates';
@@ -27,6 +27,7 @@ export default function CampaignBuilderView({
   const [wizardStarted, setWizardStarted] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [viewingFrame, setViewingFrame] = useState(false);
+  const [regenerateMode, setRegenerateMode] = useState(false);
 
   const wizardState = useCampaignBuilder(
     campaign?.id,
@@ -63,9 +64,18 @@ export default function CampaignBuilderView({
 
   const handleComplete = () => {
     setWizardStarted(false);
+    setRegenerateMode(false);
     if (onBack) {
       onBack();
     }
+  };
+
+  const handleRegenerateContent = () => {
+    // Pre-populate wizard data with existing campaign frame, then jump to the review/generate step
+    wizardState.loadTemplate(campaignFrame);
+    wizardState.goToStep(15);
+    setRegenerateMode(true);
+    setWizardStarted(true);
   };
 
   // For systems without campaign frames, show freeform AI generation
@@ -397,6 +407,7 @@ export default function CampaignBuilderView({
         addQuest={addQuest}
         addAdversary={addAdversary}
         addEnvironment={addEnvironment}
+        regenerateMode={regenerateMode}
       />
     );
   }
@@ -425,10 +436,14 @@ export default function CampaignBuilderView({
           <p className="text-white/70 mb-5">
             You have a completed campaign frame for this campaign.
           </p>
-          <div className="flex gap-4">
+          <div className="flex gap-4 flex-wrap">
             <button className="btn btn-primary bg-emerald-600 hover:bg-emerald-700 border-emerald-500" onClick={() => setViewingFrame(true)}>
               <Eye size={20} />
               View Campaign Frame
+            </button>
+            <button className="btn btn-secondary" onClick={handleRegenerateContent}>
+              <RefreshCw size={18} />
+              Regenerate Campaign Content
             </button>
           </div>
         </div>

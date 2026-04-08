@@ -39,7 +39,8 @@ export default function CampaignBuilderWizard({
   updateCampaign,
   addQuest,
   addAdversary,
-  addEnvironment
+  addEnvironment,
+  regenerateMode = false
 }) {
   const { hasKey, keys, getEffectiveKey, recordUsage, sharedKeysEnabled, checkUsageLimit } = useAPIKey(userId);
   const {
@@ -83,9 +84,13 @@ export default function CampaignBuilderWizard({
     setGenerating(true);
 
     try {
-      // Save the campaign frame first
-      setGenerationProgress('Step 1/10: Saving campaign frame...');
-      await complete();
+      // Save the campaign frame (skip in regenerate mode — frame already exists)
+      if (!regenerateMode) {
+        setGenerationProgress('Step 1/10: Saving campaign frame...');
+        await complete();
+      } else {
+        setGenerationProgress('Step 1/10: Using existing campaign frame...');
+      }
 
       // Get effective API key (user's own or shared)
       const anthropicResult = getEffectiveKey('anthropic');
@@ -527,9 +532,13 @@ export default function CampaignBuilderWizard({
         ) : (
           <>
             <Sparkles size={64} className="text-emerald-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Campaign Generated!</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {regenerateMode ? 'Content Regenerated!' : 'Campaign Generated!'}
+            </h2>
             <p className="text-lg text-white/60 mb-8 max-w-lg mx-auto">
-              Your campaign is ready to play! Check out the NPCs, Locations, Lore, and other sections to see your generated content.
+              {regenerateMode
+                ? 'New content has been added to your campaign. Check the NPCs, Locations, Lore, and other sections.'
+                : 'Your campaign is ready to play! Check out the NPCs, Locations, Lore, and other sections to see your generated content.'}
             </p>
           </>
         )}
@@ -602,40 +611,50 @@ export default function CampaignBuilderWizard({
   if (currentStep === 15) {
     return (
       <div className="max-w-7xl mx-auto p-4 space-y-6">
-        <WizardProgress
-          currentStep={currentStep}
-          completedSteps={completedSteps}
-          onStepClick={goToStep}
-        />
+        {!regenerateMode && (
+          <WizardProgress
+            currentStep={currentStep}
+            completedSteps={completedSteps}
+            onStepClick={goToStep}
+          />
+        )}
 
         <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6 md:p-8">
           <div className="mb-6 border-b border-white/5 pb-6">
-            <h2 className="text-2xl font-bold text-white mb-2">Review & Complete</h2>
-            <p className="text-white/60">Review your campaign frame and complete the wizard.</p>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {regenerateMode ? 'Regenerate Campaign Content' : 'Review & Complete'}
+            </h2>
+            <p className="text-white/60">
+              {regenerateMode
+                ? 'Choose how much content to generate and click Regenerate. New content will be added to your existing campaign.'
+                : 'Review your campaign frame and complete the wizard.'}
+            </p>
           </div>
 
           <div className="space-y-6">
-            <div className="bg-black/20 rounded-xl p-6 border border-white/5">
-              <h3 className="text-lg font-bold text-white mb-4">Campaign Frame Summary</h3>
-              <div className="space-y-4">
-                <div>
-                  <strong className="text-white/80 block mb-1">Pitch:</strong>
-                  <p className="text-white/60 text-sm">{data.pitch || 'Not set'}</p>
-                </div>
-                <div>
-                  <strong className="text-white/80 block mb-1">Tone & Feel:</strong>
-                  <p className="text-white/60 text-sm">{data.toneAndFeel.length > 0 ? data.toneAndFeel.join(', ') : 'Not set'}</p>
-                </div>
-                <div>
-                  <strong className="text-white/80 block mb-1">Themes:</strong>
-                  <p className="text-white/60 text-sm">{data.themes.length > 0 ? data.themes.join(', ') : 'Not set'}</p>
-                </div>
-                <div>
-                  <strong className="text-white/80 block mb-1">Touchstones:</strong>
-                  <p className="text-white/60 text-sm">{data.touchstones.length > 0 ? data.touchstones.join(', ') : 'Not set'}</p>
+            {!regenerateMode && (
+              <div className="bg-black/20 rounded-xl p-6 border border-white/5">
+                <h3 className="text-lg font-bold text-white mb-4">Campaign Frame Summary</h3>
+                <div className="space-y-4">
+                  <div>
+                    <strong className="text-white/80 block mb-1">Pitch:</strong>
+                    <p className="text-white/60 text-sm">{data.pitch || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <strong className="text-white/80 block mb-1">Tone & Feel:</strong>
+                    <p className="text-white/60 text-sm">{data.toneAndFeel.length > 0 ? data.toneAndFeel.join(', ') : 'Not set'}</p>
+                  </div>
+                  <div>
+                    <strong className="text-white/80 block mb-1">Themes:</strong>
+                    <p className="text-white/60 text-sm">{data.themes.length > 0 ? data.themes.join(', ') : 'Not set'}</p>
+                  </div>
+                  <div>
+                    <strong className="text-white/80 block mb-1">Touchstones:</strong>
+                    <p className="text-white/60 text-sm">{data.touchstones.length > 0 ? data.touchstones.join(', ') : 'Not set'}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="bg-black/20 rounded-xl p-6 border border-white/5">
               <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
@@ -669,27 +688,34 @@ export default function CampaignBuilderWizard({
               </div>
             </div>
 
-            <div className="flex justify-center pt-4">
+            <div className="flex justify-center gap-4 pt-4">
+              {regenerateMode && (
+                <button className="btn btn-secondary px-6 py-3 text-lg" onClick={onComplete}>
+                  Cancel
+                </button>
+              )}
               <button
                 className="btn btn-primary px-8 py-3 text-lg flex items-center gap-3"
                 onClick={handleComplete}
               >
                 <CheckCircle size={24} />
-                Complete Campaign Frame
+                {regenerateMode ? 'Regenerate Campaign Content' : 'Complete Campaign Frame'}
               </button>
             </div>
           </div>
         </div>
 
-        <StepNavigation
-          currentStep={currentStep}
-          totalSteps={16}
-          canProceed={true}
-          onPrevious={previousStep}
-          onNext={handleComplete}
-          onSaveDraft={handleSaveDraft}
-          saving={saving}
-        />
+        {!regenerateMode && (
+          <StepNavigation
+            currentStep={currentStep}
+            totalSteps={16}
+            canProceed={true}
+            onPrevious={previousStep}
+            onNext={handleComplete}
+            onSaveDraft={handleSaveDraft}
+            saving={saving}
+          />
+        )}
       </div>
     );
   }
