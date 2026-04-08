@@ -283,12 +283,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             {character.name.charAt(0)}
           </div>
         )}
-        {canEdit && openaiKeyInfo?.key && (
+        {canEdit && (
           <button
             className="dh-sidebar-generate-portrait"
             onClick={handleGeneratePortrait}
-            disabled={generatingPortrait}
-            title="Generate AI Portrait"
+            disabled={generatingPortrait || !openaiKeyInfo?.key}
+            title={!openaiKeyInfo?.key ? 'Add an OpenAI API key in Settings to generate portraits' : 'Generate AI Portrait'}
           >
             <Wand2 size={12} />
             {generatingPortrait ? 'Generating...' : 'Generate'}

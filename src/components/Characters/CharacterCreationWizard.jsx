@@ -356,18 +356,17 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                         <Upload size={14} /> Upload Avatar
                         <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
                     </label>
-                    {hasOpenAIKey && (
-                        <button
-                            type="button"
-                            className="luw-btn luw-btn-secondary"
-                            onClick={handleGenerateAvatar}
-                            disabled={generatingAvatar || !appearanceDescription.trim()}
-                            style={{ fontSize: '0.75rem' }}
-                        >
-                            {generatingAvatar ? <Loader2 size={14} className="spinner" /> : <Wand2 size={14} />}
-                            {generatingAvatar ? 'Generating...' : 'AI Generate'}
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        className="luw-btn luw-btn-secondary"
+                        onClick={handleGenerateAvatar}
+                        disabled={generatingAvatar || !appearanceDescription.trim() || !hasOpenAIKey}
+                        style={{ fontSize: '0.75rem' }}
+                        title={!hasOpenAIKey ? 'Add an OpenAI API key in Settings to use AI generation' : !appearanceDescription.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
+                    >
+                        {generatingAvatar ? <Loader2 size={14} className="spinner" /> : <Wand2 size={14} />}
+                        {generatingAvatar ? 'Generating...' : 'AI Generate'}
+                    </button>
                     {avatarUrl && (
                         <button
                             type="button"

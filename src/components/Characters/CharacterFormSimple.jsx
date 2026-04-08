@@ -124,18 +124,16 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
               style={{ display: 'none' }}
             />
           </label>
-          {hasOpenAIKey && (
-            <button
-              type="button"
-              className="btn btn-secondary ai-generate-btn"
-              onClick={handleGenerateAvatar}
-              disabled={generatingAvatar || !formData.appearanceDescription?.trim()}
-              title={!formData.appearanceDescription?.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
-            >
-              {generatingAvatar ? <Loader2 size={16} className="spinner" /> : <Wand2 size={16} />}
-              {generatingAvatar ? 'Generating...' : 'AI Generate'}
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn btn-secondary ai-generate-btn"
+            onClick={handleGenerateAvatar}
+            disabled={generatingAvatar || !formData.appearanceDescription?.trim() || !hasOpenAIKey}
+            title={!hasOpenAIKey ? 'Add an OpenAI API key in Settings to use AI generation' : !formData.appearanceDescription?.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
+          >
+            {generatingAvatar ? <Loader2 size={16} className="spinner" /> : <Wand2 size={16} />}
+            {generatingAvatar ? 'Generating...' : 'AI Generate'}
+          </button>
           {formData.avatarUrl && (
             <button
               type="button"
