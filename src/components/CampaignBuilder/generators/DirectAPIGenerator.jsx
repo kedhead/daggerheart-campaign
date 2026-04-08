@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
-import { Zap, Key, Settings } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 /**
  * Direct API Generator Component
- * Generates content using user's API key for seamless in-app generation
+ * Generates content using server-side API keys (or user's own if configured)
  */
 export default function DirectAPIGenerator({
   type,
-  apiKey,
-  provider,
   onGenerateWithAPI,
-  onOpenAPISettings,
   generating
 }) {
   const [requirements, setRequirements] = useState({});
@@ -19,10 +16,10 @@ export default function DirectAPIGenerator({
     onGenerateWithAPI(requirements);
   };
 
-  const renderRequirements = () => {
+  const renderTypeFields = () => {
     if (type === 'npc') {
       return (
-        <div className="flex flex-col gap-4">
+        <>
           <div className="space-y-1">
             <label className="text-sm font-medium text-white/80">Name (Optional)</label>
             <input
@@ -40,13 +37,13 @@ export default function DirectAPIGenerator({
               type="text"
               value={requirements.occupation || ''}
               onChange={(e) => setRequirements({ ...requirements, occupation: e.target.value })}
-              placeholder="e.g., Blacksmith, Merchant"
+              placeholder="e.g., Blacksmith, Merchant, Spy"
               className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Relationship (Optional)</label>
+            <label className="text-sm font-medium text-white/80">Relationship</label>
             <select
               value={requirements.relationship || ''}
               onChange={(e) => setRequirements({ ...requirements, relationship: e.target.value })}
@@ -55,16 +52,16 @@ export default function DirectAPIGenerator({
               <option value="">AI decides</option>
               <option value="ally">Ally</option>
               <option value="neutral">Neutral</option>
-              <option value="enemy">Enemy</option>
+              <option value="enemy">Enemy / Villain</option>
             </select>
           </div>
-        </div>
+        </>
       );
     }
 
     if (type === 'location') {
       return (
-        <div className="flex flex-col gap-4">
+        <>
           <div className="space-y-1">
             <label className="text-sm font-medium text-white/80">Name (Optional)</label>
             <input
@@ -77,7 +74,7 @@ export default function DirectAPIGenerator({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Type (Optional)</label>
+            <label className="text-sm font-medium text-white/80">Type</label>
             <select
               value={requirements.type || ''}
               onChange={(e) => setRequirements({ ...requirements, type: e.target.value })}
@@ -100,19 +97,43 @@ export default function DirectAPIGenerator({
               type="text"
               value={requirements.region || ''}
               onChange={(e) => setRequirements({ ...requirements, region: e.target.value })}
-              placeholder="e.g., The Northlands"
+              placeholder="e.g., The Northlands, Near the capital"
               className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             />
           </div>
-        </div>
+        </>
+      );
+    }
+
+    if (type === 'lore') {
+      return (
+        <>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Category</label>
+            <select
+              value={requirements.loreType || ''}
+              onChange={(e) => setRequirements({ ...requirements, loreType: e.target.value })}
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
+            >
+              <option value="">AI decides</option>
+              <option value="history">History</option>
+              <option value="legend">Legend</option>
+              <option value="faction">Faction</option>
+              <option value="culture">Culture</option>
+              <option value="religion">Religion</option>
+              <option value="magic">Magic</option>
+              <option value="geography">Geography</option>
+            </select>
+          </div>
+        </>
       );
     }
 
     if (type === 'encounter') {
       return (
-        <div className="flex flex-col gap-4">
+        <>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Difficulty (Optional)</label>
+            <label className="text-sm font-medium text-white/80">Difficulty</label>
             <select
               value={requirements.difficulty || ''}
               onChange={(e) => setRequirements({ ...requirements, difficulty: e.target.value })}
@@ -136,71 +157,50 @@ export default function DirectAPIGenerator({
               className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             />
           </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Enemy Types (Optional)</label>
-            <input
-              type="text"
-              value={requirements.enemyTypes || ''}
-              onChange={(e) => setRequirements({ ...requirements, enemyTypes: e.target.value })}
-              placeholder="e.g., Bandits, Undead"
-              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
-            />
-          </div>
-        </div>
+        </>
       );
     }
 
     return null;
   };
 
-  if (!apiKey) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 gap-6 text-center border-2 border-dashed border-white/10 rounded-xl bg-[var(--bg-secondary)]">
-        <div className="flex items-start gap-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-left">
-          <Key size={24} className="text-amber-400 mt-1" />
-          <div>
-            <h4 className="text-base font-bold text-white mb-1">API Key Required</h4>
-            <p className="text-sm text-white/60 m-0">You need to configure your API key to use direct generation.</p>
-          </div>
-        </div>
-        <button className="btn btn-secondary" onClick={onOpenAPISettings}>
-          <Settings size={20} />
-          Configure API Key
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-start gap-4 p-4 bg-[var(--bg-secondary)] rounded-xl border border-white/5">
-        <Zap size={24} className="text-purple-400 mt-1" />
-        <div>
-          <h4 className="text-base font-bold text-white mb-1">Direct AI Generation</h4>
-          <p className="text-sm text-white/60 m-0">Generate content instantly using your {provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key.</p>
-        </div>
+    <div className="flex flex-col gap-5">
+      <div className="flex items-start gap-3 p-4 bg-[rgb(var(--color-primary))/10] rounded-xl border border-[rgb(var(--color-primary))/20]">
+        <Zap size={20} className="text-[rgb(var(--color-primary-light))] mt-0.5 shrink-0" />
+        <p className="text-sm text-white/70 m-0">
+          Generation uses your campaign's pitch, themes, tone, and existing content to keep everything consistent with your world.
+        </p>
       </div>
 
-      {renderRequirements()}
-
-      <div className="flex flex-col gap-3">
-        <button
-          className="btn btn-primary"
-          onClick={handleGenerate}
-          disabled={generating}
-        >
-          {generating ? 'Generating...' : 'Generate with AI'}
-        </button>
-
-        <button
-          className="text-sm text-white/40 hover:text-white flex items-center justify-center gap-2 py-2"
-          onClick={onOpenAPISettings}
-        >
-          <Settings size={14} />
-          Change API Settings
-        </button>
+      {/* Description — the key field */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium text-white/80">
+          Describe what you want <span className="text-white/40">(Optional but recommended)</span>
+        </label>
+        <textarea
+          value={requirements.description || ''}
+          onChange={(e) => setRequirements({ ...requirements, description: e.target.value })}
+          placeholder={
+            type === 'npc' ? 'e.g., A corrupt dwarven mine foreman secretly working for the shadow cult. Gruff exterior hiding genuine fear.'
+            : type === 'location' ? 'e.g., An ancient underwater dungeon that was once a temple, now flooded and home to something ancient.'
+            : type === 'lore' ? 'e.g., The origin of the shadow cult and why the first members turned away from the light.'
+            : 'Describe what you want the AI to generate...'
+          }
+          rows={3}
+          className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white text-sm focus:outline-none focus:border-[rgb(var(--color-primary))] resize-none"
+        />
       </div>
+
+      {renderTypeFields()}
+
+      <button
+        className="btn btn-primary"
+        onClick={handleGenerate}
+        disabled={generating}
+      >
+        {generating ? 'Generating...' : 'Generate with AI'}
+      </button>
     </div>
   );
 }

@@ -310,6 +310,7 @@ function CampaignApp() {
             deleteLore={deleteLore}
             isDM={isDM}
             campaign={campaign}
+            campaignFrame={campaignFrame}
             npcs={npcs}
             locations={locations}
             sessions={sessions}
@@ -358,6 +359,7 @@ function CampaignApp() {
         return (
           <NPCsView
             campaign={campaign}
+            campaignFrame={campaignFrame}
             npcs={npcs}
             addNPC={addNPC}
             updateNPC={updateNPC}
@@ -392,6 +394,7 @@ function CampaignApp() {
         return (
           <LocationsView
             campaign={campaign}
+            campaignFrame={campaignFrame}
             locations={locations}
             updateCampaign={updateCampaign}
             addLocation={addLocation}

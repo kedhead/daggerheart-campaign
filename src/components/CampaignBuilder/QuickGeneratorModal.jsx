@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal';
-import GenerationModeSelector from './GenerationModeSelector';
-import TemplateGenerator from './generators/TemplateGenerator';
-import PromptGenerator from './generators/PromptGenerator';
 import DirectAPIGenerator from './generators/DirectAPIGenerator';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -23,7 +20,7 @@ export default function QuickGeneratorModal({
   existingContent = [],
   onSave
 }) {
-  const [mode, setMode] = useState('template');
+  const [mode, setMode] = useState('api');
   const [editableResult, setEditableResult] = useState(null);
   const [generatePortrait, setGeneratePortrait] = useState(false);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
@@ -71,15 +68,12 @@ export default function QuickGeneratorModal({
     }
   }, [result]);
 
-  // Generate portrait for NPC
+  // Generate portrait for NPC — backend uses server key if no client key
   const handleGeneratePortrait = async (npcData = null) => {
     const npc = npcData || editableResult;
-    const keyInfo = getEffectiveKey('openai');
+    if (!npc) return;
 
-    if (!npc || !keyInfo?.key) {
-      setPortraitError('OpenAI API key required for portrait generation');
-      return;
-    }
+    const keyInfo = getEffectiveKey('openai');
 
     setGeneratingPortrait(true);
     setPortraitError(null);
@@ -87,7 +81,7 @@ export default function QuickGeneratorModal({
     try {
       const gameSystem = campaign?.gameSystem || 'daggerheart';
       const campaignId = campaign?.id;
-      const avatarUrl = await generateNPCPortrait(npc, keyInfo.key, gameSystem, campaignId);
+      const avatarUrl = await generateNPCPortrait(npc, keyInfo?.key || null, gameSystem, campaignId);
 
       setEditableResult(prev => ({
         ...prev,
@@ -105,7 +99,8 @@ export default function QuickGeneratorModal({
     const labels = {
       npc: 'NPC',
       location: 'Location',
-      encounter: 'Encounter'
+      encounter: 'Encounter',
+      lore: 'Lore Entry'
     };
     return labels[type] || 'Content';
   };
@@ -146,8 +141,12 @@ export default function QuickGeneratorModal({
       requirements
     };
 
+    // Pass null for apiKey — the backend uses server env vars as fallback
+    const effectiveKey = getEffectiveKey('anthropic')?.key || getEffectiveKey('openai')?.key || null;
+    const provider = getEffectiveKey('anthropic')?.key ? 'anthropic' : 'openai';
+
     try {
-      await generateWithAPI(type, context, keys[keys.provider], keys.provider);
+      await generateWithAPI(type, context, effectiveKey, provider);
     } catch (err) {
       console.error('API generation failed:', err);
     }
@@ -167,45 +166,13 @@ export default function QuickGeneratorModal({
     });
   };
 
-  const renderGenerator = () => {
-    switch (mode) {
-      case 'template':
-        return (
-          <TemplateGenerator
-            type={type}
-            requirements={{}}
-            onGenerate={handleTemplateGenerate}
-            generating={generating}
-          />
-        );
-
-      case 'prompt':
-        return (
-          <PromptGenerator
-            type={type}
-            prompt={generatedPrompt}
-            onGeneratePrompt={handlePromptGenerate}
-            onParseResponse={handleParseResponse}
-            generating={generating}
-          />
-        );
-
-      case 'api':
-        return (
-          <DirectAPIGenerator
-            type={type}
-            apiKey={keys[keys.provider]}
-            provider={keys.provider}
-            onGenerateWithAPI={handleAPIGenerate}
-            onOpenAPISettings={() => alert('API Settings not yet implemented')}
-            generating={generating}
-          />
-        );
-
-      default:
-        return null;
-    }
-  };
+  const renderGenerator = () => (
+    <DirectAPIGenerator
+      type={type}
+      onGenerateWithAPI={handleAPIGenerate}
+      generating={generating}
+    />
+  );
 
   const renderResultsPreview = () => {
     if (!editableResult) return null;
@@ -228,7 +195,7 @@ export default function QuickGeneratorModal({
                     <button
                       className="btn btn-sm btn-secondary text-xs"
                       onClick={() => handleGeneratePortrait()}
-                      disabled={generatingPortrait || !hasOpenAIKey}
+                      disabled={generatingPortrait}
                     >
                       {generatingPortrait ? (
                         <>
@@ -252,18 +219,13 @@ export default function QuickGeneratorModal({
                   <div className="flex flex-col items-center justify-center gap-2 p-6 text-white/40 bg-black/20 border-2 border-dashed border-white/10 rounded-lg min-w-[150px]">
                     <ImageIcon size={32} className="opacity-50" />
                     <span>No portrait</span>
-                    {hasOpenAIKey && (
-                      <button
-                        className="btn btn-sm btn-secondary text-xs"
-                        onClick={() => handleGeneratePortrait()}
-                      >
-                        <ImageIcon size={14} />
-                        Generate Portrait
-                      </button>
-                    )}
-                    {!hasOpenAIKey && (
-                      <span className="text-xs opacity-70">OpenAI key required</span>
-                    )}
+                    <button
+                      className="btn btn-sm btn-secondary text-xs"
+                      onClick={() => handleGeneratePortrait()}
+                    >
+                      <ImageIcon size={14} />
+                      Generate Portrait
+                    </button>
                   </div>
                 )}
               </div>
@@ -424,6 +386,53 @@ export default function QuickGeneratorModal({
       );
     }
 
+    if (type === 'lore') {
+      return (
+        <div className="mt-6 p-4 bg-[var(--bg-secondary)] border border-[rgb(var(--color-primary))] rounded-lg">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Wand2 size={20} className="text-[rgb(var(--color-primary))]" />
+            Generated Lore Entry
+          </h3>
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Title *</label>
+              <input
+                type="text"
+                value={editableResult.title || ''}
+                onChange={(e) => handleFieldChange('title', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Category</label>
+              <select
+                value={editableResult.category || 'history'}
+                onChange={(e) => handleFieldChange('category', e.target.value)}
+                className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
+              >
+                <option value="history">History</option>
+                <option value="legend">Legend</option>
+                <option value="faction">Faction</option>
+                <option value="culture">Culture</option>
+                <option value="religion">Religion</option>
+                <option value="magic">Magic</option>
+                <option value="geography">Geography</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="block text-sm font-semibold text-white/60">Content</label>
+              <textarea
+                value={editableResult.content || ''}
+                onChange={(e) => handleFieldChange('content', e.target.value)}
+                className="w-full p-3 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] min-h-[150px]"
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (type === 'encounter') {
       return (
         <div className="mt-6 p-4 bg-[var(--bg-secondary)] border border-[rgb(var(--color-primary))] rounded-lg">
@@ -512,12 +521,6 @@ export default function QuickGeneratorModal({
       size="large"
     >
       <div className="flex flex-col gap-6 min-h-[400px]">
-        <GenerationModeSelector
-          mode={mode}
-          onModeChange={setMode}
-          hasAPIKey={hasKey}
-        />
-
         {error && (
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded text-red-400 flex items-center gap-2">
             <AlertCircle size={20} />
@@ -534,14 +537,10 @@ export default function QuickGeneratorModal({
                   type="checkbox"
                   checked={generatePortrait}
                   onChange={(e) => setGeneratePortrait(e.target.checked)}
-                  disabled={!hasOpenAIKey}
                   className="w-4 h-4 rounded border-gray-600 bg-black/40 text-[rgb(var(--color-primary))] focus:ring-[rgb(var(--color-primary))]"
                 />
                 <ImageIcon size={16} />
                 <span>Generate AI Portrait</span>
-                {!hasOpenAIKey && (
-                  <span className="text-sm text-white/50 ml-1">(OpenAI key required)</span>
-                )}
               </label>
             </div>
           )}

@@ -3,14 +3,16 @@ import { Plus, Search, Filter, BookOpen, Wand2 } from 'lucide-react';
 import LoreCard from './LoreCard';
 import LoreForm from './LoreForm';
 import Modal from '../Modal';
+import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { LORE_TYPES } from '../../data/daggerheart';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateLoreImage } from '../../services/loreGenerator';
 import './LoreView.css';
 
-export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, campaign, npcs = [], locations = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
+export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, campaign, campaignFrame, npcs = [], locations = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLore, setEditingLore] = useState(null);
+  const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [generatingImageFor, setGeneratingImageFor] = useState(null);
@@ -99,14 +101,23 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
         </div>
 
         {isDM && (
-          <button
-            className="group relative flex items-center gap-3 px-8 py-4 rounded-3xl bg-white/[0.03] hover:bg-white/[0.08] text-white transition-all duration-500 border border-white/5 hover:border-white/20 overflow-hidden shadow-2xl"
-            onClick={handleAdd}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Plus size={20} className="relative z-10 text-indigo-400 group-hover:scale-125 transition-transform" />
-            <span className="relative z-10 font-black text-xs uppercase tracking-[0.3em] font-sans">New Fragment</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="group relative flex items-center gap-3 px-6 py-4 rounded-3xl bg-[rgb(var(--color-primary))/10] hover:bg-[rgb(var(--color-primary))/20] text-[rgb(var(--color-primary-light))] transition-all duration-300 border border-[rgb(var(--color-primary))/20]"
+              onClick={() => setQuickGenOpen(true)}
+            >
+              <Wand2 size={18} />
+              <span className="font-black text-xs uppercase tracking-[0.2em]">Generate with AI</span>
+            </button>
+            <button
+              className="group relative flex items-center gap-3 px-8 py-4 rounded-3xl bg-white/[0.03] hover:bg-white/[0.08] text-white transition-all duration-500 border border-white/5 hover:border-white/20 overflow-hidden shadow-2xl"
+              onClick={handleAdd}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Plus size={20} className="relative z-10 text-indigo-400 group-hover:scale-125 transition-transform" />
+              <span className="relative z-10 font-black text-xs uppercase tracking-[0.3em] font-sans">New Fragment</span>
+            </button>
+          </div>
         )}
 
         {/* Subtle Background Glow for Header */}
@@ -215,6 +226,19 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
           entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         />
       </Modal>
+
+      <QuickGeneratorModal
+        isOpen={quickGenOpen}
+        onClose={() => setQuickGenOpen(false)}
+        type="lore"
+        campaign={campaign}
+        campaignFrame={campaignFrame}
+        existingContent={lore}
+        onSave={async (loreData) => {
+          await addLore(loreData);
+          setQuickGenOpen(false);
+        }}
+      />
     </div>
   );
 }

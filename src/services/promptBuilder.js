@@ -167,6 +167,12 @@ Game System: ${gameSystem.name}`;
       prompt += `\nIMPORTANT: Assign this NPC to one of the locations above using its exact name in the "location" field.`;
     }
 
+    // If the user described a specific request, make it the top priority
+    if (requirements.description) {
+      prompt += `\n\nSPECIFIC REQUEST FROM GAME MASTER: ${requirements.description}`;
+      prompt += '\nIMPORTANT: Generate an NPC that fulfills this specific request. It must fit within the campaign context above.';
+    }
+
     prompt += `\n\nREQUIREMENTS:`;
     prompt += requirements.name ? `\nName: ${requirements.name}` : '\nName: Generate a fitting name';
     prompt += requirements.occupation ? `\nOccupation: ${requirements.occupation}` : '\nOccupation: Suggest an appropriate occupation';
@@ -238,6 +244,12 @@ Game System: ${gameSystem.name}`;
       prompt += this._buildStartingQuestsContext(campaignFrame);
     }
 
+    // If the user described a specific request, make it the top priority
+    if (requirements.description) {
+      prompt += `\n\nSPECIFIC REQUEST FROM GAME MASTER: ${requirements.description}`;
+      prompt += '\nIMPORTANT: Generate a location that fulfills this specific request. It must fit within the campaign context above.';
+    }
+
     prompt += `\n\nREQUIREMENTS:`;
     prompt += requirements.name ? `\nName: ${requirements.name}` : '\nName: Generate a fitting name';
     prompt += requirements.type ? `\nType: ${requirements.type}` : '\nType: Suggest a type (city, town, village, dungeon, wilderness, landmark, or other)';
@@ -269,6 +281,52 @@ Game System: ${gameSystem.name}`;
 \`\`\`
 
 Make sure the location fits the campaign's tone and is geographically consistent with existing locations. Tie details back to the campaign's themes where possible.`;
+
+    return prompt;
+  },
+
+  /**
+   * Build a prompt for Lore generation
+   * @param {object} context - Generation context
+   * @returns {string} Generated prompt
+   */
+  buildLorePrompt(context) {
+    const { campaign, campaignFrame, requirements = {} } = context;
+    const loreType = requirements.loreType || 'history';
+
+    let prompt = `Create a ${loreType} lore entry for the campaign "${campaign?.name || 'Untitled Campaign'}".
+
+CAMPAIGN CONTEXT:`;
+    if (campaignFrame?.pitch) prompt += `\nPitch: ${campaignFrame.pitch}`;
+    if (campaignFrame?.overview) prompt += `\nOverview: ${campaignFrame.overview}`;
+    if (campaignFrame?.themes?.length) prompt += `\nThemes: ${campaignFrame.themes.join(', ')}`;
+    if (campaignFrame?.toneAndFeel?.length) prompt += `\nTone: ${campaignFrame.toneAndFeel.join(', ')}`;
+    if (campaignFrame?.incitingIncident) prompt += `\nInciting Incident: ${campaignFrame.incitingIncident}`;
+
+    // Session zero world facts
+    if (campaignFrame?.sessionZero?.worldFacts?.length > 0) {
+      prompt += '\n\nPLAYER-ESTABLISHED WORLD FACTS:';
+      campaignFrame.sessionZero.worldFacts.forEach(fact => {
+        if (fact.fact) prompt += `\n- ${fact.fact}`;
+      });
+    }
+
+    if (requirements.description) {
+      prompt += `\n\nSPECIFIC REQUEST FROM GAME MASTER: ${requirements.description}`;
+      prompt += '\nIMPORTANT: The lore entry must address this specific request within the campaign context.';
+    }
+
+    prompt += `\n\nGenerate a lore entry tied directly to THIS campaign's specific world — reference its named places, factions, or themes explicitly.
+
+Return this JSON structure:
+\`\`\`json
+{
+  "title": "string (specific and evocative, referencing the campaign world)",
+  "category": "${loreType}",
+  "content": "3 paragraphs of rich lore directly tied to this campaign's pitch, themes, and world",
+  "tags": ["tag1", "tag2", "tag3"]
+}
+\`\`\``;
 
     return prompt;
   },
@@ -583,6 +641,8 @@ Respond with a JSON array:
         return this.buildNPCPrompt(context);
       case 'location':
         return this.buildLocationPrompt(context);
+      case 'lore':
+        return this.buildLorePrompt(context);
       case 'encounter':
         return this.buildEncounterPrompt(context);
       case 'campaignFrame':

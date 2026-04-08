@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Plus, Search, Users, Heart, Skull, Minus, Briefcase, MapPin } from 'lucide-react';
+import { Plus, Search, Users, Heart, Skull, Minus, Briefcase, MapPin, Wand2 } from 'lucide-react';
 import NPCCard from './NPCCard';
 import NPCForm from './NPCForm';
 import Modal from '../Modal';
+import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useToast } from '../../contexts/ToastContext';
 
-export default function NPCsView({ npcs, addNPC, updateNPC, deleteNPC, isDM, campaign, locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
+export default function NPCsView({ npcs, addNPC, updateNPC, deleteNPC, isDM, campaign, campaignFrame, locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNPC, setEditingNPC] = useState(null);
+  const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [relationshipFilter, setRelationshipFilter] = useState('all');
   const { success, error } = useToast();
@@ -71,13 +73,22 @@ export default function NPCsView({ npcs, addNPC, updateNPC, deleteNPC, isDM, cam
         </div>
 
         {isDM && (
-          <button
-            className="group relative flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-500 shadow-[0_0_30px_rgba(79,70,229,0.3)] hover:shadow-[0_0_50px_rgba(79,70,229,0.5)] active:scale-95 border border-indigo-400/20"
-            onClick={handleAdd}
-          >
-            <Plus size={20} className="text-white group-hover:rotate-90 transition-transform duration-500" />
-            <span className="font-black text-xs uppercase tracking-[0.3em]">Assemble NPC</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="group relative flex items-center gap-3 px-6 py-4 rounded-[2rem] bg-[rgb(var(--color-primary))/20] hover:bg-[rgb(var(--color-primary))/30] text-[rgb(var(--color-primary-light))] transition-all duration-300 border border-[rgb(var(--color-primary))/30] active:scale-95"
+              onClick={() => setQuickGenOpen(true)}
+            >
+              <Wand2 size={18} />
+              <span className="font-black text-xs uppercase tracking-[0.2em]">Generate with AI</span>
+            </button>
+            <button
+              className="group relative flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-500 shadow-[0_0_30px_rgba(79,70,229,0.3)] hover:shadow-[0_0_50px_rgba(79,70,229,0.5)] active:scale-95 border border-indigo-400/20"
+              onClick={handleAdd}
+            >
+              <Plus size={20} className="text-white group-hover:rotate-90 transition-transform duration-500" />
+              <span className="font-black text-xs uppercase tracking-[0.3em]">Add NPC</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -166,6 +177,20 @@ export default function NPCsView({ npcs, addNPC, updateNPC, deleteNPC, isDM, cam
           entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         />
       </Modal>
+
+      <QuickGeneratorModal
+        isOpen={quickGenOpen}
+        onClose={() => setQuickGenOpen(false)}
+        type="npc"
+        campaign={campaign}
+        campaignFrame={campaignFrame}
+        existingContent={npcs}
+        onSave={async (npcData) => {
+          await addNPC(npcData);
+          success('NPC added to campaign');
+          setQuickGenOpen(false);
+        }}
+      />
     </div>
   );
 }

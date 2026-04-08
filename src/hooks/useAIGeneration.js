@@ -39,6 +39,9 @@ export function useAIGeneration() {
         case 'encounter':
           generated = templateService.generateRandomEncounter(context);
           break;
+        case 'lore':
+          generated = { title: 'Untitled Lore', category: 'history', content: '', tags: [] };
+          break;
         default:
           throw new Error(`Unknown type: ${type}`);
       }
