@@ -182,13 +182,13 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
 
     // ── Avatar generation ──
     const handleGenerateAvatar = async () => {
-        if (!hasOpenAIKey || !appearanceDescription.trim()) return;
+        if (!appearanceDescription.trim()) return;
         setGeneratingAvatar(true);
         try {
             const mockCharData = { name, class: charClass, subclass, ancestry, appearanceDescription };
             const imageUrl = await generateCharacterPortrait(
                 mockCharData,
-                openaiKeyInfo.key,
+                openaiKeyInfo?.key || null,
                 campaign?.gameSystem || 'daggerheart',
                 campaign?.id
             );
@@ -360,9 +360,9 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                         type="button"
                         className="luw-btn luw-btn-secondary"
                         onClick={handleGenerateAvatar}
-                        disabled={generatingAvatar || !appearanceDescription.trim() || !hasOpenAIKey}
+                        disabled={generatingAvatar || !appearanceDescription.trim()}
                         style={{ fontSize: '0.75rem' }}
-                        title={!hasOpenAIKey ? 'Add an OpenAI API key in Settings to use AI generation' : !appearanceDescription.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
+                        title={!appearanceDescription.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
                     >
                         {generatingAvatar ? <Loader2 size={14} className="spinner" /> : <Wand2 size={14} />}
                         {generatingAvatar ? 'Generating...' : 'AI Generate'}

@@ -171,14 +171,13 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
   };
 
   const handleGenerateAvatar = async () => {
-    if (!hasOpenAIKey) { alert('OpenAI API key required for AI avatar generation.'); return; }
     if (!formData.appearanceDescription?.trim()) { alert('Please add an appearance description first.'); return; }
 
     setGeneratingAvatar(true);
     try {
       const imageUrl = await generateCharacterPortrait(
         formData,
-        openaiKeyInfo.key,
+        openaiKeyInfo?.key || null,
         campaign?.gameSystem || 'daggerheart',
         campaign?.id
       );
@@ -269,8 +268,8 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             type="button"
             className="btn btn-secondary ai-generate-btn"
             onClick={handleGenerateAvatar}
-            disabled={generatingAvatar || !formData.appearanceDescription?.trim() || !hasOpenAIKey}
-            title={!hasOpenAIKey ? 'Add an OpenAI API key in Settings to use AI generation' : !formData.appearanceDescription?.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
+            disabled={generatingAvatar || !formData.appearanceDescription?.trim()}
+            title={!formData.appearanceDescription?.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
           >
             {generatingAvatar ? <Loader2 size={16} className="spinner" /> : <Wand2 size={16} />}
             {generatingAvatar ? 'Generating...' : 'AI Generate'}

@@ -194,10 +194,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const stressFilledCount = stressSlots.filter(Boolean).length;
 
   const handleGeneratePortrait = async () => {
-    if (!openaiKeyInfo?.key || generatingPortrait) return;
+    if (generatingPortrait) return;
     setGeneratingPortrait(true);
     try {
-      const imageUrl = await generateCharacterPortrait(character, openaiKeyInfo.key, campaign?.gameSystem || 'daggerheart', campaign?.id);
+      const imageUrl = await generateCharacterPortrait(character, openaiKeyInfo?.key || null, campaign?.gameSystem || 'daggerheart', campaign?.id);
       if (imageUrl && updateCharacter) {
         updateCharacter(character.id, { avatarUrl: imageUrl });
       }
@@ -287,8 +287,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <button
             className="dh-sidebar-generate-portrait"
             onClick={handleGeneratePortrait}
-            disabled={generatingPortrait || !openaiKeyInfo?.key}
-            title={!openaiKeyInfo?.key ? 'Add an OpenAI API key in Settings to generate portraits' : 'Generate AI Portrait'}
+            disabled={generatingPortrait}
+            title="Generate AI Portrait"
           >
             <Wand2 size={12} />
             {generatingPortrait ? 'Generating...' : 'Generate'}

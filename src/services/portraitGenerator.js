@@ -62,35 +62,25 @@ async function downloadImageAsDataUrl(imageUrl) {
 }
 
 /**
- * Generate a portrait image using DALL-E
+ * Generate a portrait image using DALL-E via the backend proxy
  * @param {string} prompt - DALL-E prompt
- * @param {string} apiKey - OpenAI API key
+ * @param {string} [apiKey] - Optional OpenAI API key; server uses OPENAI_API_KEY env var if omitted
  * @returns {Promise<string>} Image data URL (base64)
  */
 async function generatePortraitImage(prompt, apiKey) {
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
+  const response = await fetch('/api/generate-portrait', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: 'dall-e-3',
-      prompt: prompt,
-      n: 1,
-      size: '1024x1024',
-      quality: 'standard',
-      style: 'vivid'
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, apiKey: apiKey || undefined })
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`DALL-E API error: ${error.error?.message || 'Unknown error'}`);
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(error.error || `Portrait generation failed: ${response.statusText}`);
   }
 
   const data = await response.json();
-  const imageUrl = data.data[0].url;
+  const imageUrl = data.imageUrl;
 
   // Download and convert to data URL so it doesn't expire
   console.log('Downloading DALL-E portrait to convert to data URL...');
@@ -253,9 +243,7 @@ async function uploadPortraitToStorage(dataUrl, campaignId, npcName) {
  * @returns {Promise<string>} Portrait URL (Firebase Storage URL if campaignId provided, otherwise data URL)
  */
 export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
-  if (!openaiKey) {
-    throw new Error('OpenAI API key required for portrait generation');
-  }
+  // openaiKey is optional — the backend will use OPENAI_API_KEY env var if not provided
 
   console.log('Building portrait prompt for NPC:', npc.name);
   const prompt = buildNPCPortraitPrompt(npc, gameSystem);
@@ -296,9 +284,7 @@ export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerhe
  * @returns {Promise<string>} Portrait URL (Firebase Storage URL if campaignId provided, otherwise data URL)
  */
 export async function generateCharacterPortrait(character, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
-  if (!openaiKey) {
-    throw new Error('OpenAI API key required for portrait generation');
-  }
+  // openaiKey is optional — the backend will use OPENAI_API_KEY env var if not provided
 
   console.log('Building portrait prompt for character:', character.name);
   const prompt = buildCharacterPortraitPrompt(character, gameSystem);
@@ -396,9 +382,7 @@ export function buildLocationPortraitPrompt(location, gameSystem = 'daggerheart'
  * @returns {Promise<string>} Portrait URL
  */
 export async function generateLocationPortrait(location, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
-  if (!openaiKey) {
-    throw new Error('OpenAI API key required for portrait generation');
-  }
+  // openaiKey is optional — the backend will use OPENAI_API_KEY env var if not provided
 
   console.log('Building portrait prompt for location:', location.name);
   const prompt = buildLocationPortraitPrompt(location, gameSystem);
