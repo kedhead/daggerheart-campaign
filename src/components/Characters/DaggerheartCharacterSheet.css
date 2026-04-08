@@ -366,6 +366,20 @@
   color: rgba(234, 179, 8, 0.5);
 }
 
+.dh-threshold-armor {
+  border-color: rgba(59, 130, 246, 0.3);
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.dh-threshold-armor .dh-threshold-value {
+  color: #3b82f6;
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+}
+
+.dh-threshold-armor .dh-threshold-label {
+  color: rgba(59, 130, 246, 0.5);
+}
+
 /* ===== Experiences ===== */
 .dh-experiences-list {
   display: flex;
@@ -522,6 +536,16 @@
   background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   border-color: #8b5cf6;
   box-shadow: 0 0 6px rgba(139, 92, 246, 0.3);
+}
+
+.dh-slot-armor {
+  border-color: rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.dh-slot-armor:hover {
+  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(59, 130, 246, 0.12);
 }
 
 .dh-slot-armor.filled {

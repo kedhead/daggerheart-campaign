@@ -78,7 +78,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const hpSlots = localHp || character.hpSlots || DEFAULT_HP;
   const stressSlots = localStress || character.stressSlots || DEFAULT_STRESS;
-  const armorSlots = localArmor || character.armorSlots || DEFAULT_ARMOR_SLOTS;
+  const rawArmorSlots = localArmor || character.armorSlots || DEFAULT_ARMOR_SLOTS;
   const hopeSlots = localHope || character.hopeSlots || DEFAULT_HOPE_SLOTS;
   const traits = { ...DEFAULT_TRAITS, ...character.traits };
 
@@ -162,6 +162,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const equippedWeapons = equippedItems.filter(i => i.type === 'weapon');
   const equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
   const equippedEquipment = equippedItems.filter(i => i.type === 'equipment');
+
+  // Resize armor slots to match the equipped armor's slot count.
+  // If no armor is equipped, fall back to the character's stored slot count.
+  const equippedArmorSlotCount = equippedArmorItems.length > 0
+    ? (equippedArmorItems[0].systemData?.armorSlots ?? rawArmorSlots.length)
+    : rawArmorSlots.length;
+  const armorSlots = Array.from({ length: equippedArmorSlotCount }, (_, i) => rawArmorSlots[i] ?? false);
 
   const effectiveArmorScore = useMemo(() => {
     if (equippedArmorItems.length === 0) return baseArmorScore;
@@ -371,8 +378,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         {/* Armor Slots */}
         <div className="dh-sidebar-vital-group">
           <div className="dh-sidebar-vital-header">
-            <span className="dh-sidebar-vital-label">Armor</span>
-            <span className="dh-sidebar-vital-count">{armorSlots.filter(Boolean).length}/{armorSlots.length}</span>
+            <span className="dh-sidebar-vital-label">
+              Armor{equippedArmorItems.length > 0 ? ` · ${equippedArmorItems[0].name}` : ''}
+            </span>
+            <span className="dh-sidebar-vital-count">
+              {armorSlots.filter(Boolean).length}/{armorSlots.length}
+              {effectiveArmorScore > 0 ? ` (${effectiveArmorScore})` : ''}
+            </span>
           </div>
           <div className="dh-sidebar-slots">
             {armorSlots.map((filled, i) => (
@@ -441,6 +453,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <div className="dh-threshold-value">{effectiveEvasion}</div>
           <div className="dh-threshold-label">Evasion</div>
         </div>
+        {effectiveArmorScore > 0 && (
+          <div className="dh-threshold-box dh-threshold-armor">
+            <div className="dh-threshold-value">{effectiveArmorScore}</div>
+            <div className="dh-threshold-label">Armor</div>
+          </div>
+        )}
         <div className="dh-threshold-box">
           <div className="dh-threshold-value">{minorThreshold}</div>
           <div className="dh-threshold-label">Minor</div>
