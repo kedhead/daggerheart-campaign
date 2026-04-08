@@ -360,9 +360,9 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                         type="button"
                         className="luw-btn luw-btn-secondary"
                         onClick={handleGenerateAvatar}
-                        disabled={generatingAvatar || !appearanceDescription.trim()}
+                        disabled={generatingAvatar}
                         style={{ fontSize: '0.75rem' }}
-                        title={!appearanceDescription.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
+                        title="Generate AI Avatar"
                     >
                         {generatingAvatar ? <Loader2 size={14} className="spinner" /> : <Wand2 size={14} />}
                         {generatingAvatar ? 'Generating...' : 'AI Generate'}

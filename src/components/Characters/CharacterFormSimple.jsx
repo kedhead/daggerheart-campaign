@@ -25,11 +25,6 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
   const hasOpenAIKey = !!openaiKeyInfo?.key;
 
   const handleGenerateAvatar = async () => {
-    if (!formData.appearanceDescription?.trim()) {
-      alert('Please add an appearance description first to generate an avatar.');
-      return;
-    }
-
     setGeneratingAvatar(true);
     try {
       const imageUrl = await generateCharacterPortrait(
@@ -123,8 +118,8 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
             type="button"
             className="btn btn-secondary ai-generate-btn"
             onClick={handleGenerateAvatar}
-            disabled={generatingAvatar || !formData.appearanceDescription?.trim()}
-            title={!formData.appearanceDescription?.trim() ? 'Add an appearance description first' : 'Generate AI Avatar'}
+            disabled={generatingAvatar}
+            title="Generate AI Avatar"
           >
             {generatingAvatar ? <Loader2 size={16} className="spinner" /> : <Wand2 size={16} />}
             {generatingAvatar ? 'Generating...' : 'AI Generate'}
