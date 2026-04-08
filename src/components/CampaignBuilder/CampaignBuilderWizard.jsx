@@ -215,16 +215,14 @@ export default function CampaignBuilderWizard({
         const npc = generatedContent.npcs[i];
         console.log(`Saving NPC ${i + 1}:`, npc.name);
 
-        // Generate portrait if OpenAI key is available
-        if (openaiKey) {
-          try {
-            setGenerationProgress(`Step 5/10: Generating portrait for ${npc.name}...`);
-            const portraitUrl = await generateNPCPortrait(npc, openaiKey, campaign?.gameSystem || 'daggerheart', campaign?.id);
-            npc.avatarUrl = portraitUrl;
-            console.log(`Portrait generated for ${npc.name}`);
-          } catch (err) {
-            console.error(`Failed to generate portrait for ${npc.name}:`, err);
-          }
+        // Always attempt portrait generation - backend uses server OpenAI key if no client key
+        try {
+          setGenerationProgress(`Step 5/10: Generating portrait for ${npc.name}...`);
+          const portraitUrl = await generateNPCPortrait(npc, openaiKey || null, campaign?.gameSystem || 'daggerheart', campaign?.id);
+          npc.avatarUrl = portraitUrl;
+          console.log(`Portrait generated for ${npc.name}`);
+        } catch (err) {
+          console.error(`Failed to generate portrait for ${npc.name}:`, err);
         }
 
         try {
@@ -241,16 +239,14 @@ export default function CampaignBuilderWizard({
         const location = generatedContent.locations[i];
         console.log(`Saving Location ${i + 1}:`, location.name);
 
-        // Generate portrait if OpenAI key is available
-        if (openaiKey) {
-          try {
-            setGenerationProgress(`Step 6/10: Generating portrait for ${location.name}...`);
-            const portraitUrl = await generateLocationPortrait(location, openaiKey, campaign?.gameSystem || 'daggerheart', campaign?.id);
-            location.mapUrl = portraitUrl;
-            console.log(`Portrait generated for ${location.name}`);
-          } catch (err) {
-            console.error(`Failed to generate portrait for ${location.name}:`, err);
-          }
+        // Always attempt portrait generation - backend uses server OpenAI key if no client key
+        try {
+          setGenerationProgress(`Step 6/10: Generating portrait for ${location.name}...`);
+          const portraitUrl = await generateLocationPortrait(location, openaiKey || null, campaign?.gameSystem || 'daggerheart', campaign?.id);
+          location.mapUrl = portraitUrl;
+          console.log(`Portrait generated for ${location.name}`);
+        } catch (err) {
+          console.error(`Failed to generate portrait for ${location.name}:`, err);
         }
 
         try {
@@ -380,20 +376,27 @@ export default function CampaignBuilderWizard({
       setGenerationProgress('Step 10/10: Generating world map...');
       try {
         console.log('Generating world map with locations...');
-        // Reuse openaiKey declared earlier for DALL-E image generation
-        const generateImage = !!openaiKey; // Only generate image if we have OpenAI key
+
+        // Merge campaign frame data into campaign context so map prompt has full context
+        const campaignWithFrame = {
+          ...campaign,
+          pitch: data.pitch || campaign.pitch,
+          overview: data.overview || campaign.overview,
+          themes: data.themes || campaign.themes,
+          toneAndFeel: data.toneAndFeel || campaign.toneAndFeel
+        };
 
         const mapData = await generateMap(
           {
-            campaign,
+            campaign: campaignWithFrame,
             locations: generatedContent.locations,
             mapType: 'world',
             mapName: `${campaign.name} World Map`
           },
           apiKey,
           provider,
-          openaiKey,
-          generateImage
+          openaiKey || null, // backend uses server key if null
+          true // always attempt image — backend uses server OpenAI key if no client key
         );
 
         console.log('World map generated:', mapData);

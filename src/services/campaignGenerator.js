@@ -88,6 +88,22 @@ export async function generateCampaignContent(campaignFrame, campaign, apiKey = 
       }
     }
 
+    // Normalize NPC location strings to match actual generated location names exactly
+    if (generated.npcs.length > 0 && generated.locations.length > 0) {
+      const locationNames = generated.locations.map(l => l.name);
+      for (const npc of generated.npcs) {
+        if (!npc.location) continue;
+        // Find closest matching location name (case-insensitive substring match)
+        const npcLoc = npc.location.toLowerCase();
+        const match = locationNames.find(name =>
+          name.toLowerCase() === npcLoc ||
+          name.toLowerCase().includes(npcLoc) ||
+          npcLoc.includes(name.toLowerCase())
+        );
+        if (match) npc.location = match; // snap to exact name
+      }
+    }
+
     // Generate Lore Entries
     if (counts.lore > 0) {
       console.log(`Generating ${counts.lore} Lore entries...`);

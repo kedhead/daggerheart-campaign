@@ -299,34 +299,30 @@ async function downloadImageAsDataUrl(imageUrl) {
  * @returns {Promise<string>} Image data URL (base64)
  */
 async function generateMapImage(prompt, apiKey) {
-  const response = await fetch('https://api.openai.com/v1/images/generations', {
+  // Route through backend proxy so server-side OPENAI_API_KEY is used if no client key
+  const response = await fetch('/api/generate-portrait', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'dall-e-3',
-      prompt: prompt,
-      n: 1,
-      size: '1024x1024',
-      quality: 'standard',
-      style: 'natural'
+      prompt,
+      apiKey: apiKey || undefined, // backend uses server key if omitted
+      size: '1024x1024'
     })
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`DALL-E API error: ${error.error?.message || 'Unknown error'}`);
+    const error = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(`Map image generation failed: ${error.error || 'Unknown error'}`);
   }
 
   const data = await response.json();
-  const imageUrl = data.data[0].url;
+  const imageUrl = data.imageUrl;
+  if (!imageUrl) throw new Error('No image URL returned from map generation');
 
   // Download and convert to data URL so it doesn't expire
-  console.log('Downloading DALL-E image to convert to data URL...');
+  console.log('Downloading map image to convert to data URL...');
   const dataUrl = await downloadImageAsDataUrl(imageUrl);
-  console.log('Image converted to data URL');
+  console.log('Map image converted to data URL');
 
   return dataUrl;
 }
@@ -365,11 +361,11 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
       createdAt: new Date().toISOString()
     };
 
-    // Generate image if OpenAI key provided and requested
-    if (generateImage && openaiKey && mapDescription.dallePrompt) {
+    // Generate image if requested (backend uses server key if no client key provided)
+    if (generateImage && mapDescription.dallePrompt) {
       console.log('Generating map image with DALL-E...');
       try {
-        const imageUrl = await generateMapImage(mapDescription.dallePrompt, openaiKey);
+        const imageUrl = await generateMapImage(mapDescription.dallePrompt, openaiKey || null);
         mapData.imageUrl = imageUrl;
         console.log('Map image generated:', imageUrl);
       } catch (err) {
