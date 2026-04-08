@@ -179,7 +179,7 @@ function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
  * @returns {string} DALL-E prompt
  */
 function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
-  const { name, description, occupation, relationship } = npc;
+  const { name, description, occupation, relationship, ancestry } = npc;
 
   // Base style based on game system
   let styleBase = '';
@@ -189,18 +189,21 @@ function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
     styleBase = 'Fantasy RPG character portrait, detailed fantasy art style, dramatic lighting, painterly quality';
   }
 
-  // Build character description
-  let characterDesc = '';
-  if (description) {
-    // Extract physical appearance from description if present
-    characterDesc = sanitizePortraitText(description);
+  // Enrich ancestry with visual description so DALL-E renders the correct race
+  // Ancestry hint goes FIRST so DALL-E prioritises it over generic human defaults
+  let ancestryDesc = '';
+  if (ancestry && gameSystem === 'daggerheart') {
+    const visualHint = ANCESTRY_VISUAL_HINTS[ancestry];
+    if (visualHint) {
+      ancestryDesc = `Subject is ${visualHint}.`;
+    }
   }
 
+  // Build character description (sanitise to avoid safety rejections)
+  let characterDesc = description ? sanitizePortraitText(description) : '';
+
   // Add occupation context
-  let occupationContext = '';
-  if (occupation) {
-    occupationContext = `, ${occupation}`;
-  }
+  let occupationContext = occupation ? `, ${occupation}` : '';
 
   // Add mood/expression based on relationship
   let expression = 'neutral expression';
@@ -210,8 +213,9 @@ function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
     expression = 'menacing or intense expression';
   }
 
-  // Construct the full prompt
-  const prompt = `${styleBase}. Portrait of ${name || 'a character'}${occupationContext}. ${characterDesc}. ${expression}. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
+  // Ancestry hint leads the prompt so DALL-E doesn't default to human/elf
+  const ancestryPrefix = ancestryDesc ? `${ancestryDesc} ` : '';
+  const prompt = `${ancestryPrefix}${styleBase}. Portrait of ${name || 'a character'}${occupationContext}. ${characterDesc}. ${expression}. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
 
   return prompt;
 }

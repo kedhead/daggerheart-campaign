@@ -193,13 +193,13 @@ Game System: ${gameSystem.name}`;
   "occupation": "string",
   "location": "string (use an exact location name from the list above if available)",
   "relationship": "ally" | "neutral" | "enemy",
-  "description": "2-3 sentences about appearance and personality, referencing ancestry traits",
-  "notes": "Important details, connections, or secrets",
-  "firstMet": "Suggestion for how/when the party might meet them"
+  "description": "3-4 sentences: start with vivid ancestry-specific physical traits (body type, skin/scale/fur, distinctive features unique to that ancestry), then personality and one memorable quirk or mannerism",
+  "notes": "2-3 sentences of important plot hooks, secrets, connections to campaign themes, or DM-only information",
+  "firstMet": "A specific, evocative suggestion for how and where the party might encounter this NPC for the first time"
 }
 \`\`\`
 
-Ensure the NPC fits the campaign's tone and themes. Be creative but consistent with existing world elements.`;
+Ensure the NPC fits the campaign's tone and themes. Be creative but consistent with existing world elements. The description MUST clearly reflect the NPC's ancestry in their physical appearance — do NOT write generic human descriptions for non-human ancestries.`;
 
     return prompt;
   },
@@ -261,14 +261,14 @@ Game System: ${gameSystem.name}`;
   "name": "string",
   "type": "city" | "town" | "village" | "dungeon" | "wilderness" | "landmark" | "other",
   "region": "string",
-  "description": "2-3 sentences describing the location",
-  "notableFeatures": "Key landmarks or characteristics",
-  "secrets": "Hidden elements or mysteries (DM-only information)",
-  "inhabitants": "Who lives or frequents here"
+  "description": "3-4 sentences: paint a vivid sense of atmosphere and appearance, what makes this place feel alive or dangerous, and how it connects to the campaign's tone",
+  "notableFeatures": "2-3 specific landmarks, unique architectural or natural details, or points of interest a traveler would notice",
+  "secrets": "A meaningful hidden element, dark history, or DM-only mystery that could fuel adventure",
+  "inhabitants": "Who lives, works, or lurks here — be specific about factions, creature types, or notable figures"
 }
 \`\`\`
 
-Make sure the location fits the campaign's tone and is geographically consistent with existing locations.`;
+Make sure the location fits the campaign's tone and is geographically consistent with existing locations. Tie details back to the campaign's themes where possible.`;
 
     return prompt;
   },

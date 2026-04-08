@@ -86,16 +86,9 @@ export const aiService = {
    * @returns {Promise<string>} Generated text
    */
   async generate(prompt, apiKey, provider = 'anthropic', model = null) {
-    if (!apiKey) {
-      throw new Error('API key is required');
-    }
-
     if (!prompt || prompt.trim().length === 0) {
       throw new Error('Prompt cannot be empty');
     }
-
-    // Simple client-side rate limiting
-    this._checkRateLimit();
 
     if (provider === 'anthropic') {
       return this.generateWithClaude(prompt, apiKey, model);

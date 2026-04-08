@@ -23,8 +23,18 @@ export default async function handler(req, res) {
   try {
     const { prompt, apiKey, provider, model } = req.body;
 
-    if (!prompt || !apiKey || !provider) {
-      return res.status(400).json({ error: 'Missing required fields: prompt, apiKey, provider' });
+    if (!prompt || !provider) {
+      return res.status(400).json({ error: 'Missing required fields: prompt, provider' });
+    }
+
+    // Use client-provided key, or fall back to server-side environment variables
+    const effectiveKey = apiKey ||
+      (provider === 'anthropic' ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY) ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY;
+
+    if (!effectiveKey) {
+      return res.status(400).json({ error: 'No API key available. Provide one or configure server environment variables.' });
     }
 
     let response;
@@ -37,7 +47,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
+          'x-api-key': effectiveKey,
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
@@ -72,7 +82,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${effectiveKey}`
         },
         body: JSON.stringify({
           model: apiModel,

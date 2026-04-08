@@ -71,7 +71,8 @@ Preserve the core concept from the brief description. Make it richer and more ev
  * @returns {Promise<object>} Generated content organized by type
  */
 export async function generateCampaignContent(campaignFrame, campaign, apiKey = null, provider = 'anthropic', options = {}) {
-  const useAI = !!apiKey;
+  // Always attempt AI generation — the backend falls back to server-side env var keys if no client key
+  const useAI = true;
 
   // If the user provided their own locations, don't generate extra ones
   const preExistingLocations = options.preExistingLocations || [];
@@ -273,24 +274,29 @@ async function generateLoreWithAI(context, apiKey, provider, index) {
     });
   }
 
-  const prompt = `Create a ${loreType} entry for the campaign "${context.campaign.name || 'Untitled Campaign'}".
+  const frame = context.campaignFrame;
+  const prompt = `Create a ${loreType} lore entry for the campaign "${context.campaign?.name || 'Untitled Campaign'}".
 
 CAMPAIGN CONTEXT:
-${context.campaignFrame.pitch ? `Pitch: ${context.campaignFrame.pitch}` : ''}
-${context.campaignFrame.overview ? `Overview: ${context.campaignFrame.overview}` : ''}
-${context.campaignFrame.themes ? `Themes: ${context.campaignFrame.themes.join(', ')}` : ''}${sessionZeroContext}${questsContext}
+${frame.pitch ? `Pitch: ${frame.pitch}` : ''}
+${frame.overview ? `Overview: ${frame.overview}` : ''}
+${frame.themes?.length ? `Themes: ${frame.themes.join(', ')}` : ''}
+${frame.toneAndFeel?.length ? `Tone: ${frame.toneAndFeel.join(', ')}` : ''}
+${frame.incitingIncident ? `Inciting Incident: ${frame.incitingIncident}` : ''}${sessionZeroContext}${questsContext}
+
+Write a ${loreType} lore entry that is DIRECTLY tied to the specific campaign above — reference its named places, factions, events, or themes explicitly. Do NOT write generic fantasy lore.
 
 Generate a lore entry with this JSON structure:
 \`\`\`json
 {
-  "title": "string",
+  "title": "string (specific and evocative, referencing the campaign world)",
   "category": "${loreType}",
-  "content": "2-3 paragraphs of detailed lore",
+  "content": "3 paragraphs of detailed lore that directly references the campaign's pitch, themes, or established world facts",
   "tags": ["tag1", "tag2", "tag3"]
 }
 \`\`\`
 
-Make it thematically consistent with the campaign. Incorporate player-established facts and locations where appropriate.`;
+The content MUST feel like it belongs to THIS specific campaign, not a generic fantasy setting.`;
 
   const response = await aiService.generate(prompt, apiKey, provider);
   return responseParser.parse('lore', response);
