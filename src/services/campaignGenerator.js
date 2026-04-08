@@ -40,7 +40,7 @@ Flesh this out into a rich location with this JSON structure:
   "name": "${locationData.name}",
   "type": "${locationData.type || 'other'}",
   "region": "string (keep existing region or suggest one that fits)",
-  "description": "2-3 evocative sentences that expand on the brief description",
+  "description": "3-4 evocative sentences painting vivid atmosphere, appearance, and what makes this place unique in this campaign's world",
   "notableFeatures": "Key landmarks, unique characteristics, or interesting details",
   "secrets": "Hidden elements, mysteries, or DM-only information",
   "inhabitants": "Who lives here — what peoples, creatures, or factions call this place home"

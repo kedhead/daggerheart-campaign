@@ -137,16 +137,12 @@ export default function CampaignBuilderWizard({
           const loc = rawPlayerLocations[i];
           let fleshedLocation;
 
-          // Flesh out with AI if we have an API key and a description to expand
-          if (apiKey && loc.description?.trim()) {
-            try {
-              setGenerationProgress(`Step 2/10: Writing full description for ${loc.name}...`);
-              fleshedLocation = await fleshOutLocationWithAI(loc, data, campaign, apiKey, provider);
-            } catch (err) {
-              console.error(`Failed to flesh out ${loc.name}:`, err);
-              fleshedLocation = { name: loc.name, type: loc.type || 'other', region: loc.region || '', description: loc.description || '', source: 'session-zero' };
-            }
-          } else {
+          // Always flesh out with AI — backend uses server key if no client key provided
+          try {
+            setGenerationProgress(`Step 2/10: Writing full description for ${loc.name}...`);
+            fleshedLocation = await fleshOutLocationWithAI(loc, data, campaign, apiKey || null, provider);
+          } catch (err) {
+            console.error(`Failed to flesh out ${loc.name}:`, err);
             fleshedLocation = { name: loc.name, type: loc.type || 'other', region: loc.region || '', description: loc.description || '', source: 'session-zero' };
           }
 
