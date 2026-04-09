@@ -37,6 +37,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'sheets'
   const [showCreationWizard, setShowCreationWizard] = useState(false);
   const [showDemiplaneImport, setShowDemiplaneImport] = useState(false);
+  const [demiplaneTarget, setDemiplaneTarget] = useState(null);
 
   // Get the right form/card components for this campaign's game system
   const gameSystem = campaign?.gameSystem || 'daggerheart';
@@ -208,6 +209,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
               campaign={campaign}
               updateCharacter={isSheetMode ? updateCharacter : undefined}
               items={isSheetMode ? items : undefined}
+              onDemiplaneUpdate={isDaggerheart && canEditCharacter(character) ? () => setDemiplaneTarget(character) : undefined}
             />
           ))}
         </div>
@@ -249,11 +251,13 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
         />
       )}
 
-      {/* Demiplane PDF Import (Daggerheart only) */}
+      {/* Demiplane Import / Update (Daggerheart only) */}
       <DemiplaneImportModal
-        isOpen={showDemiplaneImport}
-        onClose={() => setShowDemiplaneImport(false)}
+        isOpen={showDemiplaneImport || !!demiplaneTarget}
+        onClose={() => { setShowDemiplaneImport(false); setDemiplaneTarget(null); }}
         addCharacter={addCharacter}
+        character={demiplaneTarget}
+        updateCharacter={updateCharacter}
       />
     </div>
   );

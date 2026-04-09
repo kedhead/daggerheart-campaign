@@ -12,7 +12,8 @@ const INPUT_CLS = 'w-full p-2 bg-black/20 border border-white/10 rounded-md text
 const SELECT_CLS = INPUT_CLS;
 const LABEL_CLS = 'block text-xs font-bold text-white/50 mb-1 uppercase tracking-wider';
 
-export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) {
+export default function DemiplaneImportModal({ isOpen, onClose, addCharacter, character, updateCharacter }) {
+  const isUpdate = !!character;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [parsed, setParsed] = useState(null);
@@ -95,39 +96,68 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
       k => k.toLowerCase() === (parsed.class || '').toLowerCase()
     ) || parsed.class || '';
     const classInfo = CLASSES[normalizedClass] || {};
-    const hpCount = classInfo.baseHp || 6;
     const rawTraits = parsed.traits || {};
     const traits = {};
     TRAIT_KEYS.forEach(t => {
       traits[t] = Math.max(-2, Math.min(4, parseInt(rawTraits[t]) || 0));
     });
-    const character = {
-      ...parsed,
-      class: normalizedClass,
-      level: parsed.level || 1,
-      traits,
-      hpSlots: Array(hpCount).fill(true),
-      stressSlots: Array(6).fill(false),
-      armorSlots: Array(6).fill(false),
-      hopeSlots: Array(6).fill(false),
-      evasion: parsed.evasion || classInfo.baseEvasion || 10,
-      armor: parsed.armor || 0,
-      proficiency: getBaseProficiency(parsed.level || 1),
-      subclassLevel: 'foundation',
-      markedTraits: [],
-      levelHistory: [],
-      domainNotes: '',
-      dmNotes: '',
-      avatarUrl: '',
-      domainCards: Array.isArray(parsed.domainCards) ? parsed.domainCards : [],
-      experiences: Array.isArray(parsed.experiences) ? parsed.experiences : [],
-    };
-    await addCharacter(character);
+
+    if (isUpdate) {
+      // Merge parsed data into existing character — preserve game state (HP, stress, hope, etc.)
+      await updateCharacter(character.id, {
+        ...character,
+        name: parsed.name || character.name,
+        playerName: parsed.playerName || character.playerName,
+        class: normalizedClass || character.class,
+        subclass: parsed.subclass,
+        level: parsed.level || character.level,
+        ancestry: parsed.ancestry,
+        community: parsed.community,
+        traits,
+        evasion: parsed.evasion || classInfo.baseEvasion || character.evasion,
+        armor: parsed.armor ?? character.armor,
+        primaryDomain: parsed.primaryDomain,
+        secondaryDomain: parsed.secondaryDomain,
+        domainCards: Array.isArray(parsed.domainCards) ? parsed.domainCards : character.domainCards,
+        primaryWeapon: parsed.primaryWeapon,
+        secondaryWeapon: parsed.secondaryWeapon,
+        equippedArmor: parsed.equippedArmor,
+        gold: parsed.gold ?? character.gold,
+        inventory: parsed.inventory,
+        experiences: Array.isArray(parsed.experiences) ? parsed.experiences : character.experiences,
+        backstory: parsed.backstory,
+        playerNotes: parsed.playerNotes,
+        proficiency: getBaseProficiency(parsed.level || character.level || 1),
+      });
+    } else {
+      const hpCount = classInfo.baseHp || 6;
+      await addCharacter({
+        ...parsed,
+        class: normalizedClass,
+        level: parsed.level || 1,
+        traits,
+        hpSlots: Array(hpCount).fill(true),
+        stressSlots: Array(6).fill(false),
+        armorSlots: Array(6).fill(false),
+        hopeSlots: Array(6).fill(false),
+        evasion: parsed.evasion || classInfo.baseEvasion || 10,
+        armor: parsed.armor || 0,
+        proficiency: getBaseProficiency(parsed.level || 1),
+        subclassLevel: 'foundation',
+        markedTraits: [],
+        levelHistory: [],
+        domainNotes: '',
+        dmNotes: '',
+        avatarUrl: '',
+        domainCards: Array.isArray(parsed.domainCards) ? parsed.domainCards : [],
+        experiences: Array.isArray(parsed.experiences) ? parsed.experiences : [],
+      });
+    }
     handleClose();
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Import from Demiplane" size="large">
+    <Modal isOpen={isOpen} onClose={handleClose} title={isUpdate ? `Sync ${character.name} from Demiplane` : 'Import from Demiplane'} size="large">
       <div className="space-y-6">
 
         {/* Phase 1: Upload */}
@@ -224,7 +254,7 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
           <>
             <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
               <CheckCircle size={16} className="shrink-0" />
-              <span>Character parsed successfully. Review and edit fields below before importing.</span>
+              <span>{isUpdate ? 'Character data read. Review changes below — your HP, stress, and other game state will be preserved.' : 'Character parsed successfully. Review and edit fields below before importing.'}</span>
             </div>
 
             <div className="space-y-5 max-h-[55vh] overflow-y-auto pr-1 custom-scrollbar">
@@ -389,7 +419,7 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
                   onClick={handleImport}
                   disabled={!parsed.name || !parsed.class}
                 >
-                  Import Character
+                  {isUpdate ? 'Update Character' : 'Import Character'}
                 </button>
               </div>
             </div>

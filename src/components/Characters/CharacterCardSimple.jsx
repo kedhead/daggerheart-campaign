@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles, RefreshCw } from 'lucide-react';
 import './CharacterCard.css';
 
-export default function CharacterCardSimple({ character, onEdit, onDelete, isDM, canEdit, campaign }) {
+export default function CharacterCardSimple({ character, onEdit, onDelete, isDM, canEdit, campaign, onDemiplaneUpdate }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -127,6 +127,15 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
                   <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
                   Edit Character
                 </button>
+                {onDemiplaneUpdate && (
+                  <button
+                    className="flex items-center justify-center p-3 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-400 hover:text-indigo-300 transition-all"
+                    title="Sync from Demiplane"
+                    onClick={(e) => { e.stopPropagation(); onDemiplaneUpdate(); }}
+                  >
+                    <RefreshCw size={16} />
+                  </button>
+                )}
                 <button
                   className="flex items-center justify-center p-3 rounded-2xl bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-500 hover:text-white transition-all shadow-lg shadow-red-500/0 hover:shadow-red-500/20"
                   onClick={(e) => { e.stopPropagation(); onDelete(); }}
