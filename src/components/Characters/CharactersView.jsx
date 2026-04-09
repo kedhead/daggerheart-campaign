@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Search, Users, LayoutGrid, FileText } from 'lucide-react';
+import { Plus, Search, Users, LayoutGrid, FileText, Upload } from 'lucide-react';
+import DemiplaneImportModal from './DemiplaneImportModal';
 import CharacterCardSimple from './CharacterCardSimple';
 import CharacterFormSimple from './CharacterFormSimple';
 import DaggerheartCharacterSheet from './DaggerheartCharacterSheet';
@@ -35,6 +36,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'sheets'
   const [showCreationWizard, setShowCreationWizard] = useState(false);
+  const [showDemiplaneImport, setShowDemiplaneImport] = useState(false);
 
   // Get the right form/card components for this campaign's game system
   const gameSystem = campaign?.gameSystem || 'daggerheart';
@@ -132,6 +134,16 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
                 Full Sheets
               </button>
             </div>
+          )}
+
+          {isDaggerheart && (
+            <button
+              className="flex items-center gap-2 px-5 py-4 rounded-3xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 transition-all duration-300 border border-indigo-500/20"
+              onClick={() => setShowDemiplaneImport(true)}
+            >
+              <Upload size={16} />
+              <span className="font-black text-xs uppercase tracking-[0.2em]">Import from Demiplane</span>
+            </button>
           )}
 
           <button
@@ -236,6 +248,13 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           campaign={campaign}
         />
       )}
+
+      {/* Demiplane PDF Import (Daggerheart only) */}
+      <DemiplaneImportModal
+        isOpen={showDemiplaneImport}
+        onClose={() => setShowDemiplaneImport(false)}
+        addCharacter={addCharacter}
+      />
     </div>
   );
 }
