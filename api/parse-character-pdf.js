@@ -34,10 +34,11 @@ export default async function handler(req, res) {
     // Strip data URL prefix if present
     const base64Data = imageBase64.replace(/^data:[^;]+;base64,/, '');
     const effectiveMediaType = mediaType || 'image/png';
+    const isPdf = effectiveMediaType === 'application/pdf';
 
-    const prompt = `You are looking at a Daggerheart TTRPG character sheet from Demiplane.
-Extract all visible character data and return ONLY a valid JSON object matching the schema below.
-Use empty strings, 0, or empty arrays for any field you cannot clearly see — do NOT guess.
+    const prompt = `You are reading a Daggerheart TTRPG character sheet from Demiplane.
+Extract all character data and return ONLY a valid JSON object matching the schema below.
+Use empty strings, 0, or empty arrays for any field you cannot find — do NOT guess.
 Trait values are integers typically between -2 and +3. Look carefully at each trait value shown.
 
 Valid classes: Bard, Druid, Guardian, Ranger, Rogue, Seraph, Sorcerer, Warrior, Wizard
@@ -77,6 +78,11 @@ JSON schema to return:
 
 Return ONLY the JSON object — no markdown fences, no explanation.`;
 
+    // PDFs use the document content block; images use the image content block
+    const fileContentBlock = isPdf
+      ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Data } }
+      : { type: 'image', source: { type: 'base64', media_type: effectiveMediaType, data: base64Data } };
+
     const apiResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -91,14 +97,7 @@ Return ONLY the JSON object — no markdown fences, no explanation.`;
           {
             role: 'user',
             content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: effectiveMediaType,
-                  data: base64Data
-                }
-              },
+              fileContentBlock,
               {
                 type: 'text',
                 text: prompt

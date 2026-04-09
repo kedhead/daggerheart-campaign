@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import Modal from '../Modal';
 import { CLASSES, getBaseProficiency, ANCESTRIES, COMMUNITIES, DOMAINS } from '../../data/systems/daggerheart';
-import { Upload, Image, Loader2, AlertCircle, CheckCircle, RotateCcw, Link, ChevronDown, ChevronRight } from 'lucide-react';
+import { Upload, FileText, Image, Loader2, AlertCircle, CheckCircle, RotateCcw } from 'lucide-react';
 
 const CLASS_NAMES = Object.keys(CLASSES);
 const ANCESTRY_NAMES = Object.keys(ANCESTRIES);
@@ -16,8 +16,6 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [parsed, setParsed] = useState(null);
-  const [url, setUrl] = useState('');
-  const [showFallback, setShowFallback] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -25,8 +23,6 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
     setParsed(null);
     setError(null);
     setLoading(false);
-    setUrl('');
-    setShowFallback(false);
   };
 
   const handleClose = () => {
@@ -34,36 +30,16 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
     onClose();
   };
 
-  const handleUrlImport = async () => {
-    if (!url.trim()) return;
-    setLoading(true);
-    setError(null);
-    setParsed(null);
-    try {
-      const res = await fetch('/api/import-from-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to import character');
-      setParsed(data.character);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const processFile = (file) => {
     if (!file) return;
+    const isPdf = file.type === 'application/pdf';
     const isImage = file.type.startsWith('image/');
-    if (!isImage) {
-      setError('Please upload a screenshot image (PNG, JPG, or WebP) of your Demiplane character sheet.');
+    if (!isPdf && !isImage) {
+      setError('Please upload a PDF export or a screenshot (PNG, JPG, WebP) of your Demiplane character sheet.');
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image is too large (max 10 MB).');
+    if (file.size > 32 * 1024 * 1024) {
+      setError('File is too large (max 32 MB).');
       return;
     }
 
@@ -81,7 +57,7 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
           body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to read screenshot');
+        if (!res.ok) throw new Error(data.error || 'Failed to read file');
         setParsed(data.character);
       } catch (err) {
         setError(err.message);
@@ -157,87 +133,68 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
         {/* Phase 1: Upload */}
         {!loading && !parsed && (
           <>
-            {/* URL import — primary method */}
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs leading-relaxed space-y-1">
-                <p className="font-bold">Paste your Demiplane share link:</p>
-                <ol className="list-decimal list-inside space-y-0.5 text-indigo-200/80">
-                  <li>Open your character sheet on Demiplane</li>
-                  <li>Click the <span className="font-semibold">Share</span> button and copy the link</li>
-                  <li>Paste it below — we'll handle the rest automatically</li>
-                </ol>
-              </div>
-
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Link size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                  <input
-                    type="url"
-                    placeholder="https://app.demiplane.com/nexus/daggerheart/character-sheet/..."
-                    className="w-full pl-9 pr-3 py-2.5 bg-black/20 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500/50 placeholder:text-white/20"
-                    value={url}
-                    onChange={e => setUrl(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleUrlImport()}
-                  />
+            {/* Instructions */}
+            <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs leading-relaxed space-y-2">
+              <p className="font-bold">Export your character from Demiplane, then upload it here:</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-2 rounded-lg bg-black/20 border border-white/5">
+                  <p className="font-bold text-indigo-200 mb-1 flex items-center gap-1.5">
+                    <FileText size={11} /> Option 1 — PDF Export
+                  </p>
+                  <ol className="list-decimal list-inside space-y-0.5 text-indigo-200/70 text-[11px]">
+                    <li>Open your character sheet on Demiplane</li>
+                    <li>Click the <span className="font-semibold">⋮ menu</span> → Export PDF</li>
+                    <li>Upload the downloaded PDF here</li>
+                  </ol>
                 </div>
-                <button
-                  className="px-5 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-sm font-bold border border-indigo-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  onClick={handleUrlImport}
-                  disabled={!url.trim()}
-                >
-                  Import
-                </button>
+                <div className="p-2 rounded-lg bg-black/20 border border-white/5">
+                  <p className="font-bold text-indigo-200 mb-1 flex items-center gap-1.5">
+                    <Image size={11} /> Option 2 — Screenshot
+                  </p>
+                  <ol className="list-decimal list-inside space-y-0.5 text-indigo-200/70 text-[11px]">
+                    <li>Open your character sheet on Demiplane</li>
+                    <li>Take a screenshot of the page</li>
+                    <li>Upload the image here</li>
+                  </ol>
+                </div>
               </div>
             </div>
 
-            {/* Screenshot fallback — collapsed by default */}
-            <div className="border border-white/5 rounded-xl overflow-hidden">
+            {/* Drop zone */}
+            <div
+              className={`relative flex flex-col items-center justify-center gap-4 p-10 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200 ${
+                dragging
+                  ? 'border-indigo-400 bg-indigo-500/10'
+                  : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+              }`}
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="flex items-center gap-3 text-white/20">
+                <FileText size={36} />
+                <span className="text-white/10 text-2xl font-thin">|</span>
+                <Image size={36} />
+              </div>
+              <div className="text-center">
+                <p className="text-white/60 font-semibold mb-1">Drop your PDF or screenshot here</p>
+                <p className="text-white/30 text-sm">PDF · PNG · JPG · WebP · max 32 MB</p>
+              </div>
               <button
-                className="w-full flex items-center justify-between px-4 py-3 text-xs font-bold text-white/30 hover:text-white/50 hover:bg-white/[0.02] transition-colors uppercase tracking-wider"
-                onClick={() => setShowFallback(v => !v)}
+                className="px-6 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-sm font-bold border border-indigo-500/30 transition-colors"
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
               >
-                <span>Having trouble? Upload a screenshot instead</span>
-                {showFallback ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                <Upload size={14} className="inline mr-2" />
+                Select File
               </button>
-
-              {showFallback && (
-                <div className="px-4 pb-4 space-y-3 border-t border-white/5">
-                  <p className="text-xs text-white/30 pt-3 leading-relaxed">
-                    Take a screenshot of your Demiplane character sheet and upload it here. Claude Vision will read the image directly.
-                  </p>
-                  <div
-                    className={`relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed cursor-pointer transition-all duration-200 ${
-                      dragging
-                        ? 'border-indigo-400 bg-indigo-500/10'
-                        : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
-                    }`}
-                    onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                    onDragLeave={() => setDragging(false)}
-                    onDrop={handleDrop}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Image size={32} className="text-white/20" />
-                    <div className="text-center">
-                      <p className="text-white/50 font-semibold text-sm mb-1">Drop screenshot here or click to browse</p>
-                      <p className="text-white/25 text-xs">PNG, JPG, or WebP · max 10 MB</p>
-                    </div>
-                    <button
-                      className="px-4 py-2 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-xs font-bold border border-indigo-500/30 transition-colors"
-                      onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                    >
-                      <Upload size={12} className="inline mr-1.5" />
-                      Select Image
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(e) => processFile(e.target.files[0])}
-                    />
-                  </div>
-                </div>
-              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf,image/png,image/jpeg,image/webp"
+                className="hidden"
+                onChange={(e) => processFile(e.target.files[0])}
+              />
             </div>
 
             {error && (
@@ -257,8 +214,8 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
         {loading && (
           <div className="flex flex-col items-center justify-center gap-4 py-16 text-white/50">
             <Loader2 size={36} className="animate-spin text-indigo-400" />
-            <p className="font-semibold text-white/60">Loading character sheet…</p>
-            <p className="text-xs text-white/30 text-center">Rendering the page and reading with AI<br />This takes about 20–30 seconds</p>
+            <p className="font-semibold text-white/60">Reading character sheet with AI…</p>
+            <p className="text-xs text-white/30">This takes about 10–20 seconds</p>
           </div>
         )}
 
@@ -423,7 +380,7 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
                 onClick={reset}
               >
                 <RotateCcw size={14} />
-                Try again
+                Try a different file
               </button>
               <div className="flex gap-3">
                 <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
