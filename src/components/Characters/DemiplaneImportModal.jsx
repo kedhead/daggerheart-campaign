@@ -90,13 +90,24 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
 
   const handleImport = async () => {
     if (!parsed) return;
-    const classInfo = CLASSES[parsed.class] || {};
+    // Normalize class name — Claude may return 'ranger' instead of 'Ranger'
+    const normalizedClass = CLASS_NAMES.find(
+      k => k.toLowerCase() === (parsed.class || '').toLowerCase()
+    ) || parsed.class || '';
+    const classInfo = CLASSES[normalizedClass] || {};
     const hpCount = classInfo.baseHp || 6;
+    // Clamp trait values to valid range
+    const rawTraits = parsed.traits || {};
+    const traits = {};
+    TRAIT_KEYS.forEach(t => {
+      traits[t] = Math.max(-2, Math.min(4, parseInt(rawTraits[t]) || 0));
+    });
     const character = {
       ...parsed,
+      class: normalizedClass,
       level: parsed.level || 1,
-      traits: parsed.traits || { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 },
-      hpSlots: Array(hpCount).fill(false),
+      traits,
+      hpSlots: Array(hpCount).fill(true),   // import with full HP
       stressSlots: Array(6).fill(false),
       armorSlots: Array(6).fill(false),
       hopeSlots: Array(6).fill(false),

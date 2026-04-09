@@ -3,8 +3,18 @@
  * Extracts text from a base64-encoded PDF and uses Claude to parse it
  * into a structured Daggerheart character JSON.
  */
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 
-export const config = { maxDuration: 60 };
+export const config = {
+  maxDuration: 60,
+  api: {
+    bodyParser: {
+      sizeLimit: '16mb', // base64 of a 10MB PDF is ~13.3MB
+    },
+  },
+};
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -20,15 +30,13 @@ export default async function handler(req, res) {
     if (!pdfBase64) return res.status(400).json({ error: 'pdfBase64 is required' });
 
     // 1. Decode base64 and extract text with pdf-parse
-    const pdfLib = require('pdf-parse');
-    const PDFParse = pdfLib.PDFParse;
-    const buffer = Buffer.from(pdfBase64, 'base64');
-    const parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
-    await parser.destroy();
+    // Strip data URL prefix if client sent a data URL instead of raw base64
+    const base64Data = pdfBase64.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const result = await pdfParse(buffer);
 
     // Cap text to avoid exceeding Claude's context
-    const rawText = result.text.substring(0, 8000);
+    const rawText = result.text.substring(0, 12000);
 
     if (!rawText.trim()) {
       return res.status(422).json({ error: 'Could not extract text from PDF. Make sure you exported a Demiplane character sheet PDF.' });
@@ -94,7 +102,7 @@ ${rawText}`;
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-opus-4-6',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         messages: [{ role: 'user', content: prompt }]
       })
