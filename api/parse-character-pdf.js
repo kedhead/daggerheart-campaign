@@ -26,9 +26,9 @@ export default async function handler(req, res) {
     const { imageBase64, mediaType } = req.body;
     if (!imageBase64) return res.status(400).json({ error: 'imageBase64 is required' });
 
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_MODEL;
     if (!anthropicKey) {
-      return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured on the server.' });
+      return res.status(500).json({ error: 'ANTHROPIC_MODEL is not configured on the server.' });
     }
 
     // Strip data URL prefix if present
