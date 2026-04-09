@@ -438,7 +438,7 @@ const COMMUNITIES = {
   },
   'Highborne': {
     description: 'Characters raised in opulence, elegance, and high-society prestige.',
-    features: [{ name: 'Well-To-Do', description: 'You have Advantage on rolls involving social etiquette, negotiating prices, or leveraging your reputation among nobility and the wealthy.' }]
+    features: [{ name: 'Privilege', description: 'You have Advantage on rolls to consort with nobles, negotiate prices, or leverage your reputation to get what you want.' }]
   },
   'Loreborne': {
     description: 'Raised in academic or political centers where knowledge and history are highly valued.',
@@ -454,7 +454,7 @@ const COMMUNITIES = {
   },
   'Seaborne': {
     description: 'People from coastal towns, islands, or life on the open water.',
-    features: [{ name: 'Clear Skies', description: 'During a short rest, you can clear one additional Stress or mark one additional Hope.' }]
+    features: [{ name: 'Know the Tide', description: 'You can sense the ebb and flow of life. When you roll with Fear, place a token on your community card. You can hold a number of tokens equal to your level. Before you make an action roll, you can spend any number of these tokens to gain a +1 bonus to the roll for each token spent. At the end of each session, clear all unspent tokens.' }]
   },
   'Slyborne': {
     description: 'Those raised in the criminal underworld or urban underbellies.',
@@ -462,7 +462,7 @@ const COMMUNITIES = {
   },
   'Underborne': {
     description: 'Citizens of subterranean cities or deep cavern systems.',
-    features: [{ name: 'Shadow Sense', description: 'You can see in low light as if it were bright light. You have Advantage on rolls to hide or investigate in dim light or darkness.' }]
+    features: [{ name: 'Low-Light Living', description: 'When you\'re in an area with low light or heavy shadow, you have Advantage on rolls to hide, investigate, or perceive details within that area.' }]
   },
   'Wanderborne': {
     description: 'Nomads who have traveled extensively, experiencing a wide variety of cultures.',
