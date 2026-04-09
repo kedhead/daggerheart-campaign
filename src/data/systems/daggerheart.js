@@ -420,41 +420,45 @@ const ANCESTRIES = {
 };
 
 const COMMUNITIES = {
+  'Duneborne': {
+    description: 'Those from arid, desert climates who have adapted to harsh, shifting landscapes.',
+    features: [{ name: 'Oasis', description: 'During a short rest, you or an ally can reroll a die used for a downtime action.' }]
+  },
+  'Freeborne': {
+    description: 'People from a society that was once under tyrannical rule but is now liberated.',
+    features: [{ name: 'Unbound', description: 'Once per session, when you make an action roll that results in Fear, you can choose to change it to a roll with Hope instead.' }]
+  },
+  'Frostborne': {
+    description: 'Hardy folk from frozen tundras or high-altitude glacial regions.',
+    features: [{ name: 'Enduring', description: 'You gain a +1 bonus to your Armor Score.' }]
+  },
   'Highborne': {
-    description: 'Raised in nobility, wealth, and privilege with connections to power and high society.',
-    features: [{ name: 'Noble Bearing', description: 'You have advantage on Presence rolls when interacting with nobility or high society. You begin with an additional 10 gold.' }]
+    description: 'Characters raised in opulence, elegance, and high-society prestige.',
+    features: [{ name: 'Well-To-Do', description: 'You have Advantage on rolls involving social etiquette, negotiating prices, or leveraging your reputation among nobility and the wealthy.' }]
   },
   'Loreborne': {
-    description: 'Scholars and sages raised among books, seeking knowledge and understanding.',
-    features: [{ name: 'Well-Read', description: 'You have advantage on Knowledge rolls to recall lore, identify magical items, or decipher texts.' }]
-  },
-  'Orderborne': {
-    description: 'Trained in discipline and structure, serving institutions of law, faith, or military.',
-    features: [{ name: 'Disciplined', description: 'Once per short rest, when you would mark stress, you may instead choose not to mark it.' }]
+    description: 'Raised in academic or political centers where knowledge and history are highly valued.',
+    features: [{ name: 'Well-Read', description: 'You have Advantage on rolls that involve the history, culture, or politics of a prominent person or place.' }]
   },
   'Ridgeborne': {
-    description: 'Mountain folk who endure harsh climates and value independence and resilience.',
-    features: [{ name: 'Mountain Endurance', description: 'You have advantage on rolls to resist extreme weather and exhaustion. You can carry more equipment than normal.' }]
+    description: 'Those who grew up among rocky peaks, sharp cliffs, and mountain environments.',
+    features: [{ name: 'Steady', description: 'You have Advantage on rolls to traverse dangerous cliffs and ledges, navigate harsh mountain environments, and use your survival knowledge.' }]
   },
   'Seaborne': {
-    description: 'Sailors and coastal dwellers who navigate the waters and embrace freedom.',
-    features: [{ name: 'Sea Legs', description: 'You have advantage on Agility rolls while on boats or in water. You can hold your breath twice as long as normal.' }]
-  },
-  'Slyborne': {
-    description: 'Street-smart survivors from urban underbellies, skilled in deception and cunning.',
-    features: [{ name: 'Street Smarts', description: 'You have advantage on Instinct rolls to detect lies, spot danger in urban settings, or find black market goods.' }]
-  },
-  'Wanderborne': {
-    description: 'Nomads and travelers who roam the world, never settling in one place.',
-    features: [{ name: 'Worldly', description: 'You speak one additional language. You have advantage on rolls to navigate, find shelter, or make contacts in new places.' }]
-  },
-  'Wildborne': {
-    description: 'Raised in untamed wilderness, connected to nature and its primal ways.',
-    features: [{ name: 'Nature\'s Child', description: 'You have advantage on Instinct rolls for tracking, foraging, and surviving in the wild. Animals are not hostile to you by default.' }]
+    description: 'People from coastal towns, islands, or life on the open water.',
+    features: [{ name: 'Clear Skies', description: 'During a short rest, you can clear an additional Stress or mark an additional Hope.' }]
   },
   'Underborne': {
-    description: 'Dwellers of the deep earth, caves, and underground cities.',
-    features: [{ name: 'Darkvision', description: 'You can see in complete darkness up to far range. You have advantage on rolls to navigate underground or detect subterranean hazards.' }]
+    description: 'Citizens of subterranean cities or deep cavern systems.',
+    features: [{ name: 'Shadow Sense', description: 'You can see in low light as if it were bright light. Additionally, you have Advantage on rolls to hide or investigate in dim light or darkness.' }]
+  },
+  'Wanderborne': {
+    description: 'Nomads who have traveled extensively, experiencing a wide variety of cultures.',
+    features: [{ name: 'Nomadic Pack', description: 'You carry a special inventory item. Once per session, you can spend a Hope to reach into your pack and pull out a mundane item perfectly suited to your current situation.' }]
+  },
+  'Wildborne': {
+    description: 'Those who lived deep within untamed forests or wilderness.',
+    features: [{ name: 'Lightfoot', description: 'Your movement is naturally silent. You can spend a Hope to grant Advantage to a nearby ally\'s stealth or agility roll.' }]
   }
 };
 
