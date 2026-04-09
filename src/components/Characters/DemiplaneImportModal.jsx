@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import Modal from '../Modal';
 import { CLASSES, getBaseProficiency, ANCESTRIES, COMMUNITIES, DOMAINS } from '../../data/systems/daggerheart';
-import { Upload, FileText, Loader2, AlertCircle, CheckCircle, RotateCcw } from 'lucide-react';
+import { Upload, Image, Loader2, AlertCircle, CheckCircle, RotateCcw } from 'lucide-react';
 
 const CLASS_NAMES = Object.keys(CLASSES);
 const ANCESTRY_NAMES = Object.keys(ANCESTRIES);
@@ -32,12 +32,13 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
 
   const processFile = (file) => {
     if (!file) return;
-    if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
-      setError('Please upload a PDF file exported from Demiplane.');
+    const isImage = file.type.startsWith('image/');
+    if (!isImage) {
+      setError('Please upload a screenshot image (PNG, JPG, or WebP) of your Demiplane character sheet.');
       return;
     }
-    if (file.size > 15 * 1024 * 1024) {
-      setError('File is too large (max 15 MB).');
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Image is too large (max 10 MB).');
       return;
     }
 
@@ -47,16 +48,15 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
 
     const reader = new FileReader();
     reader.onload = async (e) => {
-      // e.target.result is "data:application/pdf;base64,XXXX"
       const base64 = e.target.result.split(',')[1];
       try {
         const res = await fetch('/api/parse-character-pdf', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pdfBase64: base64 })
+          body: JSON.stringify({ imageBase64: base64, mediaType: file.type })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to parse PDF');
+        if (!res.ok) throw new Error(data.error || 'Failed to read screenshot');
         setParsed(data.character);
       } catch (err) {
         setError(err.message);
@@ -134,10 +134,14 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
         {!loading && !parsed && (
           <>
             {/* Instructions */}
-            <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs leading-relaxed">
-              <span className="font-bold">How to export from Demiplane:</span> Open your character sheet →
-              click the <span className="font-mono bg-black/30 px-1 rounded">⋮</span> menu → <strong>Export PDF</strong>.
-              Then upload that file here.
+            <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs leading-relaxed space-y-1">
+              <p className="font-bold">How to import from Demiplane:</p>
+              <ol className="list-decimal list-inside space-y-0.5 text-indigo-200/80">
+                <li>Open your character sheet on Demiplane in your browser</li>
+                <li>Take a screenshot of the main character sheet page</li>
+                <li>Upload that screenshot here — Claude will read it</li>
+              </ol>
+              <p className="text-indigo-300/60 mt-1">Tip: Make sure all traits, class, ancestry, and weapons are visible in the screenshot.</p>
             </div>
 
             {/* Drop zone */}
@@ -152,22 +156,22 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <FileText size={40} className="text-white/20" />
+              <Image size={40} className="text-white/20" />
               <div className="text-center">
-                <p className="text-white/60 font-semibold mb-1">Drop your Demiplane PDF here</p>
-                <p className="text-white/30 text-sm">or click to browse</p>
+                <p className="text-white/60 font-semibold mb-1">Drop your screenshot here</p>
+                <p className="text-white/30 text-sm">PNG, JPG, or WebP · max 10 MB</p>
               </div>
               <button
                 className="px-6 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-sm font-bold border border-indigo-500/30 transition-colors"
                 onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
               >
                 <Upload size={14} className="inline mr-2" />
-                Select PDF
+                Select Screenshot
               </button>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,application/pdf"
+                accept="image/png,image/jpeg,image/webp,image/gif"
                 className="hidden"
                 onChange={(e) => processFile(e.target.files[0])}
               />
@@ -190,8 +194,8 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
         {loading && (
           <div className="flex flex-col items-center justify-center gap-4 py-16 text-white/50">
             <Loader2 size={36} className="animate-spin text-indigo-400" />
-            <p className="font-semibold text-white/60">Parsing character sheet with AI…</p>
-            <p className="text-xs text-white/30">This takes about 10–20 seconds</p>
+            <p className="font-semibold text-white/60">Reading character sheet with AI…</p>
+            <p className="text-xs text-white/30">This takes about 10–15 seconds</p>
           </div>
         )}
 
@@ -356,7 +360,7 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter }) 
                 onClick={reset}
               >
                 <RotateCcw size={14} />
-                Try a different PDF
+                Try a different screenshot
               </button>
               <div className="flex gap-3">
                 <button className="btn btn-secondary" onClick={handleClose}>Cancel</button>
