@@ -426,11 +426,15 @@ const COMMUNITIES = {
   },
   'Freeborne': {
     description: 'People from a society that was once under tyrannical rule but is now liberated.',
-    features: [{ name: 'Unbound', description: 'Once per session, when you make an action roll that results in Fear, you can choose to change it to a roll with Hope instead.' }]
+    features: [{ name: 'Unbound', description: 'Once per session, when you roll with Fear, you can change it to a roll with Hope instead.' }]
   },
   'Frostborne': {
     description: 'Hardy folk from frozen tundras or high-altitude glacial regions.',
-    features: [{ name: 'Enduring', description: 'You gain a +1 bonus to your Armor Score.' }]
+    features: [{ name: 'Hardy', description: 'Once per rest, you can Help an Ally traverse difficult terrain without spending a Hope.' }]
+  },
+  'Hearthborne': {
+    description: 'Those raised in small villages or tight-knit rural communities.',
+    features: [{ name: 'Close-Knit', description: 'Once per long rest, you can spend any number of Hope to give an ally the same number of Hope.' }]
   },
   'Highborne': {
     description: 'Characters raised in opulence, elegance, and high-society prestige.',
@@ -440,25 +444,33 @@ const COMMUNITIES = {
     description: 'Raised in academic or political centers where knowledge and history are highly valued.',
     features: [{ name: 'Well-Read', description: 'You have Advantage on rolls that involve the history, culture, or politics of a prominent person or place.' }]
   },
+  'Orderborne': {
+    description: 'Those raised in disciplined, religious, or militaristic institutions.',
+    features: [{ name: 'Dedicated', description: 'Once per rest, when acting on one of your three chosen Values, you may use a d20 as your Hope Die instead of a d12.' }]
+  },
   'Ridgeborne': {
     description: 'Those who grew up among rocky peaks, sharp cliffs, and mountain environments.',
-    features: [{ name: 'Steady', description: 'You have Advantage on rolls to traverse dangerous cliffs and ledges, navigate harsh mountain environments, and use your survival knowledge.' }]
+    features: [{ name: 'Steady', description: 'You have Advantage on rolls to traverse dangerous cliffs and ledges and navigate harsh mountain environments.' }]
   },
   'Seaborne': {
     description: 'People from coastal towns, islands, or life on the open water.',
-    features: [{ name: 'Clear Skies', description: 'During a short rest, you can clear an additional Stress or mark an additional Hope.' }]
+    features: [{ name: 'Clear Skies', description: 'During a short rest, you can clear one additional Stress or mark one additional Hope.' }]
+  },
+  'Slyborne': {
+    description: 'Those raised in the criminal underworld or urban underbellies.',
+    features: [{ name: 'Scoundrel', description: 'You have Advantage on rolls to negotiate with criminals, detect lies, or find a safe place to hide.' }]
   },
   'Underborne': {
     description: 'Citizens of subterranean cities or deep cavern systems.',
-    features: [{ name: 'Shadow Sense', description: 'You can see in low light as if it were bright light. Additionally, you have Advantage on rolls to hide or investigate in dim light or darkness.' }]
+    features: [{ name: 'Shadow Sense', description: 'You can see in low light as if it were bright light. You have Advantage on rolls to hide or investigate in dim light or darkness.' }]
   },
   'Wanderborne': {
     description: 'Nomads who have traveled extensively, experiencing a wide variety of cultures.',
-    features: [{ name: 'Nomadic Pack', description: 'You carry a special inventory item. Once per session, you can spend a Hope to reach into your pack and pull out a mundane item perfectly suited to your current situation.' }]
+    features: [{ name: 'Nomadic Pack', description: 'Once per session, you can spend 1 Hope to reach into your pack and pull out a mundane item (rope, tool, etc.) perfectly suited to your current situation.' }]
   },
   'Wildborne': {
     description: 'Those who lived deep within untamed forests or wilderness.',
-    features: [{ name: 'Lightfoot', description: 'Your movement is naturally silent. You can spend a Hope to grant Advantage to a nearby ally\'s stealth or agility roll.' }]
+    features: [{ name: 'Lightfoot', description: 'Your movement is naturally silent. You can spend 1 Hope to give a nearby ally Advantage on a Stealth or Agility roll.' }]
   }
 };
 
