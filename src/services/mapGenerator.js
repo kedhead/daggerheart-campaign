@@ -392,11 +392,22 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
     };
 
     // Generate image if requested (backend uses server key if no client key provided)
-    if (generateImage && mapDescription.dallePrompt) {
-      console.log('Generating map image with DALL-E...');
+    if (generateImage) {
+      console.log('Generating map image...');
       try {
-        // Enrich DALL-E prompt with campaign-specific location names for legibility
-        let enrichedPrompt = mapDescription.dallePrompt;
+        // Build the image prompt from our style config directly — NOT from the AI's dallePrompt
+        // output, because the AI rewrites it to Tolkien style regardless of the selected style.
+        const gameSystem = context.campaign?.gameSystem || 'daggerheart';
+        const styleInfo = getMapStyle(gameSystem, context.mapType || 'world', context.customStyle || null);
+        let enrichedPrompt = styleInfo.dallePrompt;
+
+        // Append geography specifics from the AI description for uniqueness
+        const features = mapDescription.features || [];
+        if (features.length > 0) {
+          enrichedPrompt += `, featuring ${features.slice(0, 4).join(', ')}`;
+        }
+
+        // Add location labels for readability
         const placements = mapDescription.locationPlacements || [];
         if (placements.length > 0) {
           const locationLabels = placements.slice(0, 8).map(p => p.location).join(', ');
@@ -405,9 +416,11 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
         if (context.campaign?.name) {
           enrichedPrompt += `. Title: "${context.campaign.name}"`;
         }
+
+        console.log('Map image prompt:', enrichedPrompt);
         const imageUrl = await generateMapImage(enrichedPrompt, openaiKey || null);
         mapData.imageUrl = imageUrl;
-        console.log('Map image generated:', imageUrl);
+        console.log('Map image generated successfully');
       } catch (err) {
         console.error('Failed to generate map image:', err);
         // Continue without image - we still have the description
