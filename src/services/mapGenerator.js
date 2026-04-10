@@ -331,7 +331,7 @@ async function generateMapImage(prompt, apiKey) {
     body: JSON.stringify({
       prompt,
       apiKey: apiKey || undefined, // backend uses server key if omitted
-      size: '1024x1024'
+      size: '1536x1024' // landscape fills the wide map container better
     })
   });
 

@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { prompt, apiKey } = req.body;
+    const { prompt, apiKey, size = '1024x1024' } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Missing required field: prompt' });
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
         model: 'gpt-image-1',
         prompt,
         n: 1,
-        size: '1024x1024',
+        size,
         quality: 'high'
       })
     });

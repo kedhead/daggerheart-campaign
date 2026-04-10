@@ -267,20 +267,20 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                 style={{ appearance: 'auto', backgroundColor: '#1a1a2e' }}
               >
                 <option value="" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Tolkien (Classic)</option>
-                <option value="watercolor painted, soft washes, artistic brushstrokes" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Watercolor</option>
-                <option value="dark gothic, high contrast, ink crosshatching, dramatic shadows" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Dark Gothic</option>
-                <option value="clean modern cartography, vector-style, bold outlines, infographic clarity" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Modern / Clean</option>
-                <option value="ancient nautical chart, compass rose, sea monsters, aged yellowed paper" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Nautical / Pirate</option>
-                <option value="aerial satellite view, realistic terrain, natural colors, topographic contours" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Satellite / Realistic</option>
-                <option value="hand-drawn pencil sketch, notebook paper, rough linework, charcoal shading" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Pencil Sketch</option>
-                <option value="stained glass mosaic, vibrant jewel colors, black leading, cathedral window style" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Stained Glass</option>
-                <option value="Japanese ukiyo-e woodblock print, stylized waves, bold outlines, traditional ink" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Ukiyo-e / Woodblock</option>
-                <option value="pixel art, 16-bit retro game map, bright colors, tile-based" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Pixel Art / Retro</option>
+                <option value="watercolor painted, soft washes, artistic brushstrokes, pastel colors, wet paint bleeding edges" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Watercolor</option>
+                <option value="dark gothic horror illustration, black ink on dark charcoal background, crimson and blood red accents, skull and bone motifs, heavy black crosshatching, sinister shadowy atmosphere, black vignette edges, macabre fantasy art" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Dark Gothic</option>
+                <option value="clean modern infographic map, flat vector art style, bold geometric shapes, bright solid colors, minimal design, sans-serif typography, sharp crisp lines, no texture" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Modern / Clean</option>
+                <option value="antique nautical chart, aged yellowed parchment, sepia ink, illustrated sea monsters in the ocean, tall ship drawings, compass rose with elaborate windrose, decorative cartouche, old world explorer map" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Nautical / Pirate</option>
+                <option value="satellite imagery, photorealistic aerial view, true color terrain, green forests, brown mountains, blue water, natural earth tones, topographic shading, no illustration style" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Satellite / Realistic</option>
+                <option value="hand-drawn pencil sketch on white paper, graphite shading, rough pencil linework, charcoal smudging, sketch pad aesthetic, pencil hatching for shadows, unfinished hand-drawn look" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Pencil Sketch</option>
+                <option value="stained glass window art, vibrant jewel-toned colors, thick black lead lines separating colored glass panels, cathedral mosaic style, glowing translucent colors, bold black outlines" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Stained Glass</option>
+                <option value="Japanese ukiyo-e woodblock print style, bold flat colors, black outline illustration, traditional Japanese art, stylized nature, Mount Fuji aesthetic, Hokusai wave style" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Ukiyo-e / Woodblock</option>
+                <option value="16-bit pixel art video game map, retro SNES RPG style, bright chunky pixels, tile-based terrain, classic RPG overworld map aesthetic, limited color palette" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Pixel Art / Retro</option>
               </select>
             </div>
           </div>
 
-          <div className="aspect-[21/9] w-full relative overflow-hidden bg-black/40">
+          <div className="aspect-video sm:aspect-[21/9] w-full relative overflow-hidden bg-black/40">
             {worldMap ? (
               <>
                 <img src={worldMap} alt="World Map" className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-105" />
