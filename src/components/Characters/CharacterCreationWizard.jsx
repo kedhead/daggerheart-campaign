@@ -94,6 +94,10 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
         [primaryDomain, secondaryDomain]
     );
 
+    // Some subclasses grant an extra starting domain card at character creation.
+    // Wizard - School of Knowledge: "Prepared" foundation feature grants +1 card.
+    const maxDomainCards = (charClass === 'Wizard' && subclass === 'School of Knowledge') ? 3 : 2;
+
     const cardsByDomain = useMemo(() => {
         const grouped = {};
         availableDomainCards.forEach(card => {
@@ -197,7 +201,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
     const toggleDomainCard = (cardName) => {
         setDomainCards(prev => {
             if (prev.includes(cardName)) return prev.filter(n => n !== cardName);
-            if (prev.length >= 2) return prev; // Rule: choose exactly 2 cards at level 1
+            if (prev.length >= maxDomainCards) return prev;
             return [...prev, cardName];
         });
     };
@@ -261,7 +265,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             case 'traits':
                 return true; // Standard array always valid since defaults are assigned
             case 'domains':
-                return primaryDomain !== '' && domainCards.length === 2;
+                return primaryDomain !== '' && domainCards.length === maxDomainCards;
             case 'details':
                 return true; // All optional
             case 'summary':
@@ -726,12 +730,13 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                 <div style={{ marginTop: '1rem' }}>
                     <div className="luw-label" style={{ marginBottom: '0.25rem' }}>
                         Starting Domain Cards
-                        <span style={{ marginLeft: '0.5rem', color: domainCards.length === 2 ? '#4ade80' : '#fbbf24' }}>
-                            ({domainCards.length}/2)
+                        <span style={{ marginLeft: '0.5rem', color: domainCards.length === maxDomainCards ? '#4ade80' : '#fbbf24' }}>
+                            ({domainCards.length}/{maxDomainCards})
                         </span>
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'rgba(228,232,240,0.5)', marginBottom: '0.5rem' }}>
-                        Choose exactly 2 level 1 cards — from one or both domains.
+                        Choose exactly {maxDomainCards} level 1 card{maxDomainCards > 1 ? 's' : ''} — from one or both domains.
+                        {maxDomainCards === 3 && <span style={{ color: '#c8a44e', marginLeft: '0.3rem' }}>+1 from School of Knowledge (Prepared)</span>}
                     </div>
                     <div className="luw-card-grid">
                         {Object.entries(cardsByDomain).map(([domain, cards]) => (
@@ -741,7 +746,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                                 </div>
                                 {cards.map(card => {
                                     const isSelected = domainCards.includes(card.name);
-                                    const isDisabled = !isSelected && domainCards.length >= 2;
+                                    const isDisabled = !isSelected && domainCards.length >= maxDomainCards;
                                     return (
                                         <button
                                             key={card.name}
