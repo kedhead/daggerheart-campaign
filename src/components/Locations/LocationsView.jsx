@@ -17,6 +17,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
   const [uploadingMap, setUploadingMap] = useState(false);
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [generatingMapFor, setGeneratingMapFor] = useState(null);
+  const [generatingWorldMap, setGeneratingWorldMap] = useState(false);
   const [customMapStyle, setCustomMapStyle] = useState('');
   const { hasKey, keys } = useAPIKey(userId);
   const worldMap = campaign?.worldMap || null;
@@ -107,6 +108,44 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
   const handleRemoveMap = async () => {
     if (confirm('Are you sure you want to remove the world map?')) {
       await updateCampaign({ worldMap: null });
+    }
+  };
+
+  const handleGenerateWorldMap = async () => {
+    setGeneratingWorldMap(true);
+    try {
+      const apiKey = hasKey('anthropic') ? keys.anthropic : (hasKey('openai') ? keys.openai : null);
+      const provider = hasKey('anthropic') ? 'anthropic' : 'openai';
+      const openaiKey = hasKey('openai') ? keys.openai : null;
+
+      const mapData = await generateMap(
+        {
+          campaign,
+          locations,
+          mapType: 'world',
+          mapName: `${campaign.name || 'Campaign'} World Map`,
+          customStyle: customMapStyle || null
+        },
+        apiKey,
+        provider,
+        openaiKey,
+        true
+      );
+
+      if (mapData.imageUrl) {
+        // Upload to Firebase Storage for persistence
+        const timestamp = Date.now();
+        const imagePath = `campaigns/${campaign.id}/maps/world-map-ai-${timestamp}.png`;
+        const imageRef = ref(storage, imagePath);
+        await uploadString(imageRef, mapData.imageUrl, 'data_url');
+        const imageDownloadUrl = await getDownloadURL(imageRef);
+        await updateCampaign({ worldMap: imageDownloadUrl });
+      }
+    } catch (error) {
+      console.error('Error generating world map:', error);
+      alert(`Failed to generate world map: ${error.message}`);
+    } finally {
+      setGeneratingWorldMap(false);
     }
   };
 
@@ -247,6 +286,14 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                 <img src={worldMap} alt="World Map" className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 <div className="absolute bottom-8 right-8 flex items-center gap-3">
+                  <button
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-all disabled:opacity-50"
+                    onClick={handleGenerateWorldMap}
+                    disabled={generatingWorldMap}
+                  >
+                    <Wand2 size={14} className={generatingWorldMap ? 'animate-spin' : ''} />
+                    {generatingWorldMap ? 'Generating...' : 'AI Regenerate'}
+                  </button>
                   <label className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all cursor-pointer">
                     <Upload size={14} />
                     Replace Atlas
@@ -263,11 +310,21 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                   <MapIcon size={32} />
                 </div>
                 <h4 className="text-xl font-serif font-black text-white/40 mb-2 italic lowercase text-center">Cartography needed</h4>
-                <p className="max-w-xs text-xs text-white/20 font-medium mb-8">Upload a world map to visualize the grand expanse of your campaign setting.</p>
-                <label className="px-10 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-[0.3em] transition-all shadow-xl cursor-pointer">
-                  {uploadingMap ? 'Processing Scan...' : 'Initiate Map Upload'}
-                  <input type="file" accept="image/*" onChange={handleMapUpload} disabled={uploadingMap} className="hidden" />
-                </label>
+                <p className="max-w-xs text-xs text-white/20 font-medium mb-8">Upload a world map or generate one with AI based on your campaign locations.</p>
+                <div className="flex items-center gap-4">
+                  <button
+                    className="px-10 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-[0.3em] transition-all shadow-xl disabled:opacity-50 flex items-center gap-2"
+                    onClick={handleGenerateWorldMap}
+                    disabled={generatingWorldMap}
+                  >
+                    <Wand2 size={16} className={generatingWorldMap ? 'animate-spin' : ''} />
+                    {generatingWorldMap ? 'Generating Map...' : 'AI Generate Map'}
+                  </button>
+                  <label className="px-10 py-4 rounded-[2rem] bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white font-black text-xs uppercase tracking-[0.3em] transition-all cursor-pointer">
+                    {uploadingMap ? 'Processing...' : 'Upload Map'}
+                    <input type="file" accept="image/*" onChange={handleMapUpload} disabled={uploadingMap} className="hidden" />
+                  </label>
+                </div>
               </div>
             )}
           </div>
