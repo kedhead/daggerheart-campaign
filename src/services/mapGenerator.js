@@ -51,6 +51,28 @@ function getMapStyle(gameSystem, mapType, customStyle = null) {
   // Legibility rules appended to all DALL-E prompts
   const legibility = ', large bold readable location labels in clear serif font, high contrast text with dark outlines on light backgrounds, all place names clearly visible and legible, no tiny unreadable text';
 
+  // When a custom style is selected, build the prompt around that style as the primary
+  // directive instead of appending it to the Tolkien base (which would cause Tolkien to dominate)
+  if (customStyle) {
+    const baseGeography = {
+      world: 'fantasy world map showing continents, oceans, mountain ranges, forests, rivers, deserts, coastlines, compass rose, ornate decorative border',
+      regional: 'fantasy regional map showing terrain, villages and towns, roads and paths, rivers and lakes, forests, landmarks, compass rose, scale bar',
+      local: 'fantasy town and city map showing buildings and districts, streets and pathways, landmarks, walls and gates, points of interest, compass rose',
+      dungeon: 'dungeon floor plan with square grid overlay (5-foot squares), rooms and corridors, doors and entrances, numbered chambers, traps, stairs and exits'
+    };
+    const geo = baseGeography[mapType] || baseGeography.world;
+    const instLabel = {
+      world: 'Fantasy world map',
+      regional: 'Fantasy regional map',
+      local: 'Fantasy town/city map',
+      dungeon: 'Dungeon floor plan'
+    };
+    return {
+      instructions: `IMPORTANT - Map Style: ${instLabel[mapType] || 'Fantasy map'} rendered in ${customStyle} style. Location names must be large, bold, and clearly readable.`,
+      dallePrompt: `${customStyle}, ${geo}${legibility}`
+    };
+  }
+
   const fantasyBase = {
     world: {
       inst: 'Tolkien-esque fantasy cartography with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated mountains/forests, decorative compass rose, ornate border. Location names must be large, bold, and clearly readable.',
@@ -70,10 +92,9 @@ function getMapStyle(gameSystem, mapType, customStyle = null) {
     }
   };
   const style = fantasyBase[mapType] || fantasyBase.world;
-  const customSuffix = customStyle ? `, ${customStyle}` : '';
   return {
-    instructions: 'IMPORTANT - Map Style: ' + style.inst + customSuffix,
-    dallePrompt: style.dalle + legibility + customSuffix
+    instructions: 'IMPORTANT - Map Style: ' + style.inst,
+    dallePrompt: style.dalle + legibility
   };
 }
 
@@ -322,6 +343,11 @@ async function generateMapImage(prompt, apiKey) {
   const data = await response.json();
   const imageUrl = data.imageUrl;
   if (!imageUrl) throw new Error('No image URL returned from map generation');
+
+  // If already a data URL (gpt-image-1 returns base64 directly), no download needed
+  if (imageUrl.startsWith('data:')) {
+    return imageUrl;
+  }
 
   // Download and convert to data URL so it doesn't expire
   console.log('Downloading map image to convert to data URL...');

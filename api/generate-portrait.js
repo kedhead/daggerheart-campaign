@@ -1,6 +1,6 @@
 /**
- * Vercel Serverless Function - Portrait Generation Proxy
- * Calls DALL-E 3 using server-side OPENAI_API_KEY or client-provided key
+ * Vercel Serverless Function - Portrait/Map Image Generation Proxy
+ * Calls gpt-image-1 using server-side OPENAI_API_KEY or client-provided key
  */
 
 export const config = {
@@ -39,27 +39,31 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${effectiveKey}`
       },
       body: JSON.stringify({
-        model: 'dall-e-3',
+        model: 'gpt-image-1',
         prompt,
         n: 1,
         size: '1024x1024',
-        quality: 'standard',
-        style: 'vivid'
+        quality: 'high'
       })
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
       return res.status(response.status).json({
-        error: `DALL-E API error: ${error.error?.message || response.statusText}`
+        error: `Image generation API error: ${error.error?.message || response.statusText}`
       });
     }
 
     const data = await response.json();
-    const imageUrl = data.data[0]?.url;
+
+    // gpt-image-1 returns b64_json by default; fall back to url if present
+    const b64 = data.data?.[0]?.b64_json;
+    const imageUrl = b64
+      ? `data:image/png;base64,${b64}`
+      : data.data?.[0]?.url;
 
     if (!imageUrl) {
-      return res.status(500).json({ error: 'No image URL returned from DALL-E' });
+      return res.status(500).json({ error: 'No image returned from generation API' });
     }
 
     return res.status(200).json({ imageUrl });
