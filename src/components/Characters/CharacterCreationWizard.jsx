@@ -195,11 +195,11 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
 
     // ── Domain card toggle ──
     const toggleDomainCard = (cardName) => {
-        setDomainCards(prev =>
-            prev.includes(cardName)
-                ? prev.filter(n => n !== cardName)
-                : [...prev, cardName]
-        );
+        setDomainCards(prev => {
+            if (prev.includes(cardName)) return prev.filter(n => n !== cardName);
+            if (prev.length >= 2) return prev; // Rule: choose exactly 2 cards at level 1
+            return [...prev, cardName];
+        });
     };
 
     // ── Experience helpers ──
@@ -261,7 +261,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             case 'traits':
                 return true; // Standard array always valid since defaults are assigned
             case 'domains':
-                return primaryDomain !== '';
+                return primaryDomain !== '' && domainCards.length === 2;
             case 'details':
                 return true; // All optional
             case 'summary':
@@ -724,7 +724,15 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             {/* Domain card picker */}
             {(primaryDomain || secondaryDomain) && (
                 <div style={{ marginTop: '1rem' }}>
-                    <div className="luw-label" style={{ marginBottom: '0.5rem' }}>Starting Domain Cards ({domainCards.length} selected)</div>
+                    <div className="luw-label" style={{ marginBottom: '0.25rem' }}>
+                        Starting Domain Cards
+                        <span style={{ marginLeft: '0.5rem', color: domainCards.length === 2 ? '#4ade80' : '#fbbf24' }}>
+                            ({domainCards.length}/2)
+                        </span>
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'rgba(228,232,240,0.5)', marginBottom: '0.5rem' }}>
+                        Choose exactly 2 level 1 cards — from one or both domains.
+                    </div>
                     <div className="luw-card-grid">
                         {Object.entries(cardsByDomain).map(([domain, cards]) => (
                             <div key={domain}>
@@ -733,11 +741,14 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                                 </div>
                                 {cards.map(card => {
                                     const isSelected = domainCards.includes(card.name);
+                                    const isDisabled = !isSelected && domainCards.length >= 2;
                                     return (
                                         <button
                                             key={card.name}
-                                            className={`luw-card-option ${isSelected ? 'selected' : ''}`}
+                                            className={`luw-card-option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`}
                                             onClick={() => toggleDomainCard(card.name)}
+                                            disabled={isDisabled}
+                                            style={isDisabled ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
                                         >
                                             <div className="luw-card-header">
                                                 <span className="luw-card-name">{card.name}</span>
