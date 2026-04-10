@@ -224,19 +224,19 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
               <select
                 value={customMapStyle || ''}
                 onChange={(e) => setCustomMapStyle(e.target.value)}
-                className="bg-transparent border-none text-[10px] font-bold text-white focus:ring-0 cursor-pointer"
-                style={{ appearance: 'auto', background: 'transparent' }}
+                className="border-none text-[10px] font-bold text-white focus:ring-0 cursor-pointer"
+                style={{ appearance: 'auto', backgroundColor: '#1a1a2e' }}
               >
-                <option value="">Tolkien (Classic)</option>
-                <option value="watercolor painted, soft washes, artistic brushstrokes">Watercolor</option>
-                <option value="dark gothic, high contrast, ink crosshatching, dramatic shadows">Dark Gothic</option>
-                <option value="clean modern cartography, vector-style, bold outlines, infographic clarity">Modern / Clean</option>
-                <option value="ancient nautical chart, compass rose, sea monsters, aged yellowed paper">Nautical / Pirate</option>
-                <option value="aerial satellite view, realistic terrain, natural colors, topographic contours">Satellite / Realistic</option>
-                <option value="hand-drawn pencil sketch, notebook paper, rough linework, charcoal shading">Pencil Sketch</option>
-                <option value="stained glass mosaic, vibrant jewel colors, black leading, cathedral window style">Stained Glass</option>
-                <option value="Japanese ukiyo-e woodblock print, stylized waves, bold outlines, traditional ink">Ukiyo-e / Woodblock</option>
-                <option value="pixel art, 16-bit retro game map, bright colors, tile-based">Pixel Art / Retro</option>
+                <option value="" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Tolkien (Classic)</option>
+                <option value="watercolor painted, soft washes, artistic brushstrokes" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Watercolor</option>
+                <option value="dark gothic, high contrast, ink crosshatching, dramatic shadows" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Dark Gothic</option>
+                <option value="clean modern cartography, vector-style, bold outlines, infographic clarity" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Modern / Clean</option>
+                <option value="ancient nautical chart, compass rose, sea monsters, aged yellowed paper" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Nautical / Pirate</option>
+                <option value="aerial satellite view, realistic terrain, natural colors, topographic contours" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Satellite / Realistic</option>
+                <option value="hand-drawn pencil sketch, notebook paper, rough linework, charcoal shading" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Pencil Sketch</option>
+                <option value="stained glass mosaic, vibrant jewel colors, black leading, cathedral window style" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Stained Glass</option>
+                <option value="Japanese ukiyo-e woodblock print, stylized waves, bold outlines, traditional ink" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Ukiyo-e / Woodblock</option>
+                <option value="pixel art, 16-bit retro game map, bright colors, tile-based" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Pixel Art / Retro</option>
               </select>
             </div>
           </div>
