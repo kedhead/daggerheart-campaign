@@ -11,8 +11,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PROJECT_ROOT = path.join(__dirname, '..');
-const PDF_PATH = path.join(PROJECT_ROOT, 'Daggerheart-Core-Rulebook-5-20-2025-1.pdf');
+const PDF_PATH = process.argv[2] || path.join(PROJECT_ROOT, 'Daggerheart-Core-Rulebook-5-20-2025-1.pdf');
 const OUTPUT_PATH = path.join(PROJECT_ROOT, 'api', 'daggerheart-rules.json');
+const SUPPLEMENT_PATH = path.join(PROJECT_ROOT, 'api', 'daggerheart-supplements.json');
+
+// Build supplemental chunks from app system data that isn't in the core PDF.
+// This covers homebrew/expansion content defined in src/data/systems/daggerheart.js.
+function loadSupplementalChunks(pdfText) {
+  const supplementFile = SUPPLEMENT_PATH;
+  if (fs.existsSync(supplementFile)) {
+    console.log('Loading supplemental data from daggerheart-supplements.json...');
+    const data = JSON.parse(fs.readFileSync(supplementFile, 'utf8'));
+    return data.chunks || [];
+  }
+  return [];
+}
 
 async function extractPdfText() {
   try {
@@ -55,12 +68,23 @@ async function extractPdfText() {
     }
     if (currentChunk) chunks.push(currentChunk);
 
-    console.log(`Generated ${chunks.length} chunks.`);
+    console.log(`Generated ${chunks.length} PDF chunks.`);
+
+    // Load supplemental data not found in the PDF
+    const supplementChunks = loadSupplementalChunks(fullText);
+    if (supplementChunks.length > 0) {
+      console.log(`Adding ${supplementChunks.length} supplemental chunks.`);
+      for (const sc of supplementChunks) {
+        chunks.push(sc.text);
+      }
+    }
+
+    console.log(`Total chunks (PDF + supplements): ${chunks.length}`);
 
     // Create the output object
     const output = {
       meta: {
-        title: "Daggerheart Core Rulebook",
+        title: "Daggerheart Core Rulebook + Supplements",
         version: "5-20-2025-1",
         extractedAt: new Date().toISOString(),
         pageCount: fullData.numpages,
@@ -72,7 +96,7 @@ async function extractPdfText() {
       }))
     };
 
-    console.log(`Writing extraced text to: ${OUTPUT_PATH}`);
+    console.log(`Writing extracted text to: ${OUTPUT_PATH}`);
     fs.writeFileSync(OUTPUT_PATH, JSON.stringify(output, null, 2));
 
     console.log('Success! Text extraction complete.');

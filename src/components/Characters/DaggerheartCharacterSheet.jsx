@@ -128,9 +128,9 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     return SUBCLASSES[charClass].find(s => s.name === subclass);
   }, [charClass, subclass]);
 
-  const ancestryData = ancestry ? ANCESTRIES[ancestry] : null;
+  const ancestryData = (ancestry && ANCESTRIES[ancestry]) ? ANCESTRIES[ancestry] : character.customAncestryData || null;
   const ancestryFeatures = ancestryData && typeof ancestryData === 'object' ? ancestryData.features || [] : [];
-  const communityData = community ? COMMUNITIES[community] : null;
+  const communityData = (community && COMMUNITIES[community]) ? COMMUNITIES[community] : character.customCommunityData || null;
   const communityFeatures = communityData && typeof communityData === 'object' ? communityData.features || [] : [];
   const hasHeritage = ancestryFeatures.length > 0 || communityFeatures.length > 0;
 

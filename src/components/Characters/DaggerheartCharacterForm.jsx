@@ -229,11 +229,13 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
     return grouped;
   }, [availableDomainCards]);
 
-  // Heritage features
-  const ancestryData = formData.ancestry ? ANCESTRIES[formData.ancestry] : null;
+  // Heritage features — support both built-in and custom ancestry/community
+  const isCustomAncestry = formData.ancestry && !ANCESTRIES[formData.ancestry];
+  const ancestryData = isCustomAncestry ? formData.customAncestryData : (formData.ancestry ? ANCESTRIES[formData.ancestry] : null);
   const ancestryDesc = ancestryData ? (typeof ancestryData === 'string' ? ancestryData : ancestryData.description) : '';
   const ancestryFeatures = ancestryData && typeof ancestryData === 'object' ? ancestryData.features || [] : [];
-  const communityData = formData.community ? COMMUNITIES[formData.community] : null;
+  const isCustomCommunity = formData.community && !COMMUNITIES[formData.community];
+  const communityData = isCustomCommunity ? formData.customCommunityData : (formData.community ? COMMUNITIES[formData.community] : null);
   const communityDesc = communityData ? (typeof communityData === 'string' ? communityData : communityData.description) : '';
   const communityFeatures = communityData && typeof communityData === 'object' ? communityData.features || [] : [];
 
@@ -398,25 +400,65 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
         </div>
         <div className="input-group">
           <label>Ancestry</label>
-          <select value={formData.ancestry || ''} onChange={(e) => handleChange('ancestry', e.target.value)}>
+          <select
+            value={isCustomAncestry ? '__custom__' : (formData.ancestry || '')}
+            onChange={(e) => {
+              if (e.target.value === '__custom__') {
+                handleChange('ancestry', '');
+                handleChange('customAncestryData', { description: '', features: [] });
+              } else {
+                handleChange('ancestry', e.target.value);
+                handleChange('customAncestryData', null);
+              }
+            }}
+          >
             <option value="">-- Select Ancestry --</option>
             {Object.entries(ANCESTRIES).map(([name, data]) => (
               <option key={name} value={name}>{name}</option>
             ))}
+            <option value="__custom__">Custom / Homebrew...</option>
           </select>
-          {ancestryDesc && (
+          {isCustomAncestry && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.35rem' }}>
+              <input type="text" placeholder="Ancestry Name" value={formData.ancestry || ''} onChange={(e) => handleChange('ancestry', e.target.value)} />
+              <input type="text" placeholder="Description" value={formData.customAncestryData?.description || ''} onChange={(e) => handleChange('customAncestryData', { ...formData.customAncestryData, description: e.target.value })} />
+              <input type="text" placeholder="Feature Name" value={formData.customAncestryData?.features?.[0]?.name || ''} onChange={(e) => handleChange('customAncestryData', { ...formData.customAncestryData, features: [{ name: e.target.value, description: formData.customAncestryData?.features?.[0]?.description || '' }] })} />
+              <input type="text" placeholder="Feature Description" value={formData.customAncestryData?.features?.[0]?.description || ''} onChange={(e) => handleChange('customAncestryData', { ...formData.customAncestryData, features: [{ name: formData.customAncestryData?.features?.[0]?.name || '', description: e.target.value }] })} />
+            </div>
+          )}
+          {!isCustomAncestry && ancestryDesc && (
             <small className="input-hint">{ancestryDesc}</small>
           )}
         </div>
         <div className="input-group full-width">
           <label>Community</label>
-          <select value={formData.community || ''} onChange={(e) => handleChange('community', e.target.value)}>
+          <select
+            value={isCustomCommunity ? '__custom__' : (formData.community || '')}
+            onChange={(e) => {
+              if (e.target.value === '__custom__') {
+                handleChange('community', '');
+                handleChange('customCommunityData', { description: '', features: [] });
+              } else {
+                handleChange('community', e.target.value);
+                handleChange('customCommunityData', null);
+              }
+            }}
+          >
             <option value="">-- Select Community --</option>
             {Object.entries(COMMUNITIES).map(([name, data]) => (
               <option key={name} value={name}>{name}</option>
             ))}
+            <option value="__custom__">Custom / Homebrew...</option>
           </select>
-          {communityDesc && (
+          {isCustomCommunity && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.35rem' }}>
+              <input type="text" placeholder="Community Name" value={formData.community || ''} onChange={(e) => handleChange('community', e.target.value)} />
+              <input type="text" placeholder="Description" value={formData.customCommunityData?.description || ''} onChange={(e) => handleChange('customCommunityData', { ...formData.customCommunityData, description: e.target.value })} />
+              <input type="text" placeholder="Feature Name" value={formData.customCommunityData?.features?.[0]?.name || ''} onChange={(e) => handleChange('customCommunityData', { ...formData.customCommunityData, features: [{ name: e.target.value, description: formData.customCommunityData?.features?.[0]?.description || '' }] })} />
+              <input type="text" placeholder="Feature Description" value={formData.customCommunityData?.features?.[0]?.description || ''} onChange={(e) => handleChange('customCommunityData', { ...formData.customCommunityData, features: [{ name: formData.customCommunityData?.features?.[0]?.name || '', description: e.target.value }] })} />
+            </div>
+          )}
+          {!isCustomCommunity && communityDesc && (
             <small className="input-hint">{communityDesc}</small>
           )}
         </div>

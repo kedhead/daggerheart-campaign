@@ -1,9 +1,9 @@
 {
   "meta": {
-    "title": "Daggerheart Core Rulebook",
+    "title": "Daggerheart Core Rulebook + Supplements",
     "version": "5-20-2025-1",
-    "extractedAt": "2026-01-23T00:13:21.574Z",
-    "chunkCount": 683
+    "extractedAt": "2026-04-10T00:08:00.935Z",
+    "chunkCount": 690
   },
   "chunks": [
     {
@@ -2737,6 +2737,34 @@
     {
       "id": 682,
       "text": "). Permanently gain a +1 bonus to your Evasion. Update your level and adjust your damage thresholds accordingly. Take an additional domain card of your level or lower from a domain you have access to.\n-- 385 of 415 --\nDOMAIN LEVEL 1\n-- 386 of 415 --\nDOMAIN LEVEL 1\n-- 387 of 415 --\nDOMAIN LEVEL 1\n-- 388 of 415 --\nDOMAIN LEVEL 2\n-- 389 of 415 --\nDOMAIN LEVEL 2\n-- 390 of 415 --\nDOMAIN LEVEL 3\n-- 391 of 415 --\nDOMAIN LEVEL 3\n-- 392 of 415 --\nDOMAIN LEVEL 4\n-- 393 of 415 --\nDOMAIN LEVEL 4\n-- 394 of 415 --\nDOMAIN LEVEL 5\n-- 395 of 415 --\nDOMAIN LEVEL 5\n-- 396 of 415 --\nDOMAIN LEVEL 6\n-- 397 of 415 --\nDOMAIN LEVEL 6\n-- 398 of 415 --\nDOMAIN LEVEL 7\n-- 399 of 415 --\nDOMAIN LEVEL 7\n-- 400 of 415 --\nDOMAIN LEVEL 8\n-- 401 of 415 --\nDOMAIN LEVEL 8\n-- 402 of 415 --\nDOMAIN LEVEL 9\n-- 403 of 415 --\nDOMAIN LEVEL 9\n-- 404 of 415 --\nDOMAIN LEVEL 10\n-- 405 of 415 --\nDOMAIN LEVEL 10\n-- 406 of 415 --\nsubclass - Foundation\n-- 407 of 415 --\nsubclass - Foundation\n-- 408 of 415 --\nsubclass - specialization\n-- 409 of 415 --\nsubclass - specialization\n-- 410 of 415 --\nsubclass - mastery\n-- 411 of 415 --\nsubclass - mastery\n-- 412 of 415 --\ncommunity\n-- 413 of 415 --\nancestry\n-- 414 of 415 --\nancestry\n-- 415 of 415 --"
+    },
+    {
+      "id": 683,
+      "text": "COMMUNITY: DUNEBORNE\nBeing part of a duneborne community means you come from an arid, desert climate and have adapted to harsh, shifting landscapes. Duneborne communities thrive in the vast deserts and sun-scorched plains, building resilient societies around oases, trade routes, and ancient ruins half-buried in sand. Members of these communities are known for their resourcefulness, endurance, and deep knowledge of survival in extreme heat. Duneborne are often traders, nomadic herders, or guardians of forgotten places.\nCommunity Feature - Oasis: During a short rest, you or an ally can reroll a die used for a downtime action. This represents the duneborne ability to find moments of respite and renewal even in the harshest conditions."
+    },
+    {
+      "id": 684,
+      "text": "COMMUNITY: FREEBORNE\nBeing part of a freeborne community means you come from a society that was once under tyrannical rule but is now liberated. Freeborne communities carry the scars and pride of their struggle for independence. Their cultures emphasize freedom, self-determination, and vigilance against oppression. Members are often fiercely independent, deeply loyal to their people, and wary of authority. Freeborne communities celebrate their liberation through art, storytelling, and communal gatherings that honor those who fought for their freedom.\nCommunity Feature - Unbound: Once per session, when you roll with Fear, you can change it to a roll with Hope instead. This reflects the freeborne spirit of turning fear and oppression into defiant courage."
+    },
+    {
+      "id": 685,
+      "text": "COMMUNITY: FROSTBORNE\nBeing part of a frostborne community means you are hardy folk from frozen tundras or high-altitude glacial regions. Frostborne communities endure some of the most brutal climates in the world, building their lives around survival, communal warmth, and respect for the land. They are known for their resilience, patience, and deep bonds with one another — qualities forged by long winters and shared hardship. Frostborne communities often have rich oral traditions passed down during the long dark months.\nCommunity Feature - Hardy: Once per rest, you can Help an Ally traverse difficult terrain without spending a Hope. This represents the frostborne expertise in navigating harsh environments and guiding others through danger."
+    },
+    {
+      "id": 686,
+      "text": "COMMUNITY: HEARTHBORNE\nBeing part of a hearthborne community means you were raised in small villages or tight-knit rural communities. Hearthborne communities are built around closeness, mutual support, and a shared way of life. Members grow up knowing their neighbors intimately and learning the value of helping one another through difficult times. These communities may be farming villages, crafting hamlets, or small fishing towns — what unites them is the deep sense of belonging and care for one's neighbors.\nCommunity Feature - Close-Knit: Once per long rest, you can spend any number of Hope to give an ally the same number of Hope. This reflects the hearthborne tradition of selfless community support."
+    },
+    {
+      "id": 687,
+      "text": "ANCESTRY: DAEMON\nDaemons are beings touched by otherworldly energies, walking between mortal and supernatural realms. They carry an innate connection to forces beyond the material world — whether demonic, celestial, fey, or something stranger. Daemons often have unusual physical features that mark their supernatural heritage: unnatural eye colors, faintly glowing markings, small horns, or an aura that makes others uneasy. Despite their otherworldly nature, daemons are as varied in personality and motivation as any other ancestry.\nAncestry Feature - Otherworldly Presence: You can see in magical darkness. Once per long rest, you may sense the presence of supernatural creatures within far range. This innate supernatural awareness reflects the daemon's deep connection to forces beyond the mortal veil."
+    },
+    {
+      "id": 688,
+      "text": "COMPLETE LIST OF DAGGERHEART COMMUNITIES\nDaggerheart includes the following 13 communities that players can choose from during character creation. Each community represents the culture or environment a character grew up in and grants a unique community feature:\n1. Duneborne - Desert and arid climate communities\n2. Freeborne - Liberated communities that overthrew tyranny\n3. Frostborne - Frozen tundra and glacial region communities\n4. Hearthborne - Small villages and tight-knit rural communities\n5. Highborne - High-society, wealthy, and prestigious communities\n6. Loreborne - Academic and politically focused communities\n7. Orderborne - Disciplined, faith-based, or militaristic communities\n8. Ridgeborne - Mountain and cliff-dwelling communities\n9. Seaborne - Coastal and seafaring communities\n10. Slyborne - Criminal underworld and outlaw communities\n11. Underborne - Subterranean and underground communities\n12. Wanderborne - Nomadic and traveling communities\n13. Wildborne - Deep forest and wilderness communities"
+    },
+    {
+      "id": 689,
+      "text": "COMPLETE LIST OF DAGGERHEART ANCESTRIES\nDaggerheart includes the following ancestries that players can choose from during character creation. Each ancestry provides unique physical characteristics and an ancestry feature:\n1. Clank - Mechanical beings of gears and magic\n2. Daemon - Beings touched by otherworldly energies\n3. Drakona - Dragonborn humanoids with draconic heritage\n4. Dwarf - Sturdy folk of mountain and forge\n5. Elf - Graceful beings with deep connections to magic\n6. Faerie - Tiny fey creatures of mischief and magic\n7. Faun - Half-human, half-goat nature folk\n8. Firbolg - Gentle giants tied to nature\n9. Fungril - Mushroom folk who thrive in darkness\n10. Galapa - Turtle-like beings of wisdom and patience\n11. Giant - Towering folk of immense strength\n12. Goblin - Small, scrappy creatures of cunning\n13. Halfling - Small folk known for luck and courage\n14. Human - Versatile and adaptable\n15. Infernis - Humanoids with demonic heritage from the Circles Below\n16. Katari - Feline humanoids of grace and curiosity\n17. Orc - Proud warriors with honor-bound cultures\n18. Ribbet - Amphibious frog-folk\n19. Simiah - Ape-like beings of strength and community\nPlayers may also choose Mixed Ancestry to combine features from multiple ancestries."
     }
   ]
 }

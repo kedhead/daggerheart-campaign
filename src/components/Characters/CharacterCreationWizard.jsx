@@ -34,7 +34,17 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
 
     // ── Step 3: Heritage ──
     const [ancestry, setAncestry] = useState('');
+    const [customAncestry, setCustomAncestry] = useState(false);
+    const [customAncestryName, setCustomAncestryName] = useState('');
+    const [customAncestryDesc, setCustomAncestryDesc] = useState('');
+    const [customAncestryFeatureName, setCustomAncestryFeatureName] = useState('');
+    const [customAncestryFeatureDesc, setCustomAncestryFeatureDesc] = useState('');
     const [community, setCommunity] = useState('');
+    const [customCommunity, setCustomCommunity] = useState(false);
+    const [customCommunityName, setCustomCommunityName] = useState('');
+    const [customCommunityDesc, setCustomCommunityDesc] = useState('');
+    const [customCommunityFeatureName, setCustomCommunityFeatureName] = useState('');
+    const [customCommunityFeatureDesc, setCustomCommunityFeatureDesc] = useState('');
 
     // ── Step 4: Traits ──
     const [traits, setTraits] = useState({ ...DEFAULT_TRAITS });
@@ -67,13 +77,17 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
     const selectedSubclassInfo = subclassOptions.find(s => s.name === subclass);
     const isBeastbound = charClass === 'Ranger' && subclass === 'Beastbound';
 
-    const ancestryData = ancestry ? ANCESTRIES[ancestry] : null;
-    const ancestryDesc = ancestryData ? (typeof ancestryData === 'string' ? ancestryData : ancestryData.description) : '';
-    const ancestryFeatures = ancestryData && typeof ancestryData === 'object' ? ancestryData.features || [] : [];
+    const ancestryData = customAncestry ? null : (ancestry ? ANCESTRIES[ancestry] : null);
+    const ancestryDesc = customAncestry ? customAncestryDesc : (ancestryData ? (typeof ancestryData === 'string' ? ancestryData : ancestryData.description) : '');
+    const ancestryFeatures = customAncestry
+        ? (customAncestryFeatureName ? [{ name: customAncestryFeatureName, description: customAncestryFeatureDesc }] : [])
+        : (ancestryData && typeof ancestryData === 'object' ? ancestryData.features || [] : []);
 
-    const communityData = community ? COMMUNITIES[community] : null;
-    const communityDesc = communityData ? (typeof communityData === 'string' ? communityData : communityData.description) : '';
-    const communityFeatures = communityData && typeof communityData === 'object' ? communityData.features || [] : [];
+    const communityData = customCommunity ? null : (community ? COMMUNITIES[community] : null);
+    const communityDesc = customCommunity ? customCommunityDesc : (communityData ? (typeof communityData === 'string' ? communityData : communityData.description) : '');
+    const communityFeatures = customCommunity
+        ? (customCommunityFeatureName ? [{ name: customCommunityFeatureName, description: customCommunityFeatureDesc }] : [])
+        : (communityData && typeof communityData === 'object' ? communityData.features || [] : []);
 
     const availableDomainCards = useMemo(() =>
         getCardsForCharacter(primaryDomain, secondaryDomain, 1),
@@ -125,6 +139,26 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
         } else {
             setCustomSubclass(false);
             setSubclass(value);
+        }
+    };
+
+    const handleAncestrySelect = (value) => {
+        if (value === '__custom__') {
+            setCustomAncestry(true);
+            setAncestry('');
+        } else {
+            setCustomAncestry(false);
+            setAncestry(value);
+        }
+    };
+
+    const handleCommunitySelect = (value) => {
+        if (value === '__custom__') {
+            setCustomCommunity(true);
+            setCommunity('');
+        } else {
+            setCustomCommunity(false);
+            setCommunity(value);
         }
     };
 
@@ -221,7 +255,9 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             case 'class':
                 return charClass !== '';
             case 'heritage':
-                return ancestry !== '' && community !== '';
+                const hasAncestry = customAncestry ? customAncestryName.trim().length > 0 : ancestry !== '';
+                const hasCommunity = customCommunity ? customCommunityName.trim().length > 0 : community !== '';
+                return hasAncestry && hasCommunity;
             case 'traits':
                 return true; // Standard array always valid since defaults are assigned
             case 'domains':
@@ -249,8 +285,10 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             subclass,
             level: 1,
             proficiency: getBaseProficiency(1),
-            ancestry,
-            community,
+            ancestry: customAncestry ? customAncestryName.trim() : ancestry,
+            community: customCommunity ? customCommunityName.trim() : community,
+            ...(customAncestry ? { customAncestryData: { description: customAncestryDesc, features: customAncestryFeatureName ? [{ name: customAncestryFeatureName, description: customAncestryFeatureDesc }] : [] } } : {}),
+            ...(customCommunity ? { customCommunityData: { description: customCommunityDesc, features: customCommunityFeatureName ? [{ name: customCommunityFeatureName, description: customCommunityFeatureDesc }] : [] } } : {}),
             traits,
             hpSlots: Array(hpCount).fill(true),
             stressSlots: [false, false, false, false, false, false],
@@ -504,7 +542,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             <div className="luw-label" style={{ marginBottom: '0.5rem' }}>Ancestry *</div>
             <div className="luw-options-list">
                 {Object.entries(ANCESTRIES).map(([ancestryName, data]) => {
-                    const isSelected = ancestry === ancestryName;
+                    const isSelected = !customAncestry && ancestry === ancestryName;
                     const desc = typeof data === 'string' ? data : data.description;
                     const features = typeof data === 'object' ? data.features || [] : [];
                     return (
@@ -512,7 +550,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                             <button
                                 type="button"
                                 className="luw-option-btn"
-                                onClick={() => setAncestry(ancestryName)}
+                                onClick={() => handleAncestrySelect(ancestryName)}
                             >
                                 <div className="luw-option-header">
                                     <span className="luw-option-label">{ancestryName}</span>
@@ -535,12 +573,35 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                         </div>
                     );
                 })}
+                {/* Custom ancestry option */}
+                <div className={`luw-option ${customAncestry ? 'selected' : ''}`}>
+                    <button type="button" className="luw-option-btn" onClick={() => handleAncestrySelect('__custom__')}>
+                        <div className="luw-option-header">
+                            <span className="luw-option-label">Custom / Homebrew</span>
+                            {customAncestry && <span style={{ color: '#c8a44e', fontSize: '0.7rem' }}>✓ Selected</span>}
+                        </div>
+                        <div className="luw-option-desc" style={{ fontSize: '0.75rem', color: 'rgba(228,232,240,0.6)', marginTop: '0.15rem' }}>
+                            Create a custom ancestry with your own name, description, and feature.
+                        </div>
+                    </button>
+                    {customAncestry && (
+                        <div className="luw-detail-panel" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <input className="luw-input" type="text" placeholder="Ancestry Name *" value={customAncestryName} onChange={(e) => setCustomAncestryName(e.target.value)} />
+                            <textarea className="luw-input" placeholder="Description (optional)" rows={2} value={customAncestryDesc} onChange={(e) => setCustomAncestryDesc(e.target.value)} style={{ resize: 'vertical' }} />
+                            <div style={{ borderTop: '1px solid rgba(228,232,240,0.15)', paddingTop: '0.4rem', marginTop: '0.1rem' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'rgba(228,232,240,0.5)', marginBottom: '0.3rem' }}>Ancestry Feature (optional)</div>
+                                <input className="luw-input" type="text" placeholder="Feature Name" value={customAncestryFeatureName} onChange={(e) => setCustomAncestryFeatureName(e.target.value)} />
+                                <textarea className="luw-input" placeholder="Feature Description" rows={2} value={customAncestryFeatureDesc} onChange={(e) => setCustomAncestryFeatureDesc(e.target.value)} style={{ resize: 'vertical', marginTop: '0.35rem' }} />
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="luw-label" style={{ marginTop: '1.25rem', marginBottom: '0.5rem' }}>Community *</div>
             <div className="luw-options-list">
                 {Object.entries(COMMUNITIES).map(([commName, data]) => {
-                    const isSelected = community === commName;
+                    const isSelected = !customCommunity && community === commName;
                     const desc = typeof data === 'string' ? data : data.description;
                     const features = typeof data === 'object' ? data.features || [] : [];
                     return (
@@ -548,7 +609,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                             <button
                                 type="button"
                                 className="luw-option-btn"
-                                onClick={() => setCommunity(commName)}
+                                onClick={() => handleCommunitySelect(commName)}
                             >
                                 <div className="luw-option-header">
                                     <span className="luw-option-label">{commName}</span>
@@ -571,6 +632,29 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                         </div>
                     );
                 })}
+                {/* Custom community option */}
+                <div className={`luw-option ${customCommunity ? 'selected' : ''}`}>
+                    <button type="button" className="luw-option-btn" onClick={() => handleCommunitySelect('__custom__')}>
+                        <div className="luw-option-header">
+                            <span className="luw-option-label">Custom / Homebrew</span>
+                            {customCommunity && <span style={{ color: '#c8a44e', fontSize: '0.7rem' }}>✓ Selected</span>}
+                        </div>
+                        <div className="luw-option-desc" style={{ fontSize: '0.75rem', color: 'rgba(228,232,240,0.6)', marginTop: '0.15rem' }}>
+                            Create a custom community with your own name, description, and feature.
+                        </div>
+                    </button>
+                    {customCommunity && (
+                        <div className="luw-detail-panel" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <input className="luw-input" type="text" placeholder="Community Name *" value={customCommunityName} onChange={(e) => setCustomCommunityName(e.target.value)} />
+                            <textarea className="luw-input" placeholder="Description (optional)" rows={2} value={customCommunityDesc} onChange={(e) => setCustomCommunityDesc(e.target.value)} style={{ resize: 'vertical' }} />
+                            <div style={{ borderTop: '1px solid rgba(228,232,240,0.15)', paddingTop: '0.4rem', marginTop: '0.1rem' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'rgba(228,232,240,0.5)', marginBottom: '0.3rem' }}>Community Feature (optional)</div>
+                                <input className="luw-input" type="text" placeholder="Feature Name" value={customCommunityFeatureName} onChange={(e) => setCustomCommunityFeatureName(e.target.value)} />
+                                <textarea className="luw-input" placeholder="Feature Description" rows={2} value={customCommunityFeatureDesc} onChange={(e) => setCustomCommunityFeatureDesc(e.target.value)} style={{ resize: 'vertical', marginTop: '0.35rem' }} />
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
