@@ -167,11 +167,6 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
   };
 
   const handleGenerateMap = async () => {
-    if (!hasKey()) {
-      alert('Please add an API key in Settings to use AI map generation.');
-      return;
-    }
-
     if (mapType === 'regional' || mapType === 'local') {
       if (!selectedLocation) {
         alert('Please select a location for regional/local maps.');
@@ -184,6 +179,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
     try {
       console.log(`Generating ${mapType} map...`);
 
+      // Use local keys if available, otherwise let backend use server-side env vars
       const apiKey = hasKey('anthropic') ? keys.anthropic : (hasKey('openai') ? keys.openai : null);
       const provider = hasKey('anthropic') ? 'anthropic' : 'openai';
       const openaiKey = hasKey('openai') ? keys.openai : null;
@@ -206,7 +202,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         apiKey,
         provider,
         openaiKey,
-        !!openaiKey // Generate image if we have OpenAI key
+        true // Always generate image — backend falls back to server-side OPENAI_API_KEY
       );
 
       console.log('Map generated:', mapData);
@@ -442,27 +438,12 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               </div>
             )}
 
-            {/* Info Alerts */}
-            <div className="md:col-span-2 space-y-3">
-              {!hasKey() && (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-500 rounded-lg text-sm flex items-center gap-2">
-                  ⚠️ You need to add an API key in Settings to use map generation.
-                </div>
-              )}
-
-              {hasKey() && !hasKey('openai') && (
-                <div className="p-3 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-lg text-sm flex items-center gap-2">
-                  ℹ️ Add an OpenAI API key to generate visual map images with DALL-E. Otherwise, only text descriptions will be generated.
-                </div>
-              )}
-            </div>
-
             {/* Generate Button */}
             <div className="md:col-span-2 flex justify-end">
               <button
                 className="btn btn-primary"
                 onClick={handleGenerateMap}
-                disabled={generatingMap || !hasKey() || ((mapType === 'regional' || mapType === 'local' || mapType === 'dungeon') && !selectedLocation)}
+                disabled={generatingMap || ((mapType === 'regional' || mapType === 'local' || mapType === 'dungeon') && !selectedLocation)}
               >
                 {generatingMap ? (
                   <>
