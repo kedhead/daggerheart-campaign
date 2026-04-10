@@ -230,11 +230,11 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
   }, [availableDomainCards]);
 
   // Heritage features — support both built-in and custom ancestry/community
-  const isCustomAncestry = formData.ancestry && !ANCESTRIES[formData.ancestry];
+  const isCustomAncestry = !!formData.customAncestryData || (formData.ancestry && !ANCESTRIES[formData.ancestry]);
   const ancestryData = isCustomAncestry ? formData.customAncestryData : (formData.ancestry ? ANCESTRIES[formData.ancestry] : null);
   const ancestryDesc = ancestryData ? (typeof ancestryData === 'string' ? ancestryData : ancestryData.description) : '';
   const ancestryFeatures = ancestryData && typeof ancestryData === 'object' ? ancestryData.features || [] : [];
-  const isCustomCommunity = formData.community && !COMMUNITIES[formData.community];
+  const isCustomCommunity = !!formData.customCommunityData || (formData.community && !COMMUNITIES[formData.community]);
   const communityData = isCustomCommunity ? formData.customCommunityData : (formData.community ? COMMUNITIES[formData.community] : null);
   const communityDesc = communityData ? (typeof communityData === 'string' ? communityData : communityData.description) : '';
   const communityFeatures = communityData && typeof communityData === 'object' ? communityData.features || [] : [];
