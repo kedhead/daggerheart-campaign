@@ -404,11 +404,9 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             value={isCustomAncestry ? '__custom__' : (formData.ancestry || '')}
             onChange={(e) => {
               if (e.target.value === '__custom__') {
-                handleChange('ancestry', '');
-                handleChange('customAncestryData', { description: '', features: [] });
+                setFormData(prev => ({ ...prev, ancestry: '', customAncestryData: { description: '', features: [] } }));
               } else {
-                handleChange('ancestry', e.target.value);
-                handleChange('customAncestryData', null);
+                setFormData(prev => ({ ...prev, ancestry: e.target.value, customAncestryData: null }));
               }
             }}
           >
@@ -436,11 +434,9 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             value={isCustomCommunity ? '__custom__' : (formData.community || '')}
             onChange={(e) => {
               if (e.target.value === '__custom__') {
-                handleChange('community', '');
-                handleChange('customCommunityData', { description: '', features: [] });
+                setFormData(prev => ({ ...prev, community: '', customCommunityData: { description: '', features: [] } }));
               } else {
-                handleChange('community', e.target.value);
-                handleChange('customCommunityData', null);
+                setFormData(prev => ({ ...prev, community: e.target.value, customCommunityData: null }));
               }
             }}
           >
