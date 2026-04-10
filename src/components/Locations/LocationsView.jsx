@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../config/firebase';
-import { Plus, Search, Map as MapIcon, Upload, Wand2 } from 'lucide-react';
+import { Plus, Search, Map as MapIcon, Upload, Wand2, Download } from 'lucide-react';
 import LocationCard from './LocationCard';
 import LocationForm from './LocationForm';
 import Modal from '../Modal';
@@ -108,6 +108,22 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
   const handleRemoveMap = async () => {
     if (confirm('Are you sure you want to remove the world map?')) {
       await updateCampaign({ worldMap: null });
+    }
+  };
+
+  const handleDownloadMap = async () => {
+    try {
+      const response = await fetch(worldMap);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = objectUrl;
+      a.download = `${campaign?.name || 'world'}-map.png`;
+      a.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error('Failed to download map:', err);
+      alert('Failed to download map. Try right-clicking the image and saving it manually.');
     }
   };
 
@@ -286,6 +302,14 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                 <img src={worldMap} alt="World Map" className="w-full h-full object-cover transition-transform duration-[10s] group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 <div className="absolute bottom-8 right-8 flex items-center gap-3">
+                  <button
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:text-white transition-all"
+                    onClick={handleDownloadMap}
+                    title="Download world map image"
+                  >
+                    <Download size={14} />
+                    Export
+                  </button>
                   <button
                     className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-all disabled:opacity-50"
                     onClick={handleGenerateWorldMap}

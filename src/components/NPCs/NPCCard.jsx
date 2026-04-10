@@ -1,10 +1,26 @@
 import { useState } from 'react';
-import { ChevronDown, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus } from 'lucide-react';
+import { ChevronDown, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus, Download } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import InlineEdit from '../InlineEdit/InlineEdit';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import { useToast } from '../../contexts/ToastContext';
+
+async function downloadPortrait(url, name) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = `${name.toLowerCase().replace(/\s+/g, '-')}-portrait.png`;
+    a.click();
+    URL.revokeObjectURL(objectUrl);
+  } catch (err) {
+    console.error('Failed to download portrait:', err);
+    alert('Failed to download portrait. Try right-clicking the image and saving it manually.');
+  }
+}
 
 export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaign, isEmbedded = false, entities }) {
   const { success, error } = useToast();
@@ -42,6 +58,17 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
             <span className="text-[11px] font-black uppercase tracking-[0.2em]">{npc.relationship || 'Neutral'}</span>
           </div>
         </div>
+
+        {/* Portrait Download Button */}
+        {npc.avatarUrl && (
+          <button
+            className="absolute top-6 right-6 z-20 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-white/40 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
+            title="Download portrait"
+            onClick={(e) => { e.stopPropagation(); downloadPortrait(npc.avatarUrl, npc.name); }}
+          >
+            <Download size={14} />
+          </button>
+        )}
       </div>
 
       <div className="p-8 cursor-pointer relative" onClick={() => setIsExpanded(!isExpanded)}>

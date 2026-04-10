@@ -1,6 +1,22 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles, RefreshCw, Download } from 'lucide-react';
 import './CharacterCard.css';
+
+async function downloadPortrait(url, name) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = `${name.toLowerCase().replace(/\s+/g, '-')}-portrait.png`;
+    a.click();
+    URL.revokeObjectURL(objectUrl);
+  } catch (err) {
+    console.error('Failed to download portrait:', err);
+    alert('Failed to download portrait. Try right-clicking the image and saving it manually.');
+  }
+}
 
 export default function CharacterCardSimple({ character, onEdit, onDelete, isDM, canEdit, campaign, onDemiplaneUpdate }) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -31,6 +47,17 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
             <span className="text-[11px] font-black uppercase tracking-[0.2em]">Active Hero</span>
           </div>
         </div>
+
+        {/* Portrait Download Button */}
+        {character.avatarUrl && (
+          <button
+            className="absolute top-6 right-6 z-30 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-white/40 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
+            title="Download portrait"
+            onClick={(e) => { e.stopPropagation(); downloadPortrait(character.avatarUrl, character.name); }}
+          >
+            <Download size={14} />
+          </button>
+        )}
 
         {/* Player Attribution */}
         <div className="absolute bottom-6 left-8 z-30">
