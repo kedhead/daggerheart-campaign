@@ -111,16 +111,12 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
   };
 
   const handleGenerateLocationMap = async (location) => {
-    if (!hasKey()) {
-      alert('Please add an API key in Settings to use AI map generation.');
-      return;
-    }
-
     setGeneratingMapFor(location.id);
 
     try {
       console.log(`Generating map for location: ${location.name}`);
 
+      // Use local keys if available, otherwise let the backend use server-side env vars
       const apiKey = hasKey('anthropic') ? keys.anthropic : (hasKey('openai') ? keys.openai : null);
       const provider = hasKey('anthropic') ? 'anthropic' : 'openai';
       const openaiKey = hasKey('openai') ? keys.openai : null;
@@ -140,7 +136,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
         apiKey,
         provider,
         openaiKey,
-        !!openaiKey // Generate image if we have OpenAI key
+        true // Always generate image — backend falls back to server-side OPENAI_API_KEY
       );
 
       console.log('Map generated:', mapData);
@@ -223,18 +219,26 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
               </div>
             </div>
 
-            {hasKey() && (
-              <div className="flex items-center gap-4 bg-black/20 p-2 pl-4 rounded-2xl border border-white/5">
-                <span className="text-[9px] font-black uppercase text-white/30 tracking-widest">Aesthetic Filter:</span>
-                <input
-                  type="text"
-                  value={customMapStyle || ''}
-                  onChange={(e) => setCustomMapStyle(e.target.value)}
-                  placeholder="watercolor, detailed..."
-                  className="bg-transparent border-none text-[10px] font-bold text-white placeholder:text-white/10 focus:ring-0 w-32"
-                />
-              </div>
-            )}
+            <div className="flex items-center gap-4 bg-black/20 p-2 pl-4 rounded-2xl border border-white/5">
+              <span className="text-[9px] font-black uppercase text-white/30 tracking-widest">Map Style:</span>
+              <select
+                value={customMapStyle || ''}
+                onChange={(e) => setCustomMapStyle(e.target.value)}
+                className="bg-transparent border-none text-[10px] font-bold text-white focus:ring-0 cursor-pointer"
+                style={{ appearance: 'auto', background: 'transparent' }}
+              >
+                <option value="">Tolkien (Classic)</option>
+                <option value="watercolor painted, soft washes, artistic brushstrokes">Watercolor</option>
+                <option value="dark gothic, high contrast, ink crosshatching, dramatic shadows">Dark Gothic</option>
+                <option value="clean modern cartography, vector-style, bold outlines, infographic clarity">Modern / Clean</option>
+                <option value="ancient nautical chart, compass rose, sea monsters, aged yellowed paper">Nautical / Pirate</option>
+                <option value="aerial satellite view, realistic terrain, natural colors, topographic contours">Satellite / Realistic</option>
+                <option value="hand-drawn pencil sketch, notebook paper, rough linework, charcoal shading">Pencil Sketch</option>
+                <option value="stained glass mosaic, vibrant jewel colors, black leading, cathedral window style">Stained Glass</option>
+                <option value="Japanese ukiyo-e woodblock print, stylized waves, bold outlines, traditional ink">Ukiyo-e / Woodblock</option>
+                <option value="pixel art, 16-bit retro game map, bright colors, tile-based">Pixel Art / Retro</option>
+              </select>
+            </div>
           </div>
 
           <div className="aspect-[21/9] w-full relative overflow-hidden bg-black/40">

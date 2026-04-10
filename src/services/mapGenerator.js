@@ -41,27 +41,31 @@ function getMapStyle(gameSystem, mapType, customStyle = null) {
     };
     const style = holocronBase[mapType] || holocronBase.world;
     const customSuffix = customStyle ? `, ${customStyle}` : '';
+    const legibilitySW = ', large bold readable location labels in glowing cyan font, high contrast text, all place names clearly visible and legible';
     return {
       instructions: 'IMPORTANT - Map Style: ' + style.inst + customSuffix,
-      dallePrompt: style.dalle + customSuffix
+      dallePrompt: style.dalle + legibilitySW + customSuffix
     };
   }
 
+  // Legibility rules appended to all DALL-E prompts
+  const legibility = ', large bold readable location labels in clear serif font, high contrast text with dark outlines on light backgrounds, all place names clearly visible and legible, no tiny unreadable text';
+
   const fantasyBase = {
     world: {
-      inst: 'Tolkien-esque fantasy cartography with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated mountains/forests, decorative compass rose, ornate border',
-      dalle: 'Tolkien-style fantasy map, parchment texture, hand-drawn, flowing calligraphy, illustrated mountains and forests, decorative compass rose, ornate Celtic border, aged appearance'
+      inst: 'Tolkien-esque fantasy cartography with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated mountains/forests, decorative compass rose, ornate border. Location names must be large, bold, and clearly readable.',
+      dalle: 'Tolkien-style fantasy world map, parchment texture, hand-drawn, flowing calligraphy, illustrated mountains and forests, decorative compass rose, ornate Celtic border, aged appearance'
     },
     regional: {
-      inst: 'Tolkien-esque regional fantasy map with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated terrain, dotted roads, compass rose, scale bar',
+      inst: 'Tolkien-esque regional fantasy map with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated terrain, dotted roads, compass rose, scale bar. Location names must be large, bold, and clearly readable.',
       dalle: 'Tolkien-style regional fantasy map, parchment texture, hand-drawn, calligraphy labels, illustrated terrain, dotted paths, building icons, compass rose, scale bar, aged appearance'
     },
     local: {
-      inst: 'Tolkien-esque town/city map with hand-drawn aesthetic, parchment texture, flowing calligraphy, isometric buildings, streets, decorative elements, compass rose',
+      inst: 'Tolkien-esque town/city map with hand-drawn aesthetic, parchment texture, flowing calligraphy, isometric buildings, streets, decorative elements, compass rose. Location names must be large, bold, and clearly readable.',
       dalle: 'Tolkien-style town map, parchment texture, hand-drawn, isometric buildings, marked streets, calligraphy labels, decorative elements, compass rose, scale bar, aged appearance'
     },
     dungeon: {
-      inst: 'Grid-based battle map with square grid overlay (5-foot squares), top-down view, thick walls, D&D door symbols, numbered rooms, labeled features, clean tactical design',
+      inst: 'Grid-based battle map with square grid overlay (5-foot squares), top-down view, thick walls, D&D door symbols, numbered rooms, labeled features, clean tactical design. Room labels must be large, bold, and clearly readable.',
       dalle: 'Campaign dungeon battle map, square grid overlay (5ft), top-down view, thick black walls, D&D door symbols, numbered rooms, labeled features, tactical design suitable for VTT'
     }
   };
@@ -69,7 +73,7 @@ function getMapStyle(gameSystem, mapType, customStyle = null) {
   const customSuffix = customStyle ? `, ${customStyle}` : '';
   return {
     instructions: 'IMPORTANT - Map Style: ' + style.inst + customSuffix,
-    dallePrompt: style.dalle + customSuffix
+    dallePrompt: style.dalle + legibility + customSuffix
   };
 }
 
@@ -365,7 +369,17 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
     if (generateImage && mapDescription.dallePrompt) {
       console.log('Generating map image with DALL-E...');
       try {
-        const imageUrl = await generateMapImage(mapDescription.dallePrompt, openaiKey || null);
+        // Enrich DALL-E prompt with campaign-specific location names for legibility
+        let enrichedPrompt = mapDescription.dallePrompt;
+        const placements = mapDescription.locationPlacements || [];
+        if (placements.length > 0) {
+          const locationLabels = placements.slice(0, 8).map(p => p.location).join(', ');
+          enrichedPrompt += `. Key labeled locations: ${locationLabels}`;
+        }
+        if (context.campaign?.name) {
+          enrichedPrompt += `. Title: "${context.campaign.name}"`;
+        }
+        const imageUrl = await generateMapImage(enrichedPrompt, openaiKey || null);
         mapData.imageUrl = imageUrl;
         console.log('Map image generated:', imageUrl);
       } catch (err) {
