@@ -113,7 +113,6 @@ export async function generateAdversaryStatblock({
   templateAdversary = null
 }) {
   if (!concept?.trim()) throw new Error('Please describe the adversary concept.');
-  if (!apiKey) throw new Error('No AI API key configured. Add one in Settings.');
 
   const templateContext = templateAdversary
     ? JSON.stringify({

@@ -265,15 +265,9 @@ export default function AdversaryForm({
 
             {aiError && <p className="text-sm text-red-400">{aiError}</p>}
 
-            {!hasAI && (
-              <p className="text-xs text-amber-400">
-                No AI API key configured. Add one in Settings to use AI generation.
-              </p>
-            )}
-
             <button
               onClick={handleGenerate}
-              disabled={aiGenerating || !hasAI}
+              disabled={aiGenerating}
               className="btn btn-primary w-full flex items-center justify-center gap-2"
             >
               {aiGenerating
