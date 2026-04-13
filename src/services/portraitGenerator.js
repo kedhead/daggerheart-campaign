@@ -271,17 +271,23 @@ function buildAdversaryPortraitPrompt(adversary, gameSystem = 'daggerheart') {
 
   if (isCreature) {
     // --- Non-humanoid creature prompt ---
+    // IMPORTANT: DALL-E 3 rewrites prompts and has a strong human bias.
+    // We must: (1) Lead with the creature description, (2) Never mention "human",
+    // "person", "figure", "portrait", "face" etc — even negatively, (3) Describe
+    // the creature positively with specific visual details so DALL-E can't default
+    // to a humanoid interpretation.
     let styleBase = '';
     if (gameSystem === 'starwarsd6') {
-      styleBase = 'Star Wars creature illustration, sci-fi aesthetic, dramatic lighting, concept art quality, creature design';
+      styleBase = 'Sci-fi creature concept art, dramatic lighting, cinematic quality';
     } else {
-      styleBase = 'Fantasy RPG creature illustration, detailed fantasy art, dramatic lighting, painterly concept art quality, monster design';
+      styleBase = 'Fantasy monster concept art, painterly style, dramatic lighting';
     }
 
-    const tierContext = tier ? `Tier ${tier} threat level.` : '';
-    const roleContext = role ? `This is a ${role}-type creature.` : '';
+    // Build a rich creature-specific description leading with what it IS
+    const creatureName = name || 'a dangerous creature';
+    const tierContext = tier ? `, threat level ${tier}` : '';
 
-    return `${styleBase}. Full body illustration of ${name || 'a dangerous creature'}. ${safeDesc}. ${roleContext} ${tierContext} Show the ENTIRE creature in its natural environment. Do NOT depict any humanoid or human figure. The creature should be the sole focus. Detailed, menacing, high quality, no text or labels.`;
+    return `${styleBase}. ${safeDesc || creatureName}. Full body view of the ${creatureName}${tierContext}, showing the complete creature from head to tail/base. The scene contains only this single creature in a dark atmospheric environment. No characters, no people, no adventurers in the scene — only the monster itself. Detailed creature anatomy, menacing, high quality illustration, no text or labels.`;
   } else {
     // --- Humanoid adversary prompt (similar to NPC but with enemy tone) ---
     let styleBase = '';
