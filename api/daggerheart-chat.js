@@ -52,7 +52,7 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     try {
-        const { message, history = [], apiKey, provider = 'anthropic' } = req.body;
+        const { message, history = [], apiKey, provider = 'anthropic', campaignContext = '' } = req.body;
 
         if (!message) return res.status(400).json({ error: 'Missing required field: message' });
 
@@ -103,14 +103,19 @@ export default async function handler(req, res) {
         }
 
         // 3. Construct System Prompt
-        const systemPrompt = `You are a helpful and knowledgeable AI Game Master assistant for the tabletop roleplaying game "Daggerheart". 
-    
-You have access to relevant sections of the core rulebook below. Use this information to answer the user's questions accurately.
-If the answer cannot be found in the provided text, state that you don't know based on the provided context, but try to provide helpful general RPG advice if applicable.
+        const campaignSection = campaignContext
+          ? `=== YOUR CAMPAIGN ===\n${campaignContext}\n=== END CAMPAIGN ===\n\n`
+          : '';
 
-Tone: Helpful, encouraging, and thematic.
+        const systemPrompt = `You are an AI Game Master assistant for the tabletop roleplaying game "Daggerheart".
+${campaignContext
+  ? `You have full knowledge of the campaign described below and can answer questions about its NPCs, locations, adversaries, lore, and recent events. When the user asks about something in the campaign, draw on that knowledge directly. When giving rules advice, tie it to the specific campaign context where relevant.`
+  : `You are a helpful rules assistant. Answer questions about Daggerheart mechanics, character creation, and gameplay.`
+}
 
-=== RELEVANT RULEBOOK SECTIONS ===
+Tone: Helpful, encouraging, and thematic. Be concise — answer the question asked, don't pad with unnecessary caveats.
+
+${campaignSection}=== RELEVANT RULEBOOK SECTIONS ===
 ${contextText}
 === END RULES ===
 `;

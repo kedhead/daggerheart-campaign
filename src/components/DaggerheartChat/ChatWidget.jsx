@@ -1,22 +1,47 @@
 
-import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, X, Bot, User, Minimize2, Loader2, BookOpen } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { MessageSquare, Send, X, Bot, User, Minimize2, Loader2, BookOpen, Brain } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import './ChatWidget.css';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
+import { buildCampaignContext } from '../../services/campaignContext';
 
-export default function ChatWidget({ userId }) {
+export default function ChatWidget({
+  userId,
+  campaign     = null,
+  campaignFrame = null,
+  characters   = [],
+  npcs         = [],
+  adversaries  = [],
+  locations    = [],
+  lore         = [],
+  sessions     = [],
+  encounters   = [],
+}) {
     const [isOpen, setIsOpen] = useState(false);
 
     // Close on Escape
     useEscapeKey(() => setIsOpen(false), isOpen);
+
+    // Build campaign context string — recomputed whenever any collection changes
+    const campaignContext = useMemo(
+      () => buildCampaignContext(campaign, {
+        campaignFrame, characters, npcs, adversaries, locations, lore, sessions, encounters
+      }),
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [campaign?.id, characters.length, npcs.length, adversaries.length,
+       locations.length, lore.length, sessions.length, encounters.length]
+    );
+
+    const hasCampaign = !!campaign?.name;
+    const welcomeMessage = hasCampaign
+      ? `Hello! I know everything about **${campaign.name}** — its NPCs, locations, adversaries, lore, and recent sessions. Ask me about the campaign, the rules, or anything else!`
+      : "Hello! I'm your Daggerheart rules assistant. Ask me anything about the game rules, character creation, or mechanics!";
+
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([
-        {
-            role: 'assistant',
-            content: 'Hello! I\'m your Daggerheart Rules Assistant. Ask me anything about the game rules, character creation, or mechanics!'
-        }
+        { role: 'assistant', content: welcomeMessage }
     ]);
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef(null);
@@ -85,9 +110,10 @@ export default function ChatWidget({ userId }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: userMessage,
-                    history: messages.slice(-5), // Send last 5 messages for context
+                    history: messages.slice(-10),
                     apiKey,
-                    provider
+                    provider,
+                    campaignContext
                 })
             });
 
@@ -120,11 +146,11 @@ export default function ChatWidget({ userId }) {
                 <div className="dh-chat-window">
                     <div className="dh-chat-header">
                         <div className="dh-chat-icon">
-                            <Bot size={20} />
+                            {hasCampaign ? <Brain size={20} /> : <Bot size={20} />}
                         </div>
                         <div className="dh-chat-title">
-                            <h3>Rules Assistant</h3>
-                            <p>Powered by Daggerheart Rulebook</p>
+                            <h3>{hasCampaign ? 'Campaign GM' : 'Rules Assistant'}</h3>
+                            <p>{hasCampaign ? `Knows ${campaign.name}` : 'Powered by Daggerheart Rulebook'}</p>
                         </div>
                         <button
                             className="btn-icon"

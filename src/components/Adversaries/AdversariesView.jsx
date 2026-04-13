@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Download, Check, Skull, Filter } from 'lucide-react';
 import AdversaryCard from './AdversaryCard';
 import AdversaryForm from './AdversaryForm';
@@ -6,6 +6,7 @@ import Modal from '../Modal';
 import { DAGGERHEART_ADVERSARIES, ADVERSARIES_BY_TIER, ADVERSARIES_BY_ROLE } from '../../data/daggerheartAdversaries';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateAdversaryPortrait } from '../../services/portraitGenerator';
+import { buildCampaignContext } from '../../services/campaignContext';
 import './AdversariesView.css';
 
 export default function AdversariesView({
@@ -15,7 +16,14 @@ export default function AdversariesView({
   updateAdversary,
   deleteAdversary,
   isDM,
-  userId
+  userId,
+  campaignFrame = null,
+  npcs          = [],
+  locations     = [],
+  lore          = [],
+  sessions      = [],
+  characters    = [],
+  encounters    = [],
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
@@ -26,6 +34,14 @@ export default function AdversariesView({
   const [importTier, setImportTier] = useState('all');
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
+
+  const campaignContext = useMemo(
+    () => buildCampaignContext(campaign, {
+      campaignFrame, adversaries, npcs, locations, lore, sessions, characters, encounters
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaign?.id, adversaries.length, npcs.length, locations.length, lore.length]
+  );
 
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
   const openaiKeyInfo = getEffectiveKey('openai');
@@ -246,6 +262,7 @@ export default function AdversariesView({
         adversary={editingAdversary}
         campaignAdversaries={adversaries}
         userId={userId || campaign?.createdBy}
+        campaignContext={campaignContext}
       />
 
       {/* Import Modal */}

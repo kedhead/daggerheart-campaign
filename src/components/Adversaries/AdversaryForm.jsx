@@ -68,7 +68,8 @@ export default function AdversaryForm({
   onSave,
   adversary = null,        // existing adversary for edit mode
   campaignAdversaries = [], // all adversaries in the campaign (for template picker)
-  userId
+  userId,
+  campaignContext = ''     // pre-built campaign brain context string
 }) {
   const isEdit = !!adversary;
   const [mode, setMode] = useState('manual'); // 'manual' | 'ai' | 'template'
@@ -131,7 +132,8 @@ export default function AdversaryForm({
         tier: form.tier,
         role: form.role,
         apiKey: aiKey,
-        provider: aiProvider
+        provider: aiProvider,
+        campaignContext
       });
       setForm(prev => ({ ...result, hidden: prev.hidden }));
       setMode('manual'); // switch to form view to review/edit

@@ -508,6 +508,13 @@ function CampaignApp() {
             deleteAdversary={deleteAdversary}
             isDM={isDM}
             userId={currentUser.uid}
+            campaignFrame={campaignFrame}
+            npcs={npcs}
+            locations={locations}
+            lore={lore}
+            sessions={sessions}
+            characters={characters}
+            encounters={encounters}
           />
         );
       case 'environments':
@@ -646,7 +653,20 @@ function CampaignApp() {
         </div>
       </div>
 
-      {isDaggerheart && <ChatWidget userId={currentUser?.uid} />}
+      {isDaggerheart && (
+        <ChatWidget
+          userId={currentUser?.uid}
+          campaign={campaign}
+          campaignFrame={campaignFrame}
+          characters={characters}
+          npcs={npcs}
+          adversaries={adversaries}
+          locations={locations}
+          lore={lore}
+          sessions={sessions}
+          encounters={encounters}
+        />
+      )}
 
       <DiceRollerFloat
         campaignId={currentCampaignId}

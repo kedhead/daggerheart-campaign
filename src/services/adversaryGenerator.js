@@ -13,14 +13,14 @@ const ROLE_DESCRIPTIONS = {
   solo: 'Designed to fight an entire party alone. Very high HP (tier×5-8). Has Relentless(X) and multiple powerful abilities.'
 };
 
-function buildPrompt(concept, tier, role, templateContext) {
+function buildPrompt(concept, tier, role, templateContext, campaignContext) {
   return `You are an expert Daggerheart TTRPG game master creating a mechanically accurate adversary statblock.
 
 CONCEPT: ${concept}
 TIER: ${tier} (1=novice threats, 2=seasoned, 3=formidable, 4=legendary/world-shaking)
 ROLE: ${role} — ${ROLE_DESCRIPTIONS[role] || 'Standard adversary.'}
 
-${templateContext ? `TEMPLATE TO ADAPT (modify to fit the new concept while keeping role/tier appropriate stats):\n${templateContext}\n` : ''}
+${campaignContext ? `=== CAMPAIGN CONTEXT ===\n${campaignContext}\n\nUse the campaign context to:\n- Name the adversary to fit the campaign's world and themes\n- Reference campaign locations, factions, or lore where appropriate\n- Avoid duplicating names of existing adversaries listed above\n- Match the tone and feel of the campaign\n=== END CAMPAIGN CONTEXT ===\n` : ''}${templateContext ? `TEMPLATE TO ADAPT (modify to fit the new concept while keeping role/tier appropriate stats):\n${templateContext}\n` : ''}
 
 === DAGGERHEART ADVERSARY RULES ===
 
@@ -110,7 +110,8 @@ export async function generateAdversaryStatblock({
   role,
   apiKey,
   provider = 'anthropic',
-  templateAdversary = null
+  templateAdversary = null,
+  campaignContext = ''
 }) {
   if (!concept?.trim()) throw new Error('Please describe the adversary concept.');
 
@@ -131,7 +132,7 @@ export async function generateAdversaryStatblock({
     : '';
 
   const raw = await aiService.generate(
-    buildPrompt(concept, tier, role, templateContext),
+    buildPrompt(concept, tier, role, templateContext, campaignContext),
     apiKey,
     provider
   );
