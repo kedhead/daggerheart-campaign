@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, collection, getDocs, addDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, collection, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { Upload, File, Image, Map, Trash2, Download, Eye, X, Wand2, Loader2 } from 'lucide-react';
@@ -118,29 +118,35 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       };
 
       reader.onload = async (e) => {
-        const dataUrl = e.target.result;
+        try {
+          const dataUrl = e.target.result;
 
-        const fileData = {
-          id: Date.now().toString(),
-          name: file.name,
-          size: file.size,
-          contentType: file.type,
-          dataUrl: dataUrl,
-          timeCreated: new Date().toISOString(),
-          uploadedBy: campaign.members?.[campaign.dmId]?.displayName || 'DM'
-        };
+          const fileData = {
+            id: Date.now().toString(),
+            name: file.name,
+            size: file.size,
+            contentType: file.type,
+            dataUrl: dataUrl,
+            timeCreated: new Date().toISOString(),
+            uploadedBy: campaign.members?.[campaign.dmId]?.displayName || 'DM'
+          };
 
-        // Add file to campaign's files array
-        const campaignRef = doc(db, `campaigns/${campaign.id}`);
-        await updateDoc(campaignRef, {
-          files: arrayUnion(fileData),
-          updatedAt: serverTimestamp()
-        });
+          // Add file to campaign's files array
+          const campaignRef = doc(db, `campaigns/${campaign.id}`);
+          await updateDoc(campaignRef, {
+            files: arrayUnion(fileData),
+            updatedAt: serverTimestamp()
+          });
 
-        await loadFiles();
-        setUploading(false);
-        setUploadProgress(0);
-        setSelectedFile(null);
+          await loadFiles();
+          setUploading(false);
+          setUploadProgress(0);
+          setSelectedFile(null);
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          alert('Failed to upload file');
+          setUploading(false);
+        }
       };
 
       reader.onerror = (error) => {
@@ -168,11 +174,18 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
     }
 
     try {
-      const campaignRef = doc(db, `campaigns/${campaign.id}`);
-      await updateDoc(campaignRef, {
-        files: arrayRemove(file),
-        updatedAt: serverTimestamp()
-      });
+      if (file.isGeneratedMap) {
+        // Generated maps are stored as documents in the maps subcollection
+        const mapRef = doc(db, `campaigns/${campaign.id}/maps/${file.id}`);
+        await deleteDoc(mapRef);
+      } else {
+        // Regular uploaded files are stored in the campaign's files array
+        const campaignRef = doc(db, `campaigns/${campaign.id}`);
+        await updateDoc(campaignRef, {
+          files: arrayRemove(file),
+          updatedAt: serverTimestamp()
+        });
+      }
       await loadFiles();
     } catch (error) {
       console.error('Error deleting file:', error);
