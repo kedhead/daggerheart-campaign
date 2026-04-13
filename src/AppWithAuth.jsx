@@ -507,6 +507,7 @@ function CampaignApp() {
             updateAdversary={updateAdversary}
             deleteAdversary={deleteAdversary}
             isDM={isDM}
+            userId={currentUser.uid}
           />
         );
       case 'environments':

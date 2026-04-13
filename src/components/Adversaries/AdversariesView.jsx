@@ -14,7 +14,8 @@ export default function AdversariesView({
   addAdversary,
   updateAdversary,
   deleteAdversary,
-  isDM
+  isDM,
+  userId
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
@@ -244,7 +245,7 @@ export default function AdversariesView({
         onSave={handleSave}
         adversary={editingAdversary}
         campaignAdversaries={adversaries}
-        userId={campaign?.createdBy}
+        userId={userId || campaign?.createdBy}
       />
 
       {/* Import Modal */}
