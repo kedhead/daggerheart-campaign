@@ -4,7 +4,7 @@ import AdversaryCard from './AdversaryCard';
 import Modal from '../Modal';
 import { DAGGERHEART_ADVERSARIES, ADVERSARIES_BY_TIER, ADVERSARIES_BY_ROLE } from '../../data/daggerheartAdversaries';
 import { useAPIKey } from '../../hooks/useAPIKey';
-import { generateNPCPortrait } from '../../services/portraitGenerator';
+import { generateAdversaryPortrait } from '../../services/portraitGenerator';
 import './AdversariesView.css';
 
 export default function AdversariesView({
@@ -82,18 +82,11 @@ export default function AdversariesView({
 
   const handleGenerateImage = async (adversary) => {
     try {
-      // Build a description for image generation
-      const npcData = {
-        name: adversary.name,
-        description: `${adversary.description}. A ${adversary.role} creature/enemy.`,
-        occupation: `Tier ${adversary.tier} ${adversary.role}`,
-        relationship: 'enemy'
-      };
-
-      const imageUrl = await generateNPCPortrait(
-        npcData,
-        openaiKeyInfo?.key || null, // backend falls back to server-side OPENAI_API_KEY
-        'daggerheart',
+      const gameSystem = campaign?.gameSystem || 'daggerheart';
+      const imageUrl = await generateAdversaryPortrait(
+        adversary,
+        openaiKeyInfo?.key || null,
+        gameSystem,
         campaign?.id
       );
 

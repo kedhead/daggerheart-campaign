@@ -221,6 +221,122 @@ function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
 }
 
 /**
+ * Keywords/patterns that indicate a non-humanoid creature.
+ * Used by buildAdversaryPortraitPrompt to decide between portrait vs full-body illustration.
+ */
+const CREATURE_KEYWORDS = [
+  'ooze', 'slime', 'jelly', 'blob', 'amorphous',
+  'beast', 'animal', 'insect', 'spider', 'serpent', 'snake', 'worm',
+  'elemental', 'golem', 'construct', 'automaton',
+  'plant', 'fungus', 'mushroom', 'vine', 'treant',
+  'swarm', 'horde', 'colony',
+  'spirit', 'ghost', 'wraith', 'specter', 'phantom', 'shade',
+  'dragon', 'wyrm', 'drake', 'wyvern',
+  'aberration', 'tentacle', 'eye', 'maw',
+  'undead', 'skeleton', 'zombie',
+  'demon', 'fiend',
+  'wolf', 'bear', 'bat', 'rat', 'hawk', 'eagle', 'hound',
+  'crab', 'scorpion', 'beetle', 'centipede',
+  'fish', 'shark', 'kraken', 'leviathan', 'squid',
+  'cube', 'sphere', 'orb',
+  'shadow', 'mist', 'fog', 'cloud',
+];
+
+/**
+ * Determine if an adversary is a non-humanoid creature based on its data.
+ * @param {object} adversary - Adversary data
+ * @returns {boolean} true if the adversary appears to be a creature/monster, not a humanoid
+ */
+function isCreatureAdversary(adversary) {
+  const textToCheck = `${adversary.name || ''} ${adversary.description || ''} ${adversary.role || ''} ${adversary.type || ''}`.toLowerCase();
+  return CREATURE_KEYWORDS.some(keyword => textToCheck.includes(keyword));
+}
+
+/**
+ * Build a DALL-E prompt for an adversary image.
+ * Unlike buildNPCPortraitPrompt, this detects whether the adversary is a humanoid
+ * or a creature/monster and adjusts the prompt accordingly.
+ * Creatures get full-body illustrations; humanoids get standard portraits.
+ *
+ * @param {object} adversary - Adversary data with name, description, role, tier, etc.
+ * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
+ * @returns {string} DALL-E prompt
+ */
+function buildAdversaryPortraitPrompt(adversary, gameSystem = 'daggerheart') {
+  const { name, description, role, tier } = adversary;
+  const isCreature = isCreatureAdversary(adversary);
+
+  // Sanitize description
+  const safeDesc = sanitizePortraitText(description || '');
+
+  if (isCreature) {
+    // --- Non-humanoid creature prompt ---
+    let styleBase = '';
+    if (gameSystem === 'starwarsd6') {
+      styleBase = 'Star Wars creature illustration, sci-fi aesthetic, dramatic lighting, concept art quality, creature design';
+    } else {
+      styleBase = 'Fantasy RPG creature illustration, detailed fantasy art, dramatic lighting, painterly concept art quality, monster design';
+    }
+
+    const tierContext = tier ? `Tier ${tier} threat level.` : '';
+    const roleContext = role ? `This is a ${role}-type creature.` : '';
+
+    return `${styleBase}. Full body illustration of ${name || 'a dangerous creature'}. ${safeDesc}. ${roleContext} ${tierContext} Show the ENTIRE creature in its natural environment. Do NOT depict any humanoid or human figure. The creature should be the sole focus. Detailed, menacing, high quality, no text or labels.`;
+  } else {
+    // --- Humanoid adversary prompt (similar to NPC but with enemy tone) ---
+    let styleBase = '';
+    if (gameSystem === 'starwarsd6') {
+      styleBase = 'Star Wars villain character portrait, sci-fi aesthetic, dramatic sinister lighting, cinematic quality';
+    } else {
+      styleBase = 'Fantasy RPG villain portrait, detailed fantasy art style, dramatic sinister lighting, painterly quality';
+    }
+
+    const roleContext = role ? `, a ${role}` : '';
+    const tierContext = tier ? ` (Tier ${tier} threat)` : '';
+
+    return `${styleBase}. Portrait of ${name || 'a dangerous adversary'}${roleContext}${tierContext}. ${safeDesc}. Menacing and intense expression. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
+  }
+}
+
+/**
+ * Generate an adversary portrait image.
+ * Uses buildAdversaryPortraitPrompt which properly handles creatures vs humanoids.
+ *
+ * @param {object} adversary - Adversary data
+ * @param {string} openaiKey - Optional OpenAI API key
+ * @param {string} gameSystem - Game system for style
+ * @param {string} campaignId - Campaign ID for storage
+ * @returns {Promise<string>} Portrait URL
+ */
+export async function generateAdversaryPortrait(adversary, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
+  console.log('Building portrait prompt for adversary:', adversary.name);
+  const prompt = buildAdversaryPortraitPrompt(adversary, gameSystem);
+  console.log('DALL-E prompt:', prompt);
+
+  let dataUrl;
+  try {
+    dataUrl = await generatePortraitImage(prompt, openaiKey);
+  } catch (error) {
+    if (error.message && error.message.includes('safety system')) {
+      console.warn(`Portrait generation for ${adversary.name} blocked by safety system. Retrying with simplified prompt...`);
+      const safeAdversary = { ...adversary, description: '' };
+      const safePrompt = buildAdversaryPortraitPrompt(safeAdversary, gameSystem);
+      console.log('Safe DALL-E prompt:', safePrompt);
+      dataUrl = await generatePortraitImage(safePrompt, openaiKey);
+    } else {
+      throw error;
+    }
+  }
+
+  if (campaignId) {
+    const storageUrl = await uploadPortraitToStorage(dataUrl, campaignId, `adv_${adversary.name}`);
+    return storageUrl;
+  }
+
+  return dataUrl;
+}
+
+/**
  * Upload a data URL to Firebase Storage and return the download URL
  * @param {string} dataUrl - Base64 data URL
  * @param {string} campaignId - Campaign ID for storage path
@@ -326,9 +442,11 @@ export async function generateCharacterPortrait(character, openaiKey, gameSystem
 export const portraitGeneratorService = {
   generateNPCPortrait,
   generateCharacterPortrait,
+  generateAdversaryPortrait,
   generateLocationPortrait,
   buildNPCPortraitPrompt,
   buildCharacterPortraitPrompt,
+  buildAdversaryPortraitPrompt,
   buildLocationPortraitPrompt,
   generatePortraitImage
 };
