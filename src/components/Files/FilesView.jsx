@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { doc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, collection, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, arrayRemove, collection, getDocs, addDoc, deleteDoc } from 'firebase/firestore';
+import { ref, uploadBytes, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { Upload, File, Image, Map, Trash2, Download, Eye, X, Wand2, Loader2 } from 'lucide-react';
 import Modal from '../Modal';
@@ -66,12 +66,13 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
   const loadFiles = async () => {
     try {
-      // Regular files are stored in the campaign document
-      const regularFiles = campaign.files || [];
+      // Fetch fresh campaign data directly from Firestore (not stale prop)
+      const campaignDoc = await getDoc(doc(db, `campaigns/${campaign.id}`));
+      const regularFiles = campaignDoc.data()?.files || [];
 
       // Generated maps are stored in a subcollection
       const mapsSnapshot = await getDocs(collection(db, `campaigns/${campaign.id}/maps`));
-      const mapFiles = mapsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+      const mapFiles = mapsSnapshot.docs.map(d => ({ ...d.data(), id: d.id }));
 
       // Combine and sort by creation time
       const allFiles = [...regularFiles, ...mapFiles];
@@ -107,55 +108,35 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
     setUploadProgress(0);
 
     try {
-      // Read file as base64
-      const reader = new FileReader();
+      // Upload binary to Firebase Storage (avoids Firestore 1MB document limit)
+      const storagePath = `campaigns/${campaign.id}/files/${Date.now()}-${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, file);
+      setUploadProgress(80);
+      const downloadUrl = await getDownloadURL(storageRef);
 
-      reader.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const progress = (e.loaded / e.total) * 100;
-          setUploadProgress(progress);
-        }
+      // Store only metadata in Firestore
+      const fileData = {
+        id: Date.now().toString(),
+        name: file.name,
+        size: file.size,
+        contentType: file.type,
+        downloadUrl,
+        storagePath,
+        timeCreated: new Date().toISOString(),
+        uploadedBy: campaign.members?.[campaign.dmId]?.displayName || 'DM'
       };
 
-      reader.onload = async (e) => {
-        try {
-          const dataUrl = e.target.result;
+      const campaignRef = doc(db, `campaigns/${campaign.id}`);
+      await updateDoc(campaignRef, {
+        files: arrayUnion(fileData),
+        updatedAt: serverTimestamp()
+      });
 
-          const fileData = {
-            id: Date.now().toString(),
-            name: file.name,
-            size: file.size,
-            contentType: file.type,
-            dataUrl: dataUrl,
-            timeCreated: new Date().toISOString(),
-            uploadedBy: campaign.members?.[campaign.dmId]?.displayName || 'DM'
-          };
-
-          // Add file to campaign's files array
-          const campaignRef = doc(db, `campaigns/${campaign.id}`);
-          await updateDoc(campaignRef, {
-            files: arrayUnion(fileData),
-            updatedAt: serverTimestamp()
-          });
-
-          await loadFiles();
-          setUploading(false);
-          setUploadProgress(0);
-          setSelectedFile(null);
-        } catch (error) {
-          console.error('Error uploading file:', error);
-          alert('Failed to upload file');
-          setUploading(false);
-        }
-      };
-
-      reader.onerror = (error) => {
-        console.error('Upload error:', error);
-        alert('Failed to upload file');
-        setUploading(false);
-      };
-
-      reader.readAsDataURL(file);
+      await loadFiles();
+      setUploading(false);
+      setUploadProgress(0);
+      setSelectedFile(null);
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('Failed to upload file');
@@ -179,10 +160,16 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         const mapRef = doc(db, `campaigns/${campaign.id}/maps/${file.id}`);
         await deleteDoc(mapRef);
       } else {
-        // Regular uploaded files are stored in the campaign's files array
+        // Delete from Firebase Storage if the file was uploaded there
+        if (file.storagePath) {
+          await deleteObject(ref(storage, file.storagePath));
+        }
+        // Remove by id from the files array (avoids sending full file data in arrayRemove)
         const campaignRef = doc(db, `campaigns/${campaign.id}`);
+        const campaignDoc = await getDoc(campaignRef);
+        const updatedFiles = (campaignDoc.data()?.files || []).filter(f => f.id !== file.id);
         await updateDoc(campaignRef, {
-          files: arrayRemove(file),
+          files: updatedFiles,
           updatedAt: serverTimestamp()
         });
       }
@@ -562,7 +549,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               </div>
 
               {isImage(file.contentType) ? (
-                <img src={file.dataUrl} alt={file.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img src={file.downloadUrl || file.dataUrl} alt={file.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
               ) : file.isGeneratedMap && file.mapDescription ? (
                 <div className="text-center p-6">
                   <Wand2 size={48} className="text-[var(--fear-color)] mx-auto mb-3 opacity-80" />
@@ -602,7 +589,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               {/* Actions */}
               <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[var(--border)]">
                 <a
-                  href={file.dataUrl}
+                  href={file.downloadUrl || file.dataUrl}
                   download={file.name}
                   className="p-2 text-[var(--text-secondary)] hover:text-[var(--hope-color)] hover:bg-[var(--bg-primary)] rounded transition-colors"
                   title="Download"
@@ -638,7 +625,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
           size="large"
         >
           <div className="flex justify-center items-center bg-black/20 p-4 rounded-lg">
-            <img src={viewingFile.dataUrl} alt={viewingFile.name} className="max-w-full max-h-[80vh] rounded shadow-2xl" />
+            <img src={viewingFile.downloadUrl || viewingFile.dataUrl} alt={viewingFile.name} className="max-w-full max-h-[80vh] rounded shadow-2xl" />
           </div>
         </Modal>
       )}
@@ -675,9 +662,9 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
             size="large"
           >
             <div className="space-y-6">
-              {viewingMap.dataUrl && (
+              {(viewingMap.downloadUrl || viewingMap.dataUrl) && (
                 <div className="rounded-lg overflow-hidden border border-[var(--border)] shadow-lg">
-                  <img src={viewingMap.dataUrl} alt={viewingMap.name} className="w-full h-auto" />
+                  <img src={viewingMap.downloadUrl || viewingMap.dataUrl} alt={viewingMap.name} className="w-full h-auto" />
                 </div>
               )}
 
