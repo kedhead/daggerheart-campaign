@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search, Download, Check, Skull, Filter } from 'lucide-react';
 import AdversaryCard from './AdversaryCard';
+import AdversaryForm from './AdversaryForm';
 import Modal from '../Modal';
 import { DAGGERHEART_ADVERSARIES, ADVERSARIES_BY_TIER, ADVERSARIES_BY_ROLE } from '../../data/daggerheartAdversaries';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -19,6 +20,8 @@ export default function AdversariesView({
   const [filterTier, setFilterTier] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingAdversary, setEditingAdversary] = useState(null);
   const [importTier, setImportTier] = useState('all');
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
@@ -77,6 +80,24 @@ export default function AdversariesView({
   const handleDelete = async (id) => {
     if (confirm('Are you sure you want to delete this adversary?')) {
       await deleteAdversary(id);
+    }
+  };
+
+  const openCreate = () => {
+    setEditingAdversary(null);
+    setShowForm(true);
+  };
+
+  const openEdit = (adversary) => {
+    setEditingAdversary(adversary);
+    setShowForm(true);
+  };
+
+  const handleSave = async (formData) => {
+    if (editingAdversary) {
+      await updateAdversary(editingAdversary.id, formData);
+    } else {
+      await addAdversary({ ...formData, createdBy: campaign?.createdBy, createdByName: 'DM' });
     }
   };
 
@@ -144,7 +165,7 @@ export default function AdversariesView({
                 Import Official
               </button>
             )}
-            <button className="btn btn-primary" onClick={() => {/* TODO: Add modal */}}>
+            <button className="btn btn-primary" onClick={openCreate}>
               <Plus size={20} />
               Add Adversary
             </button>
@@ -207,7 +228,7 @@ export default function AdversariesView({
             <AdversaryCard
               key={adversary.id}
               adversary={adversary}
-              onEdit={isDM ? () => {/* TODO */} : null}
+              onEdit={isDM ? openEdit : null}
               onDelete={isDM ? handleDelete : null}
               onGenerateImage={isDM ? handleGenerateImage : null}
               isDM={isDM}
@@ -215,6 +236,16 @@ export default function AdversariesView({
           ))}
         </div>
       )}
+
+      {/* Create / Edit Adversary Form */}
+      <AdversaryForm
+        isOpen={showForm}
+        onClose={() => { setShowForm(false); setEditingAdversary(null); }}
+        onSave={handleSave}
+        adversary={editingAdversary}
+        campaignAdversaries={adversaries}
+        userId={campaign?.createdBy}
+      />
 
       {/* Import Modal */}
       <Modal
