@@ -1,6 +1,6 @@
 /**
- * Vercel Serverless Function - Portrait/Map Image Generation Proxy
- * Calls gpt-image-1 using server-side OPENAI_API_KEY or client-provided key
+ * Vercel Serverless Function - Portrait Generation Proxy
+ * Calls DALL-E 3 using server-side OPENAI_API_KEY or client-provided key
  */
 
 export const config = {
@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { prompt, apiKey, size = '1024x1024' } = req.body;
+    const { prompt, apiKey, size } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Missing required field: prompt' });
@@ -32,6 +32,10 @@ export default async function handler(req, res) {
       });
     }
 
+    // Validate size if provided (DALL-E 3 supports 1024x1024, 1024x1792, 1792x1024)
+    const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
+    const imageSize = validSizes.includes(size) ? size : '1024x1024';
+
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -39,31 +43,27 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${effectiveKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-image-1',
+        model: 'dall-e-3',
         prompt,
         n: 1,
-        size,
-        quality: 'high'
+        size: imageSize,
+        quality: 'standard',
+        style: 'vivid'
       })
     });
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: { message: response.statusText } }));
       return res.status(response.status).json({
-        error: `Image generation API error: ${error.error?.message || response.statusText}`
+        error: `DALL-E API error: ${error.error?.message || response.statusText}`
       });
     }
 
     const data = await response.json();
-
-    // gpt-image-1 returns b64_json by default; fall back to url if present
-    const b64 = data.data?.[0]?.b64_json;
-    const imageUrl = b64
-      ? `data:image/png;base64,${b64}`
-      : data.data?.[0]?.url;
+    const imageUrl = data.data[0]?.url;
 
     if (!imageUrl) {
-      return res.status(500).json({ error: 'No image returned from generation API' });
+      return res.status(500).json({ error: 'No image URL returned from DALL-E' });
     }
 
     return res.status(200).json({ imageUrl });

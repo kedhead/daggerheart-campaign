@@ -81,11 +81,6 @@ export default function AdversariesView({
   };
 
   const handleGenerateImage = async (adversary) => {
-    if (!hasOpenAIKey) {
-      alert('OpenAI API key required for image generation');
-      return;
-    }
-
     try {
       // Build a description for image generation
       const npcData = {
@@ -97,7 +92,7 @@ export default function AdversariesView({
 
       const imageUrl = await generateNPCPortrait(
         npcData,
-        openaiKeyInfo.key,
+        openaiKeyInfo?.key || null, // backend falls back to server-side OPENAI_API_KEY
         'daggerheart',
         campaign?.id
       );
@@ -221,7 +216,7 @@ export default function AdversariesView({
               adversary={adversary}
               onEdit={isDM ? () => {/* TODO */} : null}
               onDelete={isDM ? handleDelete : null}
-              onGenerateImage={isDM && hasOpenAIKey ? handleGenerateImage : null}
+              onGenerateImage={isDM ? handleGenerateImage : null}
               isDM={isDM}
             />
           ))}

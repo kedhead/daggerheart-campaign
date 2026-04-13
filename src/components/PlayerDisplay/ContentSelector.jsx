@@ -201,11 +201,6 @@ export default function ContentSelector({
 
   // Generate AI image
   const handleGenerateImage = async () => {
-    if (!hasOpenAIKey) {
-      setGenerateError('OpenAI API key required');
-      return;
-    }
-
     if (!generatePrompt.trim()) {
       setGenerateError('Please enter a description');
       return;
@@ -228,30 +223,25 @@ export default function ContentSelector({
 
       console.log('Generating display image with prompt:', fullPrompt);
 
-      // Call DALL-E API - use landscape format for TV/monitor display
-      const response = await fetch('https://api.openai.com/v1/images/generations', {
+      // Call DALL-E via server proxy — backend uses server-side OPENAI_API_KEY if no client key
+      const response = await fetch('/api/generate-portrait', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiKeyInfo.key}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'dall-e-3',
           prompt: fullPrompt,
-          n: 1,
-          size: '1792x1024',
-          quality: 'standard',
-          style: 'vivid'
+          apiKey: openaiKeyInfo?.key || undefined,
+          size: '1792x1024'
         })
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to generate image');
+        const error = await response.json().catch(() => ({ error: response.statusText }));
+        throw new Error(error.error || 'Failed to generate image');
       }
 
       const data = await response.json();
-      const imageUrl = data.data[0].url;
+      const imageUrl = data.imageUrl;
+      if (!imageUrl) throw new Error('No image URL returned');
 
       // Download via proxy and upload to Firebase Storage
       console.log('Downloading generated image...');
@@ -429,16 +419,10 @@ export default function ContentSelector({
               </div>
             )}
 
-            {!hasOpenAIKey && (
-              <div className="generate-warning">
-                OpenAI API key required for AI image generation. Add your key in Settings.
-              </div>
-            )}
-
             <button
               className="btn btn-primary"
               onClick={handleGenerateImage}
-              disabled={generating || !hasOpenAIKey || !generatePrompt.trim()}
+              disabled={generating || !generatePrompt.trim()}
             >
               {generating ? (
                 <>

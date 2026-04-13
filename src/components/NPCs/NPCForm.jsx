@@ -51,11 +51,6 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
   };
 
   const handleGeneratePortrait = async () => {
-    if (!hasOpenAIKey) {
-      setPortraitError('OpenAI API key required for portrait generation');
-      return;
-    }
-
     if (!formData.name) {
       setPortraitError('Please enter an NPC name first');
       return;
@@ -67,7 +62,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
     try {
       const gameSystem = campaign?.gameSystem || 'daggerheart';
       const campaignId = campaign?.id;
-      const avatarUrl = await generateNPCPortrait(formData, openaiKeyInfo.key, gameSystem, campaignId);
+      const avatarUrl = await generateNPCPortrait(formData, openaiKeyInfo?.key || null, gameSystem, campaignId);
 
       setFormData({
         ...formData,
@@ -145,8 +140,8 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
             type="button"
             className="btn btn-secondary"
             onClick={handleGeneratePortrait}
-            disabled={generatingPortrait || !hasOpenAIKey}
-            title={!hasOpenAIKey ? 'OpenAI API key required' : 'Generate AI portrait'}
+            disabled={generatingPortrait}
+            title="Generate AI portrait"
           >
             {generatingPortrait ? (
               <>
@@ -171,9 +166,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
             </button>
           )}
           <small className="form-hint">
-            {hasOpenAIKey
-              ? 'Upload an image or generate with AI'
-              : 'Upload an image (add OpenAI key for AI generation)'}
+            Upload an image or generate with AI
           </small>
           {portraitError && (
             <small className="form-error">{portraitError}</small>

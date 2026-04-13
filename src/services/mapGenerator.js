@@ -40,61 +40,57 @@ function getMapStyle(gameSystem, mapType, customStyle = null) {
       }
     };
     const style = holocronBase[mapType] || holocronBase.world;
-    const customSuffix = customStyle ? `, ${customStyle}` : '';
-    const legibilitySW = ', large bold readable location labels in glowing cyan font, high contrast text, all place names clearly visible and legible';
+    const legibilitySW = '. CRITICAL: all location names and labels must be rendered in LARGE, BOLD, clearly legible glowing cyan text. Every place name must be easy to read at a glance.';
+    if (customStyle) {
+      const mapSubject = { world: 'galactic map', regional: 'sector map', local: 'planetary map', dungeon: 'facility schematic' }[mapType] || 'Star Wars map';
+      return {
+        instructions: `IMPORTANT - Map Style: ${mapSubject} with ${customStyle}, Star Wars aesthetic.`,
+        dallePrompt: `Star Wars ${mapSubject}, ${customStyle}, holographic effects${legibilitySW}`
+      };
+    }
     return {
-      instructions: 'IMPORTANT - Map Style: ' + style.inst + customSuffix,
-      dallePrompt: style.dalle + legibilitySW + customSuffix
+      instructions: 'IMPORTANT - Map Style: ' + style.inst,
+      dallePrompt: style.dalle + legibilitySW
     };
   }
 
   // Legibility rules appended to all DALL-E prompts
-  const legibility = ', large bold readable location labels in clear serif font, high contrast text with dark outlines on light backgrounds, all place names clearly visible and legible, no tiny unreadable text';
+  const legibility = '. CRITICAL: all location names and labels must be rendered in LARGE, BOLD, clearly legible text. Use high contrast dark text on light areas or white text on dark areas. Every place name must be easy to read at a glance. Minimal decorative text - prioritize readability over ornamentation.';
 
-  // When a custom style is selected, build the prompt around that style as the primary
-  // directive instead of appending it to the Tolkien base (which would cause Tolkien to dominate)
+  // Default Tolkien aesthetic used when no custom style is selected
+  const tolkienBase = {
+    world: {
+      inst: 'fantasy cartography, parchment texture, illustrated mountains/forests, decorative compass rose, ornate border',
+      dalle: 'fantasy world map, parchment texture, hand-drawn aesthetic, illustrated mountains and forests, decorative compass rose, ornate border, aged appearance'
+    },
+    regional: {
+      inst: 'regional fantasy map, parchment texture, illustrated terrain, dotted roads, compass rose, scale bar',
+      dalle: 'regional fantasy map, parchment texture, hand-drawn, illustrated terrain, dotted paths, building icons, compass rose, scale bar, aged appearance'
+    },
+    local: {
+      inst: 'town/city map, parchment texture, isometric buildings, streets, decorative elements, compass rose',
+      dalle: 'town map, parchment texture, hand-drawn, isometric buildings, marked streets, decorative elements, compass rose, scale bar, aged appearance'
+    },
+    dungeon: {
+      inst: 'Grid-based battle map with square grid overlay (5-foot squares), top-down view, thick walls, numbered rooms, labeled features, clean tactical design',
+      dalle: 'dungeon battle map, square grid overlay (5ft), top-down view, thick black walls, numbered rooms, labeled features, tactical design suitable for VTT'
+    }
+  };
+
+  const base = tolkienBase[mapType] || tolkienBase.world;
+
+  // If custom style is provided, it REPLACES the default aesthetic (except dungeon which keeps grid layout)
   if (customStyle) {
-    const baseGeography = {
-      world: 'fantasy world map showing continents, oceans, mountain ranges, forests, rivers, deserts, coastlines, compass rose, ornate decorative border',
-      regional: 'fantasy regional map showing terrain, villages and towns, roads and paths, rivers and lakes, forests, landmarks, compass rose, scale bar',
-      local: 'fantasy town and city map showing buildings and districts, streets and pathways, landmarks, walls and gates, points of interest, compass rose',
-      dungeon: 'dungeon floor plan with square grid overlay (5-foot squares), rooms and corridors, doors and entrances, numbered chambers, traps, stairs and exits'
-    };
-    const geo = baseGeography[mapType] || baseGeography.world;
-    const instLabel = {
-      world: 'Fantasy world map',
-      regional: 'Fantasy regional map',
-      local: 'Fantasy town/city map',
-      dungeon: 'Dungeon floor plan'
-    };
+    const mapSubject = { world: 'fantasy world map', regional: 'regional fantasy map', local: 'town/city map', dungeon: 'dungeon battle map' }[mapType] || 'fantasy map';
     return {
-      instructions: `IMPORTANT - Map Style: ${instLabel[mapType] || 'Fantasy map'} rendered in ${customStyle} style. Location names must be large, bold, and clearly readable.`,
-      dallePrompt: `${customStyle}, ${geo}${legibility}`
+      instructions: `IMPORTANT - Map Style: ${mapSubject} with ${customStyle}. Location names must be large, bold, and clearly readable.`,
+      dallePrompt: `${mapSubject}, ${customStyle}, detailed cartography, compass rose${legibility}`
     };
   }
 
-  const fantasyBase = {
-    world: {
-      inst: 'Tolkien-esque fantasy cartography with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated mountains/forests, decorative compass rose, ornate border. Location names must be large, bold, and clearly readable.',
-      dalle: 'Tolkien-style fantasy world map, parchment texture, hand-drawn, flowing calligraphy, illustrated mountains and forests, decorative compass rose, ornate Celtic border, aged appearance'
-    },
-    regional: {
-      inst: 'Tolkien-esque regional fantasy map with hand-drawn aesthetic, parchment texture, flowing calligraphy, illustrated terrain, dotted roads, compass rose, scale bar. Location names must be large, bold, and clearly readable.',
-      dalle: 'Tolkien-style regional fantasy map, parchment texture, hand-drawn, calligraphy labels, illustrated terrain, dotted paths, building icons, compass rose, scale bar, aged appearance'
-    },
-    local: {
-      inst: 'Tolkien-esque town/city map with hand-drawn aesthetic, parchment texture, flowing calligraphy, isometric buildings, streets, decorative elements, compass rose. Location names must be large, bold, and clearly readable.',
-      dalle: 'Tolkien-style town map, parchment texture, hand-drawn, isometric buildings, marked streets, calligraphy labels, decorative elements, compass rose, scale bar, aged appearance'
-    },
-    dungeon: {
-      inst: 'Grid-based battle map with square grid overlay (5-foot squares), top-down view, thick walls, D&D door symbols, numbered rooms, labeled features, clean tactical design. Room labels must be large, bold, and clearly readable.',
-      dalle: 'Campaign dungeon battle map, square grid overlay (5ft), top-down view, thick black walls, D&D door symbols, numbered rooms, labeled features, tactical design suitable for VTT'
-    }
-  };
-  const style = fantasyBase[mapType] || fantasyBase.world;
   return {
-    instructions: 'IMPORTANT - Map Style: ' + style.inst,
-    dallePrompt: style.dalle + legibility
+    instructions: 'IMPORTANT - Map Style: ' + base.inst + '. Location names must be large, bold, and clearly readable.',
+    dallePrompt: base.dalle + legibility
   };
 }
 
@@ -331,7 +327,7 @@ async function generateMapImage(prompt, apiKey) {
     body: JSON.stringify({
       prompt,
       apiKey: apiKey || undefined, // backend uses server key if omitted
-      size: '1536x1024' // landscape fills the wide map container better
+      size: '1024x1024'
     })
   });
 
@@ -343,11 +339,6 @@ async function generateMapImage(prompt, apiKey) {
   const data = await response.json();
   const imageUrl = data.imageUrl;
   if (!imageUrl) throw new Error('No image URL returned from map generation');
-
-  // If already a data URL (gpt-image-1 returns base64 directly), no download needed
-  if (imageUrl.startsWith('data:')) {
-    return imageUrl;
-  }
 
   // Download and convert to data URL so it doesn't expire
   console.log('Downloading map image to convert to data URL...');
@@ -392,22 +383,11 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
     };
 
     // Generate image if requested (backend uses server key if no client key provided)
-    if (generateImage) {
-      console.log('Generating map image...');
+    if (generateImage && mapDescription.dallePrompt) {
+      console.log('Generating map image with DALL-E...');
       try {
-        // Build the image prompt from our style config directly — NOT from the AI's dallePrompt
-        // output, because the AI rewrites it to Tolkien style regardless of the selected style.
-        const gameSystem = context.campaign?.gameSystem || 'daggerheart';
-        const styleInfo = getMapStyle(gameSystem, context.mapType || 'world', context.customStyle || null);
-        let enrichedPrompt = styleInfo.dallePrompt;
-
-        // Append geography specifics from the AI description for uniqueness
-        const features = mapDescription.features || [];
-        if (features.length > 0) {
-          enrichedPrompt += `, featuring ${features.slice(0, 4).join(', ')}`;
-        }
-
-        // Add location labels for readability
+        // Enrich DALL-E prompt with campaign-specific location names for legibility
+        let enrichedPrompt = mapDescription.dallePrompt;
         const placements = mapDescription.locationPlacements || [];
         if (placements.length > 0) {
           const locationLabels = placements.slice(0, 8).map(p => p.location).join(', ');
@@ -416,11 +396,9 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
         if (context.campaign?.name) {
           enrichedPrompt += `. Title: "${context.campaign.name}"`;
         }
-
-        console.log('Map image prompt:', enrichedPrompt);
         const imageUrl = await generateMapImage(enrichedPrompt, openaiKey || null);
         mapData.imageUrl = imageUrl;
-        console.log('Map image generated successfully');
+        console.log('Map image generated:', imageUrl);
       } catch (err) {
         console.error('Failed to generate map image:', err);
         // Continue without image - we still have the description

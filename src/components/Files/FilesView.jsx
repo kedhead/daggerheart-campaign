@@ -19,8 +19,22 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
   const [generatingMap, setGeneratingMap] = useState(false);
   const [showMapGenerator, setShowMapGenerator] = useState(false);
   const [mapType, setMapType] = useState('world');
+  const [mapStyle, setMapStyle] = useState('');
   const [selectedLocation, setSelectedLocation] = useState(null);
   const { hasKey, keys } = useAPIKey(userId);
+
+  const MAP_STYLES = [
+    { value: '', label: 'Tolkien (Classic)' },
+    { value: 'watercolor painted, soft washes, artistic brushstrokes', label: 'Watercolor' },
+    { value: 'dark gothic, high contrast, ink crosshatching, dramatic shadows', label: 'Dark Gothic' },
+    { value: 'clean modern cartography, vector-style, bold outlines, infographic clarity', label: 'Modern / Clean' },
+    { value: 'ancient nautical chart, compass rose, sea monsters, aged yellowed paper', label: 'Nautical / Pirate' },
+    { value: 'aerial satellite view, realistic terrain, natural colors, topographic contours', label: 'Satellite / Realistic' },
+    { value: 'hand-drawn pencil sketch, notebook paper, rough linework, charcoal shading', label: 'Pencil Sketch' },
+    { value: 'stained glass mosaic, vibrant jewel colors, black leading, cathedral window style', label: 'Stained Glass' },
+    { value: 'Japanese ukiyo-e woodblock print, stylized waves, bold outlines, traditional ink', label: 'Ukiyo-e / Woodblock' },
+    { value: 'pixel art, 16-bit retro game map, bright colors, tile-based', label: 'Pixel Art / Retro' },
+  ];
 
   // Get map type descriptions based on game system
   const getMapTypeDescriptions = () => {
@@ -37,9 +51,9 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
     // Default fantasy descriptions for Daggerheart, D&D 5e, and generic
     return {
-      world: 'World Map - Tolkien-esque overview of entire campaign world',
-      regional: 'Regional Map - Tolkien-esque area around a location',
-      local: 'Local Map - Tolkien-esque detailed map of a city/town',
+      world: 'World Map - Overview of entire campaign world',
+      regional: 'Regional Map - Area around a specific location',
+      local: 'Local Map - Detailed map of a city/town',
       dungeon: 'Dungeon Map - Grid-based tactical battle map'
     };
   };
@@ -188,6 +202,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
         campaign,
         locations,
         mapType,
+        customStyle: mapStyle || null,
         mapName: mapType === 'world'
           ? `${campaign.name} World Map`
           : `${selectedLocation?.name} Map`
@@ -412,6 +427,21 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                 <option value="regional">{mapDescriptions.regional}</option>
                 <option value="local">{mapDescriptions.local}</option>
                 <option value="dungeon">{mapDescriptions.dungeon}</option>
+              </select>
+            </div>
+
+            {/* Map Style Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-[var(--text-primary)]">Map Style</label>
+              <select
+                value={mapStyle}
+                onChange={(e) => setMapStyle(e.target.value)}
+                disabled={generatingMap}
+                className="w-full p-3 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-[var(--text-primary)] focus:border-[var(--hope-color)] outline-none transition-colors"
+              >
+                {MAP_STYLES.map(s => (
+                  <option key={s.label} value={s.value}>{s.label}</option>
+                ))}
               </select>
             </div>
 
