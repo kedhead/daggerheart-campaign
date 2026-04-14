@@ -171,29 +171,35 @@ export default function BattleMapDisplay({ mapState }) {
 
   useEffect(() => {
     const updateDimensions = () => {
-      if (containerRef.current && mapState?.mapImage) {
-        const containerWidth = containerRef.current.clientWidth;
-        const containerHeight = containerRef.current.clientHeight;
+      if (!containerRef.current || !mapState?.mapImage) return;
 
-        const mapWidth = mapState.mapImage.width;
-        const mapHeight = mapState.mapImage.height;
+      // Use the viewport size directly — more reliable than clientWidth when
+      // the parent uses top/left/width/height absolute positioning
+      const containerWidth = containerRef.current.clientWidth || window.innerWidth;
+      const containerHeight = containerRef.current.clientHeight || window.innerHeight;
 
-        // Calculate scale to fill the container while maintaining aspect ratio
-        const scaleX = containerWidth / mapWidth;
-        const scaleY = containerHeight / mapHeight;
-        const newScale = Math.min(scaleX, scaleY);
+      if (containerWidth === 0 || containerHeight === 0) return;
 
-        setScale(newScale);
-        setDimensions({
-          width: containerWidth,
-          height: containerHeight
-        });
-      }
+      const mapWidth = mapState.mapImage.width;
+      const mapHeight = mapState.mapImage.height;
+
+      // Scale to FILL (cover): whichever axis needs the larger scale wins.
+      // Excess is clipped by overflow:hidden on the parent.
+      const scaleX = containerWidth / mapWidth;
+      const scaleY = containerHeight / mapHeight;
+      const newScale = Math.max(scaleX, scaleY);
+
+      setScale(newScale);
+      setDimensions({ width: containerWidth, height: containerHeight });
     };
 
-    updateDimensions();
+    // Defer one frame so the DOM has finished laying out
+    const raf = requestAnimationFrame(updateDimensions);
     window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', updateDimensions);
+    };
   }, [mapState?.mapImage]);
 
   if (!mapState || !mapState.mapImage) {
