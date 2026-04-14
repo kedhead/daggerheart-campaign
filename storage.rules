@@ -33,7 +33,7 @@ service firebase.storage {
 
       // Allow write (upload) if user is a DM of the campaign
       allow create: if isAuthenticated() && isCampaignDM(campaignId)
-                    && request.resource.size < 10 * 1024 * 1024; // Max 10MB
+                    && request.resource.size < 50 * 1024 * 1024; // Max 50MB
 
       // Allow delete if user is a DM of the campaign
       allow delete: if isAuthenticated() && isCampaignDM(campaignId);
@@ -59,7 +59,7 @@ service firebase.storage {
 
       // Allow write (upload) if user is a DM of the campaign
       allow create: if isAuthenticated() && isCampaignDM(campaignId)
-                    && request.resource.size < 10 * 1024 * 1024; // Max 10MB
+                    && request.resource.size < 500 * 1024 * 1024; // Max 500MB for video
 
       // Allow delete if user is a DM of the campaign
       allow delete: if isAuthenticated() && isCampaignDM(campaignId);
