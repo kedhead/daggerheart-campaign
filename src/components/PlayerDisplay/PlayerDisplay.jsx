@@ -119,36 +119,34 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
 
   return (
     <div
-      className={`player-display-container ${isFullscreen ? 'fullscreen' : ''} ${showBattleMap && battleMapState ? 'has-battle-map' : ''}`}
+      className={`player-display-container ${isFullscreen ? 'fullscreen' : ''}`}
       onClick={() => setShowControls(prev => !prev)}
     >
-      {/* Battle Map fills the full screen */}
-      {showBattleMap && battleMapState && (
+      {showBattleMap && battleMapState ? (
+        /* Battle Map: fills the entire screen, no overlays */
         <div className="battle-map-fullscreen">
           <BattleMapDisplay mapState={battleMapState} />
         </div>
-      )}
+      ) : (
+        /* Normal player display: Fear/Initiative header + content */
+        <>
+          <div className="player-display-header">
+            {isDaggerheart && showFear && (
+              <FearCounter fearCount={fearCount} />
+            )}
+            {showInitiative && initiative?.active && (
+              <InitiativeDisplay initiative={initiative} />
+            )}
+          </div>
 
-      {/* Header with Fear and Initiative — overlays on top of battle map */}
-      <div className="player-display-header">
-        {isDaggerheart && showFear && (
-          <FearCounter fearCount={fearCount} />
-        )}
-
-        {showInitiative && initiative?.active && (
-          <InitiativeDisplay initiative={initiative} />
-        )}
-      </div>
-
-      {/* Main Content Area — hidden when battle map is active */}
-      {!showBattleMap && (
-        <div className="player-display-content">
-          {contentItems && contentItems.length > 0 ? (
-            <ContentGrid items={contentItems} showNames={showNames} />
-          ) : (
-            <ContentDisplay contentType={contentType} content={content} showNames={showNames} />
-          )}
-        </div>
+          <div className="player-display-content">
+            {contentItems && contentItems.length > 0 ? (
+              <ContentGrid items={contentItems} showNames={showNames} />
+            ) : (
+              <ContentDisplay contentType={contentType} content={content} showNames={showNames} />
+            )}
+          </div>
+        </>
       )}
 
       {/* Fullscreen Control */}
