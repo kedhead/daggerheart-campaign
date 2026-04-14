@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Image as ImageIcon, Youtube, Film } from 'lucide-react';
 import './PlayerDisplay.css';
 
@@ -20,8 +20,9 @@ function getYouTubeVideoId(url) {
 }
 
 // Single grid item component
-function GridItem({ item, showNames }) {
+function GridItem({ item, showNames, videoMuted = true }) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     setIsLoaded(false);
@@ -29,6 +30,17 @@ function GridItem({ item, showNames }) {
       setTimeout(() => setIsLoaded(true), 100);
     }
   }, [item.url, item.type]);
+
+  // Apply DM-controlled mute state to uploaded video elements live.
+  useEffect(() => {
+    if (item.type !== 'localvideo') return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = videoMuted;
+    if (!videoMuted) {
+      v.play().catch(() => {});
+    }
+  }, [videoMuted, item.type, item.url]);
 
   const handleImageLoad = () => {
     setIsLoaded(true);
@@ -71,11 +83,13 @@ function GridItem({ item, showNames }) {
         <div className="grid-video-container">
           {item.url ? (
             <video
+              ref={videoRef}
               src={item.url}
               autoPlay
               loop
-              muted
+              muted={videoMuted}
               playsInline
+              controls
               onCanPlay={() => setIsLoaded(true)}
               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
@@ -108,7 +122,7 @@ function GridItem({ item, showNames }) {
   );
 }
 
-export default function ContentGrid({ items, showNames = false }) {
+export default function ContentGrid({ items, showNames = false, videoMuted = true }) {
   if (!items || items.length === 0) {
     return (
       <div className="content-display empty">
@@ -132,7 +146,7 @@ export default function ContentGrid({ items, showNames = false }) {
   return (
     <div className={`content-grid ${getGridClass(items.length)}`}>
       {items.map(item => (
-        <GridItem key={item.id} item={item} showNames={showNames} />
+        <GridItem key={item.id} item={item} showNames={showNames} videoMuted={videoMuted} />
       ))}
     </div>
   );

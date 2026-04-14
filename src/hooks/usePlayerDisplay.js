@@ -14,6 +14,7 @@ export function usePlayerDisplay(campaignId) {
     contentName: '',
     contentShowName: true,
     contentItems: [], // Array of content items for multi-display
+    videoMuted: true, // DM-controlled mute for uploaded videos (default on for reliable autoplay)
     showBattleMap: false,
     battleMapState: null
   });
@@ -51,6 +52,7 @@ export function usePlayerDisplay(campaignId) {
             contentName: '',
             contentShowName: true,
             contentItems: [],
+            videoMuted: true,
             showBattleMap: false,
             battleMapState: null
           });
@@ -82,6 +84,7 @@ export function usePlayerDisplay(campaignId) {
         contentName: updates.contentName ?? displayState.contentName ?? '',
         contentShowName: updates.contentShowName ?? displayState.contentShowName ?? true,
         contentItems: updates.contentItems ?? displayState.contentItems ?? [],
+        videoMuted: updates.videoMuted ?? displayState.videoMuted ?? true,
         updatedAt: serverTimestamp()
       };
 
@@ -125,6 +128,10 @@ export function usePlayerDisplay(campaignId) {
 
   const toggleEnabled = async () => {
     await updateDisplayState({ enabled: !displayState.enabled });
+  };
+
+  const toggleVideoMuted = async () => {
+    await updateDisplayState({ videoMuted: !(displayState.videoMuted !== false) });
   };
 
   // Content methods
@@ -199,6 +206,7 @@ export function usePlayerDisplay(campaignId) {
     contentType: displayState.contentType || 'none',
     content,
     contentItems: displayState.contentItems || [],
+    videoMuted: displayState.videoMuted !== false, // default true
     showBattleMap: displayState.showBattleMap === true,
     battleMapState: displayState.battleMapState || null,
 
@@ -213,6 +221,7 @@ export function usePlayerDisplay(campaignId) {
     toggleInitiative,
     toggleNames,
     toggleEnabled,
+    toggleVideoMuted,
 
     // Content methods (single - legacy)
     setDisplayContent,

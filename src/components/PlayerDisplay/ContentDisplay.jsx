@@ -20,26 +20,23 @@ function getYouTubeVideoId(url) {
   return null;
 }
 
-export default function ContentDisplay({ contentType, content, showNames = false }) {
+export default function ContentDisplay({ contentType, content, showNames = false, videoMuted = true }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [prevUrl, setPrevUrl] = useState(null);
   const videoRef = useRef(null);
 
-  // Try to autoplay uploaded videos with sound; browsers block audio autoplay
-  // without prior user interaction, so fall back to muted playback in that case.
-  const handleVideoLoaded = () => {
-    setIsLoaded(true);
+  // Apply DM-controlled mute state to the video element whenever it changes.
+  // Updating muted on an already-playing video is not subject to autoplay
+  // restrictions, so this lets the DM safely unmute after playback starts.
+  useEffect(() => {
+    if (contentType !== 'localvideo') return;
     const v = videoRef.current;
     if (!v) return;
-    v.muted = false;
-    const p = v.play();
-    if (p && typeof p.catch === 'function') {
-      p.catch(() => {
-        v.muted = true;
-        v.play().catch(() => {});
-      });
+    v.muted = videoMuted;
+    if (!videoMuted) {
+      v.play().catch(() => {});
     }
-  };
+  }, [videoMuted, contentType, content?.url]);
 
   // Handle fade transitions when content changes
   useEffect(() => {
@@ -112,7 +109,8 @@ export default function ContentDisplay({ contentType, content, showNames = false
             loop
             playsInline
             controls
-            onLoadedData={handleVideoLoaded}
+            muted={videoMuted}
+            onLoadedData={() => setIsLoaded(true)}
           />
         )}
         {showNames && content.name && (

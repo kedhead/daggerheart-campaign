@@ -20,6 +20,7 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
     contentType,
     content,
     contentItems,
+    videoMuted,
     showBattleMap,
     battleMapState
   } = usePlayerDisplay(campaignId);
@@ -138,9 +139,9 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
         {showBattleMap && battleMapState ? (
           <BattleMapDisplay mapState={battleMapState} />
         ) : contentItems && contentItems.length > 0 ? (
-          <ContentGrid items={contentItems} showNames={showNames} />
+          <ContentGrid items={contentItems} showNames={showNames} videoMuted={videoMuted} />
         ) : (
-          <ContentDisplay contentType={contentType} content={content} showNames={showNames} />
+          <ContentDisplay contentType={contentType} content={content} showNames={showNames} videoMuted={videoMuted} />
         )}
       </div>
 
