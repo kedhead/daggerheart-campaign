@@ -540,6 +540,23 @@
    Battle Map Display
    ================================= */
 
+/* Full-screen battle map — covers the entire display behind the header */
+.battle-map-fullscreen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+}
+
+/* Header floats over battle map */
+.has-battle-map .player-display-header {
+  position: relative;
+  z-index: 10;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+}
+
 .battle-map-display {
   width: 100%;
   height: 100%;

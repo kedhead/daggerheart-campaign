@@ -119,10 +119,17 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
 
   return (
     <div
-      className={`player-display-container ${isFullscreen ? 'fullscreen' : ''}`}
+      className={`player-display-container ${isFullscreen ? 'fullscreen' : ''} ${showBattleMap && battleMapState ? 'has-battle-map' : ''}`}
       onClick={() => setShowControls(prev => !prev)}
     >
-      {/* Header with Fear and Initiative */}
+      {/* Battle Map fills the full screen */}
+      {showBattleMap && battleMapState && (
+        <div className="battle-map-fullscreen">
+          <BattleMapDisplay mapState={battleMapState} />
+        </div>
+      )}
+
+      {/* Header with Fear and Initiative — overlays on top of battle map */}
       <div className="player-display-header">
         {isDaggerheart && showFear && (
           <FearCounter fearCount={fearCount} />
@@ -133,16 +140,16 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
         )}
       </div>
 
-      {/* Main Content Area */}
-      <div className="player-display-content">
-        {showBattleMap && battleMapState ? (
-          <BattleMapDisplay mapState={battleMapState} />
-        ) : contentItems && contentItems.length > 0 ? (
-          <ContentGrid items={contentItems} showNames={showNames} />
-        ) : (
-          <ContentDisplay contentType={contentType} content={content} showNames={showNames} />
-        )}
-      </div>
+      {/* Main Content Area — hidden when battle map is active */}
+      {!showBattleMap && (
+        <div className="player-display-content">
+          {contentItems && contentItems.length > 0 ? (
+            <ContentGrid items={contentItems} showNames={showNames} />
+          ) : (
+            <ContentDisplay contentType={contentType} content={content} showNames={showNames} />
+          )}
+        </div>
+      )}
 
       {/* Fullscreen Control */}
       <button

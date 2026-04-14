@@ -178,10 +178,10 @@ export default function BattleMapDisplay({ mapState }) {
         const mapWidth = mapState.mapImage.width;
         const mapHeight = mapState.mapImage.height;
 
-        // Calculate scale to fit the map in the container
+        // Calculate scale to fill the container while maintaining aspect ratio
         const scaleX = containerWidth / mapWidth;
         const scaleY = containerHeight / mapHeight;
-        const newScale = Math.min(scaleX, scaleY, 1);
+        const newScale = Math.min(scaleX, scaleY);
 
         setScale(newScale);
         setDimensions({
