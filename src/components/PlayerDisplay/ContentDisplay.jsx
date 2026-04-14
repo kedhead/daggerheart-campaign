@@ -82,6 +82,31 @@ export default function ContentDisplay({ contentType, content, showNames = false
     );
   }
 
+  // Uploaded video (MP4/WebM) display
+  if (contentType === 'localvideo') {
+    return (
+      <div className={`content-display video ${isLoaded ? 'loaded' : 'loading'}`}>
+        {content.url && (
+          <video
+            src={content.url}
+            className="content-video"
+            autoPlay
+            loop
+            playsInline
+            controls
+            muted
+            onLoadedData={handleImageLoad}
+          />
+        )}
+        {showNames && content.name && (
+          <div className="content-caption">
+            <h2>{content.name}</h2>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   // Image display (default)
   return (
     <div className={`content-display ${isLoaded ? 'loaded' : 'loading'}`}>
