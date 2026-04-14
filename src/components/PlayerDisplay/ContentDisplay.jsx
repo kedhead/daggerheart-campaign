@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Image as ImageIcon, Youtube } from 'lucide-react';
 import './PlayerDisplay.css';
 
@@ -23,6 +23,23 @@ function getYouTubeVideoId(url) {
 export default function ContentDisplay({ contentType, content, showNames = false }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [prevUrl, setPrevUrl] = useState(null);
+  const videoRef = useRef(null);
+
+  // Try to autoplay uploaded videos with sound; browsers block audio autoplay
+  // without prior user interaction, so fall back to muted playback in that case.
+  const handleVideoLoaded = () => {
+    setIsLoaded(true);
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = false;
+    const p = v.play();
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => {
+        v.muted = true;
+        v.play().catch(() => {});
+      });
+    }
+  };
 
   // Handle fade transitions when content changes
   useEffect(() => {
@@ -88,14 +105,14 @@ export default function ContentDisplay({ contentType, content, showNames = false
       <div className={`content-display video ${isLoaded ? 'loaded' : 'loading'}`}>
         {content.url && (
           <video
+            ref={videoRef}
             src={content.url}
             className="content-video"
             autoPlay
             loop
             playsInline
             controls
-            muted
-            onLoadedData={handleImageLoad}
+            onLoadedData={handleVideoLoaded}
           />
         )}
         {showNames && content.name && (
