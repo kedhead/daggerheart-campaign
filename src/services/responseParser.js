@@ -171,6 +171,7 @@ export const responseParser = {
       rewards: data.rewards || '',
       suggestedAdversaries: Array.isArray(data.suggestedAdversaries) ? data.suggestedAdversaries : [],
       suggestedEnvironment: data.suggestedEnvironment || '',
+      newAdversaries: Array.isArray(data.newAdversaries) ? data.newAdversaries : [],
       freshCutGrassLink: ''
     };
   },
