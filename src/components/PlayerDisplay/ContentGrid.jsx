@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Image as ImageIcon, Youtube } from 'lucide-react';
+import { Image as ImageIcon, Youtube, Film } from 'lucide-react';
 import './PlayerDisplay.css';
 
 // Extract YouTube video ID from various URL formats
@@ -25,7 +25,7 @@ function GridItem({ item, showNames }) {
 
   useEffect(() => {
     setIsLoaded(false);
-    if (item.type === 'video') {
+    if (item.type === 'video' || item.type === 'localvideo') {
       setTimeout(() => setIsLoaded(true), 100);
     }
   }, [item.url, item.type]);
@@ -56,6 +56,32 @@ function GridItem({ item, showNames }) {
             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
+        </div>
+        {showNames && item.name && (
+          <div className="grid-item-caption">{item.name}</div>
+        )}
+      </div>
+    );
+  }
+
+  // Locally uploaded video
+  if (item.type === 'localvideo') {
+    return (
+      <div className={`grid-item video ${isLoaded ? 'loaded' : 'loading'}`}>
+        <div className="grid-video-container">
+          {item.url ? (
+            <video
+              src={item.url}
+              autoPlay
+              loop
+              muted
+              playsInline
+              onCanPlay={() => setIsLoaded(true)}
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+          ) : (
+            <Film size={48} strokeWidth={1} />
+          )}
         </div>
         {showNames && item.name && (
           <div className="grid-item-caption">{item.name}</div>

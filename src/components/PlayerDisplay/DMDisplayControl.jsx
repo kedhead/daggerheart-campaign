@@ -147,6 +147,13 @@ export default function DMDisplayControl({
                         src={`https://img.youtube.com/vi/${getYouTubeVideoId(item.url)}/mqdefault.jpg`}
                         alt={item.name || 'Video'}
                       />
+                    ) : item.type === 'localvideo' ? (
+                      <video
+                        src={item.url}
+                        muted
+                        playsInline
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
                     ) : (
                       <img src={item.url} alt={item.name || 'Content'} />
                     )}

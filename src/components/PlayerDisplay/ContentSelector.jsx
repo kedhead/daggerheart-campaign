@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { useAPIKey } from '../../hooks/useAPIKey';
-import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2, Wand2, Skull, Plus } from 'lucide-react';
+import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2, Wand2, Skull, Plus, Film } from 'lucide-react';
 import './DMDisplayControl.css';
 
 // Extract YouTube video ID for thumbnail
@@ -129,74 +129,69 @@ export default function ContentSelector({
     });
   };
 
-  // Handle quick image upload - uploads to Firebase Storage
+  // Handle quick upload — supports images and videos
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Check if it's an image
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+    const isVideo = file.type.startsWith('video/');
+    const isImage = file.type.startsWith('image/');
+
+    if (!isImage && !isVideo) {
+      alert('Please select an image or video file');
       return;
     }
 
-    // Check file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('File size must be less than 5MB');
+    // Images: 50MB limit  |  Videos: 500MB limit
+    const maxBytes = isVideo ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      alert(`File size must be less than ${isVideo ? '500MB' : '50MB'}`);
       return;
     }
 
     setUploading(true);
 
     try {
-      // Read file as base64
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const dataUrl = event.target.result;
-        const fileName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+      const timestamp = Date.now();
+      const storagePath = `campaigns/${campaignId}/display/${timestamp}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
 
-        try {
-          // Upload to Firebase Storage
-          const timestamp = Date.now();
-          const storagePath = `campaigns/${campaignId}/display/${timestamp}_${file.name}`;
-          const storageRef = ref(storage, storagePath);
+      // Upload binary directly — avoids base64 blowing up memory for large files
+      await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(storageRef);
 
-          await uploadString(storageRef, dataUrl, 'data_url');
-          const downloadUrl = await getDownloadURL(storageRef);
-
-          setUploadedImage({
-            url: downloadUrl,
-            name: fileName
-          });
-          setUploading(false);
-        } catch (uploadError) {
-          console.error('Upload error:', uploadError);
-          alert('Failed to upload image to storage');
-          setUploading(false);
-        }
-      };
-      reader.onerror = () => {
-        alert('Failed to read file');
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('Error processing file:', error);
-      alert('Failed to process file');
+      setUploadedImage({
+        url: downloadUrl,
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        isVideo
+      });
+    } catch (uploadError) {
+      console.error('Upload error:', uploadError);
+      alert('Failed to upload file to storage');
+    } finally {
       setUploading(false);
     }
   };
 
-  // Push uploaded image to display
+  // Push uploaded file to display
   const handlePushUploadedImage = () => {
     if (!uploadedImage) return;
 
-    onSelectContent('image', {
-      url: uploadedImage.url,
-      name: uploadedImage.name,
-      type: 'uploaded',
-      showName: true
-    });
+    if (uploadedImage.isVideo) {
+      onSelectContent('localvideo', {
+        url: uploadedImage.url,
+        name: uploadedImage.name,
+        type: 'localvideo',
+        showName: true
+      });
+    } else {
+      onSelectContent('image', {
+        url: uploadedImage.url,
+        name: uploadedImage.name,
+        type: 'uploaded',
+        showName: true
+      });
+    }
   };
 
   // Generate AI image
@@ -479,7 +474,7 @@ export default function ContentSelector({
             <label className="upload-dropzone">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*,video/*"
                 onChange={handleFileSelect}
                 disabled={uploading}
               />
@@ -490,14 +485,27 @@ export default function ContentSelector({
                 </>
               ) : uploadedImage ? (
                 <div className="uploaded-preview">
-                  <img src={uploadedImage.url} alt={uploadedImage.name} />
-                  <span className="uploaded-name">{uploadedImage.name}</span>
+                  {uploadedImage.isVideo ? (
+                    <video
+                      src={uploadedImage.url}
+                      muted
+                      playsInline
+                      controls
+                      style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '6px' }}
+                    />
+                  ) : (
+                    <img src={uploadedImage.url} alt={uploadedImage.name} />
+                  )}
+                  <span className="uploaded-name">
+                    {uploadedImage.isVideo && <Film size={12} style={{ display: 'inline', marginRight: 4 }} />}
+                    {uploadedImage.name}
+                  </span>
                 </div>
               ) : (
                 <>
                   <Upload size={40} />
-                  <span>Click to select an image</span>
-                  <span className="upload-hint">Max 5MB - JPG, PNG, GIF, WebP</span>
+                  <span>Click to select an image or video</span>
+                  <span className="upload-hint">Images up to 50MB · Videos up to 500MB</span>
                 </>
               )}
             </label>
@@ -522,7 +530,7 @@ export default function ContentSelector({
           )}
 
           <p className="upload-note">
-            Quick upload displays the image immediately without saving to campaign files.
+            Quick upload sends the file straight to the display without saving to campaign files.
           </p>
         </div>
       );
