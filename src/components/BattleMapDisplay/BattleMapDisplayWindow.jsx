@@ -373,7 +373,7 @@ export default function BattleMapDisplayWindow({ campaignId }) {
 
       const scaleX = windowWidth / mapWidth;
       const scaleY = windowHeight / mapHeight;
-      setScale(Math.min(scaleX, scaleY, 1)); // Don't scale up, only down
+      setScale(Math.max(scaleX, scaleY)); // Cover: fill screen, clip overflow
     };
 
     updateScale();
