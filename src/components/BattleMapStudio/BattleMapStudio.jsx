@@ -161,7 +161,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
     window.open(
       displayUrl,
       'BattleMapDisplay',
-      'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no'
+      'width=2560,height=1440,menubar=no,toolbar=no,location=no,status=no'
     );
   }, [campaignId]);
 
