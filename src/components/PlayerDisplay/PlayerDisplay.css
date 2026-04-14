@@ -234,6 +234,18 @@
   opacity: 1;
 }
 
+.content-display .content-video {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.content-display.loaded .content-video {
+  opacity: 1;
+}
+
 /* Video Container for YouTube */
 .content-display.video {
   padding: 0;

@@ -20,7 +20,7 @@ export async function generateBattleMap(options) {
   const {
     prompt,
     type = 'battle-map',
-    model = 'dall-e-3',
+    model = 'dall-e-3',  // Default to DALL-E 3 (direct OpenAI, faster than 1min.ai)
     size = '1024x1024',
     style = 'vivid',
     animated = false

@@ -418,6 +418,7 @@ function CampaignApp() {
             addEncounter={addEncounter}
             updateEncounter={updateEncounter}
             deleteEncounter={deleteEncounter}
+            addAdversary={addAdversary}
             isDM={isDM}
             npcs={npcs}
             locations={locations}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Image as ImageIcon, Youtube } from 'lucide-react';
 import './PlayerDisplay.css';
 
@@ -20,9 +20,23 @@ function getYouTubeVideoId(url) {
   return null;
 }
 
-export default function ContentDisplay({ contentType, content, showNames = false }) {
+export default function ContentDisplay({ contentType, content, showNames = false, videoMuted = true }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [prevUrl, setPrevUrl] = useState(null);
+  const videoRef = useRef(null);
+
+  // Apply DM-controlled mute state to the video element whenever it changes.
+  // Updating muted on an already-playing video is not subject to autoplay
+  // restrictions, so this lets the DM safely unmute after playback starts.
+  useEffect(() => {
+    if (contentType !== 'localvideo') return;
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = videoMuted;
+    if (!videoMuted) {
+      v.play().catch(() => {});
+    }
+  }, [videoMuted, contentType, content?.url]);
 
   // Handle fade transitions when content changes
   useEffect(() => {
@@ -73,6 +87,32 @@ export default function ContentDisplay({ contentType, content, showNames = false
             allowFullScreen
           />
         </div>
+        {showNames && content.name && (
+          <div className="content-caption">
+            <h2>{content.name}</h2>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Uploaded video (MP4/WebM) display
+  if (contentType === 'localvideo') {
+    return (
+      <div className={`content-display video ${isLoaded ? 'loaded' : 'loading'}`}>
+        {content.url && (
+          <video
+            ref={videoRef}
+            src={content.url}
+            className="content-video"
+            autoPlay
+            loop
+            playsInline
+            controls
+            muted={videoMuted}
+            onLoadedData={() => setIsLoaded(true)}
+          />
+        )}
         {showNames && content.name && (
           <div className="content-caption">
             <h2>{content.name}</h2>

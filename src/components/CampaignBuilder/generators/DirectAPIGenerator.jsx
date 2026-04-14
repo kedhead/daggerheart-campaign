@@ -157,6 +157,34 @@ export default function DirectAPIGenerator({
               className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
             />
           </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-white/80">Party Size</label>
+            <input
+              type="number"
+              min="1"
+              max="8"
+              value={requirements.partySize || ''}
+              onChange={(e) => setRequirements({ ...requirements, partySize: e.target.value ? parseInt(e.target.value) : '' })}
+              placeholder="e.g., 4"
+              className="w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))]"
+            />
+          </div>
+
+          <div className="p-3 bg-[var(--bg-secondary)] border border-white/10 rounded-lg">
+            <label className="flex items-center gap-2 cursor-pointer font-medium text-white select-none">
+              <input
+                type="checkbox"
+                checked={!!requirements.generateNewAdversaries}
+                onChange={(e) => setRequirements({ ...requirements, generateNewAdversaries: e.target.checked })}
+                className="w-4 h-4 rounded border-gray-600 bg-black/40 text-[rgb(var(--color-primary))] focus:ring-[rgb(var(--color-primary))]"
+              />
+              <span>Also generate fresh adversaries for this encounter</span>
+            </label>
+            <p className="text-xs text-white/50 mt-2 ml-6">
+              The AI will propose new adversary concepts. You'll be able to review and edit them, then they'll be fully statted up and added to your campaign's adversary list.
+            </p>
+          </div>
         </>
       );
     }

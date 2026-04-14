@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Monitor, ExternalLink, X, Eye, EyeOff, Zap, Youtube, Play, Trash2, Plus, Grid } from 'lucide-react';
+import { Monitor, ExternalLink, X, Eye, EyeOff, Zap, Youtube, Play, Trash2, Plus, Grid, Volume2, VolumeX } from 'lucide-react';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearControl from './FearControl';
 import ContentSelector from './ContentSelector';
@@ -39,18 +39,24 @@ export default function DMDisplayControl({
     contentType,
     content,
     contentItems,
+    videoMuted,
     incrementFear,
     decrementFear,
     resetFear,
     toggleFear,
     toggleInitiative,
     toggleNames,
+    toggleVideoMuted,
     setDisplayContent,
     clearDisplay,
     addContentItem,
     removeContentItem,
     clearAllContent
   } = usePlayerDisplay(campaignId);
+
+  const hasLocalVideo =
+    contentType === 'localvideo' ||
+    (contentItems || []).some(item => item.type === 'localvideo');
 
   const [displayWindow, setDisplayWindow] = useState(null);
 
@@ -114,6 +120,17 @@ export default function DMDisplayControl({
               <Grid size={14} />
               {contentItems.length} item{contentItems.length !== 1 ? 's' : ''}
             </span>
+          )}
+          {hasLocalVideo && (
+            <button
+              className={`btn btn-sm ${videoMuted ? 'btn-ghost' : 'btn-primary'}`}
+              onClick={toggleVideoMuted}
+              title={videoMuted ? 'Enable audio on player display' : 'Mute player display'}
+              style={{ marginLeft: 'auto' }}
+            >
+              {videoMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              {videoMuted ? 'Unmute Video' : 'Mute Video'}
+            </button>
           )}
         </div>
         <div className="preview-content">

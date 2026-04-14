@@ -8,7 +8,7 @@ import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
 
-export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [] }) {
+export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, addAdversary, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -331,6 +331,8 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
         campaign={campaign}
         campaignFrame={campaign?.campaignFrame}
         existingContent={encounters}
+        existingAdversaries={adversaries}
+        addAdversary={addAdversary}
         onSave={async (encounterData) => {
           await addEncounter(encounterData);
           setQuickGenOpen(false);

@@ -230,6 +230,12 @@ service cloud.firestore {
         allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
+      // Saved Player Display uploads (reusable library of DM-uploaded images/videos)
+      match /displayUploads/{uploadId} {
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
+
       // Battle Map Display (separate screen for battle maps)
       match /battleMapDisplay/{docId} {
         // All campaign members can read the battle map display state

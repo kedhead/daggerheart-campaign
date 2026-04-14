@@ -4,9 +4,9 @@
  * Supports: dall-e-3, flux-dev, stable-diffusion-3, magic-art_7_0
  */
 
-// Extend timeout to maximum allowed (60s hobby, 300s pro)
+// Extend timeout - 300s on Pro plan, 60s on Hobby
 export const config = {
-  maxDuration: 60
+  maxDuration: 300
 };
 
 export default async function handler(req, res) {
@@ -32,26 +32,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required field: prompt' });
     }
 
-    // Get API key from environment - try multiple variable names
-    const apiKey = process.env.min_api || process.env.MIN_API_KEY || process.env.MIN_API || process.env.ONEMIN_API_KEY;
-
-    if (!apiKey) {
-      console.error('No API key found. Checked: min_api, MIN_API_KEY, MIN_API, ONEMIN_API_KEY');
-      return res.status(500).json({
-        error: 'Image generation API not configured',
-        hint: 'Set min_api environment variable in Vercel'
-      });
-    }
-
-    // Log API key prefix for debugging (first 8 chars only)
-    console.log('Generating image with 1min.ai:', {
-      type,
-      model,
-      size,
-      animated,
-      apiKeyPrefix: apiKey.substring(0, 8) + '...'
-    });
-
     // Build the enhanced prompt based on type - emphasizing overhead/orthographic D&D battle map style
     let enhancedPrompt = prompt;
 
@@ -68,9 +48,69 @@ export default async function handler(req, res) {
       enhancedPrompt = `${prompt}, top-down view token for D&D VTT, plain solid color background, isolated object, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
     }
 
+    // --- DALL-E 3 Direct: bypass 1min.ai entirely for speed & reliability ---
+    const selectedModel = model || 'dall-e-3';
+    if (selectedModel === 'dall-e-3') {
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (!openaiKey) {
+        // Fall through to 1min.ai if no OpenAI key
+        console.log('No OPENAI_API_KEY, falling back to 1min.ai for DALL-E 3');
+      } else {
+        console.log('Using OpenAI directly for DALL-E 3 battle map');
+
+        const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openaiKey}`
+          },
+          body: JSON.stringify({
+            model: 'dall-e-3',
+            prompt: enhancedPrompt,
+            n: 1,
+            size: ['1024x1024', '1024x1792', '1792x1024'].includes(size) ? size : '1024x1024',
+            quality: 'hd',
+            style: 'vivid'
+          })
+        });
+
+        if (!openaiResponse.ok) {
+          const err = await openaiResponse.json().catch(() => ({ error: { message: openaiResponse.statusText } }));
+          return res.status(openaiResponse.status).json({
+            error: `DALL-E API error: ${err.error?.message || openaiResponse.statusText}`
+          });
+        }
+
+        const openaiData = await openaiResponse.json();
+        const directUrl = openaiData.data?.[0]?.url;
+
+        if (!directUrl) {
+          return res.status(500).json({ error: 'No image URL returned from DALL-E' });
+        }
+
+        return res.status(200).json({
+          imageUrl: directUrl,
+          prompt: enhancedPrompt,
+          model: 'dall-e-3',
+          animated: false
+        });
+      }
+    }
+
+    // --- 1min.ai path for non-DALL-E models ---
+    // Get API key from environment - try multiple variable names
+    const apiKey = process.env.min_api || process.env.MIN_API_KEY || process.env.MIN_API || process.env.ONEMIN_API_KEY;
+
+    if (!apiKey) {
+      console.error('No API key found. Checked: min_api, MIN_API_KEY, MIN_API, ONEMIN_API_KEY');
+      return res.status(500).json({
+        error: 'Image generation API not configured',
+        hint: 'Set min_api environment variable in Vercel'
+      });
+    }
+
     // Build request based on model
     let requestBody;
-    const selectedModel = model || 'dall-e-3';
 
     if (selectedModel === 'magic-art_7_0') {
       // Magic Art 7.0 (Midjourney-style) - matches exact format from 1min.ai docs
@@ -135,14 +175,32 @@ export default async function handler(req, res) {
 
     console.log('1min.ai request:', JSON.stringify(requestBody));
 
-    const response = await fetch('https://api.1min.ai/api/features', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'API-KEY': apiKey
-      },
-      body: JSON.stringify(requestBody)
-    });
+    // Use AbortController to timeout before Vercel's limit
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout (Vercel limit is 60s hobby / 300s pro)
+
+    let response;
+    try {
+      response = await fetch('https://api.1min.ai/api/features', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'API-KEY': apiKey
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === 'AbortError') {
+        return res.status(504).json({
+          error: 'Image generation timed out. Try using DALL-E 3 model which is faster, or try again.',
+          hint: 'Switch to DALL-E 3 in Advanced Options for more reliable generation'
+        });
+      }
+      throw fetchError;
+    }
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();

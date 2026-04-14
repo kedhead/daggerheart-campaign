@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage';
+import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { useAPIKey } from '../../hooks/useAPIKey';
-import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2, Wand2, Skull, Plus, Film } from 'lucide-react';
+import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2, Wand2, Skull, Plus, Film, Trash2 } from 'lucide-react';
 import './DMDisplayControl.css';
 
 // Extract YouTube video ID for thumbnail
@@ -48,6 +48,7 @@ export default function ContentSelector({
   // Upload state
   const [uploading, setUploading] = useState(false);
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [savedUploads, setSavedUploads] = useState([]);
 
   // AI Generate state
   const [generatePrompt, setGeneratePrompt] = useState('');
@@ -75,6 +76,12 @@ export default function ContentSelector({
         const generatedSnapshot = await getDocs(collection(db, `campaigns/${campaignId}/generatedImages`));
         const generatedFiles = generatedSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
         setGeneratedImages(generatedFiles);
+
+        // Load saved Quick Upload library (DM uploads persisted for reuse)
+        const uploadsSnapshot = await getDocs(
+          query(collection(db, `campaigns/${campaignId}/displayUploads`), orderBy('createdAt', 'desc'))
+        );
+        setSavedUploads(uploadsSnapshot.docs.map(d => ({ ...d.data(), id: d.id })));
 
         // Separate maps from other files
         const allFiles = [...regularFiles, ...mapFiles];
@@ -160,9 +167,27 @@ export default function ContentSelector({
       await uploadBytes(storageRef, file);
       const downloadUrl = await getDownloadURL(storageRef);
 
+      const displayName = file.name.replace(/\.[^/.]+$/, '');
+
+      // Persist to library so it can be reused without re-uploading
+      const savedDoc = await addDoc(
+        collection(db, `campaigns/${campaignId}/displayUploads`),
+        {
+          url: downloadUrl,
+          name: displayName,
+          isVideo,
+          storagePath,
+          createdAt: serverTimestamp()
+        }
+      );
+      setSavedUploads(prev => [
+        { id: savedDoc.id, url: downloadUrl, name: displayName, isVideo, storagePath },
+        ...prev
+      ]);
+
       setUploadedImage({
         url: downloadUrl,
-        name: file.name.replace(/\.[^/.]+$/, ''),
+        name: displayName,
         isVideo
       });
     } catch (uploadError) {
@@ -191,6 +216,42 @@ export default function ContentSelector({
         type: 'uploaded',
         showName: true
       });
+    }
+  };
+
+  // Push a previously saved upload from the library
+  const handlePushSavedUpload = (item) => {
+    if (item.isVideo) {
+      onSelectContent('localvideo', {
+        url: item.url,
+        name: item.name,
+        type: 'localvideo',
+        showName: true
+      });
+    } else {
+      onSelectContent('image', {
+        url: item.url,
+        name: item.name,
+        type: 'uploaded',
+        showName: true
+      });
+    }
+  };
+
+  // Delete a saved upload (removes both Storage object and Firestore doc)
+  const handleDeleteSavedUpload = async (item, e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${item.name}" from the library? This cannot be undone.`)) return;
+
+    try {
+      if (item.storagePath) {
+        await deleteObject(ref(storage, item.storagePath)).catch(() => {}); // tolerate already-missing files
+      }
+      await deleteDoc(doc(db, `campaigns/${campaignId}/displayUploads`, item.id));
+      setSavedUploads(prev => prev.filter(u => u.id !== item.id));
+    } catch (err) {
+      console.error('Failed to delete saved upload:', err);
+      alert('Failed to delete. Try again.');
     }
   };
 
@@ -321,6 +382,7 @@ export default function ContentSelector({
     { id: 'npcs', label: 'NPCs', icon: Users, count: npcsWithImages.length },
     { id: 'locations', label: 'Locations', icon: Map, count: locationsWithImages.length },
     { id: 'files', label: 'Files', icon: FolderOpen, count: files.length },
+    { id: 'uploads', label: 'Uploads', icon: FolderOpen, count: savedUploads.length },
     { id: 'generate', label: 'Generate', icon: Wand2 },
     { id: 'youtube', label: 'YouTube', icon: Youtube },
     { id: 'upload', label: 'Quick Upload', icon: Upload }
@@ -530,8 +592,64 @@ export default function ContentSelector({
           )}
 
           <p className="upload-note">
-            Quick upload sends the file straight to the display without saving to campaign files.
+            Uploaded files are saved to the Uploads tab for reuse — you don't need to re-upload next time.
           </p>
+        </div>
+      );
+    }
+
+    if (activeTab === 'uploads') {
+      if (loading) {
+        return (
+          <div className="content-loading">
+            <div className="loading-spinner"></div>
+            <span>Loading uploads...</span>
+          </div>
+        );
+      }
+      if (savedUploads.length === 0) {
+        return (
+          <div className="content-empty">
+            <Upload size={40} />
+            <p>No saved uploads yet. Use Quick Upload to add images or videos — they'll be saved here for reuse.</p>
+          </div>
+        );
+      }
+      return (
+        <div className="content-grid">
+          {savedUploads.map(item => (
+            <button
+              key={item.id}
+              className="content-item"
+              onClick={() => handlePushSavedUpload(item)}
+              title="Click to add to display"
+            >
+              <div className="content-thumbnail">
+                {item.isVideo ? (
+                  <video src={item.url} muted playsInline preload="metadata" />
+                ) : (
+                  <img src={item.url} alt={item.name} />
+                )}
+                {item.isVideo && (
+                  <div className="on-display-indicator" style={{ left: 6, right: 'auto' }}>
+                    <Film size={14} />
+                  </div>
+                )}
+                <div className="add-indicator">
+                  <Plus size={16} />
+                </div>
+                <button
+                  type="button"
+                  className="upload-delete-btn"
+                  onClick={(e) => handleDeleteSavedUpload(item, e)}
+                  title="Delete from library"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              <span className="content-name">{item.name}</span>
+            </button>
+          ))}
         </div>
       );
     }

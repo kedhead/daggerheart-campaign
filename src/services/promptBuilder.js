@@ -394,6 +394,8 @@ Battle Points Budget: ${bpBudget} BP  (formula: 3 x party size + 2)`;
       });
     }
 
+    const wantNewAdversaries = !!requirements.generateNewAdversaries;
+
     prompt += `\n\nPlease generate an encounter with this JSON structure:
 \`\`\`json
 {
@@ -404,7 +406,10 @@ Battle Points Budget: ${bpBudget} BP  (formula: 3 x party size + 2)`;
   "enemies": "List of enemies and approximate numbers",
   "tactics": "How the enemies fight and their strategy",
   "rewards": "Potential loot, experience, or other rewards",
-  "suggestedAdversaries": [{ "name": "exact adversary name", "quantity": 2 }, { "name": "exact adversary name", "quantity": 1 }],
+  "suggestedAdversaries": [{ "name": "exact adversary name", "quantity": 2 }, { "name": "exact adversary name", "quantity": 1 }],${wantNewAdversaries ? `
+  "newAdversaries": [
+    { "concept": "A fresh, vivid adversary concept in one sentence", "tier": 1, "role": "standard", "quantity": 2 }
+  ],` : ''}
   "suggestedEnvironment": "exact environment name or empty string",
   "freshCutGrassLink": "" (leave empty)
 }
@@ -412,7 +417,14 @@ Battle Points Budget: ${bpBudget} BP  (formula: 3 x party size + 2)`;
 
 ${availableAdversaries.length > 0 ? 'IMPORTANT: For suggestedAdversaries, use EXACT names from the AVAILABLE ADVERSARIES list above. Pick adversaries that fit thematically and include a quantity for each. Stay within the BP budget.' : ''}
 ${availableEnvironments.length > 0 ? 'IMPORTANT: For suggestedEnvironment, use an EXACT name from the AVAILABLE ENVIRONMENTS list above that fits the encounter.' : ''}
-
+${wantNewAdversaries ? `
+IMPORTANT (newAdversaries): Propose 1–4 FRESH adversary stubs for this encounter — do NOT duplicate entries in suggestedAdversaries. Each stub must include:
+  - concept: a vivid one-sentence description the statblock generator can expand (appearance, fighting style, flavor)
+  - tier: integer 1–4 matching the party level (tier 1 = novice threats, 2 = seasoned, 3 = formidable, 4 = legendary)
+  - role: one of "minion", "horde", "standard", "bruiser", "skulk", "ranged", "support", "social", "leader", "solo"
+  - quantity: how many of this adversary should appear in the encounter
+Stay within the ${bpBudget} BP budget (minion/horde=1 BP, standard/bruiser/skulk/ranged/support/social=2 BP, leader=3 BP, solo=5 BP). Pick a mix of roles that fits the encounter's tactics.
+` : ''}
 Balance the encounter for the party level and size. Make it thematically appropriate to the campaign.`;
 
     return prompt;
