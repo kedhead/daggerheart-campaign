@@ -152,6 +152,9 @@ export default function BattleMapDice({ campaignId, onRollComplete }) {
         const rollDoc = doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`);
         setDoc(rollDoc, {
           ...completeData,
+          diceConfig: rollData?.diceConfig,
+          playerName: 'DM',
+          playerColor: '#f59e0b',
           timestamp: serverTimestamp(),
           rollId: Date.now().toString(),
         }).catch(err => console.error('Failed to broadcast dice roll:', err));

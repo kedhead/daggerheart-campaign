@@ -293,8 +293,8 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
                       <>
                         <span className="dice-breakdown">
                           {roll.rolls.map((r, i) => (
-                            <span key={i} style={{ color: r.color }}>
-                              {r.result}{i < roll.rolls.length - 1 ? ', ' : ''}
+                            <span key={i} style={{ color: typeof r === 'object' ? r.color : undefined }}>
+                              {typeof r === 'object' ? r.result : r}{i < roll.rolls.length - 1 ? ', ' : ''}
                             </span>
                           ))}
                         </span>
@@ -477,8 +477,8 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
                                 {roll.rolls && roll.rolls.length > 0 && (
                                   <span className="log-dice-breakdown">
                                     {roll.rolls.map((r, j) => (
-                                      <span key={j} style={{ color: r.color }}>
-                                        {r.result}{j < roll.rolls.length - 1 ? ', ' : ''}
+                                      <span key={j} style={{ color: typeof r === 'object' ? r.color : undefined }}>
+                                        {typeof r === 'object' ? r.result : r}{j < roll.rolls.length - 1 ? ', ' : ''}
                                       </span>
                                     ))}
                                     {roll.modifier !== 0 && ` ${roll.modifier > 0 ? '+' : ''}${roll.modifier}`}

@@ -998,7 +998,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                 {lastRoll.rolls?.map((r, i) => (
                   <div key={i} className="dh-roll-die dh-roll-die-dmg">
                     <span className="dh-roll-die-label">d{lastRoll.dieType}</span>
-                    <span className="dh-roll-die-val">{r}</span>
+                    <span className="dh-roll-die-val">{typeof r === 'object' ? r.result : r}</span>
                   </div>
                 ))}
                 {lastRoll.modifier !== 0 && (

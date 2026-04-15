@@ -212,7 +212,7 @@ export function formatRollResult(roll) {
       const { dieType, quantity, rolls, modifier, total } = rollData;
       return {
         primary: `${total}`,
-        secondary: `${quantity}d${dieType}: [${rolls.join(', ')}]${modifier ? ` + ${modifier}` : ''}`,
+        secondary: `${quantity}d${dieType}: [${(rolls || []).map(r => typeof r === 'object' ? r.result : r).join(', ')}]${modifier ? ` + ${modifier}` : ''}`,
         badge: '',
         badgeClass: ''
       };

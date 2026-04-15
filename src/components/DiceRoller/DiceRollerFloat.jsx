@@ -312,7 +312,8 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
         setTimeout(() => setOverlay(null), 2500);
       } else if (rollData.isDoubles || (gameSystem === 'daggerheart' && rollData.hopeDie === rollData.fearDie)) {
         playDoublesSound();
-        setOverlay({ type: 'doubles', value: rollData.hopeDie || rollData.rolls[0] });
+        const firstRoll = rollData.rolls?.[0];
+        setOverlay({ type: 'doubles', value: rollData.hopeDie || (typeof firstRoll === 'object' ? firstRoll.result : firstRoll) });
         setTimeout(() => setOverlay(null), 2500);
       }
 
@@ -680,7 +681,7 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
                       <span style={{ color: getDieColor(currentRoll.rollData.dieType) }}>
                         {currentRoll.rollData.quantity}d{currentRoll.rollData.dieType}
                       </span>
-                      <span className="other-dice">[{currentRoll.rollData.rolls.join(', ')}]</span>
+                      <span className="other-dice">[{currentRoll.rollData.rolls.map(r => typeof r === 'object' ? r.result : r).join(', ')}]</span>
                     </div>
                     <div className="mini-total">{currentRoll.rollData.total}</div>
                   </>
