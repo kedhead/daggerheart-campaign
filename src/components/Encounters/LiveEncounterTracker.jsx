@@ -3,6 +3,7 @@ import { Play, Pause, StopCircle, RotateCcw, Skull, Heart, Users, ChevronLeft, A
 import ParticipantCard from './ParticipantCard';
 import EnvironmentEffectsPanel from './EnvironmentEffectsPanel';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
+import { useQuickRoll } from '../../hooks/useQuickRoll';
 
 export default function LiveEncounterTracker({
   campaignId,
@@ -23,6 +24,8 @@ export default function LiveEncounterTracker({
     resumeEncounter,
     endEncounter
   } = useActiveEncounter(campaignId);
+
+  const { rollDamage } = useQuickRoll(campaignId);
 
   const [expandedParticipant, setExpandedParticipant] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
@@ -201,6 +204,7 @@ export default function LiveEncounterTracker({
                     onAddCondition={addCondition}
                     onRemoveCondition={removeCondition}
                     onToggleDefeated={toggleDefeated}
+                    onRollDamage={rollDamage}
                     isDM={isDM}
                     isExpanded={expandedParticipant === participant.id}
                     onToggleExpand={() => setExpandedParticipant(
@@ -228,6 +232,7 @@ export default function LiveEncounterTracker({
                     onAddCondition={addCondition}
                     onRemoveCondition={removeCondition}
                     onToggleDefeated={toggleDefeated}
+                    onRollDamage={rollDamage}
                     isDM={isDM}
                     isExpanded={expandedParticipant === participant.id}
                     onToggleExpand={() => setExpandedParticipant(

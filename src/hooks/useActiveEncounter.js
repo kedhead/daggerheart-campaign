@@ -87,7 +87,11 @@ export function useActiveEncounter(campaignId) {
         if (adversary.difficulty !== undefined) participant.difficulty = adversary.difficulty;
         if (adversary.evasion !== undefined) participant.evasion = adversary.evasion;
         if (adversary.attack !== undefined) participant.attack = adversary.attack;
-        if (adversary.damage !== undefined) participant.damage = adversary.damage;
+        if (adversary.attackDamage !== undefined) participant.damage = adversary.attackDamage;
+        if (adversary.attackName !== undefined) participant.attackName = adversary.attackName;
+        if (adversary.attackRange !== undefined) participant.attackRange = adversary.attackRange;
+        if (adversary.description !== undefined) participant.description = adversary.description;
+        if (adversary.motives !== undefined) participant.motives = adversary.motives;
 
         participants.push(participant);
       }

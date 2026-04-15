@@ -100,3 +100,18 @@ export function useQuickRoll(campaignId) {
 
   return { roll, rollDamage };
 }
+
+/**
+ * Parses adversary damage strings like "2d6+4 phy", "1d8 physical", "d10 mag"
+ * into rollDamage() params. Returns null if the string is unparseable.
+ */
+export const parseDamageNotation = (str) => {
+  if (!str) return null;
+  const match = str.match(/^(\d+)?d(\d+)(?:\+(\d+))?/i);
+  if (!match) return null;
+  return {
+    quantity: parseInt(match[1] || '1', 10),
+    dieType: parseInt(match[2], 10),
+    modifier: parseInt(match[3] || '0', 10),
+  };
+};

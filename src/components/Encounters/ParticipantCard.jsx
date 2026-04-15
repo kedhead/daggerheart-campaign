@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Heart, Zap, Skull, ChevronDown, ChevronRight, Shield, Swords, Target, X, Check } from 'lucide-react';
 import { DAGGERHEART_CONDITIONS } from '../../hooks/useActiveEncounter';
+import { parseDamageNotation } from '../../hooks/useQuickRoll';
 
 export default function ParticipantCard({
   participant,
@@ -9,11 +10,16 @@ export default function ParticipantCard({
   onAddCondition,
   onRemoveCondition,
   onToggleDefeated,
+  onRollDamage,
   isDM,
   isExpanded,
   onToggleExpand
 }) {
   const [showConditionPicker, setShowConditionPicker] = useState(false);
+  const [lastAttackResult, setLastAttackResult] = useState(null);
+  const [lastDamageResult, setLastDamageResult] = useState(null);
+  const attackTimer = useRef(null);
+  const damageTimer = useRef(null);
 
   const {
     name,
@@ -29,6 +35,9 @@ export default function ParticipantCard({
     evasion,
     attack,
     damage,
+    attackName,
+    attackRange,
+    motives,
     features
   } = participant;
 
@@ -81,6 +90,34 @@ export default function ParticipantCard({
     if (isDM && onApplyDamage) {
       onApplyDamage(participant.id, amount, 'stress');
     }
+  };
+
+  // Roll the GM's d20 + attack modifier
+  const handleRollAttack = async () => {
+    if (!onRollDamage || attack === undefined) return;
+    const result = await onRollDamage({
+      label: `${name} Attack`,
+      dieType: 20,
+      quantity: 1,
+      modifier: attack || 0,
+    });
+    if (!result) return;
+    const isCrit = result.rolls?.[0] === 20;
+    if (attackTimer.current) clearTimeout(attackTimer.current);
+    setLastAttackResult({ ...result, isCrit });
+    attackTimer.current = setTimeout(() => setLastAttackResult(null), 8000);
+  };
+
+  // Roll the adversary's damage dice
+  const handleRollDamage = async () => {
+    if (!onRollDamage || !damage) return;
+    const parsed = parseDamageNotation(damage);
+    if (!parsed) return;
+    const result = await onRollDamage({ label: `${name} Damage`, ...parsed });
+    if (!result) return;
+    if (damageTimer.current) clearTimeout(damageTimer.current);
+    setLastDamageResult(result);
+    damageTimer.current = setTimeout(() => setLastDamageResult(null), 8000);
   };
 
   return (
@@ -189,30 +226,145 @@ export default function ParticipantCard({
       {/* Expanded Details */}
       {isExpanded && (
         <div className="border-t border-white/5 p-4 space-y-4 bg-black/20 animate-in slide-in-from-top-2 duration-200">
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-3 gap-2 text-center">
+
+          {/* Evasion + Motives row */}
+          <div className="flex flex-wrap items-center gap-4">
             {evasion && (
-              <div className="bg-[var(--bg-primary)] p-2 rounded-lg border border-white/5 flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <Shield size={14} className="text-blue-400" />
                 <span className="text-xs text-white/60 uppercase tracking-wide">Evasion</span>
                 <span className="font-bold text-white">{evasion}</span>
               </div>
             )}
-            {attack && (
-              <div className="bg-[var(--bg-primary)] p-2 rounded-lg border border-white/5 flex flex-col items-center gap-1">
-                <Swords size={14} className="text-red-400" />
-                <span className="text-xs text-white/60 uppercase tracking-wide">Attack</span>
-                <span className="font-bold text-white">+{attack}</span>
-              </div>
-            )}
-            {damage && (
-              <div className="bg-[var(--bg-primary)] p-2 rounded-lg border border-white/5 flex flex-col items-center gap-1">
-                <Target size={14} className="text-amber-400" />
-                <span className="text-xs text-white/60 uppercase tracking-wide">Damage</span>
-                <span className="font-bold text-white">{damage}</span>
-              </div>
+            {motives && (
+              <p className="text-xs text-white/50 italic">
+                <span className="not-italic font-bold text-white/30 uppercase tracking-wide text-[10px]">Motives: </span>
+                {motives}
+              </p>
             )}
           </div>
+
+          {/* Attack Block */}
+          {(attack !== undefined || damage) && (
+            <div className="bg-[var(--bg-primary)] p-3 rounded-lg border border-white/5 space-y-3">
+              <h5 className="text-xs font-bold text-white/40 uppercase tracking-widest">Attack</h5>
+
+              {/* Stat line */}
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                {attack !== undefined && (
+                  <span className="font-bold text-white">+{attack}</span>
+                )}
+                {attackName && <span className="text-white/80">{attackName}</span>}
+                {attackRange && (
+                  <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-xs border border-blue-500/20">
+                    {attackRange}
+                  </span>
+                )}
+                {damage && (
+                  <span className="text-amber-400 font-mono text-xs">{damage}</span>
+                )}
+              </div>
+
+              {/* Roll buttons */}
+              <div className="flex gap-2 flex-wrap">
+                {attack !== undefined && onRollDamage && (
+                  <button
+                    className="btn btn-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 transition-colors"
+                    onClick={handleRollAttack}
+                  >
+                    Roll Attack (d20)
+                  </button>
+                )}
+                {damage && parseDamageNotation(damage) && onRollDamage && (
+                  <button
+                    className="btn btn-sm bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition-colors"
+                    onClick={handleRollDamage}
+                  >
+                    Roll Damage
+                  </button>
+                )}
+              </div>
+
+              {/* Attack roll inline result */}
+              {lastAttackResult && (
+                <div className={`p-2 rounded border text-xs animate-in slide-in-from-top-1 duration-150 ${
+                  lastAttackResult.isCrit
+                    ? 'bg-amber-500/20 border-amber-500/40'
+                    : 'bg-black/30 border-white/10'
+                }`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono text-white px-2 py-1 bg-white/10 rounded">
+                      {lastAttackResult.rolls?.[0]}
+                    </span>
+                    {lastAttackResult.modifier !== 0 && (
+                      <span className="text-white/60">
+                        {lastAttackResult.modifier > 0 ? '+' : ''}{lastAttackResult.modifier}
+                      </span>
+                    )}
+                    <span className="font-bold text-white">= {lastAttackResult.total}</span>
+                    {lastAttackResult.isCrit && (
+                      <span className="font-bold text-amber-400 uppercase tracking-wide text-[10px]">
+                        Critical Hit!
+                      </span>
+                    )}
+                    <button
+                      className="ml-auto text-white/30 hover:text-white transition-colors"
+                      onClick={() => setLastAttackResult(null)}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Damage roll inline result */}
+              {lastDamageResult && (
+                <div className="p-2 rounded bg-black/30 border border-white/10 text-xs animate-in slide-in-from-top-1 duration-150">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {lastDamageResult.rolls?.map((r, i) => (
+                      <span key={i} className="px-2 py-1 bg-white/10 rounded font-mono text-white">{r}</span>
+                    ))}
+                    {lastDamageResult.modifier !== 0 && (
+                      <span className="text-white/60">
+                        {lastDamageResult.modifier > 0 ? '+' : ''}{lastDamageResult.modifier}
+                      </span>
+                    )}
+                    <span className="font-bold text-white">= {lastDamageResult.total}</span>
+                    <button
+                      className="ml-auto text-white/30 hover:text-white transition-colors"
+                      onClick={() => setLastDamageResult(null)}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Damage Thresholds */}
+          {thresholds && (
+            <div className="space-y-1.5">
+              <h5 className="text-xs font-bold text-white/40 uppercase tracking-widest pl-1">Damage Thresholds</h5>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
+                  <div className="text-white/40 uppercase tracking-wide mb-1">Minor</div>
+                  <div className="font-bold text-white">{thresholds.minor}</div>
+                  <div className="text-white/30 mt-0.5">−1 HP</div>
+                </div>
+                <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
+                  <div className="text-white/40 uppercase tracking-wide mb-1">Major</div>
+                  <div className="font-bold text-white">{thresholds.major}</div>
+                  <div className="text-white/30 mt-0.5">−2 HP</div>
+                </div>
+                <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
+                  <div className="text-white/40 uppercase tracking-wide mb-1">Severe</div>
+                  <div className="font-bold text-white">{maxHP}</div>
+                  <div className="text-white/30 mt-0.5">−3 HP</div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* DM Controls */}
           {isDM && (
@@ -283,9 +435,24 @@ export default function ParticipantCard({
               <div className="space-y-2">
                 {features.map((feature, idx) => (
                   <div key={idx} className="bg-[var(--bg-primary)] p-3 rounded-lg border border-white/5 space-y-1">
-                    <div className="flex items-baseline justify-between">
+                    <div className="flex items-start justify-between gap-2">
                       <span className="font-bold text-white text-sm">{feature.name}</span>
-                      {feature.type && <span className="text-[10px] uppercase text-white/40 bg-white/5 px-1.5 py-0.5 rounded">{feature.type}</span>}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {feature.type === 'action' && isDM && onApplyDamage && (
+                          <button
+                            className="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); onApplyDamage(participant.id, 1, 'stress'); }}
+                            title="Use this action — mark 1 stress"
+                          >
+                            Mark Stress
+                          </button>
+                        )}
+                        {feature.type && (
+                          <span className="text-[10px] uppercase text-white/40 bg-white/5 px-1.5 py-0.5 rounded">
+                            {feature.type}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {feature.description && (
                       <p className="text-xs text-white/70 leading-relaxed">{feature.description}</p>

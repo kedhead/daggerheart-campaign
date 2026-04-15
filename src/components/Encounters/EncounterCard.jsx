@@ -3,11 +3,13 @@ import { ChevronDown, ChevronUp, Edit2, Trash2, ExternalLink, Swords, Play, User
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import { useQuickRoll, parseDamageNotation } from '../../hooks/useQuickRoll';
 
 export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM, campaign, isEmbedded = false, entities, adversaries = [], environments = [] }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
+  const { rollDamage } = useQuickRoll(campaign?.id);
 
   // Check if this is a BP-based encounter
   const hasBPData = encounter.adversarySlots?.length > 0;
@@ -152,15 +154,64 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
                   const adv = getAdversaryFromSlot(slot);
                   if (!adv) return null;
                   return (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded bg-white/5 border border-white/5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-white/60 text-xs px-1.5 py-0.5 rounded bg-white/5">{slot.quantity}x</span>
-                        <span className="text-sm text-white font-medium">{adv.name}</span>
+                    <div key={idx} className="p-2 rounded bg-white/5 border border-white/5 space-y-1.5">
+                      {/* Name row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-white/60 text-xs px-1.5 py-0.5 rounded bg-white/5">{slot.quantity}x</span>
+                          <span className="text-sm text-white font-medium">{adv.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-white/40">{adv.role}</span>
+                          <span className="text-amber-400 font-mono">T{adv.tier}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-white/40">{adv.role}</span>
-                        <span className="text-amber-400 font-mono">T{adv.tier}</span>
+
+                      {/* Stats sub-row */}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-white/50 pl-1">
+                        <span><span className="text-white/30">HP </span>{adv.hp}</span>
+                        {adv.thresholds && (
+                          <span>
+                            <span className="text-white/30">Thresholds </span>
+                            {adv.thresholds.minor} / {adv.thresholds.major} / {adv.hp}
+                          </span>
+                        )}
+                        {adv.attackDamage && (
+                          <span>
+                            <span className="text-white/30">Dmg </span>
+                            {adv.attackName ? `${adv.attackName} · ` : ''}{adv.attackDamage}
+                          </span>
+                        )}
                       </div>
+
+                      {/* Roll buttons */}
+                      {(adv.attack !== undefined || adv.attackDamage) && rollDamage && (
+                        <div className="flex gap-1.5 flex-wrap">
+                          {adv.attack !== undefined && (
+                            <button
+                              className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                rollDamage({ label: `${adv.name} Attack`, dieType: 20, quantity: 1, modifier: adv.attack || 0 });
+                              }}
+                            >
+                              Roll Attack (d20)
+                            </button>
+                          )}
+                          {adv.attackDamage && parseDamageNotation(adv.attackDamage) && (
+                            <button
+                              className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const parsed = parseDamageNotation(adv.attackDamage);
+                                rollDamage({ label: `${adv.name} Damage`, ...parsed });
+                              }}
+                            >
+                              Roll Damage
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

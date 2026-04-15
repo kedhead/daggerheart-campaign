@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Edit, Trash2, Eye, EyeOff, Skull, Swords, Heart, Zap, Target, ChevronDown, ChevronUp, ImageIcon, Wand2, Loader2 } from 'lucide-react';
 import './AdversariesView.css';
+import { useQuickRoll, parseDamageNotation } from '../../hooks/useQuickRoll';
 
 export default function AdversaryCard({
   adversary,
@@ -8,10 +9,12 @@ export default function AdversaryCard({
   onDelete,
   onGenerateImage,
   isDM,
-  compact = false
+  compact = false,
+  campaignId
 }) {
   const [expanded, setExpanded] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const { rollDamage } = useQuickRoll(campaignId);
 
   const tierColors = {
     1: '#22c55e', // green
@@ -101,9 +104,9 @@ export default function AdversaryCard({
           <Zap size={14} />
           <span>{adversary.stress}</span>
         </div>
-        <div className="stat" title="Thresholds">
+        <div className="stat" title="Damage Thresholds (Minor / Major)">
           <Swords size={14} />
-          <span>{adversary.thresholds?.minor}/{adversary.thresholds?.major}</span>
+          <span>Min {adversary.thresholds?.minor} · Maj {adversary.thresholds?.major}</span>
         </div>
       </div>
 
@@ -116,12 +119,57 @@ export default function AdversaryCard({
             </div>
           )}
 
-          {adversary.attack !== 0 && (
+          {(adversary.attack !== undefined || adversary.attackDamage) && (
             <div className="detail-section">
-              <strong>Attack:</strong> +{adversary.attack}
-              {adversary.attackName && ` (${adversary.attackName})`}
-              {adversary.attackRange && ` - ${adversary.attackRange}`}
-              {adversary.attackDamage && ` | ${adversary.attackDamage}`}
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.4rem' }}>
+                <strong>Attack:</strong>
+                {adversary.attack !== undefined && <span>+{adversary.attack}</span>}
+                {adversary.attackName && <span>{adversary.attackName}</span>}
+                {adversary.attackRange && <span style={{ opacity: 0.6 }}>({adversary.attackRange})</span>}
+                {adversary.attackDamage && (
+                  <span style={{ fontFamily: 'monospace' }}>{adversary.attackDamage}</span>
+                )}
+              </div>
+              {campaignId && (
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                  {adversary.attack !== undefined && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        rollDamage({ label: `${adversary.name} Attack`, dieType: 20, quantity: 1, modifier: adversary.attack || 0 });
+                      }}
+                    >
+                      Roll Attack (d20)
+                    </button>
+                  )}
+                  {adversary.attackDamage && parseDamageNotation(adversary.attackDamage) && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '2px 8px' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const parsed = parseDamageNotation(adversary.attackDamage);
+                        rollDamage({ label: `${adversary.name} Damage`, ...parsed });
+                      }}
+                    >
+                      Roll Damage
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {adversary.thresholds && (
+            <div className="detail-section">
+              <strong>Damage Thresholds: </strong>
+              Minor <strong>{adversary.thresholds.minor}</strong>
+              {' · '}
+              Major <strong>{adversary.thresholds.major}</strong>
+              {' · '}
+              Severe <strong>{adversary.hp}</strong>
             </div>
           )}
 

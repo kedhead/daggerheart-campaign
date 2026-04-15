@@ -249,6 +249,7 @@ export default function AdversariesView({
               onDelete={isDM ? handleDelete : null}
               onGenerateImage={isDM ? handleGenerateImage : null}
               isDM={isDM}
+              campaignId={campaign?.id}
             />
           ))}
         </div>
