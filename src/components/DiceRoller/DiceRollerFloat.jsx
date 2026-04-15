@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Dices, X, Sun, Moon, Swords, Star, ChevronDown, ChevronUp, Lock, Sparkles } from 'lucide-react';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import { useDiceRolls } from '../../hooks/useDiceRolls';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
@@ -33,6 +35,38 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
   const [rollLabel, setRollLabel] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [rollMode, setRollMode] = useState('normal'); // D&D 5e: normal, advantage, disadvantage
+
+  // Broadcast a completed roll to the map display window (always on — no toggle)
+  const broadcastRoll = async (system, rollData, mod) => {
+    if (!campaignId) return;
+    const playerName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Player';
+    const playerColor = localStorage.getItem('daggerheart_dice_color') || '#6366f1';
+
+    const payload = {
+      system,
+      modifier: parseInt(mod) || 0,
+      playerName,
+      playerColor,
+      playerId: currentUser?.uid,
+      rollId: Date.now().toString(),
+      timestamp: serverTimestamp(),
+    };
+
+    if (system === 'daggerheart') {
+      payload.hopeDie = rollData.hopeDie;
+      payload.fearDie = rollData.fearDie;
+    } else if (system === 'generic') {
+      payload.rolls = rollData.rolls;         // plain number array
+      payload.dieType = rollData.dieType;
+      payload.diceConfig = { [`d${rollData.dieType}`]: rollData.quantity };
+    }
+
+    try {
+      await setDoc(doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`), payload);
+    } catch (err) {
+      console.error('[DiceRollerFloat] Failed to broadcast roll:', err);
+    }
+  };
 
   // Dice rolling functions - modified to accept overrides or generate random
   const rollDaggerheart = (overrides = null) => {
@@ -289,6 +323,8 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
         label: rollLabel,
         isPrivate: isDM ? isPrivate : false
       });
+      // Broadcast to map (2D path — no toggle)
+      await broadcastRoll(gameSystem, rollData, parseInt(modifier) || 0);
       setRollLabel('');
       setIsRolling(false);
     }, 800);
@@ -336,9 +372,12 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
         rollData = rollDaggerheart();
     }
 
+    // Broadcast to map — always on for the float roller (no toggle)
+    await broadcastRoll(system, rollData, pending3DRoll?.modifier);
+
     setCurrentRoll({ system, rollData });
 
-    // Save
+    // Save to shared roll history
     await addRoll({
       system,
       rollData,

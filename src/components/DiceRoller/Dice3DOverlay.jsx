@@ -16,6 +16,7 @@ export default function Dice3DOverlay({
   const [isBoxReady, setIsBoxReady] = useState(false);
   const [rollResult, setRollResult] = useState(null); // Local computed result for banner display
   const [specialOverlay, setSpecialOverlay] = useState(null); // For crit/doubles full-screen effect
+  const [isPrecomputed, setIsPrecomputed] = useState(false); // True when rollData has pre-rolled values
 
   // Initialize DiceBox on mount
   useEffect(() => {
@@ -54,6 +55,7 @@ export default function Dice3DOverlay({
     if (!show) {
       setAnimationComplete(false);
       setRollResult(null);
+      setIsPrecomputed(false);
       if (diceBoxRef.current) {
         diceBoxRef.current.clear();
       }
@@ -61,6 +63,76 @@ export default function Dice3DOverlay({
   }, [show]);
 
   const performRoll = async () => {
+    if (!rollData) return;
+
+    // --- Pre-computed display mode ---
+    // When the broadcaster already calculated the dice values, use them directly
+    // instead of re-rolling with physics (which would produce different numbers).
+    const hasPrecomputed =
+      (rollData.system === 'daggerheart' &&
+        rollData.hopeDie !== undefined && rollData.fearDie !== undefined) ||
+      (rollData.system === 'generic' &&
+        Array.isArray(rollData.rolls) && rollData.rolls.length > 0) ||
+      (rollData.system === 'dnd5e' && rollData.d20 !== undefined);
+
+    if (hasPrecomputed) {
+      initAudio();
+      playRollSound();
+      setIsPrecomputed(true);
+
+      const mod = parseInt(rollData.modifier) || 0;
+      let rawResults = {};
+      let localResult = { system: rollData.system, modifier: mod };
+
+      if (rollData.system === 'daggerheart') {
+        const { hopeDie, fearDie } = rollData;
+        const total = hopeDie + fearDie + mod;
+        const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
+        const isDoubles = hopeDie === fearDie;
+        rawResults = { hope: hopeDie, fear: fearDie };
+        localResult = { ...localResult, hopeDie, fearDie, total, outcome, isDoubles };
+        if (isDoubles) playDoublesSound();
+      } else if (rollData.system === 'generic') {
+        const values = rollData.rolls;
+        const total = values.reduce((a, b) => a + b, 0) + mod;
+        const sides = rollData.dieType || 20;
+        rawResults = {
+          rolls: values,
+          rollDetails: values.map(v => ({ value: v, sides })),
+        };
+        const d20Values = values.filter((_, i) => sides === 20);
+        localResult = {
+          ...localResult, rolls: values, total,
+          isCrit: sides === 20 && values.includes(20),
+          isCritFail: sides === 20 && values.every(v => v === 1),
+        };
+        if (localResult.isCrit) playCritSound();
+      } else if (rollData.system === 'dnd5e') {
+        const { d20, d20Second, mode } = rollData;
+        let finalD20 = d20;
+        if (d20Second !== undefined) {
+          finalD20 = mode === 'advantage'
+            ? Math.max(d20, d20Second) : Math.min(d20, d20Second);
+        }
+        rawResults = { d20, d20Second };
+        localResult = {
+          ...localResult, d20, d20Second, total: finalD20 + mod,
+          isCrit: finalD20 === 20, isCritFail: finalD20 === 1,
+        };
+        if (localResult.isCrit) playCritSound();
+      }
+
+      // Show result banner quickly, then notify parent and close
+      setRollResult(localResult);
+      setTimeout(() => setAnimationComplete(true), 400);
+      setTimeout(() => {
+        if (onComplete) onComplete(rawResults);
+        if (onClose) onClose();
+      }, 3500);
+      return;
+    }
+
+    // --- Physics path (PlayerDicePanel — no pre-computed values) ---
     if (!diceBoxRef.current) return;
 
     try {
@@ -238,8 +310,13 @@ export default function Dice3DOverlay({
   return (
     <div className={`dice-3d-overlay ${outcomeClass} ${show ? 'visible' : ''}`} onClick={onClose}>
 
-      {/* Container for the 3D Canvas */}
-      <div id="dice-box-canvas" ref={containerRef} className="dice-box-canvas"></div>
+      {/* Container for the 3D Canvas — hidden when showing pre-computed results */}
+      <div
+        id="dice-box-canvas"
+        ref={containerRef}
+        className="dice-box-canvas"
+        style={{ display: isPrecomputed ? 'none' : 'block' }}
+      />
 
       {/* Result Banner (Overlay on top) */}
       {animationComplete && rollResult && (
