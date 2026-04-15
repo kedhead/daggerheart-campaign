@@ -169,7 +169,7 @@ export default function AdversaryCard({
               {' · '}
               Major <strong>{adversary.thresholds.major}</strong>
               {' · '}
-              Severe <strong>{adversary.hp}</strong>
+              Severe <strong>{adversary.thresholds.severe}</strong>
             </div>
           )}
 

@@ -173,7 +173,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
                         {adv.thresholds && (
                           <span>
                             <span className="text-white/30">Thresholds </span>
-                            {adv.thresholds.minor} / {adv.thresholds.major} / {adv.hp}
+                            {adv.thresholds.minor} / {adv.thresholds.major} / {adv.thresholds.severe}
                           </span>
                         )}
                         {adv.attackDamage && (

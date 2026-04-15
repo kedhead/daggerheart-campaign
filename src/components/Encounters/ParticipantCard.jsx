@@ -359,7 +359,7 @@ export default function ParticipantCard({
                 </div>
                 <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
                   <div className="text-white/40 uppercase tracking-wide mb-1">Severe</div>
-                  <div className="font-bold text-white">{maxHP}</div>
+                  <div className="font-bold text-white">{thresholds.severe}</div>
                   <div className="text-white/30 mt-0.5">−3 HP</div>
                 </div>
               </div>
