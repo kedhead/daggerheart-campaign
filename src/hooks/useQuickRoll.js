@@ -46,12 +46,10 @@ export function useQuickRoll(campaignId) {
       timestamp: serverTimestamp(),
     });
 
-    // 2. Trigger map/player-screen display — include actual values so the map
-    //    shows the same numbers the player saw (no re-roll on the map side).
+    // 2. Trigger map/player-screen display — send config ONLY (no pre-computed values)
+    //    so Dice3DOverlay uses physics to animate the dice (same as PlayerDicePanel).
     await setDoc(doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`), {
       system: 'daggerheart',
-      hopeDie,
-      fearDie,
       modifier,
       label,
       playerName,
@@ -86,10 +84,9 @@ export function useQuickRoll(campaignId) {
       timestamp: serverTimestamp(),
     });
 
+    // Send config ONLY (no pre-computed rolls) so Dice3DOverlay uses physics animation
     await setDoc(doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`), {
       system: 'generic',
-      rolls,           // actual computed values — map displays these, no re-roll
-      dieType,         // needed for rollDetails reconstruction in Dice3DOverlay
       diceConfig: { [`d${dieType}`]: quantity },
       modifier,
       label,

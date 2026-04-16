@@ -85,7 +85,10 @@
       "WebFetch(domain:notebooklm.google.com)",
       "Bash(where:*)",
       "Bash(pdftotext:*)",
-      "WebFetch(domain:www.figma.com)"
+      "WebFetch(domain:www.figma.com)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(npx vercel:*)"
     ],
     "deny": [],
     "ask": []
