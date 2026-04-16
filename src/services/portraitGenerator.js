@@ -70,10 +70,10 @@ async function downloadImageAsDataUrl(imageUrl) {
  * @returns {Promise<string>} Image data URL (base64)
  */
 async function generatePortraitImage(prompt, apiKey) {
-  const response = await fetch('/api/generate-portrait', {
+  const response = await fetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, apiKey: apiKey || undefined })
+    body: JSON.stringify({ prompt, apiKey: apiKey || undefined, type: 'portrait' })
   });
 
   if (!response.ok) {

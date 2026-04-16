@@ -34,10 +34,10 @@ async function downloadImageAsDataUrl(imageUrl) {
  * Generate a lore visual using DALL-E via backend proxy
  */
 async function generateLoreVisual(prompt, apiKey) {
-    const response = await fetch('/api/generate-portrait', {
+    const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, apiKey: apiKey || null })
+        body: JSON.stringify({ prompt, type: 'portrait', apiKey: apiKey || null })
     });
 
     if (!response.ok) {

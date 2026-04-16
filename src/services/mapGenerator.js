@@ -321,11 +321,12 @@ async function downloadImageAsDataUrl(imageUrl) {
  */
 async function generateMapImage(prompt, apiKey) {
   // Route through backend proxy so server-side OPENAI_API_KEY is used if no client key
-  const response = await fetch('/api/generate-portrait', {
+  const response = await fetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompt,
+      type: 'portrait',
       apiKey: apiKey || undefined, // backend uses server key if omitted
       size: '1024x1024'
     })

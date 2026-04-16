@@ -25,11 +25,37 @@ export default async function handler(req, res) {
       type = 'battle-map',
       model = 'magic-art_7_0',  // Default to Magic Art 7.0
       size = '1024x1024',
-      animated = false
+      animated = false,
+      apiKey: clientApiKey   // optional client-provided key (used by portrait callers)
     } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Missing required field: prompt' });
+    }
+
+    // --- Portrait mode: DALL-E 3 direct, same as old generate-portrait.js ---
+    if (type === 'portrait') {
+      const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
+      if (!effectiveKey) {
+        return res.status(500).json({
+          error: 'No OpenAI API key available. Add OPENAI_API_KEY to environment variables or configure one in Settings.'
+        });
+      }
+      const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
+      const imageSize = validSizes.includes(size) ? size : '1024x1024';
+      const portraitResponse = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
+        body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: imageSize, quality: 'standard', style: 'vivid' })
+      });
+      if (!portraitResponse.ok) {
+        const err = await portraitResponse.json().catch(() => ({ error: { message: portraitResponse.statusText } }));
+        return res.status(portraitResponse.status).json({ error: `DALL-E API error: ${err.error?.message || portraitResponse.statusText}` });
+      }
+      const portraitData = await portraitResponse.json();
+      const portraitUrl = portraitData.data[0]?.url;
+      if (!portraitUrl) return res.status(500).json({ error: 'No image URL returned from DALL-E' });
+      return res.status(200).json({ imageUrl: portraitUrl });
     }
 
     // Build the enhanced prompt based on type - emphasizing overhead/orthographic D&D battle map style

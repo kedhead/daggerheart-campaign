@@ -280,11 +280,12 @@ export default function ContentSelector({
       console.log('Generating display image with prompt:', fullPrompt);
 
       // Call DALL-E via server proxy — backend uses server-side OPENAI_API_KEY if no client key
-      const response = await fetch('/api/generate-portrait', {
+      const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: fullPrompt,
+          type: 'portrait',
           apiKey: openaiKeyInfo?.key || undefined,
           size: '1792x1024'
         })
