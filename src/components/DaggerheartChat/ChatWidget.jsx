@@ -7,17 +7,15 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
 import { buildCampaignContext } from '../../services/campaignContext';
 
-// Per-system configuration
+// Per-system configuration (single API endpoint, system chosen via request body)
 const SYSTEM_CONFIG = {
   daggerheart: {
-    apiEndpoint: '/api/daggerheart-chat',
     systemLabel: 'Daggerheart',
     rulebookLabel: 'Powered by Daggerheart Rulebook',
     placeholder: 'Ask about the rules…',
     themeClass: '',
   },
   starwarsd6: {
-    apiEndpoint: '/api/starwarsd6-chat',
     systemLabel: 'Star Wars D6',
     rulebookLabel: 'Powered by WEG D6 Rulebook',
     placeholder: 'Ask about the rules, the Force…',
@@ -125,7 +123,7 @@ export default function ChatWidget({
                 apiKey = '';
             }
 
-            const response = await fetch(config.apiEndpoint, {
+            const response = await fetch('/api/rules-chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -133,7 +131,8 @@ export default function ChatWidget({
                     history: messages.slice(-10),
                     apiKey,
                     provider,
-                    campaignContext
+                    campaignContext,
+                    gameSystem
                 })
             });
 
