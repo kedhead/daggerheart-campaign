@@ -615,9 +615,11 @@ function CampaignApp() {
     }
   };
 
-  // Check if current campaign is Daggerheart for the chat widget
+  // Check if current campaign supports the rules chat widget
   // Default to daggerheart if gameSystem is missing (legacy support)
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
+  const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
+  const hasChatBot = isDaggerheart || isStarWarsD6;
 
   // Inside CampaignApp return...
   return (
@@ -654,9 +656,10 @@ function CampaignApp() {
         </div>
       </div>
 
-      {isDaggerheart && (
+      {hasChatBot && (
         <ChatWidget
           userId={currentUser?.uid}
+          gameSystem={campaign?.gameSystem || 'daggerheart'}
           campaign={campaign}
           campaignFrame={campaignFrame}
           characters={characters}

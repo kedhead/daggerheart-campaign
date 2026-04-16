@@ -292,11 +292,15 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
                     {roll.rolls && roll.rolls.length > 0 && (
                       <>
                         <span className="dice-breakdown">
-                          {roll.rolls.map((r, i) => (
-                            <span key={i} style={{ color: typeof r === 'object' ? r.color : undefined }}>
-                              {typeof r === 'object' ? r.result : r}{i < roll.rolls.length - 1 ? ', ' : ''}
-                            </span>
-                          ))}
+                          {roll.rolls.map((r, i) => {
+                            const isObj = typeof r === 'object' && r !== null;
+                            const val = isObj ? (typeof r.result === 'object' ? r.result?.result : r.result) : r;
+                            return (
+                              <span key={i} style={{ color: isObj ? r.color : undefined }}>
+                                {val}{i < roll.rolls.length - 1 ? ', ' : ''}
+                              </span>
+                            );
+                          })}
                         </span>
                         {roll.modifier !== 0 && (
                           <span className="modifier-mini">
@@ -476,11 +480,15 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
                               <>
                                 {roll.rolls && roll.rolls.length > 0 && (
                                   <span className="log-dice-breakdown">
-                                    {roll.rolls.map((r, j) => (
-                                      <span key={j} style={{ color: typeof r === 'object' ? r.color : undefined }}>
-                                        {typeof r === 'object' ? r.result : r}{j < roll.rolls.length - 1 ? ', ' : ''}
-                                      </span>
-                                    ))}
+                                    {roll.rolls.map((r, j) => {
+                                      const isObj = typeof r === 'object' && r !== null;
+                                      const val = isObj ? (typeof r.result === 'object' ? r.result?.result : r.result) : r;
+                                      return (
+                                        <span key={j} style={{ color: isObj ? r.color : undefined }}>
+                                          {val}{j < roll.rolls.length - 1 ? ', ' : ''}
+                                        </span>
+                                      );
+                                    })}
                                     {roll.modifier !== 0 && ` ${roll.modifier > 0 ? '+' : ''}${roll.modifier}`}
                                     {' = '}
                                   </span>

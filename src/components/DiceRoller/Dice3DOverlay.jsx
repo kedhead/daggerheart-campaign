@@ -93,18 +93,23 @@ export default function Dice3DOverlay({
         localResult = { ...localResult, hopeDie, fearDie, total, outcome, isDoubles };
         if (isDoubles) playDoublesSound();
       } else if (rollData.system === 'generic') {
-        const values = rollData.rolls;
+        const rawRolls = rollData.rolls;
+        // rolls may be {type, result, color, sides} objects (from DM broadcast) or plain numbers
+        const values = rawRolls.map(r => (typeof r === 'object' && r !== null) ? r.result : r);
         const total = values.reduce((a, b) => a + b, 0) + mod;
-        const sides = rollData.dieType || 20;
         rawResults = {
           rolls: values,
-          rollDetails: values.map(v => ({ value: v, sides })),
+          rollDetails: rawRolls.map(r => (typeof r === 'object' && r !== null)
+            ? { value: r.result, sides: r.sides }
+            : { value: r, sides: rollData.dieType || 20 }
+          ),
         };
-        const d20Values = values.filter((_, i) => sides === 20);
+        const allSides = rawRolls.map(r => (typeof r === 'object' && r !== null) ? r.sides : (rollData.dieType || 20));
+        const d20Values = values.filter((v, i) => allSides[i] === 20);
         localResult = {
           ...localResult, rolls: values, total,
-          isCrit: sides === 20 && values.includes(20),
-          isCritFail: sides === 20 && values.every(v => v === 1),
+          isCrit: d20Values.includes(20),
+          isCritFail: d20Values.length > 0 && d20Values.every(v => v === 1),
         };
         if (localResult.isCrit) playCritSound();
       } else if (rollData.system === 'dnd5e') {

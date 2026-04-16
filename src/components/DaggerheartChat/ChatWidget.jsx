@@ -7,8 +7,27 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
 import { buildCampaignContext } from '../../services/campaignContext';
 
+// Per-system configuration
+const SYSTEM_CONFIG = {
+  daggerheart: {
+    apiEndpoint: '/api/daggerheart-chat',
+    systemLabel: 'Daggerheart',
+    rulebookLabel: 'Powered by Daggerheart Rulebook',
+    placeholder: 'Ask about the rules…',
+    themeClass: '',
+  },
+  starwarsd6: {
+    apiEndpoint: '/api/starwarsd6-chat',
+    systemLabel: 'Star Wars D6',
+    rulebookLabel: 'Powered by WEG D6 Rulebook',
+    placeholder: 'Ask about the rules, the Force…',
+    themeClass: 'sw-theme',
+  },
+};
+
 export default function ChatWidget({
   userId,
+  gameSystem   = 'daggerheart',
   campaign     = null,
   campaignFrame = null,
   characters   = [],
@@ -19,6 +38,7 @@ export default function ChatWidget({
   sessions     = [],
   encounters   = [],
 }) {
+    const config = SYSTEM_CONFIG[gameSystem] || SYSTEM_CONFIG.daggerheart;
     const [isOpen, setIsOpen] = useState(false);
 
     // Close on Escape
@@ -37,7 +57,7 @@ export default function ChatWidget({
     const hasCampaign = !!campaign?.name;
     const welcomeMessage = hasCampaign
       ? `Hello! I know everything about **${campaign.name}** — its NPCs, locations, adversaries, lore, and recent sessions. Ask me about the campaign, the rules, or anything else!`
-      : "Hello! I'm your Daggerheart rules assistant. Ask me anything about the game rules, character creation, or mechanics!";
+      : `Hello! I'm your ${config.systemLabel} rules assistant. Ask me anything about the game rules, character creation, or mechanics!`;
 
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([
@@ -105,7 +125,7 @@ export default function ChatWidget({
                 apiKey = '';
             }
 
-            const response = await fetch('/api/daggerheart-chat', {
+            const response = await fetch(config.apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -141,7 +161,7 @@ export default function ChatWidget({
     };
 
     return (
-        <div className="dh-chat-widget-container">
+        <div className={`dh-chat-widget-container ${config.themeClass}`}>
             {isOpen && (
                 <div className="dh-chat-window">
                     <div className="dh-chat-header">
@@ -150,7 +170,7 @@ export default function ChatWidget({
                         </div>
                         <div className="dh-chat-title">
                             <h3>{hasCampaign ? 'Campaign GM' : 'Rules Assistant'}</h3>
-                            <p>{hasCampaign ? `Knows ${campaign.name}` : 'Powered by Daggerheart Rulebook'}</p>
+                            <p>{hasCampaign ? `Knows ${campaign.name}` : config.rulebookLabel}</p>
                         </div>
                         <button
                             className="btn-icon"
@@ -196,7 +216,7 @@ export default function ChatWidget({
                         <textarea
                             ref={inputRef}
                             className="dh-chat-input"
-                            placeholder="Ask a question about the rules..."
+                            placeholder={config.placeholder}
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyDown={(e) => {

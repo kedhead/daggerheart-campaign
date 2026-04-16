@@ -403,3 +403,63 @@
     height: 40px;
   }
 }
+
+/* ===== Star Wars D6 Theme ===== */
+.sw-theme .dh-chat-toggle {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 2px solid rgba(255, 215, 0, 0.4);
+}
+
+.sw-theme .dh-chat-toggle:hover {
+  box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
+}
+
+.sw-theme .dh-chat-header {
+  background: linear-gradient(to right, rgba(255, 215, 0, 0.08), transparent);
+}
+
+.sw-theme .dh-chat-icon {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+}
+
+.sw-theme .dh-chat-title p {
+  color: #FFD700;
+}
+
+.sw-theme .dh-message.ai .dh-message-avatar {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+}
+
+.sw-theme .dh-message.user .dh-message-content {
+  background: #16213e;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.sw-theme .dh-message.ai .dh-message-content h1,
+.sw-theme .dh-message.ai .dh-message-content h2,
+.sw-theme .dh-message.ai .dh-message-content h3,
+.sw-theme .dh-message.ai .dh-message-content h4,
+.sw-theme .dh-message.ai .dh-message-content strong {
+  color: #FFD700;
+}
+
+.sw-theme .dh-message.ai .dh-message-content blockquote {
+  border-left-color: #FFD700;
+}
+
+.sw-theme .dh-chat-input:focus {
+  border-color: #FFD700;
+}
+
+.sw-theme .dh-chat-send {
+  background: #16213e;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+}
+
+.sw-theme .dh-chat-send:hover:not(:disabled) {
+  background: #1a1a2e;
+  border-color: #FFD700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
