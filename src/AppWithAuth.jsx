@@ -10,6 +10,7 @@ import RoleSelection from './components/RoleSelection/RoleSelection';
 import SidebarWithAuth from './components/SidebarWithAuth';
 import DashboardView from './components/Dashboard/DashboardView';
 import CharactersView from './components/Characters/CharactersView';
+import MySheetView from './components/Characters/MySheetView';
 import LoreView from './components/Lore/LoreView';
 import SessionsView from './components/Sessions/SessionsView';
 import FilesView from './components/Files/FilesView';
@@ -302,6 +303,40 @@ function CampaignApp() {
             removeFromCharacterInventory={removeFromCharacterInventory}
             toggleEquipped={toggleEquipped}
             transferToParty={transferToParty}
+          />
+        );
+      case 'my-sheet':
+        // Non-Daggerheart systems: no full sheet component exists, fall back to roster
+        if ((campaign?.gameSystem || 'daggerheart') !== 'daggerheart') {
+          return (
+            <CharactersView
+              campaign={campaign}
+              characters={characters}
+              addCharacter={addCharacter}
+              updateCharacter={updateCharacter}
+              deleteCharacter={deleteCharacter}
+              isDM={isDM}
+              currentUserId={currentUser.uid}
+              items={items}
+              partyInventory={partyInventory}
+              addToCharacterInventory={addToCharacterInventory}
+              removeFromCharacterInventory={removeFromCharacterInventory}
+              toggleEquipped={toggleEquipped}
+              transferToParty={transferToParty}
+            />
+          );
+        }
+        return (
+          <MySheetView
+            characters={characters}
+            currentUserId={currentUser.uid}
+            campaign={campaign}
+            addCharacter={addCharacter}
+            updateCharacter={updateCharacter}
+            deleteCharacter={deleteCharacter}
+            isDM={isDM}
+            items={items}
+            onGoToRoster={() => setCurrentView('characters')}
           />
         );
       case 'lore':
