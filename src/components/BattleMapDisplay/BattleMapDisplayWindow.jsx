@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { doc, onSnapshot, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, setDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
 import useImage from 'use-image';
@@ -324,41 +324,48 @@ export default function BattleMapDisplayWindow({ campaignId }) {
     return unsubscribe;
   }, [campaignId]);
 
-  // Subscribe to dice rolls
+  // Subscribe to dice roll requests
   useEffect(() => {
     if (!campaignId) return;
 
-    let isFirstSnapshot = true;
-
-    const unsubscribe = onSnapshot(
-      doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`),
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
-
-          // On first snapshot, just record the current rollId without triggering animation
-          if (isFirstSnapshot) {
-            isFirstSnapshot = false;
-            lastRollIdRef.current = data.rollId || null;
-            return;
-          }
-
-          // Only show if it's a new roll (different rollId)
-          if (data.rollId && data.rollId !== lastRollIdRef.current) {
-            lastRollIdRef.current = data.rollId;
-            setDiceRoll(data);
-            setShowDiceOverlay(true);
-          }
-        } else {
-          isFirstSnapshot = false;
-        }
-      },
-      (error) => {
-        console.error('Dice roll subscription error:', error);
-      }
+    const q = query(
+      collection(db, `campaigns/${campaignId}/diceRequests`),
+      where('status', '==', 'pending')
     );
 
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          // Skip if we're already rolling it to prevent loop
+          if (data.rollId && data.rollId !== lastRollIdRef.current) {
+            lastRollIdRef.current = data.rollId;
+            setDiceRoll({ id: change.doc.id, ...data });
+            setShowDiceOverlay(true);
+          }
+        }
+      });
+    }, (error) => {
+      console.error('Dice roll request subscription error:', error);
+    });
+
     return unsubscribe;
+  }, [campaignId]);
+
+  // Heartbeat to tell clients the Battle Map is ACTIVE
+  useEffect(() => {
+    if (!campaignId) return;
+
+    const pushHeartbeat = () => {
+      const statusRef = doc(db, `campaigns/${campaignId}/battleMapStatus`, 'current');
+      setDoc(statusRef, { lastActive: serverTimestamp() }).catch(e => 
+        console.error('Failed to emit battle map heartbeat:', e)
+      );
+    };
+
+    pushHeartbeat();
+    const interval = setInterval(pushHeartbeat, 5000);
+    return () => clearInterval(interval);
   }, [campaignId]);
 
   // Auto-scale map to fit window
@@ -498,11 +505,19 @@ export default function BattleMapDisplayWindow({ campaignId }) {
                 isCritFail: d20Values.length > 0 && d20Values.every(r => r === 1),
               };
             }
-
+            // Save to the original map history log
             const historyRef = collection(db, `campaigns/${campaignId}/battleMapDisplay/rolls/history`);
             addDoc(historyRef, completeData).catch(err =>
               console.error('Failed to save roll to history:', err)
             );
+
+            // Fulfill the request so the remote caller receives the complete physical response!
+            if (diceRoll.id) {
+              const reqRef = doc(db, `campaigns/${campaignId}/diceRequests/${diceRoll.id}`);
+              setDoc(reqRef, { status: 'completed', result: completeData }, { merge: true }).catch(err =>
+                console.error("Failed to fulfill dice request:", err)
+              );
+            }
           }
         }}
         onClose={() => {
