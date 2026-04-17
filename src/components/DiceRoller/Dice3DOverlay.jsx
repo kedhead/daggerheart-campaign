@@ -76,6 +76,7 @@ export default function Dice3DOverlay({
       (rollData.system === 'dnd5e' && rollData.d20 !== undefined);
 
     if (hasPrecomputed) {
+      setIsPrecomputed(true);
       initAudio();
       playRollSound();
 
