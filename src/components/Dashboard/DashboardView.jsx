@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, BookOpen, ScrollText, ExternalLink, Edit3 } from 'lucide-react';
+import { Users, BookOpen, ScrollText, ExternalLink, Edit3, Swords, Crown, Calendar, UsersRound, MapPin } from 'lucide-react';
 import DiceRoller from '../DiceRoller';
 import DMSoundboard from '../Soundboard/DMSoundboard';
 import Modal from '../Modal';
@@ -14,6 +14,50 @@ const ICON_MAP = {
   home: '🏠',
   'book-open': '📖'
 };
+
+function SectionHeading({ children }) {
+  return (
+    <div className="flex items-center gap-4">
+      <h2
+        className="text-[11px] font-bold uppercase"
+        style={{
+          color: 'var(--text-muted)',
+          letterSpacing: '0.28em',
+          fontFamily: 'var(--font-body)',
+        }}
+      >
+        {children}
+      </h2>
+      <div className="h-px flex-1" style={{ background: 'var(--line)' }} />
+    </div>
+  );
+}
+
+function GmStat({ icon: Icon, label, value }) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <Icon size={16} style={{ color: 'var(--text-muted)' }} strokeWidth={1.8} />
+      <div className="flex flex-col leading-tight">
+        <span
+          className="text-[9px] font-bold uppercase"
+          style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
+        >
+          {label}
+        </span>
+        <span
+          className="text-base"
+          style={{
+            color: 'var(--text)',
+            fontFamily: 'var(--font-mono)',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {value}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardView({
   campaign,
@@ -54,105 +98,252 @@ export default function DashboardView({
     .sort((a, b) => b.number - a.number)
     .slice(0, 3);
 
+  const safeEncounters = Array.isArray(encounters) ? encounters : [];
+  const safeNpcs = Array.isArray(npcs) ? npcs : [];
+  const safeLocations = Array.isArray(locations) ? locations : [];
+  const lastSession = recentSessions[0];
+
   return (
-    <div className="min-h-screen bg-transparent p-6 space-y-10 animate-in fade-in duration-1000">
-      {/* Campaign Terminal Header */}
-      <div className="relative rounded-[3rem] border border-white/5 bg-white/[0.01] backdrop-blur-md overflow-hidden p-10 flex flex-col md:flex-row items-center justify-between gap-8 transition-all hover:bg-white/[0.03] hover:border-white/10 group">
+    <div className="min-h-screen bg-transparent p-6 space-y-10 lr-fade-in" style={{ fontFamily: 'var(--font-body)' }}>
+      {/* Campaign Hero */}
+      <div
+        className="relative rounded-[2rem] overflow-hidden p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-8 transition-all group"
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--line)',
+          backdropFilter: 'blur(12px)',
+        }}
+      >
         <div className="relative z-10 flex flex-col gap-3 max-w-2xl">
-          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em] block animate-pulse">Campaign Overview</span>
-          <h1 className="font-serif text-5xl font-black text-white/95 leading-none italic lowercase tracking-tighter">
+          <span
+            className="text-[11px] font-bold uppercase"
+            style={{ color: 'var(--primary)', letterSpacing: '0.3em' }}
+          >
+            Campaign Overview
+          </span>
+          <h1
+            className="text-4xl md:text-5xl leading-[1.05]"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontWeight: 600,
+              color: 'var(--text)',
+              letterSpacing: '-0.02em',
+            }}
+          >
             {campaign.name}
           </h1>
-          <p className="text-sm font-medium text-white/30 leading-relaxed">
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
             {campaign.description || 'No description has been written for this campaign yet.'}
           </p>
         </div>
 
         {isDM && (
           <button
-            className="p-4 rounded-2xl bg-white/5 border border-white/5 text-white/20 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all group/edit"
+            className="p-3 rounded-xl transition-all"
+            style={{
+              background: 'var(--surface-hi)',
+              border: '1px solid var(--line-strong)',
+              color: 'var(--text-muted)',
+            }}
             onClick={() => setIsEditingCampaign(true)}
+            title="Edit campaign"
           >
-            <Edit3 size={24} className="group-hover/edit:-translate-y-1 transition-transform" />
+            <Edit3 size={20} />
           </button>
         )}
 
-        {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2 group-hover:bg-indigo-500/20 transition-all duration-1000" />
+        <div
+          className="absolute top-0 right-0 w-64 h-64 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none"
+          style={{ background: 'var(--primary-soft)' }}
+        />
       </div>
 
-      {/* Stats Cluster */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Stats Cluster — 4-up per Lorelich */}
+      <div className="grid grid-cols-2 lr-stats-grid lg:grid-cols-4 gap-4 md:gap-6" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
         {[
-          { label: 'Adventurers', value: safeCharacters.length, icon: Users, color: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/20' },
-          { label: 'Lore Entries', value: safeLore.length, icon: BookOpen, color: 'text-indigo-400', bg: 'bg-indigo-400/10', border: 'border-indigo-400/20' },
-          { label: 'Sessions Played', value: safeSessions.length, icon: ScrollText, color: 'text-emerald-400', bg: 'bg-emerald-400/10', border: 'border-emerald-400/20' }
+          { label: 'Adventurers', value: safeCharacters.length, icon: Users, tone: 'var(--primary)' },
+          { label: 'Lore Entries', value: safeLore.length, icon: BookOpen, tone: 'var(--accent)' },
+          { label: 'Sessions', value: safeSessions.length, icon: ScrollText, tone: 'var(--success)' },
+          { label: 'Encounters', value: safeEncounters.length, icon: Swords, tone: 'var(--fear)' },
         ].map((stat, i) => (
-          <div key={i} className="group relative flex items-center gap-6 p-8 rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl transition-all duration-500 hover:bg-white/[0.05] hover:border-white/10 hover:-translate-y-1 overflow-hidden">
-            <div className={`w-16 h-16 rounded-2xl ${stat.bg} ${stat.border} border flex items-center justify-center ${stat.color} transition-transform group-hover:scale-110 duration-500 shadow-lg`}>
-              <stat.icon size={28} />
+          <div
+            key={i}
+            className="group relative flex items-center gap-4 p-5 md:p-6 rounded-2xl overflow-hidden transition-all hover:-translate-y-0.5"
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--line)',
+            }}
+          >
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: `color-mix(in srgb, ${stat.tone} 16%, transparent)`,
+                border: `1px solid color-mix(in srgb, ${stat.tone} 35%, transparent)`,
+                color: stat.tone,
+              }}
+            >
+              <stat.icon size={22} />
             </div>
-            <div className="space-y-1">
-              <h3 className="text-4xl font-serif font-black text-white/90 italic leading-none">{stat.value}</h3>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">{stat.label}</p>
-            </div>
-            <div className={`absolute -right-4 -bottom-4 opacity-[0.03] group-hover:opacity-[0.07] transition-opacity duration-1000 ${stat.color}`}>
-              <stat.icon size={120} />
+            <div className="space-y-1 min-w-0">
+              <h3
+                className="text-3xl leading-none"
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 600,
+                  color: 'var(--text)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {stat.value}
+              </h3>
+              <p
+                className="text-[10px] font-bold uppercase"
+                style={{ color: 'var(--text-muted)', letterSpacing: '0.2em' }}
+              >
+                {stat.label}
+              </p>
             </div>
           </div>
         ))}
       </div>
 
+      {/* GM-at-a-glance — only when GM view is active */}
+      {isDM && (
+        <div
+          className="rounded-2xl p-6 flex flex-wrap items-center gap-6"
+          style={{
+            background: 'color-mix(in srgb, var(--fear) 10%, var(--surface))',
+            border: '1px solid color-mix(in srgb, var(--fear) 28%, var(--line-strong))',
+          }}
+        >
+          <div className="flex items-center gap-3 shrink-0">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{
+                background: 'color-mix(in srgb, var(--fear) 18%, transparent)',
+                border: '1px solid var(--fear)',
+                color: 'var(--fear)',
+              }}
+            >
+              <Crown size={18} />
+            </div>
+            <div>
+              <span
+                className="text-[10px] font-bold uppercase block"
+                style={{ color: 'var(--fear)', letterSpacing: '0.24em' }}
+              >
+                GM at a glance
+              </span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Private overview for the Game Master
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-4 md:gap-6 flex-1">
+            <GmStat icon={Calendar} label="Last session" value={lastSession ? `#${lastSession.number}` : '—'} />
+            <GmStat icon={UsersRound} label="NPCs" value={safeNpcs.length} />
+            <GmStat icon={MapPin} label="Locations" value={safeLocations.length} />
+            <GmStat icon={Swords} label="Encounters" value={safeEncounters.length} />
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Column: Quick Actions & Sessions */}
         <div className="lg:col-span-8 space-y-10">
-          <section className="space-y-6">
-            <div className="flex items-center gap-4">
-              <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">Quick Links</h2>
-              <div className="h-px flex-1 bg-white/5"></div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <section className="space-y-4">
+            <SectionHeading>Quick Links</SectionHeading>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {externalTools.map((tool, index) => (
                 <a
                   key={index}
                   href={tool.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative flex items-center gap-5 p-6 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-indigo-500/20 transition-all duration-500 overflow-hidden"
+                  className="group relative flex items-center gap-4 p-4 rounded-xl transition-all"
+                  style={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--line)',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--line)'; }}
                 >
-                  <div className="text-2xl bg-white/5 w-12 h-12 rounded-xl flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform">
+                  <div
+                    className="text-xl w-11 h-11 rounded-lg flex items-center justify-center shrink-0"
+                    style={{
+                      background: 'var(--surface-hi)',
+                      border: '1px solid var(--line)',
+                    }}
+                  >
                     {ICON_MAP[tool.icon] || '🔗'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-black text-white/80 group-hover:text-white transition-colors">{tool.name}</h4>
-                    <p className="text-[10px] font-medium text-white/30 truncate">{tool.description}</p>
+                    <h4 className="text-sm font-semibold" style={{ color: 'var(--text)' }}>{tool.name}</h4>
+                    <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{tool.description}</p>
                   </div>
-                  <ExternalLink size={14} className="text-white/10 group-hover:text-indigo-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-indigo-500/[0.03] to-indigo-500/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                  <ExternalLink size={14} style={{ color: 'var(--text-dim)' }} className="group-hover:translate-x-0.5 transition-transform" />
                 </a>
               ))}
             </div>
           </section>
 
           {recentSessions.length > 0 && (
-            <section className="space-y-6">
-              <div className="flex items-center gap-4">
-                <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">Recent Sessions</h2>
-                <div className="h-px flex-1 bg-white/5"></div>
-              </div>
-              <div className="space-y-4">
+            <section className="space-y-4">
+              <SectionHeading>Recent Sessions</SectionHeading>
+              <div className="space-y-3">
                 {recentSessions.map(session => (
-                  <div key={session.id} className="group flex items-center gap-6 p-6 rounded-3xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-500">
-                    <div className="w-14 h-14 shrink-0 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 flex flex-col items-center justify-center">
-                      <span className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">SES</span>
-                      <span className="text-xl font-serif font-black text-white">#{session.number}</span>
+                  <div
+                    key={session.id}
+                    className="group flex items-center gap-4 p-4 rounded-xl transition-all"
+                    style={{
+                      background: 'var(--surface)',
+                      border: '1px solid var(--line)',
+                    }}
+                  >
+                    <div
+                      className="w-12 h-12 shrink-0 rounded-lg flex flex-col items-center justify-center"
+                      style={{
+                        background: 'var(--primary-soft)',
+                        border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)',
+                      }}
+                    >
+                      <span
+                        className="text-[8px] font-bold uppercase"
+                        style={{ color: 'var(--primary)', letterSpacing: '0.14em' }}
+                      >
+                        SES
+                      </span>
+                      <span
+                        className="text-base"
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          color: 'var(--text)',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}
+                      >
+                        #{session.number}
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-lg font-serif font-black text-white/90 italic lowercase leading-none">{session.title}</h4>
-                        <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      <div className="flex items-center justify-between gap-3">
+                        <h4
+                          className="text-base leading-tight truncate"
+                          style={{
+                            fontFamily: 'var(--font-display)',
+                            fontWeight: 600,
+                            color: 'var(--text)',
+                          }}
+                        >
+                          {session.title}
+                        </h4>
+                        <span
+                          className="text-[10px] font-semibold uppercase shrink-0"
+                          style={{ color: 'var(--text-dim)', letterSpacing: '0.12em' }}
+                        >
+                          {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
                       </div>
-                      <p className="text-xs text-white/40 line-clamp-1 italic leading-relaxed">{session.summary}</p>
+                      <p className="text-xs line-clamp-1" style={{ color: 'var(--text-muted)' }}>{session.summary}</p>
                     </div>
                   </div>
                 ))}
@@ -160,13 +351,16 @@ export default function DashboardView({
             </section>
           )}
 
-          {/* Relationship Graph - Full Width Integration */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-4">
-              <h2 className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] font-sans">Relationship Map</h2>
-              <div className="h-px flex-1 bg-white/5"></div>
-            </div>
-            <div className="rounded-[3rem] border border-white/5 bg-white/[0.01] overflow-hidden p-2">
+          {/* Relationship Graph */}
+          <section className="space-y-4">
+            <SectionHeading>Relationship Map</SectionHeading>
+            <div
+              className="rounded-2xl overflow-hidden p-2"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+              }}
+            >
               <RelationshipGraph
                 campaign={campaign}
                 entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
@@ -178,26 +372,32 @@ export default function DashboardView({
         </div>
 
         {/* Right Column: Interaction Hub */}
-        <div className="lg:col-span-4 space-y-10">
-          <div className="sticky top-6 flex flex-col gap-10">
-            <section className="bg-black/20 rounded-[2.5rem] border border-white/5 p-8 backdrop-blur-sm overflow-hidden relative group">
+        <div className="lg:col-span-4 space-y-6">
+          <div className="sticky top-6 flex flex-col gap-6">
+            <section
+              className="rounded-2xl p-6 overflow-hidden relative"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+              }}
+            >
               <DiceRoller
                 isDM={isDM}
                 campaignId={campaign.id}
                 characters={characters}
                 currentUserId={currentUserId}
               />
-              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity">
-                <ScrollText size={120} className="text-white" />
-              </div>
             </section>
 
             {isDM && (
-              <section className="bg-black/20 rounded-[2.5rem] border border-white/5 p-8 backdrop-blur-sm overflow-hidden relative group">
+              <section
+                className="rounded-2xl p-6 overflow-hidden relative"
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--line)',
+                }}
+              >
                 <DMSoundboard campaignId={campaign.id} />
-                <div className="absolute top-0 left-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity">
-                  <Edit3 size={120} className="text-white" />
-                </div>
               </section>
             )}
           </div>
