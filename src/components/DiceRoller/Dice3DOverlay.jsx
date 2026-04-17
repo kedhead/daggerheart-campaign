@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import DiceBox from '@3d-dice/dice-box';
 import { playRollSound, playCritSound, playDoublesSound, initAudio } from '../../utils/diceAudio';
 import SpecialResultOverlay from './SpecialResultOverlay';
@@ -379,7 +380,7 @@ export default function Dice3DOverlay({
     (rollResult?.isCrit ? 'crit' : '') ||
     (rollResult?.isCritFail ? 'critfail' : '');
 
-  return (
+  return createPortal(
     <div className={`dice-3d-overlay ${outcomeClass} ${show ? 'visible' : ''}`} onClick={onClose}>
 
       {/* Container for the 3D Canvas — always visible */}
@@ -440,7 +441,8 @@ export default function Dice3DOverlay({
           onClose={() => setSpecialOverlay(null)}
         />
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
 
