@@ -76,6 +76,7 @@ export default function Dice3DOverlay({
       (rollData.system === 'dnd5e' && rollData.d20 !== undefined);
 
     if (hasPrecomputed) {
+      setIsPrecomputed(true);
       initAudio();
       playRollSound();
 
@@ -146,8 +147,8 @@ export default function Dice3DOverlay({
       let rollInput;
       if (rollData.system === 'daggerheart') {
         rollInput = [
-          { qty: 1, sides: 12, themeColor: '#fbbf24', value: [localResult.hopeDie] },
-          { qty: 1, sides: 12, themeColor: '#a855f7', value: [localResult.fearDie] },
+          { qty: 1, sides: 12, theme: 'magic', themeColor: '#fbbf24', value: [localResult.hopeDie] },
+          { qty: 1, sides: 12, theme: 'magic', themeColor: '#a855f7', value: [localResult.fearDie] },
         ];
       } else if (rollData.system === 'generic') {
         if (rollData.diceConfig) {
@@ -161,25 +162,25 @@ export default function Dice3DOverlay({
               const dieValues = rawResults.rolls ? rawResults.rolls.slice(valueIdx, valueIdx + count) : [];
               if (dieValues.length === count) {
                 // If it supports arrays of values or single values
-                rollInput.push({ qty: count, sides, themeColor: DICE_COLORS_P[sides] || '#3b82f6', value: dieValues });
+                rollInput.push({ qty: count, sides, theme: 'magic', themeColor: DICE_COLORS_P[sides] || '#3b82f6', value: dieValues });
                 valueIdx += count;
               } else {
-                rollInput.push({ qty: count, sides, themeColor: DICE_COLORS_P[sides] || '#3b82f6' });
+                rollInput.push({ qty: count, sides, theme: 'magic', themeColor: DICE_COLORS_P[sides] || '#3b82f6' });
               }
             }
           });
-          if (rollInput.length === 0) rollInput = [{ qty: 1, sides: 20, themeColor: '#3b82f6', value: rawResults.rolls?.[0] }];
+          if (rollInput.length === 0) rollInput = [{ qty: 1, sides: 20, theme: 'magic', themeColor: '#3b82f6', value: rawResults.rolls?.[0] }];
         } else {
           const dieType = rollData.dieType || 20;
           const qty = (rawResults.rolls || []).length || 1;
-          rollInput = [{ qty, sides: dieType, themeColor: DICE_COLORS_P[dieType] || '#3b82f6', value: rawResults.rolls }];
+          rollInput = [{ qty, sides: dieType, theme: 'magic', themeColor: DICE_COLORS_P[dieType] || '#3b82f6', value: rawResults.rolls }];
         }
       } else if (rollData.system === 'dnd5e') {
         rollInput = rollData.d20Second !== undefined
-          ? [{ qty: 1, sides: 20, themeColor: '#3b82f6', value: [rawResults.d20] }, { qty: 1, sides: 20, themeColor: '#60a5fa', value: [rawResults.d20Second] }]
-          : [{ qty: 1, sides: 20, themeColor: '#3b82f6', value: [rawResults.d20] }];
+          ? [{ qty: 1, sides: 20, theme: 'magic', themeColor: '#3b82f6', value: [rawResults.d20] }, { qty: 1, sides: 20, theme: 'magic', themeColor: '#60a5fa', value: [rawResults.d20Second] }]
+          : [{ qty: 1, sides: 20, theme: 'magic', themeColor: '#3b82f6', value: [rawResults.d20] }];
       } else {
-        rollInput = [{ qty: 1, sides: 12, themeColor: '#fbbf24', value: [localResult.hopeDie] }, { qty: 1, sides: 12, themeColor: '#a855f7', value: [localResult.fearDie] }];
+        rollInput = [{ qty: 1, sides: 12, theme: 'magic', themeColor: '#fbbf24', value: [localResult.hopeDie] }, { qty: 1, sides: 12, theme: 'magic', themeColor: '#a855f7', value: [localResult.fearDie] }];
       }
 
       // Run physics animation for visuals — the dice tumble on screen while we ignore physics results
