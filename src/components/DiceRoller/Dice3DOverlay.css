@@ -442,3 +442,19 @@
     padding: 1rem 2rem;
   }
 }
+
+/* Magical Precomputed Dice Glow Effect */
+.dice-box-canvas.precomputed-glow canvas {
+  filter: blur(5px) contrast(1.5) brightness(1.3) saturate(1.5);
+  transform: scale(1.05); /* hide edge artifacts of blur */
+  animation: magicalPulse 2s infinite alternate ease-in-out;
+}
+
+@keyframes magicalPulse {
+  from {
+    filter: blur(4px) contrast(1.4) brightness(1.2) saturate(1.4);
+  }
+  to {
+    filter: blur(6px) contrast(1.6) brightness(1.5) saturate(1.7);
+  }
+}

@@ -386,7 +386,7 @@ export default function Dice3DOverlay({
       <div
         id="dice-box-canvas"
         ref={containerRef}
-        className="dice-box-canvas"
+        className={`dice-box-canvas ${animationComplete && isPrecomputed ? 'fade-out' : ''} ${isPrecomputed ? 'precomputed-glow' : ''}`}
       />
 
       {/* Result Banner (Overlay on top) */}
