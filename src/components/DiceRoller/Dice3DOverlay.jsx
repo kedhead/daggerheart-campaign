@@ -78,12 +78,12 @@ export default function Dice3DOverlay({
     if (hasPrecomputed) {
       initAudio();
       playRollSound();
-      setIsPrecomputed(true);
 
       const mod = parseInt(rollData.modifier) || 0;
       let rawResults = {};
       let localResult = { system: rollData.system, modifier: mod };
 
+      // Compute the correct pre-determined result from broadcaster values
       if (rollData.system === 'daggerheart') {
         const { hopeDie, fearDie } = rollData;
         const total = hopeDie + fearDie + mod;
@@ -91,10 +91,13 @@ export default function Dice3DOverlay({
         const isDoubles = hopeDie === fearDie;
         rawResults = { hope: hopeDie, fear: fearDie };
         localResult = { ...localResult, hopeDie, fearDie, total, outcome, isDoubles };
-        if (isDoubles) playDoublesSound();
+        if (isDoubles) {
+          playDoublesSound();
+          setSpecialOverlay({ type: 'doubles', value: hopeDie });
+          setTimeout(() => setSpecialOverlay(null), 2500);
+        }
       } else if (rollData.system === 'generic') {
         const rawRolls = rollData.rolls;
-        // rolls may be {type, result, color, sides} objects (from DM broadcast) or plain numbers
         const values = rawRolls.map(r => (typeof r === 'object' && r !== null) ? r.result : r);
         const total = values.reduce((a, b) => a + b, 0) + mod;
         rawResults = {
@@ -111,7 +114,14 @@ export default function Dice3DOverlay({
           isCrit: d20Values.includes(20),
           isCritFail: d20Values.length > 0 && d20Values.every(v => v === 1),
         };
-        if (localResult.isCrit) playCritSound();
+        if (localResult.isCrit) {
+          playCritSound();
+          setSpecialOverlay({ type: 'crit', value: 20 });
+          setTimeout(() => setSpecialOverlay(null), 2500);
+        } else if (localResult.isCritFail) {
+          setSpecialOverlay({ type: 'critfail', value: 1 });
+          setTimeout(() => setSpecialOverlay(null), 2500);
+        }
       } else if (rollData.system === 'dnd5e') {
         const { d20, d20Second, mode } = rollData;
         let finalD20 = d20;
@@ -124,12 +134,57 @@ export default function Dice3DOverlay({
           ...localResult, d20, d20Second, total: finalD20 + mod,
           isCrit: finalD20 === 20, isCritFail: finalD20 === 1,
         };
-        if (localResult.isCrit) playCritSound();
+        if (localResult.isCrit) {
+          playCritSound();
+          setSpecialOverlay({ type: 'crit', value: 20 });
+          setTimeout(() => setSpecialOverlay(null), 2500);
+        }
       }
 
-      // Show result banner quickly, then notify parent and close
+      // Build roll input so physics animation uses the right dice types (visuals only)
+      const DICE_COLORS_P = { 4: '#10b981', 6: '#3b82f6', 8: '#8b5cf6', 10: '#ec4899', 12: '#f59e0b', 20: '#ef4444' };
+      let rollInput;
+      if (rollData.system === 'daggerheart') {
+        rollInput = [
+          { qty: 1, sides: 12, themeColor: '#fbbf24' },
+          { qty: 1, sides: 12, themeColor: '#a855f7' },
+        ];
+      } else if (rollData.system === 'generic') {
+        if (rollData.diceConfig) {
+          rollInput = [];
+          Object.entries(rollData.diceConfig).forEach(([dieKey, count]) => {
+            const sides = parseInt(dieKey.replace('d', ''));
+            if (count > 0 && sides) rollInput.push({ qty: count, sides, themeColor: DICE_COLORS_P[sides] || '#3b82f6' });
+          });
+          if (rollInput.length === 0) rollInput = [{ qty: 1, sides: 20, themeColor: '#3b82f6' }];
+        } else {
+          const dieType = rollData.dieType || 20;
+          const qty = (rawResults.rolls || []).length || 1;
+          rollInput = [{ qty, sides: dieType, themeColor: DICE_COLORS_P[dieType] || '#3b82f6' }];
+        }
+      } else if (rollData.system === 'dnd5e') {
+        rollInput = rollData.d20Second !== undefined
+          ? [{ qty: 1, sides: 20, themeColor: '#3b82f6' }, { qty: 1, sides: 20, themeColor: '#60a5fa' }]
+          : [{ qty: 1, sides: 20, themeColor: '#3b82f6' }];
+      } else {
+        rollInput = [{ qty: 1, sides: 12, themeColor: '#fbbf24' }, { qty: 1, sides: 12, themeColor: '#a855f7' }];
+      }
+
+      // Run physics animation for visuals — the dice tumble on screen while we ignore physics results
+      setAnimationComplete(false);
+      setRollResult(null);
+      if (diceBoxRef.current) {
+        try {
+          diceBoxRef.current.clear();
+          await diceBoxRef.current.roll(rollInput); // physics result intentionally discarded
+        } catch (e) {
+          console.warn('[Dice3D] Physics animation failed for pre-computed roll:', e);
+        }
+      }
+
+      // After animation, reveal the CORRECT pre-computed result
       setRollResult(localResult);
-      setTimeout(() => setAnimationComplete(true), 400);
+      setTimeout(() => setAnimationComplete(true), 500);
       setTimeout(() => {
         if (onComplete) onComplete(rawResults);
         if (onClose) onClose();
@@ -315,12 +370,11 @@ export default function Dice3DOverlay({
   return (
     <div className={`dice-3d-overlay ${outcomeClass} ${show ? 'visible' : ''}`} onClick={onClose}>
 
-      {/* Container for the 3D Canvas — hidden when showing pre-computed results */}
+      {/* Container for the 3D Canvas — always visible */}
       <div
         id="dice-box-canvas"
         ref={containerRef}
         className="dice-box-canvas"
-        style={{ display: isPrecomputed ? 'none' : 'block' }}
       />
 
       {/* Result Banner (Overlay on top) */}

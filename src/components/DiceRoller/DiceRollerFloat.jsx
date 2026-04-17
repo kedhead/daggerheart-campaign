@@ -36,14 +36,13 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
   const [isPrivate, setIsPrivate] = useState(false);
   const [rollMode, setRollMode] = useState('normal'); // D&D 5e: normal, advantage, disadvantage
 
-  // Broadcast to the map display window — sends config ONLY (no pre-computed values)
-  // so Dice3DOverlay on the map triggers real 3D physics animation (same as PlayerDicePanel).
+  // Broadcast to the map display window — sends pre-computed values so the map
+  // shows the physics animation AND displays the exact same result the player saw.
   const broadcastRoll = async (system, rollData, mod) => {
     if (!campaignId) return;
     const playerName = currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Player';
     const playerColor = localStorage.getItem('daggerheart_dice_color') || '#6366f1';
 
-    // Base payload — deliberately no pre-computed dice values
     const payload = {
       system,
       modifier: parseInt(mod) || 0,
@@ -54,13 +53,14 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
       timestamp: serverTimestamp(),
     };
 
-    // For generic rolls, include the dice config (counts) so the map knows what to roll
-    if (system === 'generic') {
-      const dieType = rollData.dieType || parseInt(selectedDie);
-      const quantity = rollData.quantity || parseInt(diceQuantity) || 1;
-      payload.diceConfig = { [`d${dieType}`]: quantity };
+    if (system === 'daggerheart') {
+      payload.hopeDie = rollData.hopeDie;
+      payload.fearDie = rollData.fearDie;
+    } else if (system === 'generic') {
+      payload.rolls = rollData.rolls;
+      payload.dieType = rollData.dieType;
+      payload.diceConfig = { [`d${rollData.dieType}`]: rollData.quantity };
     }
-    // daggerheart: no extra fields needed — map always rolls 2d12 (hope + fear)
 
     try {
       await setDoc(doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`), payload);
