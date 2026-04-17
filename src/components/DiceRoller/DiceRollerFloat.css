@@ -456,12 +456,15 @@
 }
 
 /* Mobile Responsive */
-@media (max-width: 640px) {
+@media (max-width: 900px) {
   .dice-roller-float {
-    bottom: 1rem;
+    /* Clear the fixed BottomNav (56px + safe-area) plus breathing room */
+    bottom: calc(var(--lr-main-pad, 64px) + 12px);
     right: 1rem;
   }
+}
 
+@media (max-width: 640px) {
   .dice-panel {
     width: calc(100vw - 2rem);
     max-width: 320px;
