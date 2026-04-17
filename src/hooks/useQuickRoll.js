@@ -29,7 +29,7 @@ export function useQuickRoll(campaignId) {
 
     const hopeDie = Math.floor(Math.random() * 12) + 1;
     const fearDie = Math.floor(Math.random() * 12) + 1;
-    const total = Math.max(hopeDie, fearDie) + modifier;
+    const total = hopeDie + fearDie + modifier;
     const outcome = hopeDie >= fearDie ? 'hope' : 'fear';
     const isDoubles = hopeDie === fearDie;
 
