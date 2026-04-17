@@ -1312,8 +1312,8 @@
   }
 
   .dh-attribute-circle {
-    width: 60px;
-    height: 60px;
+    width: 64px;
+    height: 64px;
   }
 
   .dh-attribute-value {
@@ -1340,6 +1340,32 @@
     width: 26px;
     height: 26px;
   }
+
+  /* Roll result: place just under the compact mobile header so it's in line-of-sight */
+  .dh-roll-result-overlay {
+    top: 0.75rem;
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  /* Thumb-friendly tap targets for roll triggers */
+  .dh-exp-roll-btn,
+  .dh-weapon-roll-btn {
+    min-height: 44px;
+    padding: 0.55rem 0.85rem;
+  }
+
+  /* Allow the tab bar to scroll horizontally when labels overflow */
+  .dh-tab-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .dh-tab-bar::-webkit-scrollbar { display: none; }
+  .dh-tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1364,8 +1390,8 @@
   }
 
   .dh-attribute-circle {
-    width: 52px;
-    height: 52px;
+    width: 56px;
+    height: 56px;
   }
 
   .dh-attribute-value {
@@ -1625,11 +1651,12 @@
 }
 
 .dh-roll-result-overlay {
-  position: absolute;
-  bottom: 1.25rem;
+  position: fixed;
+  top: 5rem;
+  bottom: auto;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
+  z-index: 1100;
   min-width: 220px;
   max-width: 320px;
   padding: 1rem 1.25rem 0.85rem;

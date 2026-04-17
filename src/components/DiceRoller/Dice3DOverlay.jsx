@@ -29,7 +29,7 @@ export default function Dice3DOverlay({
       scale: 6,
       throwForce: 6,
       gravity: 3,
-      theme: 'default',
+      theme: 'magic',
       themeColor: '#3b82f6',
       offscreen: false,
     });
