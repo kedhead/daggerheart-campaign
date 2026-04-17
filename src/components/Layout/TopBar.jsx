@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { Search, Bell, ChevronRight } from 'lucide-react';
+import { Search, Bell, ChevronRight, Crown, User } from 'lucide-react';
 import PresenceIndicator from '../PresenceIndicator/PresenceIndicator';
 import NotificationPanel from '../Notifications/NotificationPanel';
 import { useNotifications } from '../../hooks/useNotifications';
 
-export default function TopBar({ currentView, presenceList, currentCampaignId, campaign, isDM, setCurrentView }) {
+export default function TopBar({ currentView, presenceList, currentCampaignId, campaign, isDM, setCurrentView, onOpenCommandPalette }) {
     const { currentUser } = useAuth();
     const { info } = useToast();
     const [panelOpen, setPanelOpen] = useState(false);
@@ -116,45 +116,89 @@ export default function TopBar({ currentView, presenceList, currentCampaignId, c
     };
 
     return (
-        <header className="h-14 md:h-16 flex items-center justify-between px-3 md:px-6 bg-[#0d1126]/70 backdrop-blur-xl border-b border-white/5 sticky top-0 z-40 transition-all duration-300">
+        <header
+            className="h-14 lr:h-14 desk:h-16 flex items-center justify-between px-3 desk:px-6 backdrop-blur-xl border-b sticky top-0 z-40 transition-all duration-300"
+            style={{
+                background: 'color-mix(in srgb, var(--surface) 78%, transparent)',
+                borderBottomColor: 'var(--line)',
+                fontFamily: 'var(--font-body)',
+            }}
+        >
             <div className="flex items-center gap-4 min-w-0">
                 <nav className="flex items-center text-sm font-medium min-w-0">
-                    <span className="hidden sm:inline text-white/40 hover:text-white/80 transition-colors cursor-default shrink-0">Lorelich</span>
-                    <ChevronRight size={14} className="hidden sm:inline mx-2 text-white/20 shrink-0" />
-                    <span className="text-white font-semibold tracking-wide truncate">{getBreadcrumbs()}</span>
+                    <span className="hidden sm:inline text-[color:var(--text-dim)] hover:text-[color:var(--text-muted)] transition-colors cursor-default shrink-0" style={{ fontFamily: 'var(--font-display)' }}>Lorelich</span>
+                    <ChevronRight size={14} className="hidden sm:inline mx-2 text-[color:var(--text-dim)] shrink-0" />
+                    <span className="text-[color:var(--text)] font-semibold tracking-wide truncate">{getBreadcrumbs()}</span>
                 </nav>
             </div>
 
-            <div className="hidden md:flex flex-1 max-w-2xl px-12">
-                <div className="relative group w-full">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-white/60 transition-colors" />
-                    <input
-                        type="text"
-                        placeholder="Search campaign, lore, or press '/' for commands..."
-                        className="w-full bg-white/[0.03] border border-white/10 rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-white/10 focus:bg-white/[0.07] transition-all text-white placeholder:text-white/20 shadow-inner"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] font-bold text-white/30 group-focus-within:hidden">
-                        CMD K
+            <div className="hidden desk:flex flex-1 max-w-2xl px-12">
+                <button
+                    type="button"
+                    onClick={() => onOpenCommandPalette?.()}
+                    className="relative group w-full text-left"
+                    aria-label="Open command palette"
+                >
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--text-dim)] group-hover:text-[color:var(--text-muted)] transition-colors" />
+                    <div
+                        className="w-full rounded-xl py-2.5 pl-11 pr-4 text-sm text-[color:var(--text-muted)] transition-all shadow-inner"
+                        style={{
+                            background: 'color-mix(in srgb, var(--surface-hi) 60%, transparent)',
+                            border: '1px solid var(--line)',
+                        }}
+                    >
+                        Search campaign, lore, or press <span className="text-[color:var(--text)]">⌘K</span> for commands…
                     </div>
-                </div>
+                    <div
+                        className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                        style={{
+                            border: '1px solid var(--line-strong)',
+                            background: 'var(--surface-hi)',
+                            color: 'var(--text-muted)',
+                            fontFamily: 'var(--font-mono)',
+                        }}
+                    >
+                        ⌘K
+                    </div>
+                </button>
             </div>
 
-            <div className="flex items-center gap-2 md:gap-6 shrink-0">
-                <div className="flex items-center gap-2 md:gap-3 pl-2 md:pl-4 border-l border-white/10">
+            <div className="flex items-center gap-2 desk:gap-4 shrink-0">
+                {/* Role pill — mirrors Sidebar pill so the swap is always visible */}
+                <div
+                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-[0.14em]"
+                    style={{
+                        background: isDM ? 'rgba(139, 92, 246, 0.12)' : 'var(--primary-soft)',
+                        borderColor: isDM ? 'var(--fear)' : 'var(--primary)',
+                        color: isDM ? 'var(--fear)' : 'var(--primary)',
+                    }}
+                    aria-label={isDM ? 'GM view active' : 'Player view active'}
+                >
+                    {isDM ? <Crown size={11} strokeWidth={2.4} /> : <User size={11} strokeWidth={2.4} />}
+                    <span>{isDM ? 'GM' : 'Player'}</span>
+                </div>
+                <div className="flex items-center gap-2 desk:gap-3 pl-2 desk:pl-4 border-l border-[color:var(--line)]">
                     <div className="hidden sm:flex flex-col items-end">
-                        <span className="text-xs font-bold text-white/90 tracking-tight">
+                        <span className="text-xs font-bold text-[color:var(--text)] tracking-tight">
                             {currentUser?.displayName || currentUser?.email?.split('@')[0]}
                         </span>
                         <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                            <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Active</span>
+                            <div className="w-1.5 h-1.5 rounded-full bg-[color:var(--success)] shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>
+                            <span className="text-[10px] font-medium text-[color:var(--text-muted)] uppercase tracking-widest">Active</span>
                         </div>
                     </div>
-                    <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl overflow-hidden border border-white/10 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 p-0.5 ring-1 ring-white/5">
+                    <div
+                        className="w-8 h-8 desk:w-9 desk:h-9 rounded-xl overflow-hidden p-0.5 ring-1"
+                        style={{
+                            background: 'var(--primary-soft)',
+                            border: '1px solid var(--line-strong)',
+                            boxShadow: '0 0 0 1px rgba(255,255,255,0.04)',
+                        }}
+                    >
                         {currentUser?.photoURL ? (
                             <img src={currentUser.photoURL} alt="Profile" className="w-full h-full object-cover rounded-lg" />
                         ) : (
-                            <div className="w-full h-full bg-white/5 flex items-center justify-center text-xs font-black text-white/80 uppercase rounded-lg">
+                            <div className="w-full h-full flex items-center justify-center text-xs font-black uppercase rounded-lg" style={{ background: 'var(--surface-hi)', color: 'var(--text)' }}>
                                 {currentUser?.email?.charAt(0)}
                             </div>
                         )}
@@ -168,14 +212,20 @@ export default function TopBar({ currentView, presenceList, currentCampaignId, c
                         onClick={() => setPanelOpen(prev => !prev)}
                         className={`relative p-2 rounded-xl transition-all duration-200 ${
                             panelOpen
-                                ? 'bg-white/10 text-white'
-                                : 'hover:bg-white/5 text-white/40 hover:text-white'
+                                ? 'bg-[color:var(--primary-soft)] text-[color:var(--primary)]'
+                                : 'hover:bg-white/5 text-[color:var(--text-muted)] hover:text-[color:var(--text)]'
                         }`}
                         aria-label="Notifications"
                     >
                         <Bell size={20} />
                         {totalCount > 0 && (
-                            <span className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center bg-red-500 rounded-full border-2 border-[#0d1126] text-[9px] font-black text-white leading-none">
+                            <span
+                                className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full text-[9px] font-black text-white leading-none"
+                                style={{
+                                    background: 'var(--danger)',
+                                    border: '2px solid var(--bg)',
+                                }}
+                            >
                                 {totalCount > 9 ? '9+' : totalCount}
                             </span>
                         )}

@@ -25,6 +25,13 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
     localStorage.setItem('sidebarCollapsed', isCollapsed.toString());
   }, [isCollapsed]);
 
+  // BottomNav "More" button dispatches this event on mobile
+  useEffect(() => {
+    const openFromNav = () => setIsMobileMenuOpen(true);
+    window.addEventListener('lr-open-sidebar', openFromNav);
+    return () => window.removeEventListener('lr-open-sidebar', openFromNav);
+  }, []);
+
   const toggleCollapsed = () => {
     setIsCollapsed(!isCollapsed);
   };
@@ -145,7 +152,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
     <>
       {/* Mobile menu toggle button */}
       <button
-        className="fixed top-4 left-4 z-[60] p-2 rounded-xl bg-arcane-glass backdrop-blur-md border border-white/10 text-white md:hidden shadow-lg"
+        className="lr-mobile-only fixed top-4 left-4 z-[60] p-2 rounded-xl bg-arcane-glass backdrop-blur-md border border-white/10 text-white shadow-lg"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         aria-label="Toggle menu"
       >
@@ -155,20 +162,21 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
       {/* Backdrop for mobile */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[50] md:hidden transition-all duration-300"
+          className="lr-mobile-only fixed inset-0 bg-black/60 backdrop-blur-sm z-[50] transition-all duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       <aside
+        data-mobile-open={isMobileMenuOpen ? 'true' : 'false'}
         className={`
-          fixed md:sticky top-0 left-0 h-screen z-[55] 
+          lr-sidebar-aside fixed desk:sticky top-0 left-0 h-screen z-[55]
           flex flex-col
           transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
-          bg-[#0d1126]/40 backdrop-blur-2xl border-r border-white/5 shadow-2xl
+          bg-[color:var(--surface)]/60 backdrop-blur-2xl border-r border-[color:var(--line)] shadow-2xl
           ${isCollapsed ? 'w-20' : 'w-72'}
-          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-          ${isDM ? 'ring-1 ring-red-500/10' : 'ring-1 ring-blue-500/10'}
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full desk:translate-x-0'}
+          ${isDM ? 'ring-1 ring-[color:var(--fear)]/10' : 'ring-1 ring-[color:var(--primary)]/10'}
         `}
       >
         {/* Sidebar Header */}
@@ -194,10 +202,10 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
 
         {/* Campaign Info Card */}
         {currentCampaign && !isCollapsed && (
-          <div className="mx-4 mb-6 p-4 rounded-2xl bg-white/[0.03] border border-white/5 group hover:bg-white/[0.05] hover:border-white/10 transition-all duration-300 cursor-pointer" onClick={onSwitchCampaign}>
+          <div className="mx-4 mb-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 group hover:bg-white/[0.05] hover:border-white/10 transition-all duration-300 cursor-pointer" onClick={onSwitchCampaign}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-500">
-                <FolderOpen size={20} className="text-indigo-400" />
+              <div className="w-10 h-10 rounded-xl bg-[color:var(--primary-soft)] flex items-center justify-center border border-[color:var(--primary)]/20 group-hover:scale-110 transition-transform duration-500">
+                <FolderOpen size={20} className="text-[color:var(--primary)]" />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="text-xs font-bold text-white/90 truncate leading-tight tracking-tight uppercase">{currentCampaign.name}</h3>
@@ -208,6 +216,24 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Role pill — makes the GM ↔ Player swap unmistakable */}
+        {!isCollapsed && (
+          <div className="mx-4 mb-4">
+            <div
+              className="flex items-center justify-center gap-2 px-3 py-2 rounded-xl border text-[11px] font-bold uppercase tracking-[0.14em]"
+              style={{
+                background: isDM ? 'rgba(139, 92, 246, 0.12)' : 'var(--primary-soft)',
+                borderColor: isDM ? 'var(--fear)' : 'var(--primary)',
+                color: isDM ? 'var(--fear)' : 'var(--primary)',
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              {isDM ? <Crown size={13} strokeWidth={2.4} /> : <User size={13} strokeWidth={2.4} />}
+              <span>{isDM ? 'GM View' : 'Player View'}</span>
             </div>
           </div>
         )}
@@ -239,7 +265,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                         className={`
                           w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 relative group/item
                           ${isActive
-                            ? 'bg-white/10 text-white border border-white/10 shadow-[0_4px_12px_rgba(255,255,255,0.05)]'
+                            ? 'bg-[color:var(--primary-soft)] text-white border border-[color:var(--primary)]/30 shadow-[0_4px_12px_rgba(255,255,255,0.05)]'
                             : 'text-white/40 hover:text-white/80 hover:bg-white/[0.02]'
                           }
                           ${isCollapsed ? 'justify-center' : ''}
@@ -247,11 +273,11 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                       >
                         <div className={`
                           relative transition-all duration-300
-                          ${isActive ? 'text-indigo-400 drop-shadow-[0_0_8px_rgba(129,140,248,0.5)] scale-110' : 'group-hover/item:scale-110'}
+                          ${isActive ? 'text-[color:var(--primary)] scale-110' : 'group-hover/item:scale-110'}
                         `}>
                           <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
                           {isActive && (
-                            <div className="absolute inset-0 bg-indigo-400/20 blur-lg rounded-full animate-pulse" />
+                            <div className="absolute inset-0 bg-[color:var(--primary)]/20 blur-lg rounded-full animate-pulse" />
                           )}
                         </div>
 
@@ -262,7 +288,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                         )}
 
                         {isActive && (
-                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-400 rounded-r-full shadow-[0_0_12px_rgba(129,140,248,0.8)]" />
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[color:var(--primary)] rounded-r-full shadow-[0_0_12px_var(--primary-soft)]" />
                         )}
 
                         {isCollapsed && (

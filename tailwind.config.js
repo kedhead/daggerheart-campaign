@@ -42,6 +42,7 @@ export default {
       },
       screens: {
         lr: { max: '900px' },
+        desk: { min: '901px' },
       },
     },
   },
