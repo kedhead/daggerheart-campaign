@@ -53,6 +53,28 @@
   pointer-events: auto;
   animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: bottom right;
+  position: relative;
+}
+
+.dh-chat-resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+  z-index: 3;
+  border-top-left-radius: 16px;
+  background:
+    linear-gradient(135deg, transparent 0 35%, var(--text-secondary) 35% 42%, transparent 42% 55%, var(--text-secondary) 55% 62%, transparent 62%);
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+  touch-action: none;
+}
+
+.dh-chat-resize-handle:hover,
+.dh-chat-resize-handle:active {
+  opacity: 0.9;
 }
 
 @keyframes slideIn {
@@ -367,8 +389,8 @@
 /* Mobile responsiveness */
 @media (max-width: 480px) {
   .dh-chat-window {
-    width: 100vw;
-    height: 100vh;
+    width: 100vw !important;
+    height: 100vh !important;
     max-height: 100vh;
     margin: 0;
     border-radius: 0;
@@ -379,6 +401,10 @@
     bottom: 0;
     z-index: 1001;
     /* Above everything */
+  }
+
+  .dh-chat-resize-handle {
+    display: none;
   }
 
   .dh-chat-widget-container {

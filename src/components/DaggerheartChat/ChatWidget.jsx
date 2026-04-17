@@ -23,6 +23,24 @@ const SYSTEM_CONFIG = {
   },
 };
 
+const MIN_SIZE = { width: 320, height: 400 };
+const DEFAULT_SIZE = { width: 380, height: 600 };
+const SIZE_STORAGE_KEY = 'dhChatWindowSize';
+
+function loadStoredSize() {
+    try {
+        const raw = localStorage.getItem(SIZE_STORAGE_KEY);
+        if (!raw) return DEFAULT_SIZE;
+        const parsed = JSON.parse(raw);
+        return {
+            width: Math.max(MIN_SIZE.width, Number(parsed.width) || DEFAULT_SIZE.width),
+            height: Math.max(MIN_SIZE.height, Number(parsed.height) || DEFAULT_SIZE.height),
+        };
+    } catch {
+        return DEFAULT_SIZE;
+    }
+}
+
 export default function ChatWidget({
   userId,
   gameSystem   = 'daggerheart',
@@ -38,6 +56,7 @@ export default function ChatWidget({
 }) {
     const config = SYSTEM_CONFIG[gameSystem] || SYSTEM_CONFIG.daggerheart;
     const [isOpen, setIsOpen] = useState(false);
+    const [size, setSize] = useState(loadStoredSize);
 
     // Close on Escape
     useEscapeKey(() => setIsOpen(false), isOpen);
@@ -79,6 +98,38 @@ export default function ChatWidget({
             inputRef.current.focus();
         }
     }, [isOpen]);
+
+    const handleResizeStart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startW = size.width;
+        const startH = size.height;
+
+        const onMove = (ev) => {
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            // Anchored bottom-right: dragging up-left (negative dx/dy) grows the window
+            const maxW = Math.max(MIN_SIZE.width, window.innerWidth - 48);
+            const maxH = Math.max(MIN_SIZE.height, window.innerHeight - 120);
+            const w = Math.min(maxW, Math.max(MIN_SIZE.width, startW - dx));
+            const h = Math.min(maxH, Math.max(MIN_SIZE.height, startH - dy));
+            setSize({ width: w, height: h });
+        };
+
+        const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            setSize((curr) => {
+                try { localStorage.setItem(SIZE_STORAGE_KEY, JSON.stringify(curr)); } catch { /* ignore */ }
+                return curr;
+            });
+        };
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -162,7 +213,17 @@ export default function ChatWidget({
     return (
         <div className={`dh-chat-widget-container ${config.themeClass}`}>
             {isOpen && (
-                <div className="dh-chat-window">
+                <div
+                    className="dh-chat-window"
+                    style={{ width: size.width, height: size.height }}
+                >
+                    <div
+                        className="dh-chat-resize-handle"
+                        onPointerDown={handleResizeStart}
+                        role="separator"
+                        aria-label="Resize chat window"
+                        aria-orientation="vertical"
+                    />
                     <div className="dh-chat-header">
                         <div className="dh-chat-icon">
                             {hasCampaign ? <Brain size={20} /> : <Bot size={20} />}
