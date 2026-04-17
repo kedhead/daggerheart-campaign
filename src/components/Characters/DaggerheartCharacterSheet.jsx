@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
@@ -987,8 +988,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         </div>
       </div>
 
-      {/* Roll Result Overlay */}
-      {lastRoll && (
+      {/* Roll Result Overlay (portaled to body to escape transformed/blurred ancestors) */}
+      {lastRoll && createPortal(
         <div className={`dh-roll-result-overlay ${lastRoll.type === 'generic' ? 'dh-roll-result-damage' : lastRoll.outcome}`}>
           <button className="dh-roll-result-dismiss" onClick={() => { clearTimeout(rollResultTimer.current); setLastRoll(null); }}>×</button>
           <div className="dh-roll-result-label">{lastRoll.label}</div>
@@ -1031,7 +1032,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               <div className="dh-roll-result-total">{lastRoll.total}</div>
             </>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Level Up Wizard Modal */}
