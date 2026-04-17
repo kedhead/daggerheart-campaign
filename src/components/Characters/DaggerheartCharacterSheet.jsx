@@ -50,6 +50,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [localStress, setLocalStress] = useState(null);
   const [localArmor, setLocalArmor] = useState(null);
   const [localHope, setLocalHope] = useState(null);
+  const [localSlayerDice, setLocalSlayerDice] = useState(null);
   const [activeTab, setActiveTab] = useState('core');
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
@@ -74,12 +75,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     setLocalStress(null);
     setLocalArmor(null);
     setLocalHope(null);
-  }, [character.hpSlots, character.stressSlots, character.armorSlots, character.hopeSlots]);
+    setLocalSlayerDice(null);
+  }, [character.hpSlots, character.stressSlots, character.armorSlots, character.hopeSlots, character.slayerDice]);
 
   const hpSlots = localHp || character.hpSlots || DEFAULT_HP;
   const stressSlots = localStress || character.stressSlots || DEFAULT_STRESS;
   const rawArmorSlots = localArmor || character.armorSlots || DEFAULT_ARMOR_SLOTS;
   const hopeSlots = localHope || character.hopeSlots || DEFAULT_HOPE_SLOTS;
+  const slayerDice = localSlayerDice ?? character.slayerDice ?? 0;
   const traits = { ...DEFAULT_TRAITS, ...character.traits };
 
   const handleSlotToggle = (type, index) => {
@@ -94,6 +97,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     else if (type === 'hopeSlots') setLocalHope(currentSlots);
     else setLocalArmor(currentSlots);
     updateCharacter(character.id, { [type]: currentSlots });
+  };
+
+  const handleSlayerDiceAdjust = (delta, max) => {
+    if (!canEdit || !updateCharacter) return;
+    const next = Math.max(0, Math.min(max, slayerDice + delta));
+    if (next === slayerDice) return;
+    setLocalSlayerDice(next);
+    updateCharacter(character.id, { slayerDice: next });
   };
 
   const formatTraitValue = (val) => val > 0 ? `+${val}` : `${val}`;
@@ -650,6 +661,39 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
       ? SUBCLASSES[character.multiclass.class].find(s => s.name === character.multiclass.subclass)
       : null;
 
+    const hasSlayer = subclassInfo?.name === 'Call of the Slayer'
+      || mcSubclassInfo?.name === 'Call of the Slayer';
+
+    const slayerDiceTracker = hasSlayer && (
+      <div className="dh-feature-tracker">
+        <div className="dh-feature-tracker-label">Slayer Dice</div>
+        <div className="dh-feature-tracker-controls">
+          <button
+            className="dh-tracker-btn"
+            onClick={() => handleSlayerDiceAdjust(-1, proficiency)}
+            disabled={!canEdit || slayerDice <= 0}
+            aria-label="Remove a Slayer Die"
+          >−</button>
+          <div className="dh-tracker-count">
+            <span className="dh-tracker-current">{slayerDice}</span>
+            <span className="dh-tracker-max">/ {proficiency}</span>
+          </div>
+          <button
+            className="dh-tracker-btn"
+            onClick={() => handleSlayerDiceAdjust(1, proficiency)}
+            disabled={!canEdit || slayerDice >= proficiency}
+            aria-label="Add a Slayer Die"
+          >+</button>
+          <button
+            className="dh-tracker-btn dh-tracker-clear"
+            onClick={() => handleSlayerDiceAdjust(-slayerDice, proficiency)}
+            disabled={!canEdit || slayerDice === 0}
+            title="Clear all Slayer Dice (end of session)"
+          >Clear</button>
+        </div>
+      </div>
+    );
+
     return (
     <div className="dh-tab-content">
       {/* Class Features */}
@@ -681,6 +725,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               <div className="dh-feature-tag">Foundation</div>
               <div className="dh-feature-name">{subclassInfo.foundation.name}</div>
               <div className="dh-feature-desc">{subclassInfo.foundation.description}</div>
+              {subclassInfo.name === 'Call of the Slayer' && slayerDiceTracker}
             </div>
           )}
           {(subclassLevel === 'specialization' || subclassLevel === 'mastery') && subclassInfo.specialization && (
@@ -708,6 +753,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <div className="dh-feature-tag">Foundation</div>
             <div className="dh-feature-name">{mcSubclassInfo.foundation.name}</div>
             <div className="dh-feature-desc">{mcSubclassInfo.foundation.description}</div>
+            {mcSubclassInfo.name === 'Call of the Slayer' && slayerDiceTracker}
           </div>
         </div>
       )}
