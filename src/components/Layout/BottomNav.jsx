@@ -2,7 +2,7 @@ import { Home, User, Dices, BookOpen, MoreHorizontal } from 'lucide-react';
 
 const TABS = [
   { id: 'dashboard', label: 'Home', icon: Home, action: 'view' },
-  { id: 'characters', label: 'Sheet', icon: User, action: 'view' },
+  { id: 'my-sheet', label: 'Sheet', icon: User, action: 'view' },
   { id: 'roll', label: 'Roll', icon: Dices, action: 'roll' },
   { id: 'lore', label: 'Lore', icon: BookOpen, action: 'view' },
   { id: 'more', label: 'More', icon: MoreHorizontal, action: 'more' },
