@@ -146,8 +146,8 @@ export default function Dice3DOverlay({
       let rollInput;
       if (rollData.system === 'daggerheart') {
         rollInput = [
-          { qty: 1, sides: 12, themeColor: '#fbbf24', value: localResult.hopeDie },
-          { qty: 1, sides: 12, themeColor: '#a855f7', value: localResult.fearDie },
+          { qty: 1, sides: 12, themeColor: '#fbbf24', value: [localResult.hopeDie] },
+          { qty: 1, sides: 12, themeColor: '#a855f7', value: [localResult.fearDie] },
         ];
       } else if (rollData.system === 'generic') {
         if (rollData.diceConfig) {
@@ -176,10 +176,10 @@ export default function Dice3DOverlay({
         }
       } else if (rollData.system === 'dnd5e') {
         rollInput = rollData.d20Second !== undefined
-          ? [{ qty: 1, sides: 20, themeColor: '#3b82f6', value: rawResults.d20 }, { qty: 1, sides: 20, themeColor: '#60a5fa', value: rawResults.d20Second }]
-          : [{ qty: 1, sides: 20, themeColor: '#3b82f6', value: rawResults.d20 }];
+          ? [{ qty: 1, sides: 20, themeColor: '#3b82f6', value: [rawResults.d20] }, { qty: 1, sides: 20, themeColor: '#60a5fa', value: [rawResults.d20Second] }]
+          : [{ qty: 1, sides: 20, themeColor: '#3b82f6', value: [rawResults.d20] }];
       } else {
-        rollInput = [{ qty: 1, sides: 12, themeColor: '#fbbf24', value: localResult.hopeDie }, { qty: 1, sides: 12, themeColor: '#a855f7', value: localResult.fearDie }];
+        rollInput = [{ qty: 1, sides: 12, themeColor: '#fbbf24', value: [localResult.hopeDie] }, { qty: 1, sides: 12, themeColor: '#a855f7', value: [localResult.fearDie] }];
       }
 
       // Run physics animation for visuals — the dice tumble on screen while we ignore physics results
