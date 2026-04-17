@@ -155,12 +155,12 @@ export default function PlayerDicePanel({ campaignId, playerName: propPlayerName
     data.playerId = currentUser?.uid;
     data.timestamp = serverTimestamp();
     data.rollId = Date.now().toString();
-    data.status = 'pending';
 
-    // Broadcast to display (triggers 3D animation via diceRequests)
+    // Broadcast to display (triggers 3D animation)
+    // History will be saved by BattleMapDisplayWindow after 3D animation completes
     if (campaignId) {
-      const requestsRef = collection(db, `campaigns/${campaignId}/diceRequests`);
-      await addDoc(requestsRef, data);
+      const rollDoc = doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`);
+      await setDoc(rollDoc, data);
     }
 
     setIsOpen(false);
