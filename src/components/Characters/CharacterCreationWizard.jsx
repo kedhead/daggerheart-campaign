@@ -55,9 +55,6 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
     const [domainCards, setDomainCards] = useState([]);
 
     // ── Step 6: Equipment & Details ──
-    const [primaryWeapon, setPrimaryWeapon] = useState('');
-    const [secondaryWeapon, setSecondaryWeapon] = useState('');
-    const [equippedArmor, setEquippedArmor] = useState('');
     const [gold, setGold] = useState(0);
     const [inventory, setInventory] = useState('');
     const [experiences, setExperiences] = useState([]);
@@ -304,9 +301,6 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             secondaryDomain,
             domainNotes: '',
             domainCards,
-            primaryWeapon,
-            secondaryWeapon,
-            equippedArmor,
             inventory,
             gold,
             experiences,
@@ -779,19 +773,11 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             <h3 className="luw-step-title">Equipment & Story</h3>
             <p className="luw-step-desc">Fill in your starting equipment, experiences, and backstory. All fields are optional — you can always add more later.</p>
 
+            <div className="luw-info-note" style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', padding: '0.5rem 0.75rem', border: '1px dashed rgba(234,179,8,0.2)', borderRadius: '0.4rem', background: 'rgba(234,179,8,0.03)', marginBottom: '0.75rem' }}>
+                You'll equip weapons and armor from the campaign catalog after creating the character — open character settings to pick from available items.
+            </div>
+
             <div className="luw-two-col">
-                <div className="luw-input-group">
-                    <label className="luw-label">Primary Weapon</label>
-                    <input className="luw-input" type="text" placeholder="e.g., Longsword (Str, Melee, d8+3)" value={primaryWeapon} onChange={(e) => setPrimaryWeapon(e.target.value)} />
-                </div>
-                <div className="luw-input-group">
-                    <label className="luw-label">Secondary Weapon</label>
-                    <input className="luw-input" type="text" placeholder="e.g., Shortbow (Fin, Far, d6+2)" value={secondaryWeapon} onChange={(e) => setSecondaryWeapon(e.target.value)} />
-                </div>
-                <div className="luw-input-group">
-                    <label className="luw-label">Equipped Armor</label>
-                    <input className="luw-input" type="text" placeholder="e.g., Chain Mail (Score 3, 6 slots)" value={equippedArmor} onChange={(e) => setEquippedArmor(e.target.value)} />
-                </div>
                 <div className="luw-input-group">
                     <label className="luw-label">Starting Gold</label>
                     <input className="luw-input" type="number" value={gold} onChange={(e) => setGold(parseInt(e.target.value) || 0)} min="0" />
@@ -799,7 +785,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             </div>
 
             <div className="luw-input-group">
-                <label className="luw-label">Inventory</label>
+                <label className="luw-label">Inventory Notes</label>
                 <textarea className="luw-input" rows="2" placeholder="Healing potions, rope, torches, etc." value={inventory} onChange={(e) => setInventory(e.target.value)} style={{ resize: 'vertical' }} />
             </div>
 
@@ -908,18 +894,6 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                         <div className="luw-summary-item">
                             <span className="luw-summary-label">Experiences</span>
                             <span className="luw-summary-value" style={{ fontSize: '0.75rem' }}>{experiences.join(', ')}</span>
-                        </div>
-                    )}
-                    {primaryWeapon && (
-                        <div className="luw-summary-item">
-                            <span className="luw-summary-label">Primary Weapon</span>
-                            <span className="luw-summary-value">{primaryWeapon}</span>
-                        </div>
-                    )}
-                    {secondaryWeapon && (
-                        <div className="luw-summary-item">
-                            <span className="luw-summary-label">Secondary Weapon</span>
-                            <span className="luw-summary-value">{secondaryWeapon}</span>
                         </div>
                     )}
                     {isBeastbound && companionName && (

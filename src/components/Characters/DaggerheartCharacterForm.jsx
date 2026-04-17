@@ -33,9 +33,6 @@ const DEFAULT_CHARACTER = {
   secondaryDomain: '',
   domainNotes: '',
   domainCards: [],
-  primaryWeapon: '',
-  secondaryWeapon: '',
-  equippedArmor: '',
   inventory: '',
   gold: 0,
   experiences: [],
@@ -65,7 +62,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
   const [experienceInput, setExperienceInput] = useState('');
   const [customSubclass, setCustomSubclass] = useState(false);
   const [showDomainCards, setShowDomainCards] = useState(false);
-  const [showEquipPicker, setShowEquipPicker] = useState(false);
+  const [showEquipPicker, setShowEquipPicker] = useState(true);
   const [equipFilter, setEquipFilter] = useState('');
 
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
@@ -701,8 +698,82 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       {/* ===== Section 6: Equipment ===== */}
       <h4 style={SECTION_STYLE}>Equipment</h4>
 
-      {/* Item Equip Picker */}
-      {campaignItems.length > 0 && (
+      {/* Currently Equipped — always visible, grouped by type */}
+      <div className="dh-form-equipped-section">
+        <div className="dh-form-equipped-header">Currently Equipped</div>
+        {(() => {
+          const resolved = characterInventory
+            .map(ei => ({ ...ei, item: campaignItems.find(i => i.id === ei.itemId) }))
+            .filter(e => e.item);
+          if (resolved.length === 0) {
+            return (
+              <div className="dh-form-equipped-empty">
+                Nothing equipped yet. {campaignItems.length > 0 ? 'Add items from the campaign catalog below.' : 'Add items to the campaign catalog first.'}
+              </div>
+            );
+          }
+          const groups = [
+            { type: 'weapon', label: 'Weapons', Icon: Sword },
+            { type: 'armor', label: 'Armor', Icon: Shield },
+            { type: 'equipment', label: 'Equipment', Icon: Package },
+          ];
+          return (
+            <div className="dh-form-equipped-list">
+              {groups.map(({ type, label, Icon }) => {
+                const itemsOfType = resolved.filter(e => (e.item.type || 'equipment') === type);
+                if (itemsOfType.length === 0) return null;
+                return (
+                  <div key={type} className="dh-form-equipped-group">
+                    <div className="dh-form-equipped-group-label">
+                      <Icon size={11} /> {label}
+                    </div>
+                    {itemsOfType.map(({ item, itemId }) => {
+                      const sd = item.systemData || {};
+                      const statBits = [
+                        sd.trait,
+                        sd.range,
+                        sd.damage,
+                        sd.damageType,
+                        sd.armorScore != null ? `Armor ${sd.armorScore}` : null,
+                        sd.burden,
+                      ].filter(Boolean);
+                      return (
+                        <div key={itemId} className="dh-form-equipped-item">
+                          <div className="dh-form-equipped-item-main">
+                            <span className="dh-form-equipped-item-name">{item.name}</span>
+                            {statBits.length > 0 && (
+                              <span className="dh-form-equipped-item-stats">{statBits.join(' · ')}</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className="dh-form-equipped-remove"
+                            onClick={() => {
+                              if (removeFromCharacterInventory && character?.id) {
+                                removeFromCharacterInventory(character.id, itemId);
+                              }
+                              setFormData(prev => ({
+                                ...prev,
+                                equippedItems: (prev.equippedItems || []).filter(ei => ei.itemId !== itemId)
+                              }));
+                            }}
+                            title="Unequip"
+                          >
+                            <X size={12} /> Remove
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* Add from Campaign Catalog */}
+      {campaignItems.length > 0 ? (
         <div className="dh-form-equip-section">
           <button
             type="button"
@@ -710,7 +781,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             onClick={() => setShowEquipPicker(!showEquipPicker)}
           >
             {showEquipPicker ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            Equip from Campaign Catalog
+            Add from Campaign Catalog
           </button>
 
           {showEquipPicker && (
@@ -739,17 +810,18 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
                         <span className="dh-form-equip-item-name">{item.name}</span>
                         {item.systemData?.tier != null && <span className="dh-form-equip-item-tier">T{item.systemData.tier}</span>}
                         <span className="dh-form-equip-item-type">{item.type}</span>
+                        {isEquipped && (
+                          <span className="dh-form-equip-badge"><Check size={10} /> Equipped</span>
+                        )}
                       </div>
                       {!isEquipped ? (
                         <button
                           type="button"
-                          className="btn btn-secondary"
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem' }}
+                          className="btn btn-secondary dh-form-equip-add-btn"
                           onClick={() => {
                             if (addToCharacterInventory && character?.id) {
                               addToCharacterInventory(character.id, item.id);
                             }
-                            // Also track locally for form state
                             setFormData(prev => ({
                               ...prev,
                               equippedItems: [...(prev.equippedItems || []), { itemId: item.id, quantity: 1, equipped: true }]
@@ -761,8 +833,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
                       ) : (
                         <button
                           type="button"
-                          className="btn btn-secondary"
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', color: '#ef4444' }}
+                          className="btn btn-secondary dh-form-equip-remove-btn"
                           onClick={() => {
                             if (removeFromCharacterInventory && character?.id) {
                               removeFromCharacterInventory(character.id, item.id);
@@ -786,27 +857,19 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             </div>
           )}
         </div>
+      ) : (
+        <div className="dh-form-equip-empty-catalog">
+          Your campaign has no items yet. Create items in the campaign catalog to equip them here.
+        </div>
       )}
 
       <div className="form-grid">
-        <div className="input-group">
-          <label>Primary Weapon</label>
-          <input type="text" value={formData.primaryWeapon || ''} onChange={(e) => handleChange('primaryWeapon', e.target.value)} placeholder='e.g., Longsword (Str, Melee, d8+3)' />
-        </div>
-        <div className="input-group">
-          <label>Secondary Weapon</label>
-          <input type="text" value={formData.secondaryWeapon || ''} onChange={(e) => handleChange('secondaryWeapon', e.target.value)} placeholder='e.g., Shortbow (Fin, Far, d6+2)' />
-        </div>
-        <div className="input-group">
-          <label>Equipped Armor</label>
-          <input type="text" value={formData.equippedArmor || ''} onChange={(e) => handleChange('equippedArmor', e.target.value)} placeholder='e.g., Chain Mail (Score 3, 6 slots)' />
-        </div>
         <div className="input-group">
           <label>Gold</label>
           <input type="number" value={formData.gold ?? 0} onChange={(e) => handleChange('gold', parseInt(e.target.value) || 0)} min="0" />
         </div>
         <div className="input-group full-width">
-          <label>Inventory</label>
+          <label>Inventory Notes</label>
           <textarea
             value={typeof formData.inventory === 'string' ? formData.inventory : ''}
             onChange={(e) => handleChange('inventory', e.target.value)}

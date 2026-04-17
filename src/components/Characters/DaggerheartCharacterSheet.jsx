@@ -122,9 +122,6 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const baseEvasion = (charClass && CLASSES[charClass]?.baseEvasion) || character.evasion || 10;
   const baseArmorScore = character.armor ?? 0;
   const gold = character.gold ?? 0;
-  const primaryWeapon = character.primaryWeapon || '';
-  const secondaryWeapon = character.secondaryWeapon || '';
-  const equippedArmor = character.equippedArmor || '';
   const inventoryText = typeof character.inventory === 'string' ? character.inventory : '';
   const experiences = character.experiences || [];
   const primaryDomain = character.primaryDomain || '';
@@ -631,22 +628,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           );
         })}
         {equippedWeapons.length === 0 && (
-          <>
-            <div className="dh-weapon-card">
-              <div className="dh-weapon-card-header">
-                <Sword size={16} className="dh-weapon-icon" />
-                <span className="dh-weapon-name">{primaryWeapon || <span className="dh-empty">Primary not set</span>}</span>
-              </div>
-            </div>
-            {secondaryWeapon && (
-              <div className="dh-weapon-card">
-                <div className="dh-weapon-card-header">
-                  <Sword size={16} className="dh-weapon-icon" style={{ opacity: 0.5 }} />
-                  <span className="dh-weapon-name">{secondaryWeapon}</span>
-                </div>
-              </div>
-            )}
-          </>
+          <div className="dh-weapon-card dh-weapon-card-empty">
+            <Sword size={16} className="dh-weapon-icon" style={{ opacity: 0.4 }} />
+            <span className="dh-empty">No weapons equipped. Equip one from the campaign catalog in character settings.</span>
+          </div>
         )}
       </div>
     </div>
@@ -916,14 +901,6 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               </div>
             );
           })}
-        </div>
-      )}
-
-      {/* Text fallbacks */}
-      {equippedArmorItems.length === 0 && equippedArmor && (
-        <div className="dh-equip-section">
-          <div className="dh-section-label">Equipped Armor</div>
-          <div className="dh-text-value">{equippedArmor}</div>
         </div>
       )}
 
