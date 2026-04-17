@@ -45,6 +45,7 @@ import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import { usePresence } from './hooks/usePresence';
 import { getGameSystem } from './data/systems/index.js';
 import TopBar from './components/Layout/TopBar';
+import BottomNav from './components/Layout/BottomNav';
 import './App.css';
 
 function CampaignApp() {
@@ -185,6 +186,8 @@ function CampaignApp() {
 
   // Ctrl+/ or Cmd+/ to open command palette (Ctrl+K conflicts with Chrome)
   useKeyboardShortcut('/', () => setIsCommandPaletteOpen(true), { ctrl: true });
+  // Lorelich parity: Cmd/Ctrl+K also opens the palette (matches the TopBar hint)
+  useKeyboardShortcut('k', () => setIsCommandPaletteOpen(true), { ctrl: true });
 
   // Presence tracking
   const { presenceList } = usePresence(currentCampaignId, currentView);
@@ -648,13 +651,21 @@ function CampaignApp() {
             campaign={campaign}
             isDM={isDM}
             setCurrentView={setCurrentView}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           />
-          <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+          <main className="flex-1 overflow-y-auto custom-scrollbar relative lr-fade-in" style={{ paddingBottom: 'var(--lr-main-pad, 0)' }}>
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
             {renderView()}
           </main>
         </div>
       </div>
+
+      <BottomNav
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        onRoll={() => document.querySelector('.dice-roller-float > button')?.click()}
+        onMore={() => window.dispatchEvent(new CustomEvent('lr-open-sidebar'))}
+      />
 
       {hasChatBot && (
         <ChatWidget
