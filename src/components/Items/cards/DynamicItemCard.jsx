@@ -70,6 +70,31 @@ export default function DynamicItemCard({
         return value.toString();
 
       default:
+        if (value !== null && typeof value === 'object') {
+          if (Array.isArray(value)) {
+            return value.join(', ');
+          }
+          // specific handling for Star Wars D6 range objects
+          if (value.short !== undefined || value.medium !== undefined || value.long !== undefined) {
+            return `${value.short || '0'}/${value.medium || '0'}/${value.long || '0'}`;
+          }
+          // specific handling for Star Wars D6 damage/scale objects
+          if (value.score !== undefined) {
+            let dice = Math.floor(value.score / 3);
+            let pips = value.score % 3;
+            let valStr = `${dice > 0 ? dice + 'D' : ''}${pips > 0 ? (dice > 0 ? '+' : '') + pips : ''}`;
+            if (dice === 0 && pips === 0) valStr = '0';
+            if (value.muscle) {
+              valStr = `STR+${valStr}`;
+            }
+            return valStr;
+          }
+          try {
+            return JSON.stringify(value);
+          } catch (e) {
+            return String(value);
+          }
+        }
         return value;
     }
   };

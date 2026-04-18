@@ -132,6 +132,14 @@ export default function DynamicItemForm({
 
     switch (fieldConfig.type) {
       case 'text':
+        let displayValue = value;
+        if (value !== null && typeof value === 'object') {
+          try {
+            displayValue = JSON.stringify(value);
+          } catch (e) {
+            displayValue = String(value);
+          }
+        }
         return (
           <div className="form-group" key={fieldName}>
             <label>
@@ -140,7 +148,7 @@ export default function DynamicItemForm({
             </label>
             <input
               type="text"
-              value={value || ''}
+              value={displayValue || ''}
               onChange={(e) => handleFieldChange(fieldName, e.target.value)}
               placeholder={fieldConfig.placeholder}
               className={error ? 'error' : ''}
