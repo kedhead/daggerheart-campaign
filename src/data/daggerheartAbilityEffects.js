@@ -7,11 +7,25 @@
 // Each handler receives:
 //   hasEquippedArmor, tier, proficiency, traits, domainCardCounts
 // and returns a partial delta:
-//   { armorScoreBonus, armorScoreSet, majorBonus, severeBonus, evasionBonus }
+//   {
+//     armorScoreBonus, armorScoreSet,           // armor score
+//     majorBaseSet, severeBaseSet,              // REPLACE the armor-derived
+//                                               // base (before +level)
+//     majorBonus, severeBonus,                  // stack on final thresholds
+//     evasionBonus,
+//   }
 
-// Bare Bones (Valor L1): "enhanced damage thresholds by tier" — the Daggerheart
-// tier scaling for thresholds is +2 per tier step, producing +2/+4/+6/+8.
-const BARE_BONES_TIER_BONUS = { 1: 2, 2: 4, 3: 6, 4: 8 };
+// Bare Bones (Valor L1) — Daggerheart core rulebook:
+//   Armor Score = 3 + Strength
+//   Base thresholds by tier:
+//     Tier 1: 9/19  ·  Tier 2: 11/24  ·  Tier 3: 13/31  ·  Tier 4: 15/38
+// These REPLACE the armor base; the sheet then adds character level on top.
+const BARE_BONES_TIER_BASES = {
+  1: { major: 9, severe: 19 },
+  2: { major: 11, severe: 24 },
+  3: { major: 13, severe: 31 },
+  4: { major: 15, severe: 38 },
+};
 
 export const ABILITY_EFFECTS = {
   // Blade
@@ -20,7 +34,6 @@ export const ABILITY_EFFECTS = {
     effect: () => ({ majorBonus: 2, severeBonus: 2 }),
   },
   'Vitality': {
-    // Permanent +2 to thresholds (HP/Stress grants handled via level-up, not here).
     applies: () => true,
     effect: () => ({ majorBonus: 2, severeBonus: 2 }),
   },
@@ -46,11 +59,11 @@ export const ABILITY_EFFECTS = {
     applies: (ctx) => !ctx.hasEquippedArmor,
     effect: (ctx) => {
       const strength = ctx.traits?.strength ?? 0;
-      const tierBonus = BARE_BONES_TIER_BONUS[ctx.tier] ?? 2;
+      const bases = BARE_BONES_TIER_BASES[ctx.tier] || BARE_BONES_TIER_BASES[1];
       return {
         armorScoreSet: 3 + strength,
-        majorBonus: tierBonus,
-        severeBonus: tierBonus,
+        majorBaseSet: bases.major,
+        severeBaseSet: bases.severe,
       };
     },
   },
@@ -72,6 +85,8 @@ export function computeAbilityDelta(ownedCards, ctx) {
   const delta = {
     armorScoreBonus: 0,
     armorScoreSet: null,
+    majorBaseSet: null,
+    severeBaseSet: null,
     majorBonus: 0,
     severeBonus: 0,
     evasionBonus: 0,
@@ -86,6 +101,8 @@ export function computeAbilityDelta(ownedCards, ctx) {
     if (!active) continue;
     const d = handler.effect(ctx) || {};
     if (d.armorScoreSet != null) delta.armorScoreSet = d.armorScoreSet;
+    if (d.majorBaseSet != null) delta.majorBaseSet = d.majorBaseSet;
+    if (d.severeBaseSet != null) delta.severeBaseSet = d.severeBaseSet;
     delta.armorScoreBonus += d.armorScoreBonus || 0;
     delta.majorBonus += d.majorBonus || 0;
     delta.severeBonus += d.severeBonus || 0;

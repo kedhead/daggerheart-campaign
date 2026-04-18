@@ -241,23 +241,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     return null;
   };
   const armorBases = resolveArmorBases(primaryArmor);
-  let majorThreshold = 0;
-  let severeThreshold = 0;
-  if (armorBases && (armorBases.major > 0 || armorBases.severe > 0)) {
-    majorThreshold = armorBases.major > 0 ? armorBases.major + level : 0;
-    severeThreshold = armorBases.severe > 0 ? armorBases.severe + level : 0;
-  } else if (manualThresholds.major > 0 || manualThresholds.severe > 0) {
-    majorThreshold = manualThresholds.major || 0;
-    severeThreshold = manualThresholds.severe || 0;
-  } else {
-    // Gambeson (tier 1) baseline so the sheet always shows usable numbers.
-    majorThreshold = 5 + level;
-    severeThreshold = 11 + level;
-  }
 
-  // Passive ability bonuses (Bare Bones etc.) — applied on top of the
-  // armor-derived numbers so abilities can both replace armor score
-  // (when no armor is equipped) and stack threshold bonuses.
+  // Passive ability effects (Bare Bones, Vitality, Untouchable, ...) computed
+  // before thresholds so abilities that REPLACE the base (Bare Bones) take
+  // precedence over the armor/fallback baseline.
   const abilityDelta = useMemo(() => {
     const domainCardCounts = domainCards.reduce((acc, c) => {
       acc[c.domain] = (acc[c.domain] || 0) + 1;
@@ -272,6 +259,23 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     });
   }, [domainCards, equippedArmorItems, level, proficiency, traits]);
 
+  let majorThreshold = 0;
+  let severeThreshold = 0;
+  if (abilityDelta.majorBaseSet != null || abilityDelta.severeBaseSet != null) {
+    // Ability-set bases (e.g. Bare Bones) override armor / fallback entirely.
+    majorThreshold = (abilityDelta.majorBaseSet ?? 0) + level;
+    severeThreshold = (abilityDelta.severeBaseSet ?? 0) + level;
+  } else if (armorBases && (armorBases.major > 0 || armorBases.severe > 0)) {
+    majorThreshold = armorBases.major > 0 ? armorBases.major + level : 0;
+    severeThreshold = armorBases.severe > 0 ? armorBases.severe + level : 0;
+  } else if (manualThresholds.major > 0 || manualThresholds.severe > 0) {
+    majorThreshold = manualThresholds.major || 0;
+    severeThreshold = manualThresholds.severe || 0;
+  } else {
+    // Gambeson (tier 1) baseline so the sheet always shows usable numbers.
+    majorThreshold = 5 + level;
+    severeThreshold = 11 + level;
+  }
   majorThreshold += abilityDelta.majorBonus;
   severeThreshold += abilityDelta.severeBonus;
   const massiveThreshold = severeThreshold > 0 ? severeThreshold * 2 : 0;
