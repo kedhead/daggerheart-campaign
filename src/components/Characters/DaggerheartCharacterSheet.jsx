@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
+import { computeAbilityDelta } from '../../data/daggerheartAbilityEffects';
 import { DAGGERHEART_ARMOR } from '../../data/daggerheartItems';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -191,13 +192,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   })();
   const armorSlots = Array.from({ length: equippedArmorSlotCount }, (_, i) => rawArmorSlots[i] ?? false);
 
-  const effectiveArmorScore = useMemo(() => {
+  const baseEffectiveArmorScore = useMemo(() => {
     if (equippedArmorItems.length === 0) return baseArmorScore;
     const maxFromEquipped = Math.max(...equippedArmorItems.map(a => a.systemData?.armorScore ?? 0));
     return Math.max(maxFromEquipped, baseArmorScore);
   }, [equippedArmorItems, baseArmorScore]);
 
-  const effectiveEvasion = useMemo(() => {
+  const baseEffectiveEvasion = useMemo(() => {
     let ev = baseEvasion;
     equippedArmorItems.forEach(armor => {
       const features = armor.systemData?.features || [];
@@ -253,7 +254,34 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     majorThreshold = 5 + level;
     severeThreshold = 11 + level;
   }
+
+  // Passive ability bonuses (Bare Bones etc.) — applied on top of the
+  // armor-derived numbers so abilities can both replace armor score
+  // (when no armor is equipped) and stack threshold bonuses.
+  const abilityDelta = useMemo(() => {
+    const domainCardCounts = domainCards.reduce((acc, c) => {
+      acc[c.domain] = (acc[c.domain] || 0) + 1;
+      return acc;
+    }, {});
+    return computeAbilityDelta(domainCards, {
+      hasEquippedArmor: equippedArmorItems.length > 0,
+      tier: getTierForLevel(level),
+      proficiency,
+      traits,
+      domainCardCounts,
+    });
+  }, [domainCards, equippedArmorItems, level, proficiency, traits]);
+
+  majorThreshold += abilityDelta.majorBonus;
+  severeThreshold += abilityDelta.severeBonus;
   const massiveThreshold = severeThreshold > 0 ? severeThreshold * 2 : 0;
+
+  // Armor-score and evasion with ability bonuses applied on top of the
+  // armor/feature-derived baseline.
+  const effectiveArmorScore = abilityDelta.armorScoreSet != null
+    ? abilityDelta.armorScoreSet + abilityDelta.armorScoreBonus
+    : baseEffectiveArmorScore + abilityDelta.armorScoreBonus;
+  const effectiveEvasion = baseEffectiveEvasion + abilityDelta.evasionBonus;
 
   const hpFilledCount = hpSlots.filter(Boolean).length;
   const stressFilledCount = stressSlots.filter(Boolean).length;
