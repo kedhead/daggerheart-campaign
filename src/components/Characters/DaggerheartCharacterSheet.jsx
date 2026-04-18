@@ -209,12 +209,21 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     return ev;
   }, [equippedArmorItems, baseEvasion]);
 
-  // Damage thresholds from class data
-  const classData = charClass ? CLASSES[charClass] : null;
-  const hpThresholds = classData?.hpThresholds || {};
-  const minorThreshold = hpThresholds.minor || Math.ceil(hpSlots.length / 3);
-  const majorThreshold = hpThresholds.major || Math.ceil((hpSlots.length * 2) / 3);
-  const severeThreshold = hpThresholds.severe || hpSlots.length;
+  // Damage thresholds per Daggerheart core rules (Ch. 2, p. 91 & 114):
+  // - Armor prints two base numbers: Major / Severe (stored here as
+  //   `thresholds.minor` and `thresholds.major` for historical reasons;
+  //   values are correct, only the field names are legacy).
+  // - Final threshold = base + character level.
+  // - Minor damage = anything below Major threshold (no separate number).
+  // - Massive is an OPTIONAL rule at 2× Severe threshold.
+  const primaryArmor = equippedArmorItems[0];
+  const armorBaseThresholds = primaryArmor?.systemData?.thresholds || {};
+  const manualThresholds = character.hpThresholds || {};
+  const majorBase = armorBaseThresholds.minor ?? manualThresholds.major ?? 0;
+  const severeBase = armorBaseThresholds.major ?? manualThresholds.severe ?? 0;
+  const majorThreshold = majorBase > 0 ? majorBase + level : (manualThresholds.major || 0);
+  const severeThreshold = severeBase > 0 ? severeBase + level : (manualThresholds.severe || 0);
+  const massiveThreshold = severeThreshold > 0 ? severeThreshold * 2 : 0;
 
   const hpFilledCount = hpSlots.filter(Boolean).length;
   const stressFilledCount = stressSlots.filter(Boolean).length;
@@ -478,16 +487,28 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <div className="dh-threshold-label">Armor</div>
           </div>
         )}
-        <div className="dh-threshold-box">
-          <div className="dh-threshold-value">{minorThreshold}</div>
+        {/* Per core rulebook (Ch. 2, p. 91): each tier's box shows the
+            threshold AT/ABOVE which that tier's damage begins. Minor damage
+            has no numerical threshold — it's just "anything below Major". */}
+        <div
+          className="dh-threshold-box"
+          title="Minor damage (1 HP): anything below the Major threshold"
+        >
+          <div className="dh-threshold-value" aria-hidden="true">—</div>
           <div className="dh-threshold-label">Minor</div>
         </div>
-        <div className="dh-threshold-box">
-          <div className="dh-threshold-value">{majorThreshold}</div>
+        <div
+          className="dh-threshold-box"
+          title={`Major damage (2 HP): ${majorThreshold > 0 ? `≥ ${majorThreshold}` : 'equip armor to set'}`}
+        >
+          <div className="dh-threshold-value">{majorThreshold > 0 ? majorThreshold : '—'}</div>
           <div className="dh-threshold-label">Major</div>
         </div>
-        <div className="dh-threshold-box">
-          <div className="dh-threshold-value">{severeThreshold}</div>
+        <div
+          className="dh-threshold-box"
+          title={`Severe damage (3 HP): ${severeThreshold > 0 ? `≥ ${severeThreshold}` : 'equip armor to set'}${massiveThreshold > 0 ? ` · Massive (optional, 4 HP) at ≥ ${massiveThreshold}` : ''}`}
+        >
+          <div className="dh-threshold-value">{severeThreshold > 0 ? severeThreshold : '—'}</div>
           <div className="dh-threshold-label">Severe</div>
         </div>
         <div className="dh-threshold-box dh-threshold-prof">
