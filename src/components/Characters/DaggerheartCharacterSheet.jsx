@@ -121,6 +121,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const isDruid = charClass === 'Druid' || character.multiclass?.class === 'Druid';
   const isBeastbound = charClass === 'Ranger' && subclass === 'Beastbound';
   const subclassLevel = character.subclassLevel || 'foundation';
+  const classData = charClass ? CLASSES[charClass] : null;
   const baseEvasion = (charClass && CLASSES[charClass]?.baseEvasion) || character.evasion || 10;
   const baseArmorScore = character.armor ?? 0;
   const gold = character.gold ?? 0;
