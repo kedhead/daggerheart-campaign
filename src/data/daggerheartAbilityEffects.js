@@ -4,8 +4,7 @@
 // is in the character's loadout. Triggered effects (mark a Stress to..., once
 // per rest..., etc.) are left for the player to activate and are not modeled.
 //
-// Starting small: only Bare Bones is wired up. Add more entries as they're
-// verified against the rulebook. Each handler receives:
+// Each handler receives:
 //   hasEquippedArmor, tier, proficiency, traits, domainCardCounts
 // and returns a partial delta:
 //   { armorScoreBonus, armorScoreSet, majorBonus, severeBonus, evasionBonus }
@@ -15,6 +14,34 @@
 const BARE_BONES_TIER_BONUS = { 1: 2, 2: 4, 3: 6, 4: 8 };
 
 export const ABILITY_EFFECTS = {
+  // Blade
+  'Fortified Armor': {
+    applies: (ctx) => ctx.hasEquippedArmor,
+    effect: () => ({ majorBonus: 2, severeBonus: 2 }),
+  },
+  'Vitality': {
+    // Permanent +2 to thresholds (HP/Stress grants handled via level-up, not here).
+    applies: () => true,
+    effect: () => ({ majorBonus: 2, severeBonus: 2 }),
+  },
+  'Blade-Touched': {
+    applies: (ctx) => (ctx.domainCardCounts?.Blade ?? 0) >= 4,
+    effect: () => ({ severeBonus: 4 }),
+  },
+
+  // Bone
+  'Untouchable': {
+    applies: () => true,
+    effect: (ctx) => ({ evasionBonus: Math.floor((ctx.traits?.agility ?? 0) / 2) }),
+  },
+
+  // Splendor
+  'Splendor-Touched': {
+    applies: (ctx) => (ctx.domainCardCounts?.Splendor ?? 0) >= 4,
+    effect: () => ({ severeBonus: 3 }),
+  },
+
+  // Valor
   'Bare Bones': {
     applies: (ctx) => !ctx.hasEquippedArmor,
     effect: (ctx) => {
@@ -26,6 +53,18 @@ export const ABILITY_EFFECTS = {
         severeBonus: tierBonus,
       };
     },
+  },
+  'Armorer': {
+    applies: (ctx) => ctx.hasEquippedArmor,
+    effect: () => ({ armorScoreBonus: 1 }),
+  },
+  'Rise Up': {
+    applies: () => true,
+    effect: (ctx) => ({ severeBonus: ctx.proficiency ?? 0 }),
+  },
+  'Valor-Touched': {
+    applies: (ctx) => (ctx.domainCardCounts?.Valor ?? 0) >= 4,
+    effect: () => ({ armorScoreBonus: 1 }),
   },
 };
 
