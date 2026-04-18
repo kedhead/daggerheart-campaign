@@ -13,6 +13,8 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
     initialArmorSlots = initialArmorScore;
   }
 
+  const initialThresholds = item?.systemData?.thresholds || {};
+
   const [localData, setLocalData] = useState({
     name: formData?.name || item?.name || '',
     description: formData?.description || item?.description || '',
@@ -22,7 +24,14 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
       armorScore: initialArmorScore,
       armorSlots: initialArmorSlots,
       tier: item?.systemData?.tier || 1,
-      features: initialFeatures
+      features: initialFeatures,
+      // Per Daggerheart core rules: armor prints Major/Severe bases; the
+      // sheet adds character level to produce the final thresholds.
+      // (Legacy field naming: `minor` stores Major base, `major` stores Severe.)
+      thresholds: {
+        minor: initialThresholds.minor ?? 0,
+        major: initialThresholds.major ?? 0
+      }
     }
   });
 
@@ -43,6 +52,19 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
       systemData: {
         ...prev.systemData,
         [field]: value
+      }
+    }));
+  };
+
+  const handleThresholdChange = (key, value) => {
+    setLocalData(prev => ({
+      ...prev,
+      systemData: {
+        ...prev.systemData,
+        thresholds: {
+          ...(prev.systemData.thresholds || {}),
+          [key]: parseInt(value, 10) || 0
+        }
       }
     }));
   };
@@ -126,6 +148,32 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
             <option value={4}>Tier 4</option>
           </select>
         </div>
+      </div>
+
+      <div className="form-row-3">
+        <div className="input-group">
+          <label>Major Threshold Base</label>
+          <input
+            type="number"
+            value={localData.systemData.thresholds?.minor ?? 0}
+            onChange={(e) => handleThresholdChange('minor', e.target.value)}
+            min="0"
+            max="99"
+          />
+          <small className="form-hint">Sheet adds character level (e.g. Chainmail = 7)</small>
+        </div>
+        <div className="input-group">
+          <label>Severe Threshold Base</label>
+          <input
+            type="number"
+            value={localData.systemData.thresholds?.major ?? 0}
+            onChange={(e) => handleThresholdChange('major', e.target.value)}
+            min="0"
+            max="99"
+          />
+          <small className="form-hint">Sheet adds character level (e.g. Chainmail = 15)</small>
+        </div>
+        <div className="input-group" />
       </div>
 
       <div className="input-group">
