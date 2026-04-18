@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
+import { DAGGERHEART_ARMOR } from '../../data/daggerheartItems';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useQuickRoll } from '../../hooks/useQuickRoll';
@@ -120,6 +121,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const isDruid = charClass === 'Druid' || character.multiclass?.class === 'Druid';
   const isBeastbound = charClass === 'Ranger' && subclass === 'Beastbound';
   const subclassLevel = character.subclassLevel || 'foundation';
+  const classData = charClass ? CLASSES[charClass] : null;
   const baseEvasion = (charClass && CLASSES[charClass]?.baseEvasion) || character.evasion || 10;
   const baseArmorScore = character.armor ?? 0;
   const gold = character.gold ?? 0;
@@ -210,19 +212,47 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   }, [equippedArmorItems, baseEvasion]);
 
   // Damage thresholds per Daggerheart core rules (Ch. 2, p. 91 & 114):
-  // - Armor prints two base numbers: Major / Severe (stored here as
-  //   `thresholds.minor` and `thresholds.major` for historical reasons;
+  // - Armor prints two base numbers: Major base / Severe base (stored here as
+  //   `thresholds.minor` and `thresholds.major` for historical reasons — the
   //   values are correct, only the field names are legacy).
   // - Final threshold = base + character level.
-  // - Minor damage = anything below Major threshold (no separate number).
-  // - Massive is an OPTIONAL rule at 2× Severe threshold.
+  // - Three damage tiers (Minor / Major / Severe) but only two threshold
+  //   numbers act as "gates" between them, matching Demiplane's layout.
+  // - Characters should always display thresholds. Fallback chain:
+  //     1. Equipped armor item's systemData.thresholds + level
+  //     2. Name-match against the predefined DAGGERHEART_ARMOR list + level
+  //        (catches Demiplane imports and legacy custom armor missing the
+  //        thresholds field)
+  //     3. Character-level manual override (character.hpThresholds) — final
+  //     4. Gambeson baseline (5 / 11) + level as a last-resort default
   const primaryArmor = equippedArmorItems[0];
-  const armorBaseThresholds = primaryArmor?.systemData?.thresholds || {};
   const manualThresholds = character.hpThresholds || {};
-  const majorBase = armorBaseThresholds.minor ?? manualThresholds.major ?? 0;
-  const severeBase = armorBaseThresholds.major ?? manualThresholds.severe ?? 0;
-  const majorThreshold = majorBase > 0 ? majorBase + level : (manualThresholds.major || 0);
-  const severeThreshold = severeBase > 0 ? severeBase + level : (manualThresholds.severe || 0);
+  const resolveArmorBases = (armor) => {
+    if (!armor) return null;
+    const t = armor.systemData?.thresholds;
+    if (t && (t.minor > 0 || t.major > 0)) return { major: t.minor || 0, severe: t.major || 0 };
+    if (armor.name) {
+      const match = DAGGERHEART_ARMOR.find(a => a.name.toLowerCase() === armor.name.toLowerCase());
+      if (match?.systemData?.thresholds) {
+        return { major: match.systemData.thresholds.minor || 0, severe: match.systemData.thresholds.major || 0 };
+      }
+    }
+    return null;
+  };
+  const armorBases = resolveArmorBases(primaryArmor);
+  let majorThreshold = 0;
+  let severeThreshold = 0;
+  if (armorBases && (armorBases.major > 0 || armorBases.severe > 0)) {
+    majorThreshold = armorBases.major > 0 ? armorBases.major + level : 0;
+    severeThreshold = armorBases.severe > 0 ? armorBases.severe + level : 0;
+  } else if (manualThresholds.major > 0 || manualThresholds.severe > 0) {
+    majorThreshold = manualThresholds.major || 0;
+    severeThreshold = manualThresholds.severe || 0;
+  } else {
+    // Gambeson (tier 1) baseline so the sheet always shows usable numbers.
+    majorThreshold = 5 + level;
+    severeThreshold = 11 + level;
+  }
   const massiveThreshold = severeThreshold > 0 ? severeThreshold * 2 : 0;
 
   const hpFilledCount = hpSlots.filter(Boolean).length;
@@ -474,8 +504,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         ))}
       </div>
 
-      {/* Damage Thresholds */}
-      <div className="dh-section-label">Damage Thresholds</div>
+      {/* Evasion / Armor / Prof strip */}
+      <div className="dh-section-label">Defenses</div>
       <div className="dh-thresholds-row">
         <div className="dh-threshold-box dh-threshold-evasion">
           <div className="dh-threshold-value">{effectiveEvasion}</div>
@@ -487,33 +517,41 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <div className="dh-threshold-label">Armor</div>
           </div>
         )}
-        {/* Per core rulebook (Ch. 2, p. 91): each tier's box shows the
-            threshold AT/ABOVE which that tier's damage begins. Minor damage
-            has no numerical threshold — it's just "anything below Major". */}
-        <div
-          className="dh-threshold-box"
-          title="Minor damage (1 HP): anything below the Major threshold"
-        >
-          <div className="dh-threshold-value" aria-hidden="true">—</div>
-          <div className="dh-threshold-label">Minor</div>
-        </div>
-        <div
-          className="dh-threshold-box"
-          title={`Major damage (2 HP): ${majorThreshold > 0 ? `≥ ${majorThreshold}` : 'equip armor to set'}`}
-        >
-          <div className="dh-threshold-value">{majorThreshold > 0 ? majorThreshold : '—'}</div>
-          <div className="dh-threshold-label">Major</div>
-        </div>
-        <div
-          className="dh-threshold-box"
-          title={`Severe damage (3 HP): ${severeThreshold > 0 ? `≥ ${severeThreshold}` : 'equip armor to set'}${massiveThreshold > 0 ? ` · Massive (optional, 4 HP) at ≥ ${massiveThreshold}` : ''}`}
-        >
-          <div className="dh-threshold-value">{severeThreshold > 0 ? severeThreshold : '—'}</div>
-          <div className="dh-threshold-label">Severe</div>
-        </div>
         <div className="dh-threshold-box dh-threshold-prof">
           <div className="dh-threshold-value">+{proficiency}</div>
           <div className="dh-threshold-label">Prof</div>
+        </div>
+      </div>
+
+      {/* Damage Thresholds — gate layout matching the Daggerheart sheet:
+          [Minor Damage]  (Major#)  [Major Damage]  (Severe#)  [Severe Damage]
+          The numbers sit between the tiers as the "gates" that decide how
+          many HP a hit marks. */}
+      <div className="dh-section-label">Damage Thresholds</div>
+      <div className="dh-damage-thresholds">
+        <div className="dh-damage-tier dh-damage-minor" title="Minor damage: mark 1 HP">
+          <div className="dh-damage-tier-label">Minor Damage</div>
+          <div className="dh-damage-tier-hp">Mark 1 HP</div>
+        </div>
+        <div
+          className="dh-damage-gate"
+          title={`Major damage threshold: ${majorThreshold > 0 ? `≥ ${majorThreshold} marks 2 HP` : 'not set'}`}
+        >
+          <div className="dh-damage-gate-value">{majorThreshold > 0 ? majorThreshold : '—'}</div>
+        </div>
+        <div className="dh-damage-tier dh-damage-major" title="Major damage: mark 2 HP">
+          <div className="dh-damage-tier-label">Major Damage</div>
+          <div className="dh-damage-tier-hp">Mark 2 HP</div>
+        </div>
+        <div
+          className="dh-damage-gate"
+          title={`Severe damage threshold: ${severeThreshold > 0 ? `≥ ${severeThreshold} marks 3 HP` : 'not set'}${massiveThreshold > 0 ? ` · Massive (optional, 4 HP) at ≥ ${massiveThreshold}` : ''}`}
+        >
+          <div className="dh-damage-gate-value">{severeThreshold > 0 ? severeThreshold : '—'}</div>
+        </div>
+        <div className="dh-damage-tier dh-damage-severe" title="Severe damage: mark 3 HP">
+          <div className="dh-damage-tier-label">Severe Damage</div>
+          <div className="dh-damage-tier-hp">Mark 3 HP</div>
         </div>
       </div>
 
