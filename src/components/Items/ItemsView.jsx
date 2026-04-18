@@ -462,7 +462,9 @@ export default function ItemsView({
                          <span className="import-item-tier">Avail: {item.systemData.availability}</span>
                       )}
                     </div>
-                    <div className="import-item-desc">{item.description}</div>
+                    <div className="import-item-desc">
+                      {item.description ? item.description.replace(/<[^>]+>/g, '') : ''}
+                    </div>
                   </div>
                   {alreadyExists && (
                     <span className="already-exists-badge">Already in catalog</span>

@@ -43,14 +43,22 @@ export default function DynamicItemCard({
       if (value.short !== undefined || value.medium !== undefined || value.long !== undefined) {
         value = `${value.short || '0'}/${value.medium || '0'}/${value.long || '0'}`;
       } else if (value.score !== undefined) {
-        let dice = Math.floor(value.score / 3);
-        let pips = value.score % 3;
-        let valStr = `${dice > 0 ? dice + 'D' : ''}${pips > 0 ? (dice > 0 ? '+' : '') + pips : ''}`;
-        if (dice === 0 && pips === 0) valStr = '0';
-        if (value.muscle) {
-          valStr = `STR+${valStr}`;
+        if (value.label === 'OD6S.SCALE') {
+          value = value.score === 0 ? 'character' 
+                : value.score <= 6 ? 'speeder' 
+                : value.score <= 12 ? 'walker' 
+                : value.score <= 18 ? 'starfighter' 
+                : 'capital';
+        } else {
+          let dice = Math.floor(value.score / 3);
+          let pips = value.score % 3;
+          let valStr = `${dice > 0 ? dice + 'D' : ''}${pips > 0 ? (dice > 0 ? '+' : '') + pips : ''}`;
+          if (dice === 0 && pips === 0) valStr = '0';
+          if (value.muscle) {
+            valStr = `STR+${valStr}`;
+          }
+          value = valStr;
         }
-        value = valStr;
       } else {
         try {
           value = JSON.stringify(value);
@@ -212,9 +220,16 @@ export default function DynamicItemCard({
 
       {/* Description */}
       {item.description && (
-        <div className="item-description">
-          <p>{item.description}</p>
-        </div>
+        /<[a-z][\s\S]*>/i.test(item.description) ? (
+          <div 
+            className="item-description"
+            dangerouslySetInnerHTML={{ __html: item.description }}
+          />
+        ) : (
+          <div className="item-description">
+            <p>{item.description}</p>
+          </div>
+        )
       )}
 
       {/* Secondary Stats */}
