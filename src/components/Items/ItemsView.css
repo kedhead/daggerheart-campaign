@@ -422,6 +422,107 @@
   display: none;
 }
 
+.custom-features-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.custom-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.custom-feature-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 0.5rem;
+  align-items: start;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.custom-feature-row .custom-feature-name {
+  font-weight: 600;
+}
+
+.custom-feature-row .custom-feature-desc {
+  resize: vertical;
+  min-height: 2.25rem;
+}
+
+.dh-features-detailed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dh-features-detailed .dh-feature {
+  align-self: flex-start;
+}
+
+.dh-custom-feature {
+  padding: 0.5rem 0.75rem;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 6px;
+}
+
+.dh-custom-feature-name {
+  display: block;
+  font-weight: 600;
+  color: var(--hope-color);
+  font-size: 0.95rem;
+}
+
+.dh-custom-feature-desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* AI Generation Modal */
+.item-ai-modal .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.item-ai-error {
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.item-ai-hint {
+  padding: 0.75rem;
+  background: rgba(139, 92, 246, 0.08);
+  border-left: 3px solid #8b5cf6;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.item-ai-modal .spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
 @keyframes slideIn {
   from {
     opacity: 0;

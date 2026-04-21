@@ -1,10 +1,13 @@
-import { useState } from 'react';
-import { Plus, Search, Package, Sword, Shield, Backpack, Wand2, Download, Check } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Search, Package, Sword, Shield, Backpack, Wand2, Download, Check, Sparkles } from 'lucide-react';
 import ItemCard from './ItemCard';
 import ItemForm from './ItemForm';
+import ItemAIModal from './ItemAIModal';
 import Modal from '../Modal';
 import { ALL_DAGGERHEART_ITEMS, DAGGERHEART_WEAPONS, DAGGERHEART_ARMOR, DAGGERHEART_EQUIPMENT, DAGGERHEART_CONSUMABLES } from '../../data/daggerheartItems';
 import { ALL_STARWARSD6_ITEMS, STARWARSD6_WEAPONS, STARWARSD6_ARMOR, STARWARSD6_EQUIPMENT } from '../../data/starwarsd6Items';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { buildCampaignContext } from '../../services/campaignContext';
 import './ItemsView.css';
 
 export default function ItemsView({
@@ -14,10 +17,14 @@ export default function ItemsView({
   updateItem,
   deleteItem,
   isDM,
+  userId,
+  campaignFrame = null,
   npcs = [],
   locations = [],
   lore = [],
   sessions = [],
+  characters = [],
+  adversaries = [],
   timelineEvents = [],
   encounters = [],
   notes = []
@@ -32,6 +39,22 @@ export default function ItemsView({
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [catalogTier, setCatalogTier] = useState('all');
+  const [showAIModal, setShowAIModal] = useState(false);
+
+  const { getEffectiveKey } = useAPIKey(userId);
+  const anthropicInfo = getEffectiveKey?.('anthropic');
+  const openaiInfo = getEffectiveKey?.('openai');
+  const aiKey = anthropicInfo?.key || openaiInfo?.key || '';
+  const aiProvider = anthropicInfo?.key ? 'anthropic' : 'openai';
+  const hasAI = !!aiKey;
+
+  const campaignContext = useMemo(
+    () => buildCampaignContext(campaign, {
+      campaignFrame, adversaries, npcs, locations, lore, sessions, characters, encounters
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaign?.id, adversaries.length, npcs.length, locations.length, lore.length]
+  );
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -43,8 +66,15 @@ export default function ItemsView({
     setIsModalOpen(true);
   };
 
+  const handleAIGenerated = (generatedItem) => {
+    setShowAIModal(false);
+    // Prefill the regular item form with the AI output for review/edits before save.
+    setEditingItem(generatedItem);
+    setIsModalOpen(true);
+  };
+
   const handleSave = async (itemData) => {
-    if (editingItem) {
+    if (editingItem?.id) {
       await updateItem(editingItem.id, itemData);
     } else {
       await addItem(itemData);
@@ -199,6 +229,17 @@ export default function ItemsView({
                 Import Official
               </button>
             )}
+            {/* AI generation currently supports Daggerheart only */}
+            {(!campaign?.gameSystem || campaign.gameSystem === 'daggerheart') && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowAIModal(true)}
+                title={hasAI ? 'Generate a new item with AI' : 'Add an API key in settings to enable AI generation'}
+              >
+                <Sparkles size={20} />
+                AI Generate
+              </button>
+            )}
             <button className="btn btn-primary" onClick={handleAdd}>
               <Plus size={20} />
               Add Item
@@ -321,6 +362,17 @@ export default function ItemsView({
           isDM={isDM}
         />
       </Modal>
+
+      {/* AI Generation Modal */}
+      <ItemAIModal
+        isOpen={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        onGenerated={handleAIGenerated}
+        apiKey={aiKey}
+        provider={aiProvider}
+        campaignContext={campaignContext}
+        hasAI={hasAI}
+      />
 
       {/* Import Official Items Modal */}
       <Modal

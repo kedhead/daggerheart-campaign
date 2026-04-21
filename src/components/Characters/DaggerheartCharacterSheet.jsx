@@ -5,6 +5,7 @@ import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTi
 import { getCardByName } from '../../data/daggerheartDomainCards';
 import { computeAbilityDelta } from '../../data/daggerheartAbilityEffects';
 import { DAGGERHEART_ARMOR } from '../../data/daggerheartItems';
+import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useQuickRoll } from '../../hooks/useQuickRoll';
@@ -185,7 +186,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (equippedArmorItems.length === 0) return rawArmorSlots.length;
     const sd = equippedArmorItems[0].systemData || {};
     let slots = sd.armorSlots ?? rawArmorSlots.length;
-    if (slots === 6 && (sd.armorScore ?? 0) !== 6 && !(sd.features || []).includes('Fortified')) {
+    if (slots === 6 && (sd.armorScore ?? 0) !== 6 && !hasFeatureName(sd.features, 'Fortified')) {
       slots = sd.armorScore || slots;
     }
     return slots > 0 ? slots : rawArmorSlots.length;
@@ -203,7 +204,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     equippedArmorItems.forEach(armor => {
       const features = armor.systemData?.features || [];
       features.forEach(f => {
-        const fl = f.toLowerCase();
+        const fl = getFeatureName(f).toLowerCase();
         if (fl === 'flexible') ev += 1;
         else if (fl === 'heavy') ev -= 1;
         else if (fl === 'very-heavy' || fl === 'very heavy') ev -= 2;
@@ -688,9 +689,20 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               </div>
               {sd.features?.length > 0 && (
                 <div className="dh-weapon-features">
-                  {sd.features.map((f, i) => (
-                    <span key={i} className="dh-weapon-feature-badge">{f}</span>
-                  ))}
+                  {sd.features.map((f, i) => {
+                    const fname = getFeatureName(f);
+                    const fdesc = getFeatureDescription(f);
+                    if (!fname) return null;
+                    return (
+                      <span
+                        key={i}
+                        className="dh-weapon-feature-badge"
+                        title={fdesc || undefined}
+                      >
+                        {fname}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
               {weapon.description && (
@@ -968,7 +980,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                   <div className="dh-equipped-item-stats">
                     {sd.armorScore != null && <span>Score {sd.armorScore}</span>}
                     {sd.armorSlots != null && <span>{sd.armorSlots} slots</span>}
-                    {sd.features?.length > 0 && <span>{sd.features.join(', ')}</span>}
+                    {sd.features?.length > 0 && <span>{featureNameList(sd.features).join(', ')}</span>}
                   </div>
                 </div>
               </div>

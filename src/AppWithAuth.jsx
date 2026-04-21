@@ -528,10 +528,14 @@ function CampaignApp() {
             updateItem={updateItem}
             deleteItem={deleteItem}
             isDM={isDM}
+            userId={currentUser.uid}
+            campaignFrame={campaignFrame}
             npcs={npcs}
             locations={locations}
             lore={lore}
             sessions={sessions}
+            characters={characters}
+            adversaries={adversaries}
             timelineEvents={timelineEvents}
             encounters={encounters}
             notes={notes}

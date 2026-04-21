@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Save, X, Sword } from 'lucide-react';
+import { Save, X, Sword, Plus, Trash2 } from 'lucide-react';
 import { WEAPON_FEATURES } from '../../../data/systems/daggerheart';
+import { splitFeatures, toggleStandardFeature, hasFeatureName } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 const TRAITS = [
@@ -41,6 +42,8 @@ export default function DaggerheartWeaponForm({ item, formData, setFormData, onS
       damageTier3Modifier: item?.systemData?.damageTier3Modifier || 6,
       damageTier4Dice: item?.systemData?.damageTier4Dice || 'd8',
       damageTier4Modifier: item?.systemData?.damageTier4Modifier || 9,
+      tier: item?.systemData?.tier || 1,
+      rarity: item?.systemData?.rarity || '',
       features: item?.systemData?.features || []
     }
   });
@@ -67,11 +70,34 @@ export default function DaggerheartWeaponForm({ item, formData, setFormData, onS
   };
 
   const toggleFeature = (feature) => {
-    const features = localData.systemData.features || [];
-    const newFeatures = features.includes(feature)
-      ? features.filter(f => f !== feature)
-      : [...features, feature];
-    handleSystemDataChange('features', newFeatures);
+    handleSystemDataChange('features', toggleStandardFeature(localData.systemData.features, feature));
+  };
+
+  const addCustomFeature = () => {
+    const current = localData.systemData.features || [];
+    handleSystemDataChange('features', [...current, { name: '', description: '' }]);
+  };
+
+  const updateCustomFeature = (index, field, value) => {
+    const current = localData.systemData.features || [];
+    const customIndexes = current
+      .map((f, i) => (f && typeof f === 'object' ? i : -1))
+      .filter(i => i >= 0);
+    const target = customIndexes[index];
+    if (target === undefined) return;
+    const next = [...current];
+    next[target] = { ...next[target], [field]: value };
+    handleSystemDataChange('features', next);
+  };
+
+  const removeCustomFeature = (index) => {
+    const current = localData.systemData.features || [];
+    const customIndexes = current
+      .map((f, i) => (f && typeof f === 'object' ? i : -1))
+      .filter(i => i >= 0);
+    const target = customIndexes[index];
+    if (target === undefined) return;
+    handleSystemDataChange('features', current.filter((_, i) => i !== target));
   };
 
   const handleSubmit = (e) => {
@@ -171,6 +197,36 @@ export default function DaggerheartWeaponForm({ item, formData, setFormData, onS
         </div>
       </div>
 
+      <div className="form-row">
+        <div className="input-group">
+          <label>Tier</label>
+          <select
+            value={localData.systemData.tier}
+            onChange={(e) => handleSystemDataChange('tier', parseInt(e.target.value))}
+          >
+            <option value={1}>Tier 1</option>
+            <option value={2}>Tier 2</option>
+            <option value={3}>Tier 3</option>
+            <option value={4}>Tier 4</option>
+          </select>
+        </div>
+        <div className="input-group">
+          <label>Rarity</label>
+          <select
+            value={localData.systemData.rarity || ''}
+            onChange={(e) => handleSystemDataChange('rarity', e.target.value)}
+          >
+            <option value="">— None —</option>
+            <option value="common">Common</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option>
+            <option value="legendary">Legendary</option>
+            <option value="relic">Relic</option>
+          </select>
+          <small className="form-hint">Use Relic for unique story items</small>
+        </div>
+      </div>
+
       <div className="tier-damage-section">
         <h4>Damage by Tier</h4>
         <div className="tier-damage-grid">
@@ -201,20 +257,60 @@ export default function DaggerheartWeaponForm({ item, formData, setFormData, onS
       </div>
 
       <div className="input-group">
-        <label>Features</label>
+        <label>Standard Features</label>
         <div className="features-multiselect">
           {WEAPON_FEATURES.map(feature => (
             <label
               key={feature}
-              className={`feature-checkbox ${localData.systemData.features?.includes(feature) ? 'selected' : ''}`}
+              className={`feature-checkbox ${hasFeatureName(localData.systemData.features, feature) ? 'selected' : ''}`}
             >
               <input
                 type="checkbox"
-                checked={localData.systemData.features?.includes(feature) || false}
+                checked={hasFeatureName(localData.systemData.features, feature)}
                 onChange={() => toggleFeature(feature)}
               />
               {feature}
             </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="input-group">
+        <div className="custom-features-header">
+          <label>Custom Features</label>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={addCustomFeature}>
+            <Plus size={14} /> Add Feature
+          </button>
+        </div>
+        <small className="form-hint">
+          Unique named abilities — e.g. "Ever-Damp: +1 Evasion vs. fire or physical grabs."
+        </small>
+        <div className="custom-features-list">
+          {splitFeatures(localData.systemData.features).custom.map((feat, idx) => (
+            <div key={idx} className="custom-feature-row">
+              <input
+                type="text"
+                value={feat.name}
+                onChange={(e) => updateCustomFeature(idx, 'name', e.target.value)}
+                placeholder="Feature name"
+                className="custom-feature-name"
+              />
+              <textarea
+                value={feat.description}
+                onChange={(e) => updateCustomFeature(idx, 'description', e.target.value)}
+                placeholder="Mechanical effect or description"
+                rows={2}
+                className="custom-feature-desc"
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => removeCustomFeature(idx)}
+                title="Remove"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
           ))}
         </div>
       </div>

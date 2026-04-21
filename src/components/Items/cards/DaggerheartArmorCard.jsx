@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Edit2, Trash2, Shield, EyeOff } from 'lucide-react';
+import { getFeatureName, getFeatureDescription, isCustomFeature, hasFeatureName } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 const FEATURE_DESCRIPTIONS = {
@@ -8,6 +9,14 @@ const FEATURE_DESCRIPTIONS = {
   'Barrier': '+5 Armor Score, -1 Evasion',
   'Resilient': 'Roll d6; on 6, avoid marking last armor slot',
   'Fortified': 'Additional armor slots'
+};
+
+const RARITY_COLORS = {
+  common: '#9ca3af',
+  uncommon: '#22c55e',
+  rare: '#3b82f6',
+  legendary: '#f59e0b',
+  relic: '#ec4899'
 };
 
 export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isExpanded: controlledExpanded, setIsExpanded: setControlledExpanded }) {
@@ -22,13 +31,16 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isE
     armorScore = 2,
     armorSlots = armorScore,
     tier = 1,
-    features = []
+    features = [],
+    rarity = ''
   } = systemData;
 
   // Fix for legacy database items exported with the buggy default of 6 slots
-  if (armorSlots === 6 && armorScore !== 6 && !features.includes('Fortified')) {
+  if (armorSlots === 6 && armorScore !== 6 && !hasFeatureName(features, 'Fortified')) {
     armorSlots = armorScore;
   }
+
+  const rarityColor = rarity ? RARITY_COLORS[rarity] : null;
 
   return (
     <div className={`item-card card ${item.hidden ? 'hidden-item' : ''}`} style={{
@@ -41,7 +53,7 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isE
         </div>
 
         <div className="item-info">
-          <h3>
+          <h3 style={rarityColor ? { color: rarityColor } : {}}>
             {item.name}
             {item.hidden && <EyeOff size={14} style={{ opacity: 0.5, marginLeft: '0.5rem' }} />}
           </h3>
@@ -49,6 +61,17 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isE
             <span className="item-type-badge armor">
               Tier {tier}
             </span>
+            {rarity && (
+              <span style={{
+                fontSize: '0.75rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: rarityColor,
+                fontWeight: 600
+              }}>
+                {rarity}
+              </span>
+            )}
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               {armorSlots} slots
             </span>
@@ -124,24 +147,31 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isE
             <div className="item-section">
               <h4>Features</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {features.map(feature => (
-                  <div
-                    key={feature}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      background: 'rgba(59, 130, 246, 0.1)',
-                      border: '1px solid #3b82f6',
-                      borderRadius: '6px'
-                    }}
-                  >
-                    <span style={{ fontWeight: '600', color: '#3b82f6' }}>{feature}</span>
-                    {FEATURE_DESCRIPTIONS[feature] && (
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                        {FEATURE_DESCRIPTIONS[feature]}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                {features.map((feature, i) => {
+                  const name = getFeatureName(feature);
+                  if (!name) return null;
+                  const desc = isCustomFeature(feature)
+                    ? getFeatureDescription(feature)
+                    : FEATURE_DESCRIPTIONS[name];
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        background: 'rgba(59, 130, 246, 0.1)',
+                        border: '1px solid #3b82f6',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <span style={{ fontWeight: '600', color: '#3b82f6' }}>{name}</span>
+                      {desc && (
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          {desc}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
