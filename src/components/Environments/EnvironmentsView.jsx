@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search, Download, Check, TreePine, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import EnvironmentCard from './EnvironmentCard';
+import EnvironmentForm from './EnvironmentForm';
 import Modal from '../Modal';
 import { DAGGERHEART_ENVIRONMENTS, getEnvironmentsByTier, ENVIRONMENT_TYPES } from '../../data/daggerheartEnvironments';
 import './EnvironmentsView.css';
@@ -21,6 +22,8 @@ export default function EnvironmentsView({
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [expandedEnvId, setExpandedEnvId] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingEnvironment, setEditingEnvironment] = useState(null);
 
   // Get import items based on selected tier
   const getImportItems = () => {
@@ -73,6 +76,31 @@ export default function EnvironmentsView({
     if (confirm('Are you sure you want to delete this environment?')) {
       await deleteEnvironment(id);
     }
+  };
+
+  const openAddModal = () => {
+    setEditingEnvironment(null);
+    setShowEditModal(true);
+  };
+
+  const openEditModal = (environment) => {
+    setEditingEnvironment(environment);
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingEnvironment(null);
+  };
+
+  const handleSaveEnvironment = async (data) => {
+    if (editingEnvironment?.id) {
+      const { id, ...updates } = { ...data };
+      await updateEnvironment(editingEnvironment.id, updates);
+    } else {
+      await addEnvironment({ ...data, isOfficial: false });
+    }
+    closeEditModal();
   };
 
   // Filter environments
@@ -131,7 +159,7 @@ export default function EnvironmentsView({
                 Import Official
               </button>
             )}
-            <button className="btn btn-primary" onClick={() => {/* TODO: Add modal */}}>
+            <button className="btn btn-primary" onClick={openAddModal}>
               <Plus size={20} />
               Add Environment
             </button>
@@ -194,7 +222,7 @@ export default function EnvironmentsView({
             <EnvironmentCard
               key={environment.id}
               environment={environment}
-              onEdit={isDM ? () => {/* TODO */} : null}
+              onEdit={isDM ? () => openEditModal(environment) : null}
               onDelete={isDM ? handleDelete : null}
               isDM={isDM}
               isExpanded={expandedEnvId === environment.id}
@@ -305,6 +333,23 @@ export default function EnvironmentsView({
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* Add / Edit Environment Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={closeEditModal}
+        title={editingEnvironment?.id ? 'Edit Environment' : 'Add Environment'}
+        size="large"
+      >
+        {showEditModal && (
+          <EnvironmentForm
+            environment={editingEnvironment}
+            onSave={handleSaveEnvironment}
+            onCancel={closeEditModal}
+            isDM={isDM}
+          />
+        )}
       </Modal>
     </div>
   );

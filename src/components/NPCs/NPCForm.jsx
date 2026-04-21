@@ -4,6 +4,7 @@ import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateNPCPortrait } from '../../services/portraitGenerator';
+import { STARWARS_SPECIES_GROUPS } from '../../data/starwarsd6Species';
 import './NPCsView.css';
 
 export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isDM }) {
@@ -25,6 +26,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
 
   const [formData, setFormData] = useState(npc || {
     name: '',
+    species: '',
     occupation: '',
     location: '',
     relationship: 'neutral',
@@ -34,6 +36,8 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
     avatarUrl: '',
     hidden: false
   });
+
+  const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
@@ -184,6 +188,28 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
           required
         />
       </div>
+
+      {isStarWarsD6 && (
+        <div className="input-group">
+          <label>Species</label>
+          <select
+            value={formData.species || ''}
+            onChange={(e) => handleChange('species', e.target.value)}
+          >
+            <option value="">— Select species —</option>
+            {STARWARS_SPECIES_GROUPS.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.species.map((s) => (
+                  <option key={`${group.label}-${s}`} value={s}>{s}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <small className="form-hint">
+            Pick a common Star Wars species, or leave blank and describe it in the notes.
+          </small>
+        </div>
+      )}
 
       <div className="input-group">
         <label>Occupation</label>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus, Download } from 'lucide-react';
+import { ChevronDown, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus, Download, User } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import InlineEdit from '../InlineEdit/InlineEdit';
@@ -92,6 +92,12 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
               className="text-3xl font-serif font-black text-white/95 leading-none italic lowercase tracking-tighter"
             />
             <div className="flex flex-wrap gap-3 pt-2">
+              {npc.species && (
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                  <User size={10} className="text-amber-400/50" />
+                  {npc.species}
+                </div>
+              )}
               {npc.occupation && (
                 <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
                   <Briefcase size={10} className="text-indigo-400/50" />
