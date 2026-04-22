@@ -350,7 +350,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   };
 
   const handleAttributeRoll = async (traitName) => {
-    const baseMod = (traits[traitName] ?? 0) + proficiency;
+    const baseMod = traits[traitName] ?? 0;
     const baseLabel = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} Check`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`attr-${traitName}`);
@@ -360,7 +360,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const handleExperienceRoll = async (expName, expBonus, traitName) => {
     const traitMod = traits[traitName] ?? 0;
-    const baseMod = traitMod + expBonus + proficiency;
+    const baseMod = traitMod + expBonus;
     const baseLabel = `${expName} (${TRAIT_ABBREV[traitName]})`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`exp-${expName}`);
@@ -589,7 +589,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             key={name}
             className={`dh-attribute-circle dh-attribute-rollable ${traitClass(value)} ${rollingKey === `attr-${name}` ? 'dh-roll-flash' : ''}`}
             onClick={() => campaign?.id && handleAttributeRoll(name)}
-            title={`Roll ${name.charAt(0).toUpperCase() + name.slice(1)} Check (${formatTraitValue(value)} + Prof ${proficiency})`}
+            title={`Roll ${name.charAt(0).toUpperCase() + name.slice(1)} Check (${formatTraitValue(value)})`}
           >
             <span className="dh-attribute-abbrev">{TRAIT_ABBREV[name] || name.slice(0, 3).toUpperCase()}</span>
             <span className="dh-attribute-value">{formatTraitValue(value)}</span>
@@ -681,7 +681,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                           <button
                             key={tName}
                             className="dh-exp-trait-btn"
-                            title={`Roll: ${TRAIT_ABBREV[tName]} ${formatTraitValue(tVal)} + Exp ${bonus >= 0 ? `+${bonus}` : bonus} + Prof +${proficiency}`}
+                            title={`Roll: ${TRAIT_ABBREV[tName]} ${formatTraitValue(tVal)} + Exp ${bonus >= 0 ? `+${bonus}` : bonus}`}
                             onClick={() => handleExperienceRoll(exp, bonus, tName)}
                           >
                             <span>{TRAIT_ABBREV[tName]}</span>
