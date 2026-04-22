@@ -50,7 +50,13 @@ export function AuthProvider({ children }) {
 
   // Reset password
   function resetPassword(email) {
-    return sendPasswordResetEmail(auth, email);
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    const actionCodeSettings = {
+      // Send the user back to the app after they reset their password
+      url: `${window.location.origin}/`,
+      handleCodeInApp: false,
+    };
+    return sendPasswordResetEmail(auth, normalizedEmail, actionCodeSettings);
   }
 
   // Update user profile

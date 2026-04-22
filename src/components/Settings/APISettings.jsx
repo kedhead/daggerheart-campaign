@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Check, X, Key, ExternalLink, Zap, Calendar, User } from 'lucide-react';
+import { Eye, EyeOff, Check, X, Key, ExternalLink, Zap, Calendar, User, Crown } from 'lucide-react';
 import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,7 +7,7 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { aiService } from '../../services/aiService';
 import './APISettings.css';
 
-export default function APISettings({ userId }) {
+export default function APISettings({ userId, userRole, onChangeUserRole }) {
   const { currentUser, updateUserProfile } = useAuth();
   const {
     keys,
@@ -186,6 +186,44 @@ export default function APISettings({ userId }) {
           )}
         </div>
       </div>
+
+      {/* Default Role Section */}
+      {onChangeUserRole && (
+        <div className="api-section card">
+          <div className="api-section-header">
+            <div>
+              <h3>Default Role</h3>
+              <p className="api-description">
+                Choose how the app opens for you. This controls the default view — per-campaign roles (DM, Co-DM, Player) are still set by each campaign's creator.
+              </p>
+            </div>
+          </div>
+          <div className="key-input-section">
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`btn ${userRole === 'dm' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => onChangeUserRole('dm')}
+                disabled={userRole === 'dm'}
+                style={{ flex: 1, minWidth: '180px' }}
+              >
+                <Crown size={16} />
+                {userRole === 'dm' ? 'Game Master (current)' : 'Switch to Game Master'}
+              </button>
+              <button
+                type="button"
+                className={`btn ${userRole === 'player' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => onChangeUserRole('player')}
+                disabled={userRole === 'player'}
+                style={{ flex: 1, minWidth: '180px' }}
+              >
+                <User size={16} />
+                {userRole === 'player' ? 'Player (current)' : 'Switch to Player'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="api-info card">
         <h3>About API Keys</h3>

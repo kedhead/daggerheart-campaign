@@ -13,13 +13,20 @@ export default function ForgotPassword({ onBack }) {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setError('Please enter your email address');
+      return;
+    }
+
     try {
       setError('');
       setSuccess(false);
       setLoading(true);
-      await resetPassword(email);
+      await resetPassword(normalizedEmail);
       setSuccess(true);
     } catch (err) {
+      console.error('Password reset failed:', err);
       setError(getErrorMessage(err.code));
     } finally {
       setLoading(false);
@@ -32,6 +39,12 @@ export default function ForgotPassword({ onBack }) {
         return 'No account found with this email';
       case 'auth/invalid-email':
         return 'Invalid email address';
+      case 'auth/missing-email':
+        return 'Please enter your email address';
+      case 'auth/too-many-requests':
+        return 'Too many attempts. Please wait a few minutes and try again';
+      case 'auth/network-request-failed':
+        return 'Network error. Please check your connection and try again';
       default:
         return 'Failed to send reset email. Please try again';
     }
@@ -50,7 +63,7 @@ export default function ForgotPassword({ onBack }) {
       {error && <div className="auth-error">{error}</div>}
       {success && (
         <div className="auth-success">
-          Password reset email sent! Check your inbox.
+          Password reset email sent! Check your inbox — and your spam/junk folder if you don't see it within a few minutes.
         </div>
       )}
 

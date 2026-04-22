@@ -518,7 +518,13 @@ function CampaignApp() {
           />
         );
       case 'apiSettings':
-        return <APISettings userId={currentUser.uid} />;
+        return (
+          <APISettings
+            userId={currentUser.uid}
+            userRole={userRole}
+            onChangeUserRole={handleRoleSelection}
+          />
+        );
       case 'items':
         return (
           <ItemsView
