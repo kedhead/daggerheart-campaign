@@ -1,9 +1,13 @@
-import { useState } from 'react';
-import { Plus, Search, Package, Sword, Shield, Backpack, Wand2, Download, Check } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Search, Package, Sword, Shield, Backpack, Wand2, Download, Check, Sparkles } from 'lucide-react';
 import ItemCard from './ItemCard';
 import ItemForm from './ItemForm';
+import ItemAIModal from './ItemAIModal';
 import Modal from '../Modal';
 import { ALL_DAGGERHEART_ITEMS, DAGGERHEART_WEAPONS, DAGGERHEART_ARMOR, DAGGERHEART_EQUIPMENT, DAGGERHEART_CONSUMABLES } from '../../data/daggerheartItems';
+import { ALL_STARWARSD6_ITEMS, STARWARSD6_WEAPONS, STARWARSD6_ARMOR, STARWARSD6_EQUIPMENT } from '../../data/starwarsd6Items';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { buildCampaignContext } from '../../services/campaignContext';
 import './ItemsView.css';
 
 export default function ItemsView({
@@ -13,10 +17,14 @@ export default function ItemsView({
   updateItem,
   deleteItem,
   isDM,
+  userId,
+  campaignFrame = null,
   npcs = [],
   locations = [],
   lore = [],
   sessions = [],
+  characters = [],
+  adversaries = [],
   timelineEvents = [],
   encounters = [],
   notes = []
@@ -31,6 +39,22 @@ export default function ItemsView({
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [catalogTier, setCatalogTier] = useState('all');
+  const [showAIModal, setShowAIModal] = useState(false);
+
+  const { getEffectiveKey } = useAPIKey(userId);
+  const anthropicInfo = getEffectiveKey?.('anthropic');
+  const openaiInfo = getEffectiveKey?.('openai');
+  const aiKey = anthropicInfo?.key || openaiInfo?.key || '';
+  const aiProvider = anthropicInfo?.key ? 'anthropic' : 'openai';
+  const hasAI = !!aiKey;
+
+  const campaignContext = useMemo(
+    () => buildCampaignContext(campaign, {
+      campaignFrame, adversaries, npcs, locations, lore, sessions, characters, encounters
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaign?.id, adversaries.length, npcs.length, locations.length, lore.length]
+  );
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -42,8 +66,15 @@ export default function ItemsView({
     setIsModalOpen(true);
   };
 
+  const handleAIGenerated = (generatedItem) => {
+    setShowAIModal(false);
+    // Prefill the regular item form with the AI output for review/edits before save.
+    setEditingItem(generatedItem);
+    setIsModalOpen(true);
+  };
+
   const handleSave = async (itemData) => {
-    if (editingItem) {
+    if (editingItem?.id) {
       await updateItem(editingItem.id, itemData);
     } else {
       await addItem(itemData);
@@ -61,32 +92,46 @@ export default function ItemsView({
   // Get items to show in import modal based on category and tier/rarity
   const getImportItems = () => {
     const system = campaign?.gameSystem || 'daggerheart';
-    if (system !== 'daggerheart') return [];
     let items;
-    switch (importCategory) {
-      case 'weapons': items = DAGGERHEART_WEAPONS; break;
-      case 'armor': items = DAGGERHEART_ARMOR; break;
-      case 'equipment': items = DAGGERHEART_EQUIPMENT; break;
-      case 'consumables': items = DAGGERHEART_CONSUMABLES; break;
-      default: items = ALL_DAGGERHEART_ITEMS;
-    }
+    
+    if (system === 'starwarsd6') {
+      switch (importCategory) {
+        case 'weapons': items = STARWARSD6_WEAPONS; break;
+        case 'armor': items = STARWARSD6_ARMOR; break;
+        case 'equipment': items = STARWARSD6_EQUIPMENT; break;
+        case 'consumables': items = []; break;
+        default: items = ALL_STARWARSD6_ITEMS;
+      }
+      
+      if (importTier !== 'all') {
+        items = items.filter(i => (i.systemData?.availability || '1') === importTier);
+      }
+    } else {
+      switch (importCategory) {
+        case 'weapons': items = DAGGERHEART_WEAPONS; break;
+        case 'armor': items = DAGGERHEART_ARMOR; break;
+        case 'equipment': items = DAGGERHEART_EQUIPMENT; break;
+        case 'consumables': items = DAGGERHEART_CONSUMABLES; break;
+        default: items = ALL_DAGGERHEART_ITEMS;
+      }
 
-    // Apply tier/rarity filter
-    if (importTier !== 'all') {
-      const isEquipmentCategory = importCategory === 'equipment' || importCategory === 'consumables';
-      if (isEquipmentCategory) {
-        // Filter by rarity for equipment/consumables
-        items = items.filter(i => (i.systemData?.rarity || 'common') === importTier);
-      } else {
-        // Filter by tier for weapons and armor
-        const tierNum = parseInt(importTier);
-        if (!isNaN(tierNum)) {
-          items = items.filter(i => {
-            if (i.type === 'weapon' || i.type === 'armor') {
-              return (i.systemData?.tier || 1) === tierNum;
-            }
-            return true; // show all equipment/consumables when filtering by tier
-          });
+      // Apply tier/rarity filter
+      if (importTier !== 'all') {
+        const isEquipmentCategory = importCategory === 'equipment' || importCategory === 'consumables';
+        if (isEquipmentCategory) {
+          // Filter by rarity for equipment/consumables
+          items = items.filter(i => (i.systemData?.rarity || 'common') === importTier);
+        } else {
+          // Filter by tier for weapons and armor
+          const tierNum = parseInt(importTier);
+          if (!isNaN(tierNum)) {
+            items = items.filter(i => {
+              if (i.type === 'weapon' || i.type === 'armor') {
+                return (i.systemData?.tier || 1) === tierNum;
+              }
+              return true; // show all equipment/consumables when filtering by tier
+            });
+          }
         }
       }
     }
@@ -177,11 +222,22 @@ export default function ItemsView({
         </div>
         {isDM && (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {/* Show Import Official for Daggerheart campaigns (default if not set) */}
-            {(!campaign?.gameSystem || campaign.gameSystem === 'daggerheart') && (
+            {/* Show Import Official for supported campaigns */}
+            {(!campaign?.gameSystem || campaign.gameSystem === 'daggerheart' || campaign.gameSystem === 'starwarsd6') && (
               <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
                 <Download size={20} />
                 Import Official
+              </button>
+            )}
+            {/* AI generation currently supports Daggerheart only */}
+            {(!campaign?.gameSystem || campaign.gameSystem === 'daggerheart') && (
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowAIModal(true)}
+                title={hasAI ? 'Generate a new item with AI' : 'Add an API key in settings to enable AI generation'}
+              >
+                <Sparkles size={20} />
+                AI Generate
               </button>
             )}
             <button className="btn btn-primary" onClick={handleAdd}>
@@ -307,6 +363,17 @@ export default function ItemsView({
         />
       </Modal>
 
+      {/* AI Generation Modal */}
+      <ItemAIModal
+        isOpen={showAIModal}
+        onClose={() => setShowAIModal(false)}
+        onGenerated={handleAIGenerated}
+        apiKey={aiKey}
+        provider={aiProvider}
+        campaignContext={campaignContext}
+        hasAI={hasAI}
+      />
+
       {/* Import Official Items Modal */}
       <Modal
         isOpen={showImportModal}
@@ -314,12 +381,12 @@ export default function ItemsView({
           setShowImportModal(false);
           setSelectedImports(new Set());
         }}
-        title="Import Official Daggerheart Items"
+        title={`Import Official ${gameSystem === 'starwarsd6' ? 'Star Wars D6' : 'Daggerheart'} Items`}
         size="large"
       >
         <div className="import-modal">
           <p className="import-description">
-            Import official items from the Daggerheart rulebook into your campaign's item catalog.
+            Import official items into your campaign's item catalog.
           </p>
 
           <div className="import-category-tabs">
@@ -341,7 +408,28 @@ export default function ItemsView({
           </div>
 
           <div className="import-tier-filter">
-            {showRarityFilter ? (
+            {gameSystem === 'starwarsd6' ? (
+              <>
+                {[
+                  { value: 'all', label: 'All Availabilities' },
+                  { value: '1', label: '1 - Readily Available' },
+                  { value: '2', label: '2 - Common' },
+                  { value: '3', label: '3 - Available' },
+                  { value: '4', label: '4 - Scarce' },
+                  { value: 'F', label: 'F - Black Market' },
+                  { value: 'R', label: 'R - Restricted' },
+                  { value: 'X', label: 'X - Rare' }
+                ].map(r => (
+                  <button
+                    key={r.value}
+                    className={`import-tier-tab ${importTier === r.value ? 'active' : ''}`}
+                    onClick={() => setImportTier(r.value)}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </>
+            ) : showRarityFilter ? (
               <>
                 {[
                   { value: 'all', label: 'All Rarities' },
@@ -416,14 +504,19 @@ export default function ItemsView({
                     <div className="import-item-name">
                       {item.name}
                       <span className={`import-item-type ${item.type}`}>{item.type}</span>
-                      {(item.type === 'weapon' || item.type === 'armor') && (
+                      {gameSystem !== 'starwarsd6' && (item.type === 'weapon' || item.type === 'armor') && (
                         <span className="import-item-tier">T{item.systemData?.tier || 1}</span>
                       )}
-                      {item.type === 'equipment' && item.systemData?.rarity && item.systemData.rarity !== 'common' && (
+                      {gameSystem !== 'starwarsd6' && item.type === 'equipment' && item.systemData?.rarity && item.systemData.rarity !== 'common' && (
                         <span className={`import-item-rarity ${item.systemData.rarity}`}>{item.systemData.rarity}</span>
                       )}
+                      {gameSystem === 'starwarsd6' && item.systemData?.availability && (
+                         <span className="import-item-tier">Avail: {item.systemData.availability}</span>
+                      )}
                     </div>
-                    <div className="import-item-desc">{item.description}</div>
+                    <div className="import-item-desc">
+                      {item.description ? item.description.replace(/<[^>]+>/g, '') : ''}
+                    </div>
                   </div>
                   {alreadyExists && (
                     <span className="already-exists-badge">Already in catalog</span>

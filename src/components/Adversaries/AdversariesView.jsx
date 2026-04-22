@@ -2,8 +2,16 @@ import { useState, useMemo } from 'react';
 import { Plus, Search, Download, Check, Skull, Filter } from 'lucide-react';
 import AdversaryCard from './AdversaryCard';
 import AdversaryForm from './AdversaryForm';
+import StarWarsD6AdversaryCard from './StarWarsD6AdversaryCard';
+import StarWarsD6AdversaryForm from './StarWarsD6AdversaryForm';
 import Modal from '../Modal';
 import { DAGGERHEART_ADVERSARIES, ADVERSARIES_BY_TIER, ADVERSARIES_BY_ROLE } from '../../data/daggerheartAdversaries';
+import {
+  STARWARSD6_ADVERSARIES,
+  STARWARSD6_ADVERSARIES_BY_CLASSIFICATION,
+  STARWARSD6_CLASSIFICATIONS,
+  STARWARSD6_AFFILIATIONS
+} from '../../data/starwarsd6Adversaries';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateAdversaryPortrait } from '../../services/portraitGenerator';
 import { buildCampaignContext } from '../../services/campaignContext';
@@ -28,12 +36,17 @@ export default function AdversariesView({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
+  const [filterClassification, setFilterClassification] = useState('all');
+  const [filterAffiliation, setFilterAffiliation] = useState('all');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingAdversary, setEditingAdversary] = useState(null);
   const [importTier, setImportTier] = useState('all');
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
+
+  const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
+  const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
 
   const campaignContext = useMemo(
     () => buildCampaignContext(campaign, {
@@ -47,8 +60,12 @@ export default function AdversariesView({
   const openaiKeyInfo = getEffectiveKey('openai');
   const hasOpenAIKey = !!openaiKeyInfo?.key;
 
-  // Get import items based on selected tier
+  // Get import items based on selected tier / classification
   const getImportItems = () => {
+    if (isStarWarsD6) {
+      if (importTier === 'all') return STARWARSD6_ADVERSARIES;
+      return STARWARSD6_ADVERSARIES_BY_CLASSIFICATION[importTier] || [];
+    }
     if (importTier === 'all') return DAGGERHEART_ADVERSARIES;
     return ADVERSARIES_BY_TIER[parseInt(importTier)] || [];
   };
@@ -143,14 +160,23 @@ export default function AdversariesView({
       adv.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       adv.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
+    if (isStarWarsD6) {
+      const matchesClassification =
+        filterClassification === 'all' || adv.classification === filterClassification;
+      const matchesAffiliation =
+        filterAffiliation === 'all' || adv.affiliation === filterAffiliation;
+      return matchesSearch && matchesClassification && matchesAffiliation;
+    }
+
     const matchesTier = filterTier === 'all' || adv.tier === parseInt(filterTier);
     const matchesRole = filterRole === 'all' || adv.role === filterRole;
-
     return matchesSearch && matchesTier && matchesRole;
   });
 
-  // Get unique roles from adversaries
+  // Get unique roles / classifications / affiliations from adversaries
   const roles = [...new Set(adversaries.map(a => a.role).filter(Boolean))];
+  const classificationsInUse = [...new Set(adversaries.map(a => a.classification).filter(Boolean))];
+  const affiliationsInUse = [...new Set(adversaries.map(a => a.affiliation).filter(Boolean))];
 
   // Counts
   const counts = {
@@ -160,10 +186,12 @@ export default function AdversariesView({
       2: adversaries.filter(a => a.tier === 2 && (isDM || !a.hidden)).length,
       3: adversaries.filter(a => a.tier === 3 && (isDM || !a.hidden)).length,
       4: adversaries.filter(a => a.tier === 4 && (isDM || !a.hidden)).length
-    }
+    },
+    byClassification: STARWARSD6_CLASSIFICATIONS.reduce((acc, c) => {
+      acc[c.value] = adversaries.filter(a => a.classification === c.value && (isDM || !a.hidden)).length;
+      return acc;
+    }, {})
   };
-
-  const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
 
   return (
     <div className="adversaries-view">
@@ -176,7 +204,7 @@ export default function AdversariesView({
         </div>
         {isDM && (
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {isDaggerheart && (
+            {(isDaggerheart || isStarWarsD6) && (
               <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
                 <Download size={20} />
                 Import Official
@@ -204,33 +232,60 @@ export default function AdversariesView({
 
         <div className="filter-group">
           <Filter size={16} />
-          <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)}>
-            <option value="all">All Tiers</option>
-            <option value="1">Tier 1 ({counts.byTier[1]})</option>
-            <option value="2">Tier 2 ({counts.byTier[2]})</option>
-            <option value="3">Tier 3 ({counts.byTier[3]})</option>
-            <option value="4">Tier 4 ({counts.byTier[4]})</option>
-          </select>
+          {isStarWarsD6 ? (
+            <>
+              <select
+                value={filterClassification}
+                onChange={(e) => setFilterClassification(e.target.value)}
+              >
+                <option value="all">All Classifications</option>
+                {STARWARSD6_CLASSIFICATIONS.map(c => (
+                  <option key={c.value} value={c.value}>
+                    {c.label} ({counts.byClassification[c.value] || 0})
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filterAffiliation}
+                onChange={(e) => setFilterAffiliation(e.target.value)}
+              >
+                <option value="all">All Affiliations</option>
+                {affiliationsInUse.map(aff => (
+                  <option key={aff} value={aff} style={{ textTransform: 'capitalize' }}>{aff}</option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              <select value={filterTier} onChange={(e) => setFilterTier(e.target.value)}>
+                <option value="all">All Tiers</option>
+                <option value="1">Tier 1 ({counts.byTier[1]})</option>
+                <option value="2">Tier 2 ({counts.byTier[2]})</option>
+                <option value="3">Tier 3 ({counts.byTier[3]})</option>
+                <option value="4">Tier 4 ({counts.byTier[4]})</option>
+              </select>
 
-          <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-            <option value="all">All Roles</option>
-            {roles.map(role => (
-              <option key={role} value={role}>{role}</option>
-            ))}
-          </select>
+              <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
+                <option value="all">All Roles</option>
+                {roles.map(role => (
+                  <option key={role} value={role}>{role}</option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
       </div>
 
       {/* Adversaries Grid */}
       {filteredAdversaries.length === 0 ? (
         <div className="empty-state card">
-          {searchTerm || filterTier !== 'all' || filterRole !== 'all' ? (
+          {searchTerm || filterTier !== 'all' || filterRole !== 'all' || filterClassification !== 'all' || filterAffiliation !== 'all' ? (
             <p>No adversaries match your filters</p>
           ) : (
             <>
               <Skull size={64} />
               <p>No adversaries yet</p>
-              {isDM && isDaggerheart && (
+              {isDM && (isDaggerheart || isStarWarsD6) && (
                 <button className="btn btn-primary" onClick={() => setShowImportModal(true)}>
                   <Download size={20} />
                   Import Official Adversaries
@@ -242,29 +297,50 @@ export default function AdversariesView({
       ) : (
         <div className="adversaries-grid">
           {filteredAdversaries.map((adversary) => (
-            <AdversaryCard
-              key={adversary.id}
-              adversary={adversary}
-              onEdit={isDM ? openEdit : null}
-              onDelete={isDM ? handleDelete : null}
-              onGenerateImage={isDM ? handleGenerateImage : null}
-              isDM={isDM}
-              campaignId={campaign?.id}
-            />
+            isStarWarsD6 ? (
+              <StarWarsD6AdversaryCard
+                key={adversary.id}
+                adversary={adversary}
+                onEdit={isDM ? openEdit : null}
+                onDelete={isDM ? handleDelete : null}
+                onGenerateImage={isDM ? handleGenerateImage : null}
+                isDM={isDM}
+              />
+            ) : (
+              <AdversaryCard
+                key={adversary.id}
+                adversary={adversary}
+                onEdit={isDM ? openEdit : null}
+                onDelete={isDM ? handleDelete : null}
+                onGenerateImage={isDM ? handleGenerateImage : null}
+                isDM={isDM}
+                campaignId={campaign?.id}
+              />
+            )
           ))}
         </div>
       )}
 
       {/* Create / Edit Adversary Form */}
-      <AdversaryForm
-        isOpen={showForm}
-        onClose={() => { setShowForm(false); setEditingAdversary(null); }}
-        onSave={handleSave}
-        adversary={editingAdversary}
-        campaignAdversaries={adversaries}
-        userId={userId || campaign?.createdBy}
-        campaignContext={campaignContext}
-      />
+      {isStarWarsD6 ? (
+        <StarWarsD6AdversaryForm
+          isOpen={showForm}
+          onClose={() => { setShowForm(false); setEditingAdversary(null); }}
+          onSave={handleSave}
+          adversary={editingAdversary}
+          campaignAdversaries={adversaries}
+        />
+      ) : (
+        <AdversaryForm
+          isOpen={showForm}
+          onClose={() => { setShowForm(false); setEditingAdversary(null); }}
+          onSave={handleSave}
+          adversary={editingAdversary}
+          campaignAdversaries={adversaries}
+          userId={userId || campaign?.createdBy}
+          campaignContext={campaignContext}
+        />
+      )}
 
       {/* Import Modal */}
       <Modal
@@ -273,22 +349,33 @@ export default function AdversariesView({
           setShowImportModal(false);
           setSelectedImports(new Set());
         }}
-        title="Import Official Daggerheart Adversaries"
+        title={isStarWarsD6 ? 'Import Star Wars D6 Adversaries' : 'Import Official Daggerheart Adversaries'}
         size="large"
       >
         <div className="import-modal">
           <p className="import-description">
-            Import official adversaries from the Daggerheart SRD into your campaign.
+            {isStarWarsD6
+              ? 'Import canonical Star Wars D6 (West End Games) adversaries into your campaign.'
+              : 'Import official adversaries from the Daggerheart SRD into your campaign.'}
           </p>
 
           <div className="import-category-tabs">
-            {[
-              { value: 'all', label: `All (${DAGGERHEART_ADVERSARIES.length})` },
-              { value: '1', label: `Tier 1 (${ADVERSARIES_BY_TIER[1]?.length || 0})` },
-              { value: '2', label: `Tier 2 (${ADVERSARIES_BY_TIER[2]?.length || 0})` },
-              { value: '3', label: `Tier 3 (${ADVERSARIES_BY_TIER[3]?.length || 0})` },
-              { value: '4', label: `Tier 4 (${ADVERSARIES_BY_TIER[4]?.length || 0})` }
-            ].map(cat => (
+            {(isStarWarsD6
+              ? [
+                  { value: 'all', label: `All (${STARWARSD6_ADVERSARIES.length})` },
+                  ...STARWARSD6_CLASSIFICATIONS.map(c => ({
+                    value: c.value,
+                    label: `${c.label} (${STARWARSD6_ADVERSARIES_BY_CLASSIFICATION[c.value]?.length || 0})`
+                  }))
+                ]
+              : [
+                  { value: 'all', label: `All (${DAGGERHEART_ADVERSARIES.length})` },
+                  { value: '1', label: `Tier 1 (${ADVERSARIES_BY_TIER[1]?.length || 0})` },
+                  { value: '2', label: `Tier 2 (${ADVERSARIES_BY_TIER[2]?.length || 0})` },
+                  { value: '3', label: `Tier 3 (${ADVERSARIES_BY_TIER[3]?.length || 0})` },
+                  { value: '4', label: `Tier 4 (${ADVERSARIES_BY_TIER[4]?.length || 0})` }
+                ]
+            ).map(cat => (
               <button
                 key={cat.value}
                 className={`import-tab ${importTier === cat.value ? 'active' : ''}`}
@@ -334,8 +421,21 @@ export default function AdversariesView({
                   <div className="import-item-info">
                     <div className="import-item-name">
                       {adv.name}
-                      <span className="import-item-tier">T{adv.tier}</span>
-                      <span className="import-item-role">{adv.role}</span>
+                      {isStarWarsD6 ? (
+                        <>
+                          <span className="import-item-tier" style={{ textTransform: 'capitalize' }}>
+                            {adv.classification || 'thug'}
+                          </span>
+                          <span className="import-item-role" style={{ textTransform: 'capitalize' }}>
+                            {adv.affiliation || 'neutral'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="import-item-tier">T{adv.tier}</span>
+                          <span className="import-item-role">{adv.role}</span>
+                        </>
+                      )}
                     </div>
                     <div className="import-item-desc">{adv.description}</div>
                   </div>

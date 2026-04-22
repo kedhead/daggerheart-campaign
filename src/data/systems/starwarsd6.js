@@ -313,13 +313,13 @@ export default {
   externalTools: [
     {
       name: 'D6 Holocron',
-      url: 'https://d6holocron.com/',
+      url: 'http://d6holocron.com/',
       description: 'Comprehensive Star Wars D6 resource and rules reference',
       icon: 'book-open'
     },
     {
       name: 'Star Wars RPG Index',
-      url: 'http://www.starwarsrpgindex.com/',
+      url: 'https://www.swrpgcommunity.com/gm-resources/gear-indexes',
       description: 'Index of Star Wars RPG books and supplements',
       icon: 'scroll-text'
     },

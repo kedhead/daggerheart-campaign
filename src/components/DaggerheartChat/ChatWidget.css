@@ -386,6 +386,14 @@
   background: var(--text-secondary);
 }
 
+/* Tablet + mobile: BottomNav is visible, so float must clear it */
+@media (max-width: 900px) {
+  .dh-chat-widget-container {
+    bottom: calc(var(--lr-main-pad, 64px) + 48px + 24px);
+    right: 1rem;
+  }
+}
+
 /* Mobile responsiveness */
 @media (max-width: 480px) {
   .dh-chat-window {
@@ -409,7 +417,8 @@
 
   .dh-chat-widget-container {
     right: 1rem;
-    bottom: 5rem; /* Stack above the dice FAB (48px button + 16px bottom + gap) */
+    /* Clear BottomNav + dice FAB stack (nav pad + FAB height + gap) */
+    bottom: calc(var(--lr-main-pad, 64px) + 48px + 24px);
   }
 
   /* When open, widget takes full screen, so toggle needs to move */

@@ -10,6 +10,7 @@ import RoleSelection from './components/RoleSelection/RoleSelection';
 import SidebarWithAuth from './components/SidebarWithAuth';
 import DashboardView from './components/Dashboard/DashboardView';
 import CharactersView from './components/Characters/CharactersView';
+import MySheetView from './components/Characters/MySheetView';
 import LoreView from './components/Lore/LoreView';
 import SessionsView from './components/Sessions/SessionsView';
 import FilesView from './components/Files/FilesView';
@@ -45,6 +46,7 @@ import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import { usePresence } from './hooks/usePresence';
 import { getGameSystem } from './data/systems/index.js';
 import TopBar from './components/Layout/TopBar';
+import BottomNav from './components/Layout/BottomNav';
 import './App.css';
 
 function CampaignApp() {
@@ -185,6 +187,8 @@ function CampaignApp() {
 
   // Ctrl+/ or Cmd+/ to open command palette (Ctrl+K conflicts with Chrome)
   useKeyboardShortcut('/', () => setIsCommandPaletteOpen(true), { ctrl: true });
+  // Lorelich parity: Cmd/Ctrl+K also opens the palette (matches the TopBar hint)
+  useKeyboardShortcut('k', () => setIsCommandPaletteOpen(true), { ctrl: true });
 
   // Presence tracking
   const { presenceList } = usePresence(currentCampaignId, currentView);
@@ -299,6 +303,40 @@ function CampaignApp() {
             removeFromCharacterInventory={removeFromCharacterInventory}
             toggleEquipped={toggleEquipped}
             transferToParty={transferToParty}
+          />
+        );
+      case 'my-sheet':
+        // Non-Daggerheart systems: no full sheet component exists, fall back to roster
+        if ((campaign?.gameSystem || 'daggerheart') !== 'daggerheart') {
+          return (
+            <CharactersView
+              campaign={campaign}
+              characters={characters}
+              addCharacter={addCharacter}
+              updateCharacter={updateCharacter}
+              deleteCharacter={deleteCharacter}
+              isDM={isDM}
+              currentUserId={currentUser.uid}
+              items={items}
+              partyInventory={partyInventory}
+              addToCharacterInventory={addToCharacterInventory}
+              removeFromCharacterInventory={removeFromCharacterInventory}
+              toggleEquipped={toggleEquipped}
+              transferToParty={transferToParty}
+            />
+          );
+        }
+        return (
+          <MySheetView
+            characters={characters}
+            currentUserId={currentUser.uid}
+            campaign={campaign}
+            addCharacter={addCharacter}
+            updateCharacter={updateCharacter}
+            deleteCharacter={deleteCharacter}
+            isDM={isDM}
+            items={items}
+            onGoToRoster={() => setCurrentView('characters')}
           />
         );
       case 'lore':
@@ -490,10 +528,14 @@ function CampaignApp() {
             updateItem={updateItem}
             deleteItem={deleteItem}
             isDM={isDM}
+            userId={currentUser.uid}
+            campaignFrame={campaignFrame}
             npcs={npcs}
             locations={locations}
             lore={lore}
             sessions={sessions}
+            characters={characters}
+            adversaries={adversaries}
             timelineEvents={timelineEvents}
             encounters={encounters}
             notes={notes}
@@ -648,13 +690,21 @@ function CampaignApp() {
             campaign={campaign}
             isDM={isDM}
             setCurrentView={setCurrentView}
+            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
           />
-          <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+          <main className="flex-1 overflow-y-auto custom-scrollbar relative lr-fade-in" style={{ paddingBottom: 'var(--lr-main-pad, 0)' }}>
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
             {renderView()}
           </main>
         </div>
       </div>
+
+      <BottomNav
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+        onRoll={() => document.querySelector('.dice-roller-float > button')?.click()}
+        onMore={() => window.dispatchEvent(new CustomEvent('lr-open-sidebar'))}
+      />
 
       {hasChatBot && (
         <ChatWidget

@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Edit2, Trash2, Backpack, EyeOff, Sparkles, Zap, Heart } from 'lucide-react';
+import { getFeatureName, getFeatureDescription, isCustomFeature } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
+
+const RARITY_COLORS = {
+  common: '#9ca3af',
+  uncommon: '#22c55e',
+  rare: '#3b82f6',
+  legendary: '#f59e0b',
+  relic: '#ec4899'
+};
 
 const CATEGORY_CONFIG = {
   utility: { label: 'Utility', color: '#6b7280', bgColor: 'rgba(107, 114, 128, 0.1)' },
@@ -24,8 +33,12 @@ export default function DaggerheartEquipmentCard({ item, onEdit, onDelete, isDM,
     activation = '',
     uses = -1,
     hopeCost = 0,
-    stressCost = 0
+    stressCost = 0,
+    features = [],
+    rarity = ''
   } = systemData;
+
+  const rarityColor = rarity ? RARITY_COLORS[rarity] : null;
 
   const categoryConfig = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.utility;
 
@@ -42,7 +55,7 @@ export default function DaggerheartEquipmentCard({ item, onEdit, onDelete, isDM,
         </div>
 
         <div className="item-info">
-          <h3>
+          <h3 style={rarityColor ? { color: rarityColor } : {}}>
             {item.name}
             {item.hidden && <EyeOff size={14} style={{ opacity: 0.5, marginLeft: '0.5rem' }} />}
           </h3>
@@ -56,6 +69,17 @@ export default function DaggerheartEquipmentCard({ item, onEdit, onDelete, isDM,
             >
               {categoryConfig.label}
             </span>
+            {rarity && (
+              <span style={{
+                fontSize: '0.75rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: rarityColor,
+                fontWeight: 600
+              }}>
+                {rarity}
+              </span>
+            )}
             {uses !== -1 && (
               <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                 {uses} use{uses !== 1 ? 's' : ''}
@@ -167,6 +191,38 @@ export default function DaggerheartEquipmentCard({ item, onEdit, onDelete, isDM,
                     <span style={{ fontWeight: '600', color: 'var(--fear-color)' }}>{stressCost} Stress</span>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Features */}
+          {features.length > 0 && (
+            <div className="item-section">
+              <h4>Features</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {features.map((feature, i) => {
+                  const name = getFeatureName(feature);
+                  if (!name) return null;
+                  const desc = getFeatureDescription(feature);
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        padding: '0.5rem 0.75rem',
+                        background: categoryConfig.bgColor,
+                        border: `1px solid ${categoryConfig.color}`,
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <span style={{ fontWeight: '600', color: categoryConfig.color }}>{name}</span>
+                      {desc && (
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                          {desc}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

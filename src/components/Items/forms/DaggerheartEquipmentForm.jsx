@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Save, X, Backpack } from 'lucide-react';
+import { Save, X, Backpack, Plus, Trash2 } from 'lucide-react';
 import { EQUIPMENT_CATEGORIES } from '../../../data/systems/daggerheart';
+import { splitFeatures } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 export default function DaggerheartEquipmentForm({ item, formData, setFormData, onSave, onCancel, onChangeType, isDM }) {
@@ -11,11 +12,13 @@ export default function DaggerheartEquipmentForm({ item, formData, setFormData, 
     type: 'equipment',
     systemData: {
       category: item?.systemData?.category || 'utility',
+      rarity: item?.systemData?.rarity || '',
       mechanicalEffect: item?.systemData?.mechanicalEffect || '',
       activation: item?.systemData?.activation || '',
       uses: item?.systemData?.uses ?? -1,
       hopeCost: item?.systemData?.hopeCost || 0,
-      stressCost: item?.systemData?.stressCost || 0
+      stressCost: item?.systemData?.stressCost || 0,
+      features: item?.systemData?.features || []
     }
   });
 
@@ -38,6 +41,33 @@ export default function DaggerheartEquipmentForm({ item, formData, setFormData, 
         [field]: value
       }
     }));
+  };
+
+  const addCustomFeature = () => {
+    const current = localData.systemData.features || [];
+    handleSystemDataChange('features', [...current, { name: '', description: '' }]);
+  };
+
+  const updateCustomFeature = (index, field, value) => {
+    const current = localData.systemData.features || [];
+    const customIndexes = current
+      .map((f, i) => (f && typeof f === 'object' ? i : -1))
+      .filter(i => i >= 0);
+    const target = customIndexes[index];
+    if (target === undefined) return;
+    const next = [...current];
+    next[target] = { ...next[target], [field]: value };
+    handleSystemDataChange('features', next);
+  };
+
+  const removeCustomFeature = (index) => {
+    const current = localData.systemData.features || [];
+    const customIndexes = current
+      .map((f, i) => (f && typeof f === 'object' ? i : -1))
+      .filter(i => i >= 0);
+    const target = customIndexes[index];
+    if (target === undefined) return;
+    handleSystemDataChange('features', current.filter((_, i) => i !== target));
   };
 
   const handleSubmit = (e) => {
@@ -71,7 +101,7 @@ export default function DaggerheartEquipmentForm({ item, formData, setFormData, 
         />
       </div>
 
-      <div className="form-row">
+      <div className="form-row-3">
         <div className="input-group">
           <label>Category *</label>
           <select
@@ -82,6 +112,21 @@ export default function DaggerheartEquipmentForm({ item, formData, setFormData, 
             {EQUIPMENT_CATEGORIES.map(cat => (
               <option key={cat.value} value={cat.value}>{cat.label}</option>
             ))}
+          </select>
+        </div>
+
+        <div className="input-group">
+          <label>Rarity</label>
+          <select
+            value={localData.systemData.rarity || ''}
+            onChange={(e) => handleSystemDataChange('rarity', e.target.value)}
+          >
+            <option value="">— None —</option>
+            <option value="common">Common</option>
+            <option value="uncommon">Uncommon</option>
+            <option value="rare">Rare</option>
+            <option value="legendary">Legendary</option>
+            <option value="relic">Relic</option>
           </select>
         </div>
 
@@ -141,6 +186,46 @@ export default function DaggerheartEquipmentForm({ item, formData, setFormData, 
           rows={4}
         />
         <small className="form-hint">e.g., "Heal 2d6 HP" or "Gain advantage on next Agility roll"</small>
+      </div>
+
+      <div className="input-group">
+        <div className="custom-features-header">
+          <label>Custom Features</label>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={addCustomFeature}>
+            <Plus size={14} /> Add Feature
+          </button>
+        </div>
+        <small className="form-hint">
+          Additional named abilities beyond the main mechanical effect (e.g. relic passives).
+        </small>
+        <div className="custom-features-list">
+          {splitFeatures(localData.systemData.features).custom.map((feat, idx) => (
+            <div key={idx} className="custom-feature-row">
+              <input
+                type="text"
+                value={feat.name}
+                onChange={(e) => updateCustomFeature(idx, 'name', e.target.value)}
+                placeholder="Feature name"
+                className="custom-feature-name"
+              />
+              <textarea
+                value={feat.description}
+                onChange={(e) => updateCustomFeature(idx, 'description', e.target.value)}
+                placeholder="Mechanical effect or description"
+                rows={2}
+                className="custom-feature-desc"
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => removeCustomFeature(idx)}
+                title="Remove"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="input-group">

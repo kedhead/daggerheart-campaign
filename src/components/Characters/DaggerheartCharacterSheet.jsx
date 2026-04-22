@@ -1,7 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
+import { computeAbilityDelta } from '../../data/daggerheartAbilityEffects';
+import { DAGGERHEART_ARMOR } from '../../data/daggerheartItems';
+import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useQuickRoll } from '../../hooks/useQuickRoll';
@@ -124,6 +128,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const isDruid = charClass === 'Druid' || character.multiclass?.class === 'Druid';
   const isBeastbound = charClass === 'Ranger' && subclass === 'Beastbound';
   const subclassLevel = character.subclassLevel || 'foundation';
+  const classData = charClass ? CLASSES[charClass] : null;
   const baseEvasion = (charClass && CLASSES[charClass]?.baseEvasion) || character.evasion || 10;
   const baseArmorScore = character.armor ?? 0;
   const gold = character.gold ?? 0;
@@ -186,25 +191,25 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (equippedArmorItems.length === 0) return rawArmorSlots.length;
     const sd = equippedArmorItems[0].systemData || {};
     let slots = sd.armorSlots ?? rawArmorSlots.length;
-    if (slots === 6 && (sd.armorScore ?? 0) !== 6 && !(sd.features || []).includes('Fortified')) {
+    if (slots === 6 && (sd.armorScore ?? 0) !== 6 && !hasFeatureName(sd.features, 'Fortified')) {
       slots = sd.armorScore || slots;
     }
     return slots > 0 ? slots : rawArmorSlots.length;
   })();
   const armorSlots = Array.from({ length: equippedArmorSlotCount }, (_, i) => rawArmorSlots[i] ?? false);
 
-  const effectiveArmorScore = useMemo(() => {
+  const baseEffectiveArmorScore = useMemo(() => {
     if (equippedArmorItems.length === 0) return baseArmorScore;
     const maxFromEquipped = Math.max(...equippedArmorItems.map(a => a.systemData?.armorScore ?? 0));
     return Math.max(maxFromEquipped, baseArmorScore);
   }, [equippedArmorItems, baseArmorScore]);
 
-  const effectiveEvasion = useMemo(() => {
+  const baseEffectiveEvasion = useMemo(() => {
     let ev = baseEvasion;
     equippedArmorItems.forEach(armor => {
       const features = armor.systemData?.features || [];
       features.forEach(f => {
-        const fl = f.toLowerCase();
+        const fl = getFeatureName(f).toLowerCase();
         if (fl === 'flexible') ev += 1;
         else if (fl === 'heavy') ev -= 1;
         else if (fl === 'very-heavy' || fl === 'very heavy') ev -= 2;
@@ -213,12 +218,80 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     return ev;
   }, [equippedArmorItems, baseEvasion]);
 
-  // Damage thresholds from class data
-  const classData = charClass ? CLASSES[charClass] : null;
-  const hpThresholds = classData?.hpThresholds || {};
-  const minorThreshold = hpThresholds.minor || Math.ceil(hpSlots.length / 3);
-  const majorThreshold = hpThresholds.major || Math.ceil((hpSlots.length * 2) / 3);
-  const severeThreshold = hpThresholds.severe || hpSlots.length;
+  // Damage thresholds per Daggerheart core rules (Ch. 2, p. 91 & 114):
+  // - Armor prints two base numbers: Major base / Severe base (stored here as
+  //   `thresholds.minor` and `thresholds.major` for historical reasons — the
+  //   values are correct, only the field names are legacy).
+  // - Final threshold = base + character level.
+  // - Three damage tiers (Minor / Major / Severe) but only two threshold
+  //   numbers act as "gates" between them, matching Demiplane's layout.
+  // - Characters should always display thresholds. Fallback chain:
+  //     1. Equipped armor item's systemData.thresholds + level
+  //     2. Name-match against the predefined DAGGERHEART_ARMOR list + level
+  //        (catches Demiplane imports and legacy custom armor missing the
+  //        thresholds field)
+  //     3. Character-level manual override (character.hpThresholds) — final
+  //     4. Gambeson baseline (5 / 11) + level as a last-resort default
+  const primaryArmor = equippedArmorItems[0];
+  const manualThresholds = character.hpThresholds || {};
+  const resolveArmorBases = (armor) => {
+    if (!armor) return null;
+    const t = armor.systemData?.thresholds;
+    if (t && (t.minor > 0 || t.major > 0)) return { major: t.minor || 0, severe: t.major || 0 };
+    if (armor.name) {
+      const match = DAGGERHEART_ARMOR.find(a => a.name.toLowerCase() === armor.name.toLowerCase());
+      if (match?.systemData?.thresholds) {
+        return { major: match.systemData.thresholds.minor || 0, severe: match.systemData.thresholds.major || 0 };
+      }
+    }
+    return null;
+  };
+  const armorBases = resolveArmorBases(primaryArmor);
+
+  // Passive ability effects (Bare Bones, Vitality, Untouchable, ...) computed
+  // before thresholds so abilities that REPLACE the base (Bare Bones) take
+  // precedence over the armor/fallback baseline.
+  const abilityDelta = useMemo(() => {
+    const domainCardCounts = domainCards.reduce((acc, c) => {
+      acc[c.domain] = (acc[c.domain] || 0) + 1;
+      return acc;
+    }, {});
+    return computeAbilityDelta(domainCards, {
+      hasEquippedArmor: equippedArmorItems.length > 0,
+      tier: getTierForLevel(level),
+      proficiency,
+      traits,
+      domainCardCounts,
+    });
+  }, [domainCards, equippedArmorItems, level, proficiency, traits]);
+
+  let majorThreshold = 0;
+  let severeThreshold = 0;
+  if (abilityDelta.majorBaseSet != null || abilityDelta.severeBaseSet != null) {
+    // Ability-set bases (e.g. Bare Bones) override armor / fallback entirely.
+    majorThreshold = (abilityDelta.majorBaseSet ?? 0) + level;
+    severeThreshold = (abilityDelta.severeBaseSet ?? 0) + level;
+  } else if (armorBases && (armorBases.major > 0 || armorBases.severe > 0)) {
+    majorThreshold = armorBases.major > 0 ? armorBases.major + level : 0;
+    severeThreshold = armorBases.severe > 0 ? armorBases.severe + level : 0;
+  } else if (manualThresholds.major > 0 || manualThresholds.severe > 0) {
+    majorThreshold = manualThresholds.major || 0;
+    severeThreshold = manualThresholds.severe || 0;
+  } else {
+    // Gambeson (tier 1) baseline so the sheet always shows usable numbers.
+    majorThreshold = 5 + level;
+    severeThreshold = 11 + level;
+  }
+  majorThreshold += abilityDelta.majorBonus;
+  severeThreshold += abilityDelta.severeBonus;
+  const massiveThreshold = severeThreshold > 0 ? severeThreshold * 2 : 0;
+
+  // Armor-score and evasion with ability bonuses applied on top of the
+  // armor/feature-derived baseline.
+  const effectiveArmorScore = abilityDelta.armorScoreSet != null
+    ? abilityDelta.armorScoreSet + abilityDelta.armorScoreBonus
+    : baseEffectiveArmorScore + abilityDelta.armorScoreBonus;
+  const effectiveEvasion = baseEffectiveEvasion + abilityDelta.evasionBonus;
 
   const hpFilledCount = hpSlots.filter(Boolean).length;
   const stressFilledCount = stressSlots.filter(Boolean).length;
@@ -525,8 +598,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         ))}
       </div>
 
-      {/* Damage Thresholds */}
-      <div className="dh-section-label">Damage Thresholds</div>
+      {/* Evasion / Armor / Prof strip */}
+      <div className="dh-section-label">Defenses</div>
       <div className="dh-thresholds-row">
         <div className="dh-threshold-box dh-threshold-evasion">
           <div className="dh-threshold-value">{effectiveEvasion}</div>
@@ -538,21 +611,41 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <div className="dh-threshold-label">Armor</div>
           </div>
         )}
-        <div className="dh-threshold-box">
-          <div className="dh-threshold-value">{minorThreshold}</div>
-          <div className="dh-threshold-label">Minor</div>
-        </div>
-        <div className="dh-threshold-box">
-          <div className="dh-threshold-value">{majorThreshold}</div>
-          <div className="dh-threshold-label">Major</div>
-        </div>
-        <div className="dh-threshold-box">
-          <div className="dh-threshold-value">{severeThreshold}</div>
-          <div className="dh-threshold-label">Severe</div>
-        </div>
         <div className="dh-threshold-box dh-threshold-prof">
           <div className="dh-threshold-value">+{proficiency}</div>
           <div className="dh-threshold-label">Prof</div>
+        </div>
+      </div>
+
+      {/* Damage Thresholds — gate layout matching the Daggerheart sheet:
+          [Minor Damage]  (Major#)  [Major Damage]  (Severe#)  [Severe Damage]
+          The numbers sit between the tiers as the "gates" that decide how
+          many HP a hit marks. */}
+      <div className="dh-section-label">Damage Thresholds</div>
+      <div className="dh-damage-thresholds">
+        <div className="dh-damage-tier dh-damage-minor" title="Minor damage: mark 1 HP">
+          <div className="dh-damage-tier-label">Minor Damage</div>
+          <div className="dh-damage-tier-hp">Mark 1 HP</div>
+        </div>
+        <div
+          className="dh-damage-gate"
+          title={`Major damage threshold: ${majorThreshold > 0 ? `≥ ${majorThreshold} marks 2 HP` : 'not set'}`}
+        >
+          <div className="dh-damage-gate-value">{majorThreshold > 0 ? majorThreshold : '—'}</div>
+        </div>
+        <div className="dh-damage-tier dh-damage-major" title="Major damage: mark 2 HP">
+          <div className="dh-damage-tier-label">Major Damage</div>
+          <div className="dh-damage-tier-hp">Mark 2 HP</div>
+        </div>
+        <div
+          className="dh-damage-gate"
+          title={`Severe damage threshold: ${severeThreshold > 0 ? `≥ ${severeThreshold} marks 3 HP` : 'not set'}${massiveThreshold > 0 ? ` · Massive (optional, 4 HP) at ≥ ${massiveThreshold}` : ''}`}
+        >
+          <div className="dh-damage-gate-value">{severeThreshold > 0 ? severeThreshold : '—'}</div>
+        </div>
+        <div className="dh-damage-tier dh-damage-severe" title="Severe damage: mark 3 HP">
+          <div className="dh-damage-tier-label">Severe Damage</div>
+          <div className="dh-damage-tier-hp">Mark 3 HP</div>
         </div>
       </div>
 
@@ -657,9 +750,20 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               </div>
               {sd.features?.length > 0 && (
                 <div className="dh-weapon-features">
-                  {sd.features.map((f, i) => (
-                    <span key={i} className="dh-weapon-feature-badge">{f}</span>
-                  ))}
+                  {sd.features.map((f, i) => {
+                    const fname = getFeatureName(f);
+                    const fdesc = getFeatureDescription(f);
+                    if (!fname) return null;
+                    return (
+                      <span
+                        key={i}
+                        className="dh-weapon-feature-badge"
+                        title={fdesc || undefined}
+                      >
+                        {fname}
+                      </span>
+                    );
+                  })}
                 </div>
               )}
               {weapon.description && (
@@ -937,7 +1041,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                   <div className="dh-equipped-item-stats">
                     {sd.armorScore != null && <span>Score {sd.armorScore}</span>}
                     {sd.armorSlots != null && <span>{sd.armorSlots} slots</span>}
-                    {sd.features?.length > 0 && <span>{sd.features.join(', ')}</span>}
+                    {sd.features?.length > 0 && <span>{featureNameList(sd.features).join(', ')}</span>}
                   </div>
                 </div>
               </div>
@@ -1048,8 +1152,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         </div>
       </div>
 
-      {/* Roll Result Overlay */}
-      {lastRoll && (
+      {/* Roll Result Overlay (portaled to body to escape transformed/blurred ancestors) */}
+      {lastRoll && createPortal(
         <div className={`dh-roll-result-overlay ${lastRoll.type === 'generic' ? 'dh-roll-result-damage' : lastRoll.outcome}`}>
           <button className="dh-roll-result-dismiss" onClick={() => { clearTimeout(rollResultTimer.current); setLastRoll(null); }}>×</button>
           <div className="dh-roll-result-label">{lastRoll.label}</div>
@@ -1092,7 +1196,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               <div className="dh-roll-result-total">{lastRoll.total}</div>
             </>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Level Up Wizard Modal */}

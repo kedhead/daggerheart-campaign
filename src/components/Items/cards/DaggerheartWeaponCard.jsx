@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Edit2, Trash2, Sword, EyeOff } from 'lucide-react';
+import { getFeatureName, getFeatureDescription, isCustomFeature } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
+
+const RARITY_COLORS = {
+  common: '#9ca3af',
+  uncommon: '#22c55e',
+  rare: '#3b82f6',
+  legendary: '#f59e0b',
+  relic: '#ec4899'
+};
 
 const TRAIT_LABELS = {
   agility: 'Agility',
@@ -33,8 +42,11 @@ export default function DaggerheartWeaponCard({ item, onEdit, onDelete, isDM, is
     range = 'melee',
     burden = 'one-handed',
     features = [],
-    tier = 1
+    tier = 1,
+    rarity = ''
   } = systemData;
+
+  const rarityColor = rarity ? RARITY_COLORS[rarity] : null;
 
   // Format damage for a tier
   const formatDamage = (tier) => {
@@ -51,7 +63,7 @@ export default function DaggerheartWeaponCard({ item, onEdit, onDelete, isDM, is
         </div>
 
         <div className="item-info">
-          <h3>
+          <h3 style={rarityColor ? { color: rarityColor } : {}}>
             {item.name}
             {item.hidden && <EyeOff size={14} style={{ opacity: 0.5, marginLeft: '0.5rem' }} />}
           </h3>
@@ -59,6 +71,17 @@ export default function DaggerheartWeaponCard({ item, onEdit, onDelete, isDM, is
             <span className="item-type-badge weapon">
               {classification}
             </span>
+            {rarity && (
+              <span style={{
+                fontSize: '0.75rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                color: rarityColor,
+                fontWeight: 600
+              }}>
+                {rarity}
+              </span>
+            )}
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               {TRAIT_LABELS[trait]} • {RANGE_LABELS[range]} • {burden === 'two-handed' ? '2H' : '1H'}
             </span>
@@ -138,10 +161,21 @@ export default function DaggerheartWeaponCard({ item, onEdit, onDelete, isDM, is
           {features.length > 0 && (
             <div className="item-section">
               <h4>Features</h4>
-              <div className="dh-features">
-                {features.map(feature => (
-                  <span key={feature} className="dh-feature">{feature}</span>
-                ))}
+              <div className="dh-features-detailed">
+                {features.map((feature, i) => {
+                  const name = getFeatureName(feature);
+                  const desc = getFeatureDescription(feature);
+                  if (!name) return null;
+                  if (isCustomFeature(feature)) {
+                    return (
+                      <div key={i} className="dh-custom-feature">
+                        <span className="dh-custom-feature-name">{name}</span>
+                        {desc && <p className="dh-custom-feature-desc">{desc}</p>}
+                      </div>
+                    );
+                  }
+                  return <span key={i} className="dh-feature">{name}</span>;
+                })}
               </div>
             </div>
           )}

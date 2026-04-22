@@ -88,7 +88,12 @@
       "WebFetch(domain:www.figma.com)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(python -c \"from PIL import Image, ImageDraw, ImageFont; print\\('PIL OK'\\)\")",
+      "Bash(python)",
+      "Bash(pip install *)",
+      "Bash(python scripts/generate-rune-atlas.py)",
+      "mcp__Claude_Preview__preview_start"
     ],
     "deny": [],
     "ask": []

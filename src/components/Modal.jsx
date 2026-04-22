@@ -12,45 +12,90 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
     small: 'max-w-md',
     medium: 'max-w-2xl',
     large: 'max-w-5xl',
-    'full': 'max-w-[95vw]'
+    'full': 'max-w-[95vw]',
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 lr-fade-in"
+      style={{ fontFamily: 'var(--font-body)' }}
+    >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-[#060814]/80 backdrop-blur-sm"
+        className="absolute inset-0"
         onClick={onClose}
+        style={{
+          background: 'color-mix(in srgb, var(--bg) 78%, transparent)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+        }}
       />
 
       {/* Modal Content */}
       <div
-        className={`
-          relative w-full ${sizeClasses[size] || sizeClasses.medium} 
-          bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.8)]
-          flex flex-col overflow-hidden animate-in zoom-in-95 duration-500
-        `}
+        className={`relative w-full ${sizeClasses[size] || sizeClasses.medium} flex flex-col overflow-hidden rounded-2xl`}
         onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'color-mix(in srgb, var(--surface) 94%, transparent)',
+          border: '1px solid var(--line-strong)',
+          boxShadow: '0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent)',
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
+        }}
       >
-        {/* Decorative Glow */}
-        <div className="absolute top-0 left-0 w-64 h-64 bg-indigo-500/10 blur-[100px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+        {/* Decorative top glow */}
+        <div
+          className="absolute -top-20 left-10 w-72 h-72 pointer-events-none"
+          style={{
+            background: 'color-mix(in srgb, var(--primary) 18%, transparent)',
+            filter: 'blur(100px)',
+            borderRadius: '50%',
+          }}
+        />
 
-        <div className="relative flex items-center justify-between px-10 py-8 border-b border-white/5">
-          <div className="space-y-1">
-            <h2 className="font-serif text-3xl font-black text-white/95 italic lowercase tracking-tight">
+        <div
+          className="relative flex items-center justify-between px-6 sm:px-8 py-5"
+          style={{ borderBottom: '1px solid var(--line)' }}
+        >
+          <div className="space-y-1.5">
+            <h2
+              className="text-xl sm:text-2xl"
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontWeight: 600,
+                color: 'var(--text)',
+                letterSpacing: '-0.015em',
+              }}
+            >
               {title}
             </h2>
-            <div className="h-0.5 w-12 bg-indigo-500/40 rounded-full" />
+            <div
+              className="h-[2px] w-10 rounded-full"
+              style={{ background: 'var(--accent)' }}
+            />
           </div>
           <button
-            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-white/40 hover:text-white transition-all group"
+            className="p-2 rounded-xl transition-all"
             onClick={onClose}
+            style={{
+              background: 'var(--surface-hi)',
+              border: '1px solid var(--line-strong)',
+              color: 'var(--text-muted)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--text)';
+              e.currentTarget.style.background = 'color-mix(in srgb, var(--primary) 12%, var(--surface-hi))';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.background = 'var(--surface-hi)';
+            }}
           >
-            <X size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+            <X size={18} />
           </button>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto p-10 custom-scrollbar max-h-[80vh]">
+        <div className="relative flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar max-h-[80vh]">
           {children}
         </div>
       </div>

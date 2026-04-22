@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Save, X, Shield } from 'lucide-react';
+import { Save, X, Shield, Plus, Trash2 } from 'lucide-react';
 import { ARMOR_FEATURES } from '../../../data/systems/daggerheart';
+import { splitFeatures, toggleStandardFeature, hasFeatureName, featureNameList } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 export default function DaggerheartArmorForm({ item, formData, setFormData, onSave, onCancel, onChangeType, isDM }) {
@@ -9,9 +10,11 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
   const initialFeatures = item?.systemData?.features || [];
   let initialArmorSlots = item?.systemData?.armorSlots || initialArmorScore;
 
-  if (initialArmorSlots === 6 && initialArmorScore !== 6 && !initialFeatures.includes('Fortified')) {
+  if (initialArmorSlots === 6 && initialArmorScore !== 6 && !hasFeatureName(initialFeatures, 'Fortified')) {
     initialArmorSlots = initialArmorScore;
   }
+
+  const initialThresholds = item?.systemData?.thresholds || {};
 
   const [localData, setLocalData] = useState({
     name: formData?.name || item?.name || '',
@@ -22,7 +25,15 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
       armorScore: initialArmorScore,
       armorSlots: initialArmorSlots,
       tier: item?.systemData?.tier || 1,
-      features: initialFeatures
+      rarity: item?.systemData?.rarity || '',
+      features: initialFeatures,
+      // Per Daggerheart core rules: armor prints Major/Severe bases; the
+      // sheet adds character level to produce the final thresholds.
+      // (Legacy field naming: `minor` stores Major base, `major` stores Severe.)
+      thresholds: {
+        minor: initialThresholds.minor ?? 0,
+        major: initialThresholds.major ?? 0
+      }
     }
   });
 
@@ -47,12 +58,48 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
     }));
   };
 
+  const handleThresholdChange = (key, value) => {
+    setLocalData(prev => ({
+      ...prev,
+      systemData: {
+        ...prev.systemData,
+        thresholds: {
+          ...(prev.systemData.thresholds || {}),
+          [key]: parseInt(value, 10) || 0
+        }
+      }
+    }));
+  };
+
   const toggleFeature = (feature) => {
-    const features = localData.systemData.features || [];
-    const newFeatures = features.includes(feature)
-      ? features.filter(f => f !== feature)
-      : [...features, feature];
-    handleSystemDataChange('features', newFeatures);
+    handleSystemDataChange('features', toggleStandardFeature(localData.systemData.features, feature));
+  };
+
+  const addCustomFeature = () => {
+    const current = localData.systemData.features || [];
+    handleSystemDataChange('features', [...current, { name: '', description: '' }]);
+  };
+
+  const updateCustomFeature = (index, field, value) => {
+    const current = localData.systemData.features || [];
+    const customIndexes = current
+      .map((f, i) => (f && typeof f === 'object' ? i : -1))
+      .filter(i => i >= 0);
+    const target = customIndexes[index];
+    if (target === undefined) return;
+    const next = [...current];
+    next[target] = { ...next[target], [field]: value };
+    handleSystemDataChange('features', next);
+  };
+
+  const removeCustomFeature = (index) => {
+    const current = localData.systemData.features || [];
+    const customIndexes = current
+      .map((f, i) => (f && typeof f === 'object' ? i : -1))
+      .filter(i => i >= 0);
+    const target = customIndexes[index];
+    if (target === undefined) return;
+    handleSystemDataChange('features', current.filter((_, i) => i !== target));
   };
 
   const handleSubmit = (e) => {
@@ -129,16 +176,58 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
       </div>
 
       <div className="input-group">
-        <label>Features</label>
+        <label>Rarity</label>
+        <select
+          value={localData.systemData.rarity || ''}
+          onChange={(e) => handleSystemDataChange('rarity', e.target.value)}
+        >
+          <option value="">— None —</option>
+          <option value="common">Common</option>
+          <option value="uncommon">Uncommon</option>
+          <option value="rare">Rare</option>
+          <option value="legendary">Legendary</option>
+          <option value="relic">Relic</option>
+        </select>
+        <small className="form-hint">Use Relic for unique story items like the Bog-Song Aegis</small>
+      </div>
+
+      <div className="form-row-3">
+        <div className="input-group">
+          <label>Major Threshold Base</label>
+          <input
+            type="number"
+            value={localData.systemData.thresholds?.minor ?? 0}
+            onChange={(e) => handleThresholdChange('minor', e.target.value)}
+            min="0"
+            max="99"
+          />
+          <small className="form-hint">Sheet adds character level (e.g. Chainmail = 7)</small>
+        </div>
+        <div className="input-group">
+          <label>Severe Threshold Base</label>
+          <input
+            type="number"
+            value={localData.systemData.thresholds?.major ?? 0}
+            onChange={(e) => handleThresholdChange('major', e.target.value)}
+            min="0"
+            max="99"
+          />
+          <small className="form-hint">Sheet adds character level (e.g. Chainmail = 15)</small>
+        </div>
+        <div className="input-group" />
+      </div>
+
+      <div className="input-group">
+        <label>Standard Features</label>
         <div className="features-multiselect">
           {ARMOR_FEATURES.map(feature => (
             <label
               key={feature}
-              className={`feature-checkbox ${localData.systemData.features?.includes(feature) ? 'selected' : ''}`}
+              className={`feature-checkbox ${hasFeatureName(localData.systemData.features, feature) ? 'selected' : ''}`}
             >
               <input
                 type="checkbox"
-                checked={localData.systemData.features?.includes(feature) || false}
+                checked={hasFeatureName(localData.systemData.features, feature)}
                 onChange={() => toggleFeature(feature)}
               />
               {feature}
@@ -148,6 +237,46 @@ export default function DaggerheartArmorForm({ item, formData, setFormData, onSa
         <small className="form-hint">
           Deflecting: Evasion bonus • Sheltering: Protects allies • Barrier: +5 score, -1 evasion • Resilient: Chance to save last slot
         </small>
+      </div>
+
+      <div className="input-group">
+        <div className="custom-features-header">
+          <label>Custom Features</label>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={addCustomFeature}>
+            <Plus size={14} /> Add Feature
+          </button>
+        </div>
+        <small className="form-hint">
+          Unique named abilities — e.g. "Ever-Damp: +1 Evasion vs. fire or physical grabs."
+        </small>
+        <div className="custom-features-list">
+          {splitFeatures(localData.systemData.features).custom.map((feat, idx) => (
+            <div key={idx} className="custom-feature-row">
+              <input
+                type="text"
+                value={feat.name}
+                onChange={(e) => updateCustomFeature(idx, 'name', e.target.value)}
+                placeholder="Feature name"
+                className="custom-feature-name"
+              />
+              <textarea
+                value={feat.description}
+                onChange={(e) => updateCustomFeature(idx, 'description', e.target.value)}
+                placeholder="Mechanical effect or description"
+                rows={2}
+                className="custom-feature-desc"
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => removeCustomFeature(idx)}
+                title="Remove"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="input-group">
