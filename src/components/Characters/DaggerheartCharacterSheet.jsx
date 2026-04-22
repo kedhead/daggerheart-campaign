@@ -57,6 +57,11 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [expPickerActive, setExpPickerActive] = useState(null); // name of experience with open trait picker
   const [rollingKey, setRollingKey] = useState(null); // key of item currently rolling (flash feedback)
   const [lastRoll, setLastRoll] = useState(null); // { label, type, ...rollData }
+  // Sticky one-shot modifier for the next trait/attack roll.
+  //   null        → no effect
+  //   'advantage' → add 1d6 to the total (Daggerheart help)
+  //   'hindrance' → subtract 1d6 from the total (hinder)
+  const [rollBonus, setRollBonus] = useState(null);
   const rollResultTimer = useRef(null);
 
   const { roll, rollDamage } = useQuickRoll(campaign?.id);
@@ -258,9 +263,23 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     setTimeout(() => setRollingKey(null), 600);
   };
 
+  // Apply the sticky Advantage/Hindrance bonus (if set) to a Daggerheart roll.
+  // Consumes the bonus after one roll. Rolls a d6, adds/subtracts from modifier,
+  // and tags the label so players can see the bonus in history.
+  const applyRollBonus = (baseLabel, baseMod) => {
+    if (!rollBonus) return { label: baseLabel, modifier: baseMod };
+    const d6 = Math.floor(Math.random() * 6) + 1;
+    const delta = rollBonus === 'advantage' ? d6 : -d6;
+    const sign = rollBonus === 'advantage' ? '+' : '−';
+    const label = `${baseLabel} (${sign}d6: ${d6})`;
+    setRollBonus(null);
+    return { label, modifier: baseMod + delta };
+  };
+
   const handleAttributeRoll = async (traitName) => {
-    const mod = (traits[traitName] ?? 0) + proficiency;
-    const label = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} Check`;
+    const baseMod = (traits[traitName] ?? 0) + proficiency;
+    const baseLabel = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} Check`;
+    const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`attr-${traitName}`);
     const result = await roll({ label, modifier: mod });
     if (result) showRollResult(label, 'daggerheart', result);
@@ -268,8 +287,9 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const handleExperienceRoll = async (expName, expBonus, traitName) => {
     const traitMod = traits[traitName] ?? 0;
-    const mod = traitMod + expBonus + proficiency;
-    const label = `${expName} (${TRAIT_ABBREV[traitName]})`;
+    const baseMod = traitMod + expBonus + proficiency;
+    const baseLabel = `${expName} (${TRAIT_ABBREV[traitName]})`;
+    const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`exp-${expName}`);
     setExpPickerActive(null);
     const result = await roll({ label, modifier: mod });
@@ -279,10 +299,18 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const handleWeaponAttack = async (weapon) => {
     const traitName = (weapon.systemData?.trait || '').toLowerCase();
     const traitMod = traits[traitName] ?? 0;
-    const mod = traitMod + proficiency;
-    const label = `Attack: ${weapon.name}`;
+    const baseMod = traitMod + proficiency;
+    const baseLabel = `Attack: ${weapon.name}`;
+    const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`atk-${weapon.id}`);
     const result = await roll({ label, modifier: mod });
+    if (result) showRollResult(label, 'daggerheart', result);
+  };
+
+  const handleReactionRoll = async () => {
+    const label = 'Reaction Roll';
+    flashRoll('reaction');
+    const result = await roll({ label, modifier: 0 });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
@@ -447,6 +475,39 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   // ─── Core Tab ───
   const renderCoreTab = () => (
     <div className="dh-tab-content">
+      {/* Quick-roll controls: Reaction roll + Advantage/Hindrance toggle.
+          Toggle is sticky — the next trait/attack/experience roll consumes it. */}
+      {campaign?.id && (
+        <div className="dh-quickroll-bar">
+          <button
+            className={`dh-quickroll-btn dh-quickroll-reaction ${rollingKey === 'reaction' ? 'dh-roll-flash' : ''}`}
+            onClick={handleReactionRoll}
+            title="Reaction roll (2d12 Hope/Fear, no modifier)"
+          >
+            <Dices size={12} /> Reaction Roll
+          </button>
+          <div className="dh-quickroll-toggle">
+            <span className="dh-quickroll-toggle-label">Next roll:</span>
+            <button
+              type="button"
+              className={`dh-quickroll-chip adv ${rollBonus === 'advantage' ? 'active' : ''}`}
+              onClick={() => setRollBonus(rollBonus === 'advantage' ? null : 'advantage')}
+              title="Add +1d6 to the next trait/attack/experience roll"
+            >
+              +d6 Advantage
+            </button>
+            <button
+              type="button"
+              className={`dh-quickroll-chip hind ${rollBonus === 'hindrance' ? 'active' : ''}`}
+              onClick={() => setRollBonus(rollBonus === 'hindrance' ? null : 'hindrance')}
+              title="Subtract 1d6 from the next trait/attack/experience roll"
+            >
+              −d6 Hindrance
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Attribute Circles */}
       <div className="dh-section-label">Attributes</div>
       <div className="dh-attributes-row">

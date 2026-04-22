@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { doc, onSnapshot, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
 import useImage from 'use-image';
 import { Maximize, Minimize, RotateCw, Grid } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 import Dice3DOverlay from '../DiceRoller/Dice3DOverlay';
-import PlayerDicePanel from './PlayerDicePanel';
+import { DiceRollerFloat } from '../DiceRoller';
 import AudioReceiver from '../Soundboard/AudioReceiver';
 import './BattleMapDisplayWindow.css';
 
@@ -443,75 +443,19 @@ export default function BattleMapDisplayWindow({ campaignId }) {
         </div>
       )}
 
-      {/* 3D Dice Roll Overlay */}
+      {/* 3D Dice Roll Overlay — passive display only.
+          History is written by the originating client (DiceRollerFloat /
+          useQuickRoll); this window never re-derives or re-writes numbers
+          from its own physics animation. */}
       <Dice3DOverlay
         show={showDiceOverlay}
         rollData={diceRoll}
-        onComplete={(rawResults) => {
-          setShowDiceOverlay(false);
-
-          // Save to history using physics results (what the dice actually showed)
-          if (rawResults && diceRoll && campaignId) {
-            const DICE_COLORS = { 4: '#10b981', 6: '#3b82f6', 8: '#8b5cf6', 10: '#ec4899', 12: '#f59e0b', 20: '#ef4444' };
-            let completeData = {
-              playerName: diceRoll.playerName,
-              playerColor: diceRoll.playerColor,
-              playerId: diceRoll.playerId,
-              modifier: parseInt(diceRoll.modifier) || 0,
-              timestamp: serverTimestamp(),
-            };
-
-            if (diceRoll.system === 'daggerheart') {
-              const hopeDie = rawResults.hope;
-              const fearDie = rawResults.fear;
-              const mod = parseInt(diceRoll.modifier) || 0;
-              const total = hopeDie + fearDie + mod;
-              const outcome = hopeDie > fearDie ? 'hope' : hopeDie < fearDie ? 'fear' : 'hope';
-
-              completeData = {
-                ...completeData,
-                system: 'daggerheart',
-                hopeDie,
-                fearDie,
-                total,
-                outcome,
-              };
-            } else if (diceRoll.system === 'generic') {
-              const values = rawResults.rolls || [];
-              const details = rawResults.rollDetails || values.map(v => ({ value: v, sides: 20 }));
-              const rolls = details.map(r => ({
-                type: `d${r.sides}`,
-                sides: r.sides,
-                result: r.value,
-                color: DICE_COLORS[r.sides] || '#3b82f6',
-              }));
-              const mod = parseInt(diceRoll.modifier) || 0;
-              const total = values.reduce((a, b) => a + b, 0) + mod;
-              const d20Values = details.filter(r => r.sides === 20).map(r => r.value);
-
-              completeData = {
-                ...completeData,
-                system: 'generic',
-                rolls,
-                total,
-                isCrit: d20Values.includes(20),
-                isCritFail: d20Values.length > 0 && d20Values.every(r => r === 1),
-              };
-            }
-
-            const historyRef = collection(db, `campaigns/${campaignId}/battleMapDisplay/rolls/history`);
-            addDoc(historyRef, completeData).catch(err =>
-              console.error('Failed to save roll to history:', err)
-            );
-          }
-        }}
-        onClose={() => {
-          setShowDiceOverlay(false);
-        }}
+        onComplete={() => setShowDiceOverlay(false)}
+        onClose={() => setShowDiceOverlay(false)}
       />
 
-      {/* Player Dice Panel */}
-      <PlayerDicePanel campaignId={campaignId} />
+      {/* Single unified dice roller — the same pop-out used elsewhere in the app */}
+      <DiceRollerFloat campaignId={campaignId} />
 
       {/* Audio Receiver for DM Soundboard */}
       <AudioReceiver campaignId={campaignId} />

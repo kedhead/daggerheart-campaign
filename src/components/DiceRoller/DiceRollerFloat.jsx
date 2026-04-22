@@ -202,45 +202,43 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     if (isRolling) return;
     setIsRolling(true);
     initAudio();
-
-    if (use3DDice) {
-      // Sync selectedDie state so handle3DRollComplete uses the right die type
-      setSelectedDie(dieType);
-      setDiceQuantity(1);
-      const config = {
-        system: 'generic',
-        selectedDie: dieType,
-        diceQuantity: 1,
-        modifier: parseInt(modifier) || 0
-      };
-      setPending3DRoll(config);
-      setShow3DOverlay(true);
-      setIsRolling(false);
-      return;
-    }
-
     playRollSound();
+
+    const mod = parseInt(modifier) || 0;
     const rollValue = Math.floor(Math.random() * dieType) + 1;
     const rollData = {
       dieType,
       quantity: 1,
       rolls: [rollValue],
-      modifier: parseInt(modifier),
-      total: rollValue + parseInt(modifier),
+      modifier: mod,
+      total: rollValue + mod,
       isDoubles: false
     };
 
-    setTimeout(async () => {
-      setCurrentRoll({ system: 'generic', rollData });
-      await addRoll({
+    await addRoll({
+      system: 'generic',
+      rollData,
+      label: rollLabel || `d${dieType}`,
+      isPrivate: isDM ? isPrivate : false
+    });
+
+    await broadcastRoll('generic', rollData, mod);
+
+    setCurrentRoll({ system: 'generic', rollData });
+
+    if (use3DDice) {
+      setPending3DRoll({
         system: 'generic',
-        rollData,
-        label: rollLabel || `d${dieType}`,
-        isPrivate: isDM ? isPrivate : false
+        rolls: rollData.rolls,
+        dieType,
+        diceConfig: { [`d${dieType}`]: 1 },
+        modifier: mod,
       });
-      setRollLabel('');
-      setIsRolling(false);
-    }, 800);
+      setShow3DOverlay(true);
+    }
+
+    setRollLabel('');
+    setIsRolling(false);
   };
 
   const rollGeneric = (overrides = null) => {
@@ -273,26 +271,10 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
     setIsRolling(true);
     initAudio(); // Unlock audio
 
-    // If 3D dice enabled, defer calculation!
-    if (use3DDice) {
-      // Prepare config to pass to overlay
-      const config = {
-        system: gameSystem,
-        // pass params needed for setup
-        numDice,
-        selectedDie,
-        diceQuantity,
-        mode: rollMode,
-        modifier: parseInt(modifier) || 0
-      };
-
-      setPending3DRoll(config);
-      setShow3DOverlay(true);
-      setIsRolling(false);
-      return;
-    }
-
-    // 2D Logic (Immediate)
+    // Always pre-compute RNG on the rolling device, then broadcast + save history
+    // BEFORE showing any animation. Every viewer (including the 3D overlay on this
+    // device) reads the same pre-computed values — no physics-derived RNG, no
+    // divergence between screens.
     playRollSound();
     let rollData;
     switch (gameSystem) {
@@ -302,92 +284,71 @@ export default function DiceRollerFloat({ campaignId, gameSystem = 'daggerheart'
       case 'daggerheart': default: rollData = rollDaggerheart(); break;
     }
 
-    setTimeout(async () => {
-      // Play sounds and show overlay for significant results (2D only)
-      if (rollData.isCrit) {
-        playCritSound();
-        setOverlay({ type: 'crit', value: 20 });
-        setTimeout(() => setOverlay(null), 2500);
-      } else if (rollData.isCritFail) {
-        setOverlay({ type: 'critfail', value: 1 });
-        setTimeout(() => setOverlay(null), 2500);
-      } else if (rollData.isDoubles || (gameSystem === 'daggerheart' && rollData.hopeDie === rollData.fearDie)) {
-        playDoublesSound();
-        const firstRoll = rollData.rolls?.[0];
-        setOverlay({ type: 'doubles', value: rollData.hopeDie || (typeof firstRoll === 'object' ? firstRoll.result : firstRoll) });
-        setTimeout(() => setOverlay(null), 2500);
-      }
+    const mod = parseInt(modifier) || 0;
 
-      setCurrentRoll({ system: gameSystem, rollData });
-      await addRoll({
-        system: gameSystem,
-        rollData,
-        label: rollLabel,
-        isPrivate: isDM ? isPrivate : false
-      });
-      // Broadcast to map (2D path — no toggle)
-      await broadcastRoll(gameSystem, rollData, parseInt(modifier) || 0);
-      setRollLabel('');
-      setIsRolling(false);
-    }, 800);
-  };
-
-  // Handle 3D dice roll completion
-  const handle3DRollComplete = async (rawResults) => {
-    // rawResults contains { hope: X, fear: Y } etc from Dice3DOverlay
-
-    if (!rawResults) {
-      // Error or closed without rolling
-      setShow3DOverlay(false);
-      setPending3DRoll(null);
-      return;
-    }
-
-    let rollData;
-    const system = pending3DRoll.system; // Use saved system
-
-    switch (system) {
-      case 'daggerheart':
-        rollData = rollDaggerheart({
-          hopeDie: rawResults.hope,
-          fearDie: rawResults.fear
-        });
-        break;
-      case 'dnd5e':
-        rollData = rollDnD5e({
-          d20: rawResults.d20,
-          d20Second: rawResults.d20Second
-        });
-        break;
-      case 'generic':
-        rollData = rollGeneric({
-          rolls: rawResults.rolls
-        });
-        break;
-      case 'starwarsd6':
-        rollData = rollStarWarsD6({
-          wildDie: rawResults.wildDie,
-          dice: rawResults.dice
-        });
-        break;
-      default:
-        rollData = rollDaggerheart();
-    }
-
-    // Broadcast to map — always on for the float roller (no toggle)
-    await broadcastRoll(system, rollData, pending3DRoll?.modifier);
-
-    setCurrentRoll({ system, rollData });
-
-    // Save to shared roll history
+    // Write to shared history (authoritative)
     await addRoll({
-      system,
+      system: gameSystem,
       rollData,
       label: rollLabel,
       isPrivate: isDM ? isPrivate : false
     });
 
+    // Broadcast pre-computed values to the map display — every viewer animates
+    // to the SAME numbers.
+    await broadcastRoll(gameSystem, rollData, mod);
+
+    // Special-result overlays (local only)
+    if (rollData.isCrit) {
+      playCritSound();
+      setOverlay({ type: 'crit', value: 20 });
+      setTimeout(() => setOverlay(null), 2500);
+    } else if (rollData.isCritFail) {
+      setOverlay({ type: 'critfail', value: 1 });
+      setTimeout(() => setOverlay(null), 2500);
+    } else if (rollData.isDoubles || (gameSystem === 'daggerheart' && rollData.hopeDie === rollData.fearDie)) {
+      playDoublesSound();
+      const firstRoll = rollData.rolls?.[0];
+      setOverlay({ type: 'doubles', value: rollData.hopeDie || (typeof firstRoll === 'object' ? firstRoll.result : firstRoll) });
+      setTimeout(() => setOverlay(null), 2500);
+    }
+
+    setCurrentRoll({ system: gameSystem, rollData });
+
+    if (use3DDice) {
+      // Show the 3D animation pinned to the pre-computed values. The overlay
+      // uses its pre-computed path (because rollData has the values) and never
+      // derives new numbers from physics.
+      const overlayData = {
+        system: gameSystem,
+        modifier: mod,
+      };
+      if (gameSystem === 'daggerheart') {
+        overlayData.hopeDie = rollData.hopeDie;
+        overlayData.fearDie = rollData.fearDie;
+      } else if (gameSystem === 'dnd5e') {
+        overlayData.d20 = rollData.d20;
+        overlayData.d20Second = rollData.d20Second;
+        overlayData.mode = rollData.mode;
+      } else if (gameSystem === 'generic') {
+        overlayData.rolls = rollData.rolls;
+        overlayData.dieType = rollData.dieType;
+        overlayData.diceConfig = { [`d${rollData.dieType}`]: rollData.quantity };
+      } else if (gameSystem === 'starwarsd6') {
+        overlayData.dice = rollData.dice;
+        overlayData.wildDie = rollData.wildDie;
+      }
+      setPending3DRoll(overlayData);
+      setShow3DOverlay(true);
+    }
+
     setRollLabel('');
+    setIsRolling(false);
+  };
+
+  // The 3D overlay is now purely visual — it animates the pre-computed values
+  // that were already written to Firestore by handleRoll. Nothing to save.
+  const handle3DRollComplete = () => {
     setShow3DOverlay(false);
     setPending3DRoll(null);
   };

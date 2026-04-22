@@ -204,7 +204,15 @@ export default function Dice3DOverlay({
       return;
     }
 
-    // --- Physics path (PlayerDicePanel — no pre-computed values) ---
+    // No pre-computed values — nothing to animate authoritatively. Log and close;
+    // the originating caller is expected to pre-compute before showing the overlay.
+    console.warn('[Dice3D] Skipping roll — no pre-computed values in rollData:', rollData);
+    if (onComplete) onComplete(null);
+    if (onClose) onClose();
+    return;
+
+    // eslint-disable-next-line no-unreachable
+    /* --- LEGACY physics-RNG path (disabled) ---
     if (!diceBoxRef.current) return;
 
     try {
@@ -373,6 +381,7 @@ export default function Dice3DOverlay({
       if (onComplete) onComplete(null);
       if (onClose) onClose();
     }
+    */ // end legacy physics-RNG path
   };
 
   const outcomeClass = rollResult?.outcome ||

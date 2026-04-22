@@ -253,6 +253,90 @@
   margin-top: 0.25rem;
 }
 
+/* ===== Quick-roll bar (Reaction + Advantage/Hindrance) ===== */
+.dh-quickroll-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(234, 179, 8, 0.12);
+  background: rgba(234, 179, 8, 0.03);
+}
+
+.dh-quickroll-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.45rem;
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.08);
+  color: rgba(234, 179, 8, 0.95);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 36px;
+}
+.dh-quickroll-btn:hover {
+  background: rgba(234, 179, 8, 0.16);
+  border-color: rgba(234, 179, 8, 0.55);
+}
+
+.dh-quickroll-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.dh-quickroll-toggle-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.dh-quickroll-chip {
+  padding: 0.3rem 0.55rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 32px;
+}
+.dh-quickroll-chip:hover {
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.dh-quickroll-chip.adv.active {
+  background: rgba(34, 197, 94, 0.16);
+  border-color: rgba(34, 197, 94, 0.5);
+  color: #4ade80;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25) inset;
+}
+.dh-quickroll-chip.hind.active {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #f87171;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.22) inset;
+}
+
+@media (max-width: 480px) {
+  .dh-quickroll-bar {
+    justify-content: center;
+  }
+}
+
 /* ===== Attribute Circles ===== */
 .dh-attributes-row {
   display: flex;

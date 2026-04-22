@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { MousePointer, Hand, Crosshair, Eraser, Trash2 } from 'lucide-react';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
-import BattleMapDice from './BattleMapDice';
 
 const tools = [
   { id: 'select', icon: MousePointer, label: 'Select (V)' },
@@ -69,10 +68,6 @@ export default function CanvasToolbar({ campaignId }) {
         </button>
       )}
 
-      <div className="toolbar-divider" style={{ height: '1px', background: 'var(--border)', margin: '0.5rem 0' }} />
-
-      {/* Dice Roller */}
-      <BattleMapDice campaignId={campaignId} />
     </div>
   );
 }
