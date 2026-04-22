@@ -14,6 +14,9 @@ export default function MySheetView({
   addCharacter,
   isDM,
   items,
+  addToCharacterInventory,
+  removeFromCharacterInventory,
+  toggleEquipped,
   onGoToRoster,
 }) {
   const myCharacters = useMemo(
@@ -269,6 +272,10 @@ export default function MySheetView({
             onCancel={() => setShowEdit(false)}
             isDM={isDM}
             campaign={campaign}
+            items={items}
+            addToCharacterInventory={addToCharacterInventory}
+            removeFromCharacterInventory={removeFromCharacterInventory}
+            toggleEquipped={toggleEquipped}
           />
         </Modal>
       )}

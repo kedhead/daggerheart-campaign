@@ -336,6 +336,9 @@ function CampaignApp() {
             deleteCharacter={deleteCharacter}
             isDM={isDM}
             items={items}
+            addToCharacterInventory={addToCharacterInventory}
+            removeFromCharacterInventory={removeFromCharacterInventory}
+            toggleEquipped={toggleEquipped}
             onGoToRoster={() => setCurrentView('characters')}
           />
         );
