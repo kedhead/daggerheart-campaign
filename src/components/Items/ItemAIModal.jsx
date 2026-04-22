@@ -19,7 +19,7 @@ const RARITIES = [
   { value: 'relic', label: 'Relic' }
 ];
 
-export default function ItemAIModal({ isOpen, onClose, onGenerated, apiKey, provider, campaignContext, hasAI }) {
+export default function ItemAIModal({ isOpen, onClose, onGenerated, apiKey, provider, campaignContext }) {
   const [concept, setConcept] = useState('');
   const [type, setType] = useState('armor');
   const [tier, setTier] = useState(1);
@@ -61,12 +61,6 @@ export default function ItemAIModal({ isOpen, onClose, onGenerated, apiKey, prov
       size="medium"
     >
       <div className="item-ai-modal" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {!hasAI && (
-          <div className="item-ai-error">
-            No AI API key configured. Add one in API Settings to use item generation.
-          </div>
-        )}
-
         <div className="item-ai-hint">
           Describe the item you want — a concept, a scene, a character who might wield it. The AI will
           build a mechanically valid Daggerheart statblock with named custom features you can edit
@@ -80,7 +74,7 @@ export default function ItemAIModal({ isOpen, onClose, onGenerated, apiKey, prov
             onChange={(e) => setConcept(e.target.value)}
             placeholder={`e.g. "A waterlogged relic shield blessed by the bog-choir spirits — hums with subsonic tones and keeps its bearer perpetually damp."`}
             rows={4}
-            disabled={!hasAI || generating}
+            disabled={generating}
           />
         </div>
 
@@ -134,7 +128,7 @@ export default function ItemAIModal({ isOpen, onClose, onGenerated, apiKey, prov
             type="button"
             className="btn btn-primary"
             onClick={handleGenerate}
-            disabled={generating || !hasAI || !concept.trim()}
+            disabled={generating || !concept.trim()}
           >
             {generating ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
             {generating ? 'Generating...' : 'Generate Item'}

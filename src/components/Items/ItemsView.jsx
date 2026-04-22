@@ -45,8 +45,9 @@ export default function ItemsView({
   const anthropicInfo = getEffectiveKey?.('anthropic');
   const openaiInfo = getEffectiveKey?.('openai');
   const aiKey = anthropicInfo?.key || openaiInfo?.key || '';
-  const aiProvider = anthropicInfo?.key ? 'anthropic' : 'openai';
-  const hasAI = !!aiKey;
+  // Default provider if we have no local key; the /api/generate endpoint will
+  // fall back to whichever server env var is configured on Vercel.
+  const aiProvider = openaiInfo?.key && !anthropicInfo?.key ? 'openai' : 'anthropic';
 
   const campaignContext = useMemo(
     () => buildCampaignContext(campaign, {
@@ -234,7 +235,7 @@ export default function ItemsView({
               <button
                 className="btn btn-secondary"
                 onClick={() => setShowAIModal(true)}
-                title={hasAI ? 'Generate a new item with AI' : 'Add an API key in settings to enable AI generation'}
+                title="Generate a new item with AI"
               >
                 <Sparkles size={20} />
                 AI Generate
@@ -371,7 +372,6 @@ export default function ItemsView({
         apiKey={aiKey}
         provider={aiProvider}
         campaignContext={campaignContext}
-        hasAI={hasAI}
       />
 
       {/* Import Official Items Modal */}
