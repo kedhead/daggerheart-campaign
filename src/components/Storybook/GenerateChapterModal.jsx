@@ -42,6 +42,7 @@ export default function GenerateChapterModal({
   const [sceneCount, setSceneCount] = useState(3);
   const [styleKey, setStyleKey] = useState(defaultStyle);
   const [styleCustom, setStyleCustom] = useState(defaultCustom);
+  const [imageModel, setImageModel] = useState('');
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState(null);
@@ -67,6 +68,7 @@ export default function GenerateChapterModal({
         styleCustom,
         sceneCount,
         includeIllustrations,
+        imageModel,
         generatedBy: currentUserId,
         onProgress: setProgress
       });
@@ -166,6 +168,29 @@ export default function GenerateChapterModal({
                 : 'Text-only chapter — fastest and cheapest.'}
             </p>
           </div>
+
+          {includeIllustrations && (
+            <div className="space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-white/50">
+                Image model
+              </label>
+              <select
+                value={imageModel}
+                onChange={(e) => setImageModel(e.target.value)}
+                disabled={running}
+                className="w-full p-3 rounded-xl bg-black/20 border border-white/10 text-white focus:outline-none focus:border-[color:var(--primary)]"
+              >
+                <option value="">DALL-E 3 (default)</option>
+                <option value="flux-pro">Flux Pro (better race accuracy)</option>
+              </select>
+              <p className="text-[11px] text-white/40">
+                {imageModel === 'flux-pro'
+                  ? 'Flux Pro follows species/anatomy descriptions more accurately. Requires Replicate API token.'
+                  : 'DALL-E 3 with enhanced race-aware prompting.'}
+              </p>
+            </div>
+          )}
+
         </div>
 
         {progress && (

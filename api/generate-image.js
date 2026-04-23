@@ -28,6 +28,7 @@ export default async function handler(req, res) {
       animated = false,
       styleKey,               // optional: for storybook-* types
       gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
+      imageModel,             // optional: 'flux-pro' for Replicate Flux, default is DALL-E 3
       apiKey: clientApiKey   // optional client-provided key (used by portrait callers)
     } = req.body;
 
@@ -35,15 +36,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required field: prompt' });
     }
 
-    // --- Storybook mode: DALL-E 3 with illustrated style preamble ---
+    // --- Storybook mode: illustrated style images ---
     if (type === 'storybook-scene' || type === 'storybook-portrait') {
-      const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
-      if (!effectiveKey) {
-        return res.status(500).json({
-          error: 'No OpenAI API key available. Add OPENAI_API_KEY to environment variables or configure one in Settings.'
-        });
-      }
-
       const fantasyPreambles = {
         watercolor: 'Soft watercolor storybook illustration, washed pastel tones, loose expressive brushwork, fairytale atmosphere, painterly, no text or labels',
         oil: 'Classical oil painting fairytale illustration, rich textured brushwork, warm golden lighting, Arthur Rackham inspired, no text or labels',
@@ -66,6 +60,77 @@ export default async function handler(req, res) {
       const fullPrompt = `${preamble}. ${prompt}`;
       const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
       const imageSize = validSizes.includes(size) ? size : '1024x1024';
+
+      // --- Replicate Flux Pro path (better at species/anatomy accuracy) ---
+      const replicateKey = process.env.REPLICATE_API_TOKEN;
+      if (imageModel === 'flux-pro' && replicateKey) {
+        console.log('Using Replicate Flux Pro for storybook image');
+        try {
+          // Flux aspect_ratio format
+          const fluxAspect = imageSize === '1792x1024' ? '16:9'
+            : imageSize === '1024x1792' ? '9:16'
+            : '1:1';
+
+          // Create prediction
+          const createRes = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${replicateKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'wait'
+            },
+            body: JSON.stringify({
+              input: {
+                prompt: fullPrompt,
+                aspect_ratio: fluxAspect,
+                output_format: 'png',
+                output_quality: 90,
+                safety_tolerance: 5,
+                prompt_upsampling: true
+              }
+            })
+          });
+
+          if (!createRes.ok) {
+            const err = await createRes.json().catch(() => ({ detail: createRes.statusText }));
+            console.error('Replicate API error:', err);
+            // Fall through to DALL-E
+          } else {
+            let prediction = await createRes.json();
+
+            // If not completed yet, poll for result (max ~55s)
+            if (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+              const pollUrl = prediction.urls?.get || `https://api.replicate.com/v1/predictions/${prediction.id}`;
+              const deadline = Date.now() + 55000;
+              while (Date.now() < deadline && prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+                await new Promise(r => setTimeout(r, 2000));
+                const pollRes = await fetch(pollUrl, {
+                  headers: { 'Authorization': `Bearer ${replicateKey}` }
+                });
+                if (pollRes.ok) prediction = await pollRes.json();
+              }
+            }
+
+            if (prediction.status === 'succeeded' && prediction.output) {
+              const fluxUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+              if (fluxUrl) {
+                return res.status(200).json({ imageUrl: fluxUrl, prompt: fullPrompt, model: 'flux-1.1-pro' });
+              }
+            }
+            console.warn('Flux prediction failed or timed out, falling back to DALL-E:', prediction.status, prediction.error);
+          }
+        } catch (fluxErr) {
+          console.error('Replicate Flux error, falling back to DALL-E:', fluxErr.message);
+        }
+      }
+
+      // --- DALL-E 3 path (default) ---
+      const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
+      if (!effectiveKey) {
+        return res.status(500).json({
+          error: 'No OpenAI API key available. Add OPENAI_API_KEY to environment variables or configure one in Settings.'
+        });
+      }
 
       const sbResponse = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',

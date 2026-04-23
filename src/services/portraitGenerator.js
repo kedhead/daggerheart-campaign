@@ -11,7 +11,7 @@ import { ANCESTRIES } from '../data/systems/daggerheart';
  * Visual appearance hints for Daggerheart ancestries.
  * Used to enrich DALL-E prompts so the AI knows what each fantasy race looks like.
  */
-const ANCESTRY_VISUAL_HINTS = {
+export const ANCESTRY_VISUAL_HINTS = {
   'Clank': 'a mechanical automaton made of gears, brass, and enchanted metal plates, with glowing eyes and articulated joints. NOT organic, NOT human-skinned',
   'Daemon': 'a humanoid with dark or luminous otherworldly skin bearing subtle glowing markings, faintly glowing eyes, and an aura of supernatural energy',
   'Drakona': 'a humanoid covered in reptilian scales with a draconic snout, ridged brow, fanged teeth, and a powerful tail. Clearly dragon-like, NOT elf-like',

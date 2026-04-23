@@ -100,7 +100,9 @@ async function generateChapter(req, res, openai) {
     if (!Array.isArray(list) || list.length === 0) return;
     rosterLines.push(`${label}:`);
     list.slice(0, 30).forEach(e => {
-      rosterLines.push(`  - ${e.id} :: ${e.name}${e.tag ? ` (${e.tag})` : ''}`);
+      const parts = [e.tag, e.ancestry].filter(Boolean);
+      const tagStr = parts.length ? ` (${parts.join(', ')})` : '';
+      rosterLines.push(`  - ${e.id} :: ${e.name}${tagStr}`);
     });
   };
   pushRoster('Characters', entityRoster.characters);
@@ -128,7 +130,8 @@ STRICT RULES:
 4. For each scene prompt, set a vivid visual composition. These prompts will be passed to an image generator; the client will concatenate a style preamble before them, so focus on subject, action, environment, lighting, and composition.
 5. In each scene, list featuredEntityIds drawn ONLY from the provided entity roster (use the id field exactly as given). The client will substitute each entity's physical description into the prompt so the character's actual look is preserved.
 6. Title should be evocative, 2-6 words, no quotes.
-7. Return valid JSON matching the schema exactly.`;
+7. Return valid JSON matching the schema exactly.
+8. RACE / ANCESTRY ACCURACY: Pay close attention to each character's ancestry listed in the roster (e.g. Drakona, Galapa, Katari, Fungril). When writing scene visual prompts, ALWAYS explicitly mention the character's species/ancestry and key physical traits (scales, shell, fur, hooves, etc.). Never assume characters are human unless their ancestry is explicitly "Human". This is critical for accurate illustration.`;
 
   const userPrompt = `# Campaign context
 ${campaignContext || '(no campaign context provided)'}

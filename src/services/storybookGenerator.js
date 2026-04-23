@@ -22,6 +22,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { doc, updateDoc, addDoc, collection, serverTimestamp, getDocs, orderBy, query, limit } from 'firebase/firestore';
 import { storage, db } from '../config/firebase';
 import { buildCampaignContext } from './campaignContext';
+import { ANCESTRY_VISUAL_HINTS } from './portraitGenerator';
 
 // ── Style presets (must stay in sync with api/generate-image.js) ──────────────
 
@@ -73,11 +74,11 @@ async function describeImage(imageUrl, subjectHint, apiKey) {
   return data.description || '';
 }
 
-async function generateStylizedImage({ prompt, type, styleKey, gameSystem, apiKey, size = '1024x1024' }) {
+async function generateStylizedImage({ prompt, type, styleKey, gameSystem, apiKey, imageModel, size = '1024x1024' }) {
   const res = await fetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, type, styleKey, gameSystem, size, apiKey: apiKey || undefined })
+    body: JSON.stringify({ prompt, type, styleKey, gameSystem, size, apiKey: apiKey || undefined, imageModel: imageModel || undefined })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -111,14 +112,30 @@ function findEntityInRosters({ entityId, rosters }) {
   return { entity: null, entityType: null };
 }
 
+function getAncestryVisualHint(ancestry) {
+  if (!ancestry) return '';
+  return ANCESTRY_VISUAL_HINTS[ancestry] || '';
+}
+
 function buildFallbackDescription(entity, entityType) {
   if (!entity) return '';
   const parts = [entity.name];
   if (entityType === 'character') {
-    if (entity.ancestry) parts.push(entity.ancestry);
+    // Ancestry visual hint is critical for non-human races
+    const ancestryHint = getAncestryVisualHint(entity.ancestry);
+    if (ancestryHint) {
+      parts.push(`who is ${ancestryHint}`);
+    } else if (entity.ancestry) {
+      parts.push(entity.ancestry);
+    }
     if (entity.characterClass) parts.push(entity.characterClass);
     if (entity.subclass) parts.push(entity.subclass);
+    if (entity.appearanceDescription) parts.push(entity.appearanceDescription.slice(0, 200));
   } else if (entityType === 'npc') {
+    const ancestryHint = getAncestryVisualHint(entity.ancestry);
+    if (ancestryHint) {
+      parts.push(`who is ${ancestryHint}`);
+    }
     if (entity.occupation) parts.push(entity.occupation);
     if (entity.description) parts.push(entity.description.slice(0, 160));
   } else if (entityType === 'adversary') {
@@ -135,7 +152,7 @@ function buildFallbackDescription(entity, entityType) {
  * Updates the entity doc in place and returns { url, description }.
  * Never throws — on failure it returns a best-effort fallback.
  */
-async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom, campaignId, apiKey, gameSystem }) {
+async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom, campaignId, apiKey, imageModel, gameSystem }) {
   const portraitField = ENTITY_PORTRAIT_FIELD[entityType];
   const sourcePortraitUrl = entity?.[portraitField] || null;
   const existing = entity?.storybookPortrait || null;
@@ -163,7 +180,14 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
       if (visionDescription) description = visionDescription;
     }
 
-    const portraitPrompt = `Head-and-shoulders portrait of ${entity.name}. ${description}. Neutral background, facing slightly to one side, no text.`;
+    // CRITICAL: Prepend ancestry visual hint so the race anatomy is never lost,
+    // even if the vision description focused on clothing/expression instead.
+    const ancestryHint = getAncestryVisualHint(entity.ancestry);
+    const racePrefix = ancestryHint
+      ? `IMPORTANT — the subject is ${ancestryHint}. `
+      : '';
+
+    const portraitPrompt = `${racePrefix}Head-and-shoulders portrait of ${entity.name}. ${description}. Neutral background, facing slightly to one side, no text.`;
 
     const effectiveStyleKey = styleKey === 'custom' ? (styleCustom || 'watercolor') : styleKey;
     const dataUrl = await generateStylizedImage({
@@ -171,11 +195,17 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
       type: 'storybook-portrait',
       styleKey: effectiveStyleKey,
       gameSystem,
-      apiKey
+      apiKey,
+      imageModel
     });
 
     const storagePath = `campaigns/${campaignId}/storybook/styled-portraits/${entity.id}_${Date.now()}.png`;
     const { url } = await uploadDataUrl(dataUrl, storagePath);
+
+    // Store enriched description (with ancestry) for reuse in scene prompts
+    const enrichedDescription = ancestryHint
+      ? `${entity.name}, ${ancestryHint}. ${description}`
+      : description;
 
     // Patch the entity doc with the cache
     const collectionName = ENTITY_COLLECTIONS[entityType];
@@ -186,7 +216,7 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
             url,
             storagePath,
             styleKey: styleSignature,
-            description,
+            description: enrichedDescription,
             sourcePortraitUrl: sourcePortraitUrl || null,
             updatedAt: new Date().toISOString()
           }
@@ -197,7 +227,7 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
       }
     }
 
-    return { url, description };
+    return { url, description: enrichedDescription };
   } catch (err) {
     console.error('[storybook] ensureStyledPortrait failed for', entity?.name, err);
     return { url: sourcePortraitUrl || null, description: fallbackDescription };
@@ -206,13 +236,19 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
 
 // ── Scene generation ──────────────────────────────────────────────────────────
 
-async function generateSceneImage({ scene, entityDescriptions, styleKey, styleCustom, gameSystem, campaignId, apiKey }) {
-  const featuredDescriptions = (scene.featuredEntityIds || [])
-    .map(id => entityDescriptions[id])
-    .filter(Boolean);
+async function generateSceneImage({ scene, entityDescriptions, entityAncestryHints, styleKey, styleCustom, gameSystem, campaignId, apiKey, imageModel }) {
+  // Build featured entity descriptions with ancestry hints prominently placed
+  const featuredParts = (scene.featuredEntityIds || []).map(id => {
+    const desc = entityDescriptions[id];
+    const hint = entityAncestryHints?.[id];
+    if (!desc && !hint) return null;
+    // Lead with the ancestry hint so the model prioritises race anatomy
+    if (hint && desc) return `${hint} — ${desc}`;
+    return desc || hint;
+  }).filter(Boolean);
 
-  const featuredClause = featuredDescriptions.length
-    ? ` Featuring: ${featuredDescriptions.join('; ')}.`
+  const featuredClause = featuredParts.length
+    ? ` Characters in this scene (render their species accurately): ${featuredParts.join('; ')}.`
     : '';
 
   const fullPrompt = `${scene.prompt}${featuredClause}`;
@@ -224,6 +260,7 @@ async function generateSceneImage({ scene, entityDescriptions, styleKey, styleCu
     styleKey: effectiveStyleKey,
     gameSystem,
     apiKey,
+    imageModel,
     size: '1792x1024'
   });
 
@@ -274,6 +311,7 @@ export async function generateChapter({
   styleCustom = '',
   sceneCount = 3,
   includeIllustrations = true,
+  imageModel = '',
   generatedBy = 'manual',
   onProgress = () => {}
 }) {
@@ -298,8 +336,8 @@ export async function generateChapter({
   });
 
   const entityRoster = {
-    characters: characters.filter(c => c.name).slice(0, 30).map(c => ({ id: c.id, name: c.name, tag: c.characterClass })),
-    npcs: npcs.filter(n => n.name).slice(0, 30).map(n => ({ id: n.id, name: n.name, tag: n.occupation })),
+    characters: characters.filter(c => c.name).slice(0, 30).map(c => ({ id: c.id, name: c.name, tag: c.characterClass, ancestry: c.ancestry || '' })),
+    npcs: npcs.filter(n => n.name).slice(0, 30).map(n => ({ id: n.id, name: n.name, tag: n.occupation, ancestry: n.ancestry || '' })),
     adversaries: adversaries.filter(a => a.name).slice(0, 30).map(a => ({ id: a.id, name: a.name, tag: a.role })),
     locations: locations.filter(l => l.name).slice(0, 30).map(l => ({ id: l.id, name: l.name, tag: l.type }))
   };
@@ -389,12 +427,22 @@ export async function generateChapter({
       message: `Styling ${entity.name}…`
     });
     const { url, description } = await ensureStyledPortrait({
-      entity, entityType, styleKey, styleCustom, campaignId, apiKey, gameSystem
+      entity, entityType, styleKey, styleCustom, campaignId, apiKey, imageModel, gameSystem
     });
     entityPortraitUrls[entityId] = url;
     entityDescriptions[entityId] = description;
   });
   await Promise.all(portraitJobs);
+
+  // Build ancestry hint map for scene generation
+  const entityAncestryHints = {};
+  for (const entityId of featuredIds) {
+    const { entity } = findEntityInRosters({ entityId, rosters });
+    if (entity?.ancestry) {
+      const hint = getAncestryVisualHint(entity.ancestry);
+      if (hint) entityAncestryHints[entityId] = `${entity.name} is ${hint}`;
+    }
+  }
 
   // Generate scene illustrations sequentially to respect rate limits
   const scenes = [];
@@ -411,11 +459,13 @@ export async function generateChapter({
       const scene = await generateSceneImage({
         scene: { ...scenePrompt, id: `scene_${i}_${Date.now()}` },
         entityDescriptions,
+        entityAncestryHints,
         styleKey,
         styleCustom,
         gameSystem,
         campaignId,
-        apiKey
+        apiKey,
+        imageModel
       });
       scenes.push(scene);
     } catch (err) {
@@ -481,7 +531,8 @@ export async function regenerateScene({
   apiKey,
   gameSystem,
   styleKey,
-  styleCustom
+  styleCustom,
+  imageModel
 }) {
   const rosters = {
     characters: entities.characters || [],
@@ -489,30 +540,37 @@ export async function regenerateScene({
     adversaries: entities.adversaries || []
   };
   const entityDescriptions = {};
+  const entityAncestryHints = {};
   const featured = scene.featuredEntityIds || [];
   for (const id of featured) {
     const { entity, entityType } = findEntityInRosters({ entityId: id, rosters });
     if (!entity || !entityType) continue;
     const { description } = await ensureStyledPortrait({
-      entity, entityType, styleKey, styleCustom, campaignId, apiKey, gameSystem
+      entity, entityType, styleKey, styleCustom, campaignId, apiKey, imageModel, gameSystem
     });
     entityDescriptions[id] = description;
+    if (entity.ancestry) {
+      const hint = getAncestryVisualHint(entity.ancestry);
+      if (hint) entityAncestryHints[id] = `${entity.name} is ${hint}`;
+    }
   }
   return await generateSceneImage({
     scene: { ...scene, id: scene.id || `scene_${Date.now()}` },
     entityDescriptions,
+    entityAncestryHints,
     styleKey,
     styleCustom,
     gameSystem,
     campaignId,
-    apiKey
+    apiKey,
+    imageModel
   });
 }
 
 /**
  * Force-regenerate a single entity's styled portrait.
  */
-export async function regenerateStyledPortrait({ entity, entityType, campaignId, apiKey, gameSystem, styleKey, styleCustom }) {
+export async function regenerateStyledPortrait({ entity, entityType, campaignId, apiKey, gameSystem, styleKey, styleCustom, imageModel }) {
   // Bypass cache by clearing it first on the entity
   const collectionName = ENTITY_COLLECTIONS[entityType];
   if (collectionName) {
@@ -531,6 +589,7 @@ export async function regenerateStyledPortrait({ entity, entityType, campaignId,
     styleCustom,
     campaignId,
     apiKey,
+    imageModel,
     gameSystem
   });
 }
