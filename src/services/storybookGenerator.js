@@ -341,8 +341,8 @@ export async function generateChapter({
   if (!includeIllustrations) {
     onProgress({ stage: 'done', current: 1, total: 1, message: 'Draft ready' });
     return {
-      title: chapterText.title,
-      prose: chapterText.prose,
+      title: trimForFirestore(chapterText.title, 300),
+      prose: trimForFirestore(chapterText.prose, 80_000),
       scenes: [],
       spotlights: (chapterText.spotlights || []).map(s => {
         const { entity } = findEntityInRosters({ entityId: s.entityId, rosters: { characters, npcs, adversaries } });
@@ -352,7 +352,7 @@ export async function generateChapter({
           entityType: s.entityType,
           name: entity?.name || '',
           portraitUrl: entity?.storybookPortrait?.url || entity?.[portraitField] || null,
-          moment: s.moment
+          moment: trimForFirestore(s.moment, 400)
         };
       }),
       sessionId: session.id,
@@ -362,7 +362,6 @@ export async function generateChapter({
       aiModel: chapterText.model,
       styleKey,
       styleCustom: styleKey === 'custom' ? styleCustom : '',
-      sourceNotesSnapshot: [session.summary, session.dmNotes, session.liveNotesCompiled].filter(Boolean).join('\n\n'),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -440,10 +439,17 @@ export async function generateChapter({
   onProgress({ stage: 'done', current: 1, total: 1, message: 'Chapter ready' });
 
   return {
-    title: chapterText.title,
-    prose: chapterText.prose,
-    scenes,
-    spotlights,
+    title: trimForFirestore(chapterText.title, 300),
+    prose: trimForFirestore(chapterText.prose, 80_000),
+    scenes: scenes.map(s => ({
+      ...s,
+      caption: trimForFirestore(s.caption, 600),
+      prompt: trimForFirestore(s.prompt, 2_000)
+    })),
+    spotlights: spotlights.map(s => ({
+      ...s,
+      moment: trimForFirestore(s.moment, 400)
+    })),
     sessionId: session.id,
     sessionNumber: session.sessionNumber || session.number || null,
     status: generatedBy === 'auto' ? 'pending_review' : 'draft',
@@ -451,10 +457,17 @@ export async function generateChapter({
     aiModel: chapterText.model,
     styleKey,
     styleCustom: styleKey === 'custom' ? styleCustom : '',
-    sourceNotesSnapshot: [session.summary, session.dmNotes, session.liveNotesCompiled].filter(Boolean).join('\n\n'),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+// Cap a string to maxChars, appending an ellipsis if truncated.
+// Keeps individual fields safely below Firestore's 1 MB doc limit.
+function trimForFirestore(str, maxChars) {
+  if (typeof str !== 'string') return str;
+  if (str.length <= maxChars) return str;
+  return str.slice(0, maxChars - 1) + '…';
 }
 
 /**
