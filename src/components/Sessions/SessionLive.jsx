@@ -15,6 +15,7 @@ export default function SessionLive({
   currentUserId,
   entities,
   onUpdateSession,
+  onAutoDraftChapter,
   onBack
 }) {
   const {
@@ -69,8 +70,19 @@ export default function SessionLive({
     await onUpdateSession(session.id, {
       summary: newSummary,
       isLive: false,
-      liveEndedAt: new Date().toISOString()
+      liveEndedAt: new Date().toISOString(),
+      status: 'completed'
     });
+
+    // Fire-and-forget: auto-draft a Story So Far chapter from this session
+    if (onAutoDraftChapter) {
+      onAutoDraftChapter({
+        ...session,
+        summary: newSummary,
+        liveNotesCompiled: compiledSummary,
+        status: 'completed'
+      });
+    }
 
     // Optionally clear notes after finalizing
     if (isDM) {

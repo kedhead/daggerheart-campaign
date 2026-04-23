@@ -118,6 +118,30 @@ service firebase.storage {
       allow delete: if isAuthenticated() && isCampaignDM(campaignId);
     }
 
+    // Storybook illustrations (AI-generated scenes, 10MB cap)
+    match /campaigns/{campaignId}/storybook/images/{fileName} {
+      allow read: if isAuthenticated() && isCampaignMember(campaignId);
+      allow create: if isAuthenticated() && isCampaignMember(campaignId)
+                    && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if isAuthenticated() && isCampaignDM(campaignId);
+    }
+
+    // Storybook styled portraits (per-entity cached, 10MB cap)
+    match /campaigns/{campaignId}/storybook/styled-portraits/{fileName} {
+      allow read: if isAuthenticated() && isCampaignMember(campaignId);
+      allow create: if isAuthenticated() && isCampaignMember(campaignId)
+                    && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if isAuthenticated() && isCampaignDM(campaignId);
+    }
+
+    // Storybook user-uploaded media (images/video/audio, 500MB cap for video)
+    match /campaigns/{campaignId}/storybook/media/{fileName} {
+      allow read: if isAuthenticated() && isCampaignMember(campaignId);
+      allow create: if isAuthenticated() && isCampaignMember(campaignId)
+                    && request.resource.size < 500 * 1024 * 1024;
+      allow delete: if isAuthenticated() && (isCampaignDM(campaignId) || isCampaignMember(campaignId));
+    }
+
     // Shared Assets (cross-campaign asset library)
     match /sharedAssets/{path=**} {
       // Allow read by any authenticated user

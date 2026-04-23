@@ -35,6 +35,7 @@ import QuestsView from './components/Quests/QuestsView';
 import PlayerDisplay from './components/PlayerDisplay/PlayerDisplay';
 import DMDisplayControl from './components/PlayerDisplay/DMDisplayControl';
 import BattleMapStudio from './components/BattleMapStudio/BattleMapStudio';
+import StorybookView from './components/Storybook/StorybookView';
 import BattleMapDisplayWindow from './components/BattleMapDisplay/BattleMapDisplayWindow';
 import { DiceRollerFloat } from './components/DiceRoller/index';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
@@ -369,12 +370,15 @@ function CampaignApp() {
             deleteSession={deleteSession}
             isDM={isDM}
             campaign={campaign}
+            characters={characters}
             npcs={npcs}
+            adversaries={adversaries}
             locations={locations}
             lore={lore}
             timelineEvents={timelineEvents}
             encounters={encounters}
             notes={notes}
+            campaignFrame={campaignFrame}
             currentUserId={currentUser.uid}
           />
         );
@@ -650,6 +654,24 @@ function CampaignApp() {
           <BattleMapStudio
             campaign={campaign}
             isDM={isDM}
+          />
+        );
+      case 'storybook':
+        return (
+          <StorybookView
+            campaign={campaign}
+            campaignId={currentCampaignId}
+            sessions={sessions}
+            characters={characters}
+            npcs={npcs}
+            adversaries={adversaries}
+            locations={locations}
+            lore={lore}
+            encounters={encounters}
+            campaignFrame={campaignFrame}
+            updateCampaign={updateCampaign}
+            isDM={isDM}
+            currentUserId={currentUser.uid}
           />
         );
       default:

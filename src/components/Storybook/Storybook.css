@@ -1,0 +1,44 @@
+/* Storybook typography — generous reading rhythm for chapter prose */
+
+.storybook-article {
+  max-width: 68ch;
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.storybook-prose p {
+  margin: 0 0 1.1em 0;
+  font-family: var(--font-body, ui-serif, Georgia, serif);
+  color: var(--text, #e5e7eb);
+}
+
+.storybook-prose p:last-child {
+  margin-bottom: 0;
+}
+
+.storybook-prose em {
+  font-style: italic;
+  color: color-mix(in srgb, var(--text) 90%, var(--primary));
+}
+
+.storybook-prose strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Drop-cap on the first paragraph inside .storybook-article */
+.storybook-article > .storybook-prose:first-child p:first-child::first-letter {
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-size: 3.6em;
+  float: left;
+  line-height: 0.85;
+  padding: 0.1em 0.14em 0 0;
+  color: var(--primary, #a78bfa);
+  font-weight: 700;
+}
+
+/* Scene figure spacing when rendered inside the article column */
+.storybook-article figure {
+  margin-left: 0;
+  margin-right: 0;
+}

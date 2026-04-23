@@ -306,6 +306,33 @@ service cloud.firestore {
         // Only DM can write to active encounter
         allow write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
+
+      // Storybook (Story So Far — illustrated chapter chronicle)
+      match /storybook/{chapterId} {
+        // All members can read chapters; filtering of drafts happens client-side.
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // Only DM/creator can create, edit, or delete chapters.
+        allow create, update, delete: if isAuthenticated() && (
+          isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) ||
+          getUserId() == get(/databases/$(database)/documents/campaigns/$(campaignId)).data.createdBy ||
+          isSuperAdmin()
+        );
+
+        // Journal entries — player-authored in-character responses to a chapter.
+        match /journalEntries/{entryId} {
+          allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+          // Any member may create an entry, but the authorId must be their own uid.
+          allow create: if isAuthenticated()
+            && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data)
+            && request.resource.data.authorId == getUserId();
+          // Only the original author or the DM may edit/delete an entry.
+          allow update, delete: if isAuthenticated() && (
+            (resource.data.authorId == getUserId()) ||
+            isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) ||
+            isSuperAdmin()
+          );
+        }
+      }
     }
   }
 }

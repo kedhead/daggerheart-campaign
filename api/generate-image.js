@@ -26,11 +26,60 @@ export default async function handler(req, res) {
       model = 'magic-art_7_0',  // Default to Magic Art 7.0
       size = '1024x1024',
       animated = false,
+      styleKey,               // optional: for storybook-* types
+      gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
       apiKey: clientApiKey   // optional client-provided key (used by portrait callers)
     } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Missing required field: prompt' });
+    }
+
+    // --- Storybook mode: DALL-E 3 with illustrated style preamble ---
+    if (type === 'storybook-scene' || type === 'storybook-portrait') {
+      const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
+      if (!effectiveKey) {
+        return res.status(500).json({
+          error: 'No OpenAI API key available. Add OPENAI_API_KEY to environment variables or configure one in Settings.'
+        });
+      }
+
+      const fantasyPreambles = {
+        watercolor: 'Soft watercolor storybook illustration, washed pastel tones, loose expressive brushwork, fairytale atmosphere, painterly, no text or labels',
+        oil: 'Classical oil painting fairytale illustration, rich textured brushwork, warm golden lighting, Arthur Rackham inspired, no text or labels',
+        'ink-wash': 'Ink and watercolor wash storybook illustration, expressive brushstrokes, muted palette, intimate composition, no text or labels',
+        illuminated: 'Illuminated manuscript illustration, gilded borders, medieval tapestry aesthetic, stylised figures, no text or labels',
+        'children-storybook': "Classic children's storybook illustration, friendly line art with soft colour fills, whimsical, Tony DiTerlizzi inspired, no text or labels"
+      };
+      const scifiPreambles = {
+        watercolor: 'Soft watercolor sci-fi illustration, washed pastel tones, painterly space opera atmosphere, no text or labels',
+        oil: 'Oil painting sci-fi concept illustration, textured brushwork, dramatic cinematic lighting, space opera, no text or labels',
+        'ink-wash': 'Ink and watercolor wash sci-fi illustration, expressive strokes, muted palette, no text or labels',
+        illuminated: 'Retro-futurist illuminated sci-fi illustration, ornamental borders, stylised figures, no text or labels',
+        'children-storybook': "Classic children's storybook sci-fi illustration, friendly line art with soft colour fills, whimsical, no text or labels"
+      };
+      const presets = gameSystem === 'starwarsd6' ? scifiPreambles : fantasyPreambles;
+      const preamble = (styleKey && styleKey !== 'custom' && presets[styleKey])
+        || (styleKey && styleKey.length > 6 ? styleKey : null) // treat as custom preamble if long
+        || presets.watercolor;
+
+      const fullPrompt = `${preamble}. ${prompt}`;
+      const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
+      const imageSize = validSizes.includes(size) ? size : '1024x1024';
+
+      const sbResponse = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
+        body: JSON.stringify({ model: 'dall-e-3', prompt: fullPrompt, n: 1, size: imageSize, quality: 'hd', style: 'natural' })
+      });
+      if (!sbResponse.ok) {
+        const err = await sbResponse.json().catch(() => ({ error: { message: sbResponse.statusText } }));
+        return res.status(sbResponse.status).json({ error: `DALL-E API error: ${err.error?.message || sbResponse.statusText}` });
+      }
+      const sbData = await sbResponse.json();
+      const sbUrl = sbData.data?.[0]?.url;
+      if (!sbUrl) return res.status(500).json({ error: 'No image URL returned from DALL-E' });
+      return res.status(200).json({ imageUrl: sbUrl, prompt: fullPrompt, model: 'dall-e-3' });
     }
 
     // --- Portrait mode: DALL-E 3 direct, same as old generate-portrait.js ---

@@ -1,12 +1,56 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Plus, BookOpen, ScrollText } from 'lucide-react';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
 import SessionLive from './SessionLive';
 import Modal from '../Modal';
+import { autoDraftChapterFromSession } from '../../services/storybookGenerator';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { useToast } from '../../contexts/ToastContext';
 import './SessionsView.css';
 
-export default function SessionsView({ sessions, addSession, updateSession, deleteSession, isDM, campaign, npcs = [], locations = [], lore = [], timelineEvents = [], encounters = [], notes = [], currentUserId }) {
+export default function SessionsView({
+  sessions,
+  addSession,
+  updateSession,
+  deleteSession,
+  isDM,
+  campaign,
+  characters = [],
+  npcs = [],
+  adversaries = [],
+  locations = [],
+  lore = [],
+  timelineEvents = [],
+  encounters = [],
+  notes = [],
+  campaignFrame = null,
+  currentUserId
+}) {
+  const { keys } = useAPIKey(campaign?.createdBy);
+  const { info, success, error: toastError } = useToast();
+  const openaiKey = keys?.openai || null;
+
+  const triggerAutoDraft = useCallback((session) => {
+    if (!isDM || !openaiKey || !campaign?.id) return;
+    info(`Drafting Story So Far chapter for "${session.title}"…`);
+    // Fire-and-forget: never block session save/finalize
+    autoDraftChapterFromSession({
+      campaign,
+      session,
+      entities: { characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame },
+      campaignId: campaign.id,
+      apiKey: openaiKey,
+      gameSystem: campaign.gameSystem || 'daggerheart',
+      onComplete: (res) => {
+        if (res.ok) success('Story chapter drafted — review it in Story So Far.');
+        else if (res.error && res.error !== 'already-exists' && res.error !== 'no-api-key') toastError(`Story draft failed: ${res.error}`);
+      }
+    }).catch(err => {
+      console.error('[SessionsView] auto-draft threw:', err);
+    });
+  }, [isDM, openaiKey, campaign, characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame, info, success, toastError]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
   const [liveSession, setLiveSession] = useState(null);
@@ -22,10 +66,24 @@ export default function SessionsView({ sessions, addSession, updateSession, dele
   };
 
   const handleSave = (sessionData) => {
+    const wasCompleted = editingSession?.status === 'completed';
+    const isNowCompleted = sessionData.status === 'completed';
+
     if (editingSession) {
       updateSession(editingSession.id, sessionData);
+      // Newly completed (transitioned from planned/in_progress → completed)
+      if (isNowCompleted && !wasCompleted) {
+        triggerAutoDraft({ id: editingSession.id, ...editingSession, ...sessionData });
+      }
     } else {
-      addSession(sessionData);
+      addSession(sessionData).then?.((result) => {
+        // addSession in the hook returns the new doc reference/data — best-effort
+        if (isNowCompleted && result?.id) {
+          triggerAutoDraft({ id: result.id, ...sessionData });
+        }
+      });
+      // Also fire for void-returning addSession impls: we can only trigger with
+      // a real id once the subscription delivers it, so skip that edge case.
     }
     setIsModalOpen(false);
     setEditingSession(null);
@@ -60,6 +118,7 @@ export default function SessionsView({ sessions, addSession, updateSession, dele
         currentUserId={currentUserId}
         entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         onUpdateSession={updateSession}
+        onAutoDraftChapter={triggerAutoDraft}
         onBack={handleExitLive}
       />
     );

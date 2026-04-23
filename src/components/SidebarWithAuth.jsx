@@ -11,7 +11,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('sidebarCollapsed') === 'true';
   });
-  const [expandedGroups, setExpandedGroups] = useState(['superadmin', 'campaign', 'players', 'world', 'adventure', 'resources', 'settings']);
+  const [expandedGroups, setExpandedGroups] = useState(['superadmin', 'campaign', 'players', 'story', 'world', 'adventure', 'resources', 'settings']);
 
   // Apply theme based on campaign's game system
   useEffect(() => {
@@ -79,6 +79,15 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         { id: 'partyInventory', label: 'Party Stash', icon: Backpack },
         { id: 'notes', label: 'My Notes', icon: StickyNote },
         { id: 'messaging', label: 'Messages', icon: MessageSquare }
+      ]
+    },
+    {
+      id: 'story',
+      label: 'The Chronicle',
+      icon: BookMarked,
+      featured: true,
+      items: [
+        { id: 'storybook', label: 'Story So Far', icon: BookMarked }
       ]
     },
     {
@@ -244,7 +253,13 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
             <div key={group.id} className="space-y-1.5">
               {!isCollapsed && (
                 <div className="px-3 flex items-center justify-between group cursor-pointer" onClick={() => toggleGroup(group.id)}>
-                  <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.25em] group-hover:text-white/40 transition-colors">
+                  <span
+                    className={`text-[10px] font-black uppercase tracking-[0.25em] transition-colors ${
+                      group.featured
+                        ? 'text-transparent bg-clip-text bg-gradient-to-r from-[color:var(--primary)] via-white to-[color:var(--accent)] group-hover:brightness-125'
+                        : 'text-white/20 group-hover:text-white/40'
+                    }`}
+                  >
                     {group.label}
                   </span>
                   <div className={`transition-transform duration-300 text-white/10 group-hover:text-white/30 ${expandedGroups.includes(group.id) ? 'rotate-180' : ''}`}>
