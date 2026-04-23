@@ -32,7 +32,7 @@ export default function SessionsView({
   const openaiKey = keys?.openai || null;
 
   const triggerAutoDraft = useCallback((session) => {
-    if (!isDM || !openaiKey || !campaign?.id) return;
+    if (!isDM || !campaign?.id) return;
     info(`Drafting Story So Far chapter for "${session.title}"…`);
     // Fire-and-forget: never block session save/finalize
     autoDraftChapterFromSession({

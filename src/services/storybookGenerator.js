@@ -539,10 +539,6 @@ export async function autoDraftChapterFromSession({
   onComplete = () => {}
 }) {
   if (!campaign || !session || !campaignId) return { ok: false, error: 'missing-args' };
-  if (!apiKey) {
-    console.log('[storybook] auto-draft skipped: no OpenAI API key');
-    return { ok: false, error: 'no-api-key' };
-  }
 
   try {
     // Skip if this session already has a chapter

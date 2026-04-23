@@ -67,10 +67,6 @@ export default function ChapterEditor({
   };
 
   const handleSceneRegenerate = async (scene) => {
-    if (!apiKey) {
-      alert('OpenAI API key not configured. Add one in API Settings.');
-      return;
-    }
     setRegeneratingId(scene.id);
     try {
       const newScene = await regenerateScene({

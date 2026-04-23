@@ -51,10 +51,6 @@ export default function GenerateChapterModal({
 
   const handleGenerate = async () => {
     if (!selectedSession) return;
-    if (!apiKey) {
-      setError('OpenAI API key not configured. Add one in API Settings first.');
-      return;
-    }
     setError(null);
     setRunning(true);
 
@@ -89,19 +85,6 @@ export default function GenerateChapterModal({
   return (
     <Modal isOpen={isOpen} onClose={running ? () => {} : onClose} title="Generate Chapter" size="large">
       <div className="space-y-5">
-        {!apiKey && (
-          <div
-            className="p-3 rounded-lg text-sm"
-            style={{
-              background: 'rgba(251, 191, 36, 0.12)',
-              border: '1px solid rgba(251, 191, 36, 0.4)',
-              color: '#fbbf24'
-            }}
-          >
-            No OpenAI API key detected. Add one in API Settings before generating.
-          </div>
-        )}
-
         <div className="space-y-2">
           <label className="block text-xs font-bold uppercase tracking-widest text-white/50">
             Session
