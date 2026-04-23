@@ -7,7 +7,7 @@ const STATUS_STYLES = {
 };
 
 export default function ChapterList({ chapters, isDM, onOpen, onEdit }) {
-  const sorted = [...chapters].sort((a, b) => (b.chapterNumber || 0) - (a.chapterNumber || 0));
+  const sorted = [...chapters].sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {sorted.map(chapter => {
