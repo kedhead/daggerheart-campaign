@@ -67,16 +67,12 @@ export default function ChapterReader({
       renderedBody.push(
         <figure
           key={`scene-${scene.id}`}
-          className="my-8 rounded-2xl overflow-hidden border cursor-zoom-in"
-          style={{ borderColor: 'var(--line-strong)' }}
+          className="storybook-scene-figure"
           onClick={() => openLightbox(scene)}
         >
-          <img src={scene.imageUrl} alt={scene.caption} className="w-full h-auto" />
+          <img src={scene.imageUrl} alt={scene.caption} />
           {scene.caption && (
-            <figcaption
-              className="px-5 py-3 text-sm italic"
-              style={{ color: 'var(--text-muted)', background: 'color-mix(in srgb, var(--surface) 70%, transparent)' }}
-            >
+            <figcaption className="storybook-scene-caption">
               {scene.caption}
             </figcaption>
           )}
@@ -91,16 +87,12 @@ export default function ChapterReader({
     renderedBody.push(
       <figure
         key={`scene-${scene.id}`}
-        className="my-8 rounded-2xl overflow-hidden border cursor-zoom-in"
-        style={{ borderColor: 'var(--line-strong)' }}
+        className="storybook-scene-figure"
         onClick={() => openLightbox(scene)}
       >
-        <img src={scene.imageUrl} alt={scene.caption} className="w-full h-auto" />
+        <img src={scene.imageUrl} alt={scene.caption} />
         {scene.caption && (
-          <figcaption
-            className="px-5 py-3 text-sm italic"
-            style={{ color: 'var(--text-muted)', background: 'color-mix(in srgb, var(--surface) 70%, transparent)' }}
-          >
+          <figcaption className="storybook-scene-caption">
             {scene.caption}
           </figcaption>
         )}
@@ -109,78 +101,77 @@ export default function ChapterReader({
   });
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8 lr-fade-in">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6" style={{ borderBottom: '1px solid var(--line)' }}>
+    <div className="storybook-page max-w-6xl mx-auto p-4 md:p-8 space-y-8">
+      {/* Toolbar */}
+      <header className="storybook-toolbar flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <button
           type="button"
           onClick={onBack}
-          className="self-start inline-flex items-center gap-2 text-white/60 hover:text-white text-sm font-semibold"
+          className="storybook-back-btn self-start"
         >
-          <ArrowLeft size={16} /> Back to Chronicle
+          <ArrowLeft size={14} /> Back to Chronicle
         </button>
         <div className="flex flex-wrap gap-2">
           {isDM && (
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-white/80 hover:bg-white/10 text-sm font-semibold"
+              className="storybook-edit-btn"
             >
-              <Edit3 size={14} /> Edit
+              <Edit3 size={13} /> Edit
             </button>
           )}
         </div>
       </header>
 
-      <div className="text-center space-y-3">
-        <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/40">
-          Chapter {chapter.chapterNumber}{chapter.sessionNumber ? ` • Session ${chapter.sessionNumber}` : ''}
+      {/* Chapter Title */}
+      <div className="storybook-chapter-header">
+        <span className="storybook-chapter-label">
+          Chapter {chapter.chapterNumber}{chapter.sessionNumber ? ` · Session ${chapter.sessionNumber}` : ''}
         </span>
-        <h1 className="text-4xl md:text-6xl font-black text-white font-cinzel leading-tight">
+        <h1 className="storybook-chapter-title">
           {chapter.title}
         </h1>
-        <div className="mx-auto h-[2px] w-20 rounded-full" style={{ background: 'var(--accent)' }} />
+        <div className="storybook-ornament">
+          <div className="storybook-ornament-diamond" />
+        </div>
       </div>
 
+      {/* Body: prose + sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
-        <article className="space-y-4 storybook-article" style={{ fontFamily: 'var(--font-body)', color: 'var(--text)' }}>
-          {renderedBody.length > 0 ? renderedBody : <p className="text-white/50">No prose yet.</p>}
+        <article className="storybook-article space-y-4">
+          {renderedBody.length > 0 ? renderedBody : <p style={{ color: 'var(--parchment-muted)' }}>No prose yet.</p>}
         </article>
 
         <aside className="space-y-6">
+          {/* Featured Cast */}
           {chapter.spotlights?.length > 0 && (
             <section>
-              <h3 className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 mb-3">
+              <h3 className="storybook-sidebar-heading">
                 Featured Cast
               </h3>
               <ul className="space-y-3">
                 {chapter.spotlights.map(s => (
                   <li
                     key={`${s.entityType}-${s.entityId}`}
-                    className="flex gap-3 p-3 rounded-xl border"
-                    style={{
-                      background: 'color-mix(in srgb, var(--surface) 80%, transparent)',
-                      borderColor: 'var(--line)'
-                    }}
+                    className="storybook-spotlight-card"
                   >
-                    <div
-                      className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0"
-                      style={{ background: 'var(--surface-hi)' }}
-                    >
+                    <div className="storybook-spotlight-portrait">
                       {s.portraitUrl ? (
                         <img src={s.portraitUrl} alt={s.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">
+                        <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: 'var(--parchment-dim)' }}>
                           {(s.name || '?').slice(0, 1)}
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-white font-cinzel">{s.name}</div>
-                      <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
+                      <div className="storybook-spotlight-name">{s.name}</div>
+                      <div className="storybook-spotlight-type">
                         {s.entityType}
                       </div>
                       {s.moment && (
-                        <p className="text-xs text-white/70 leading-snug">{s.moment}</p>
+                        <p className="storybook-spotlight-moment">{s.moment}</p>
                       )}
                     </div>
                   </li>
@@ -189,9 +180,10 @@ export default function ChapterReader({
             </section>
           )}
 
+          {/* Table Memories */}
           {media.length > 0 && (
             <section>
-              <h3 className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 mb-3 flex items-center gap-2">
+              <h3 className="storybook-sidebar-heading">
                 <ImageIcon size={12} /> Table Memories
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -204,30 +196,27 @@ export default function ChapterReader({
         </aside>
       </div>
 
-      <section className="space-y-4 pt-8" style={{ borderTop: '1px solid var(--line)' }}>
-        <h3 className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 flex items-center gap-2">
+      {/* Journal */}
+      <section className="storybook-journal-section space-y-4">
+        <h3 className="storybook-sidebar-heading">
           <Feather size={12} /> In-Character Journal
         </h3>
 
         {journalEntries.length === 0 ? (
-          <p className="text-sm text-white/40 italic">No journal entries yet. Be the first to share your character's thoughts.</p>
+          <p className="text-sm italic" style={{ color: 'var(--parchment-dim)' }}>No journal entries yet. Be the first to share your character's thoughts.</p>
         ) : (
           <ul className="space-y-3">
             {journalEntries.map(entry => (
               <li
                 key={entry.id}
-                className="p-4 rounded-xl border"
-                style={{
-                  background: 'color-mix(in srgb, var(--surface) 70%, transparent)',
-                  borderColor: 'var(--line)'
-                }}
+                className="storybook-journal-entry"
               >
                 <div className="flex items-baseline gap-2 mb-2">
-                  <span className="font-bold text-white font-cinzel">
+                  <span className="storybook-journal-author">
                     {entry.characterName || entry.authorName}
                   </span>
                   {entry.characterName && (
-                    <span className="text-[10px] uppercase tracking-widest text-white/30">
+                    <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--parchment-dim)' }}>
                       ({entry.authorName})
                     </span>
                   )}
@@ -239,14 +228,15 @@ export default function ChapterReader({
                           storybook.deleteJournalEntry(chapter.id, entry.id);
                         }
                       }}
-                      className="ml-auto text-white/30 hover:text-red-400"
+                      className="ml-auto hover:text-red-400"
+                      style={{ color: 'var(--parchment-dim)' }}
                       aria-label="Delete entry"
                     >
                       <Trash2 size={13} />
                     </button>
                   )}
                 </div>
-                <div className="storybook-prose text-sm" style={{ color: 'var(--text)' }}>
+                <div className="storybook-prose text-sm">
                   <ReactMarkdown>{entry.content}</ReactMarkdown>
                 </div>
               </li>
@@ -278,15 +268,14 @@ export default function ChapterReader({
 function MediaThumb({ item, onClick }) {
   const preview = (() => {
     if (item.kind === 'video') return <video src={item.url} className="w-full h-full object-cover" />;
-    if (item.kind === 'audio') return <div className="w-full h-full flex items-center justify-center text-white/60 text-xs font-semibold">Audio</div>;
+    if (item.kind === 'audio') return <div className="w-full h-full flex items-center justify-center text-xs font-semibold" style={{ color: 'var(--parchment-muted)' }}>Audio</div>;
     return <img src={item.url} alt={item.caption || ''} className="w-full h-full object-cover" />;
   })();
   return (
     <button
       type="button"
       onClick={onClick}
-      className="aspect-square rounded-lg overflow-hidden border cursor-zoom-in"
-      style={{ borderColor: 'var(--line)' }}
+      className="storybook-media-thumb"
     >
       {preview}
     </button>

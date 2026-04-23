@@ -1,15 +1,134 @@
-/* Storybook typography — generous reading rhythm for chapter prose */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Storybook — Old Fantasy Book Theme
+   Parchment textures, ornate typography, and weathered-tome atmosphere
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Parchment page container ─────────────────────────────────────────────── */
+
+.storybook-page {
+  --parchment: #1e1a14;
+  --parchment-light: #2a2419;
+  --parchment-text: #d4c5a0;
+  --parchment-muted: #a0926e;
+  --parchment-dim: #6e6348;
+  --parchment-accent: #c49a3c;
+  --parchment-accent-soft: rgba(196, 154, 60, 0.15);
+  --parchment-border: rgba(196, 154, 60, 0.2);
+  --parchment-border-strong: rgba(196, 154, 60, 0.35);
+  --parchment-shadow: rgba(0, 0, 0, 0.5);
+
+  position: relative;
+  background:
+    /* subtle noise/grain texture via radial spots */
+    radial-gradient(ellipse at 20% 50%, rgba(196, 154, 60, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 30%, rgba(196, 154, 60, 0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(139, 92, 40, 0.03) 0%, transparent 50%),
+    linear-gradient(180deg, var(--parchment) 0%, var(--parchment-light) 40%, var(--parchment) 100%);
+  color: var(--parchment-text);
+  min-height: 100vh;
+}
+
+/* Vignette overlay for aged-edge effect */
+.storybook-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+/* Ensure content sits above the vignette */
+.storybook-page > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Chapter title area ───────────────────────────────────────────────────── */
+
+.storybook-chapter-header {
+  text-align: center;
+  padding: 2rem 1rem 1.5rem;
+}
+
+.storybook-chapter-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--parchment-accent);
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.storybook-chapter-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 700;
+  color: var(--parchment-text);
+  line-height: 1.15;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+/* Ornamental divider */
+.storybook-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1.5rem auto;
+  max-width: 280px;
+}
+
+.storybook-ornament::before,
+.storybook-ornament::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg, 
+    transparent, 
+    var(--parchment-accent) 30%, 
+    var(--parchment-accent) 70%, 
+    transparent
+  );
+  opacity: 0.5;
+}
+
+.storybook-ornament-diamond {
+  width: 8px;
+  height: 8px;
+  background: var(--parchment-accent);
+  transform: rotate(45deg);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+/* ── Prose body ───────────────────────────────────────────────────────────── */
 
 .storybook-article {
   max-width: 68ch;
-  font-size: 1.05rem;
-  line-height: 1.75;
+  font-size: 1.15rem;
+  line-height: 1.85;
 }
 
 .storybook-prose p {
-  margin: 0 0 1.1em 0;
-  font-family: var(--font-body, ui-serif, Georgia, serif);
-  color: var(--text, #e5e7eb);
+  margin: 0 0 1.2em 0;
+  font-family: 'EB Garamond', 'Crimson Pro', 'Georgia', serif;
+  font-size: 1.15rem;
+  line-height: 1.85;
+  color: var(--parchment-text);
+  text-indent: 1.5em;
+  hyphens: auto;
+  text-align: justify;
+}
+
+/* First paragraph after a scene/heading — no indent */
+.storybook-article > .storybook-prose:first-child p:first-child {
+  text-indent: 0;
 }
 
 .storybook-prose p:last-child {
@@ -18,27 +137,291 @@
 
 .storybook-prose em {
   font-style: italic;
-  color: color-mix(in srgb, var(--text) 90%, var(--primary));
+  color: var(--parchment-accent);
 }
 
 .storybook-prose strong {
-  color: var(--text);
-  font-weight: 700;
+  color: var(--parchment-text);
+  font-weight: 600;
 }
 
-/* Drop-cap on the first paragraph inside .storybook-article */
+/* ── Drop cap — ornate old-book style ─────────────────────────────────────── */
+
 .storybook-article > .storybook-prose:first-child p:first-child::first-letter {
-  font-family: var(--font-display, 'Cinzel', serif);
-  font-size: 3.6em;
+  font-family: 'Cinzel', serif;
+  font-size: 4.2em;
   float: left;
-  line-height: 0.85;
-  padding: 0.1em 0.14em 0 0;
-  color: var(--primary, #a78bfa);
+  line-height: 0.8;
+  padding: 0.05em 0.12em 0 0;
+  color: var(--parchment-accent);
   font-weight: 700;
+  text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Scene illustrations ──────────────────────────────────────────────────── */
+
+.storybook-scene-figure {
+  margin: 2.5rem 0;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 3px double var(--parchment-border-strong);
+  box-shadow:
+    0 4px 20px var(--parchment-shadow),
+    inset 0 0 30px rgba(0, 0, 0, 0.15);
+  cursor: zoom-in;
+  background: var(--parchment);
+  position: relative;
+}
+
+/* Inner glow edge */
+.storybook-scene-figure::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 15px rgba(196, 154, 60, 0.08);
+  pointer-events: none;
+}
+
+.storybook-scene-figure img {
+  width: 100%;
+  height: auto;
+  display: block;
+  /* Slight sepia warmth to match the book feel */
+  filter: sepia(8%) saturate(90%);
+}
+
+.storybook-scene-caption {
+  padding: 0.75rem 1.25rem;
+  font-family: 'EB Garamond', 'Crimson Pro', serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--parchment-muted);
+  text-align: center;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.2) 0%,
+    var(--parchment) 100%
+  );
+  border-top: 1px solid var(--parchment-border);
 }
 
 /* Scene figure spacing when rendered inside the article column */
-.storybook-article figure {
+.storybook-article figure,
+.storybook-article .storybook-scene-figure {
   margin-left: 0;
   margin-right: 0;
+}
+
+/* ── Sidebar: Featured Cast & Memories ────────────────────────────────────── */
+
+.storybook-sidebar-heading {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--parchment-accent);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.storybook-spotlight-card {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--parchment-border);
+  background: linear-gradient(
+    135deg,
+    var(--parchment-light) 0%,
+    var(--parchment) 100%
+  );
+}
+
+.storybook-spotlight-portrait {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--parchment-border-strong);
+  background: var(--parchment);
+}
+
+.storybook-spotlight-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--parchment-text);
+}
+
+.storybook-spotlight-type {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+  margin-bottom: 0.25rem;
+}
+
+.storybook-spotlight-moment {
+  font-family: 'EB Garamond', 'Crimson Pro', serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--parchment-muted);
+}
+
+/* ── Journal section ──────────────────────────────────────────────────────── */
+
+.storybook-journal-section {
+  border-top: 1px solid var(--parchment-border);
+  padding-top: 2rem;
+}
+
+.storybook-journal-entry {
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  border: 1px solid var(--parchment-border);
+  background: var(--parchment-light);
+}
+
+.storybook-journal-author {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  color: var(--parchment-text);
+}
+
+.storybook-journal-entry .storybook-prose p {
+  font-size: 0.95rem;
+  text-indent: 0;
+  text-align: left;
+}
+
+/* ── Back button & toolbar ────────────────────────────────────────────────── */
+
+.storybook-toolbar {
+  border-bottom: 1px solid var(--parchment-border);
+  padding-bottom: 1rem;
+}
+
+.storybook-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--parchment-muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.storybook-back-btn:hover {
+  color: var(--parchment-accent);
+}
+
+.storybook-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background: var(--parchment-accent-soft);
+  border: 1px solid var(--parchment-border);
+  color: var(--parchment-accent);
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.storybook-edit-btn:hover {
+  background: var(--parchment-border);
+  border-color: var(--parchment-border-strong);
+}
+
+/* ── Section dividers (between prose and supplementary content) ────────────── */
+
+.storybook-section-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 2rem 0;
+}
+
+.storybook-section-divider::before,
+.storybook-section-divider::after {
+  content: '';
+  flex: 1;
+  max-width: 80px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--parchment-accent) 50%,
+    transparent
+  );
+  opacity: 0.35;
+}
+
+/* ── Media thumbnail grid ─────────────────────────────────────────────────── */
+
+.storybook-media-thumb {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--parchment-border);
+  cursor: zoom-in;
+  transition: border-color 0.2s ease;
+}
+
+.storybook-media-thumb:hover {
+  border-color: var(--parchment-accent);
+}
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
+
+@keyframes storybook-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.storybook-page {
+  animation: storybook-fade-in 0.6s ease both;
+}
+
+/* ── Responsive tweaks ────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .storybook-chapter-title {
+    font-size: 1.8rem;
+  }
+
+  .storybook-article {
+    font-size: 1.05rem;
+  }
+
+  .storybook-prose p {
+    font-size: 1.05rem;
+    text-align: left;
+    text-indent: 1em;
+  }
 }

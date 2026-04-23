@@ -94,20 +94,20 @@ export default function StorybookView({
 
   // ── List view ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-transparent p-6 space-y-8 lr-fade-in" style={{ fontFamily: 'var(--font-body)' }}>
+    <div className="min-h-screen p-6 space-y-8 lr-fade-in" style={{ background: '#1e1a14', fontFamily: 'var(--font-body)' }}>
       <div
         className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 relative"
-        style={{ borderBottom: '1px solid var(--line)' }}
+        style={{ borderBottom: '1px solid rgba(196, 154, 60, 0.2)' }}
       >
         <div className="space-y-2 relative z-10">
-          <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/40">
+          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#c49a3c' }}>
             The Chronicle
           </span>
-          <h1 className="text-3xl md:text-5xl font-bold text-white flex items-center gap-4 font-cinzel">
-            <BookMarked className="text-[color:var(--primary)]" size={44} />
+          <h1 className="text-3xl md:text-5xl font-bold flex items-center gap-4" style={{ fontFamily: "'Cinzel', serif", color: '#d4c5a0' }}>
+            <BookMarked style={{ color: '#c49a3c' }} size={44} />
             Story So Far
           </h1>
-          <p className="text-white/60 text-base max-w-2xl">
+          <p className="text-base max-w-2xl" style={{ fontFamily: "'EB Garamond', 'Crimson Pro', serif", color: '#a0926e' }}>
             An illustrated chronicle of every session, told in watercolor and ink.
             {visibleChapters.length > 0 && ` ${visibleChapters.length} chapter${visibleChapters.length === 1 ? '' : 's'} recorded.`}
           </p>
@@ -117,22 +117,38 @@ export default function StorybookView({
             <button
               type="button"
               onClick={() => setIsSettingsOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] text-white/80 hover:bg-white/[0.06] hover:border-white/20 transition"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition"
+              style={{
+                background: 'rgba(196, 154, 60, 0.08)',
+                border: '1px solid rgba(196, 154, 60, 0.2)',
+                color: '#a0926e',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase'
+              }}
             >
               <SettingsIcon size={16} />
-              <span className="text-sm font-semibold">Style settings</span>
+              <span>Style settings</span>
             </button>
             <button
               type="button"
               onClick={() => setIsGenerateOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-white transition"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition"
               style={{
-                background: 'color-mix(in srgb, var(--primary) 20%, transparent)',
-                borderColor: 'color-mix(in srgb, var(--primary) 40%, transparent)'
+                background: 'rgba(196, 154, 60, 0.15)',
+                border: '1px solid rgba(196, 154, 60, 0.35)',
+                color: '#c49a3c',
+                fontFamily: "'Cinzel', serif",
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                textTransform: 'uppercase'
               }}
             >
               <Wand2 size={16} />
-              <span className="text-sm font-bold">Generate chapter</span>
+              <span>Generate chapter</span>
             </button>
           </div>
         )}
@@ -152,9 +168,9 @@ export default function StorybookView({
       )}
 
       {storybook.loading ? (
-        <div className="flex items-center justify-center py-20 text-white/40">
+        <div className="flex items-center justify-center py-20" style={{ color: '#6e6348' }}>
           <Sparkles className="animate-pulse" size={20} />
-          <span className="ml-3 text-sm font-semibold uppercase tracking-wider">Loading chronicle…</span>
+          <span className="ml-3 text-sm font-semibold uppercase tracking-wider" style={{ fontFamily: "'Cinzel', serif" }}>Loading chronicle…</span>
         </div>
       ) : visibleChapters.length === 0 ? (
         <EmptyState isDM={isDM} onGenerate={() => setIsGenerateOpen(true)} />
@@ -203,27 +219,33 @@ export default function StorybookView({
 function EmptyState({ isDM, onGenerate }) {
   return (
     <div
-      className="text-center py-20 px-6 rounded-3xl border"
+      className="text-center py-20 px-6 rounded-lg"
       style={{
-        background: 'color-mix(in srgb, var(--surface) 60%, transparent)',
-        borderColor: 'var(--line)'
+        background: '#2a2419',
+        border: '2px solid rgba(196, 154, 60, 0.15)'
       }}
     >
-      <BookMarked size={56} className="mx-auto mb-4 text-white/30" />
-      <h3 className="text-xl font-bold text-white/90 mb-2 font-cinzel">No chapters yet</h3>
-      <p className="text-white/50 max-w-md mx-auto">
+      <BookMarked size={56} className="mx-auto mb-4" style={{ color: '#6e6348' }} />
+      <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "'Cinzel', serif", color: '#d4c5a0' }}>No chapters yet</h3>
+      <p className="max-w-md mx-auto" style={{ color: '#a0926e', fontFamily: "'EB Garamond', 'Crimson Pro', serif" }}>
         {isDM
           ? 'Finalize a session to get an auto-drafted chapter, or generate one manually. The AI turns your session notes into illustrated prose.'
-          : 'Your GM hasn’t published any chapters of the chronicle yet. Check back after the next session.'}
+          : "Your GM hasn't published any chapters of the chronicle yet. Check back after the next session."}
       </p>
       {isDM && (
         <button
           type="button"
           onClick={onGenerate}
-          className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold transition"
+          className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition"
           style={{
-            background: 'color-mix(in srgb, var(--primary) 25%, transparent)',
-            border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)'
+            background: 'rgba(196, 154, 60, 0.15)',
+            border: '1px solid rgba(196, 154, 60, 0.3)',
+            color: '#c49a3c',
+            fontFamily: "'Cinzel', serif",
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase'
           }}
         >
           <Wand2 size={16} />
@@ -233,3 +255,4 @@ function EmptyState({ isDM, onGenerate }) {
     </div>
   );
 }
+
