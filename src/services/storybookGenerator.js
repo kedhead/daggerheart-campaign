@@ -2,11 +2,12 @@
  * Storybook Generator Service
  *
  * Orchestrates chapter generation for the "Story So Far" feature:
- *  1. POST /api/generate-storybook-chapter to get prose + scene prompts + spotlights
+ *  1. POST /api/generate-storybook (action:'chapter') to get prose + scene
+ *     prompts + spotlights.
  *  2. For each featured entity, ensure a cached "styled portrait" exists in the
- *     selected storybook style. If missing or stale, describe the source portrait
- *     via /api/describe-image, then redraw it via /api/generate-image and cache
- *     the result on the entity doc.
+ *     selected storybook style. If missing or stale, describe the source
+ *     portrait via /api/generate-storybook (action:'describe'), then redraw it
+ *     via /api/generate-image and cache the result on the entity doc.
  *  3. Compose each scene's final DALL-E prompt with the cached entity
  *     descriptions baked in so characters appear consistently.
  *  4. Upload all generated images to Firebase Storage.
@@ -59,14 +60,14 @@ async function uploadDataUrl(dataUrl, storagePath) {
 }
 
 async function describeImage(imageUrl, subjectHint, apiKey) {
-  const res = await fetch('/api/describe-image', {
+  const res = await fetch('/api/generate-storybook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageUrl, subjectHint, apiKey: apiKey || undefined })
+    body: JSON.stringify({ action: 'describe', imageUrl, subjectHint, apiKey: apiKey || undefined })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `describe-image failed: ${res.statusText}`);
+    throw new Error(err.error || `describe failed: ${res.statusText}`);
   }
   const data = await res.json();
   return data.description || '';
@@ -307,10 +308,11 @@ export async function generateChapter({
     .slice(0, 2)
     .map(c => `${c.title}: ${(c.prose || '').split('\n\n').slice(0, 2).join(' ').slice(0, 280)}`);
 
-  const textRes = await fetch('/api/generate-storybook-chapter', {
+  const textRes = await fetch('/api/generate-storybook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
+      action: 'chapter',
       campaignContext,
       session: {
         title: session.title,
