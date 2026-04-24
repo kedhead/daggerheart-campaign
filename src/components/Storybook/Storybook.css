@@ -1,427 +1,820 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Storybook — Old Fantasy Book Theme
-   Parchment textures, ornate typography, and weathered-tome atmosphere
+   Storybook — The Bound Volume
+   A leather-wrapped, two-page spread reading experience. The page turns,
+   illuminated initials, gilded plates, and running heads are the signature.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Parchment page container ─────────────────────────────────────────────── */
+:root {
+  --sb-parchment:     #ecdaae;
+  --sb-parchment-lo:  #dcc48b;
+  --sb-parchment-hi:  #f5e6bb;
+  --sb-ink:           #2a1e10;
+  --sb-ink-soft:      #4a3218;
+  --sb-ink-muted:     #6a4f2a;
+  --sb-gilt:          #b9883a;
+  --sb-gilt-bright:   #e2b860;
+  --sb-gilt-deep:     #6e4c12;
+  --sb-leather:       #2a1810;
+  --sb-leather-hi:    #3f2617;
+  --sb-leather-lo:    #180c06;
+}
 
-.storybook-page {
-  --parchment: #1e1a14;
-  --parchment-light: #2a2419;
-  --parchment-text: #d4c5a0;
-  --parchment-muted: #a0926e;
-  --parchment-dim: #6e6348;
-  --parchment-accent: #c49a3c;
-  --parchment-accent-soft: rgba(196, 154, 60, 0.15);
-  --parchment-border: rgba(196, 154, 60, 0.2);
-  --parchment-border-strong: rgba(196, 154, 60, 0.35);
-  --parchment-shadow: rgba(0, 0, 0, 0.5);
+/* ── Desk / reading table surround ───────────────────────────────────────── */
 
-  position: relative;
+.sb-desk {
+  min-height: 100%;
+  padding: 2rem 1rem 4rem;
   background:
-    /* subtle noise/grain texture via radial spots */
-    radial-gradient(ellipse at 20% 50%, rgba(196, 154, 60, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 30%, rgba(196, 154, 60, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(139, 92, 40, 0.03) 0%, transparent 50%),
-    linear-gradient(180deg, var(--parchment) 0%, var(--parchment-light) 40%, var(--parchment) 100%);
-  color: var(--parchment-text);
-  min-height: 100vh;
+    /* warm lamplight pool top-center */
+    radial-gradient(ellipse 60% 40% at 50% 8%, rgba(230, 180, 100, 0.12), transparent 70%),
+    /* vignette shadow bottom */
+    radial-gradient(ellipse 80% 60% at 50% 110%, rgba(0, 0, 0, 0.55), transparent 60%),
+    /* leather grain — layered diagonal striations */
+    repeating-linear-gradient(115deg, rgba(0,0,0,0.04) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient( 25deg, rgba(255,200,130,0.02) 0 1px, transparent 1px 5px),
+    linear-gradient(180deg, var(--sb-leather-hi) 0%, var(--sb-leather) 50%, var(--sb-leather-lo) 100%);
 }
 
-/* Vignette overlay for aged-edge effect */
-.storybook-page::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background:
-    radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.35) 100%);
+/* ── Toolbar (outside the book) ──────────────────────────────────────────── */
+
+.sb-toolbar {
+  max-width: 1280px;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0.5rem;
 }
-
-/* Ensure content sits above the vignette */
-.storybook-page > * {
-  position: relative;
-  z-index: 2;
-}
-
-/* ── Chapter title area ───────────────────────────────────────────────────── */
-
-.storybook-chapter-header {
-  text-align: center;
-  padding: 2rem 1rem 1.5rem;
-}
-
-.storybook-chapter-label {
+.sb-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
   font-family: 'Cinzel', serif;
-  font-size: 0.7rem;
-  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.72rem;
+  color: rgba(233, 212, 170, 0.75);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(185, 136, 58, 0.35);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color 180ms, background 180ms, border-color 180ms;
+}
+.sb-toolbar-btn:hover {
+  color: var(--sb-gilt-bright);
+  background: rgba(0, 0, 0, 0.5);
+  border-color: var(--sb-gilt);
+}
+
+/* ── The book: leather cover + raised bands ──────────────────────────────── */
+
+.sb-book-frame {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.25rem;
+  border-radius: 4px 8px 8px 4px;
+  background:
+    linear-gradient(90deg,
+      #0a0604 0 8px,                  /* spine shadow */
+      #1a100a 8px 14px,
+      var(--sb-leather) 14px 100%
+    ),
+    radial-gradient(ellipse at 30% 20%, rgba(185, 136, 58, 0.12), transparent 60%);
+  background-blend-mode: normal, screen;
+  border: 1px solid #000;
+  box-shadow:
+    0 0 0 1px rgba(185, 136, 58, 0.15),
+    0 30px 60px rgba(0, 0, 0, 0.75),
+    0 10px 20px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 6px #1a100a,
+    inset 0 0 0 7px rgba(185, 136, 58, 0.25);
+  position: relative;
+}
+
+/* Corner cartouches (little gilt brackets) */
+.sb-book-frame::before,
+.sb-book-frame::after {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background:
+    linear-gradient(45deg, transparent 48%, var(--sb-gilt) 49% 51%, transparent 52%),
+    linear-gradient(135deg, transparent 48%, var(--sb-gilt) 49% 51%, transparent 52%);
+  opacity: 0.6;
+}
+.sb-book-frame::before { top: 14px; left: 14px; }
+.sb-book-frame::after  { top: 14px; right: 14px; transform: scaleX(-1); }
+
+/* ── The spread: two facing pages ────────────────────────────────────────── */
+
+.sb-spread {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+  border-radius: 2px;
+  min-height: 720px;
+  background: var(--sb-parchment);
+}
+
+/* Gutter shadow where pages meet */
+.sb-spread::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 38px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    linear-gradient(90deg,
+      transparent 0%,
+      rgba(0,0,0,0.25) 40%,
+      rgba(0,0,0,0.45) 50%,
+      rgba(0,0,0,0.25) 60%,
+      transparent 100%);
+  z-index: 3;
+}
+
+/* Animated page turn */
+.sb-spread.is-turning .sb-leaf {
+  animation: sb-leaf-turn 420ms cubic-bezier(0.4, 0.1, 0.2, 1);
+  transform-origin: center center;
+}
+@keyframes sb-leaf-turn {
+  0%   { opacity: 0.3; transform: rotateY(-8deg) translateX(-6px); }
+  100% { opacity: 1;   transform: rotateY(0)      translateX(0); }
+}
+
+/* ── Individual leaf (page) ──────────────────────────────────────────────── */
+
+.sb-leaf {
+  position: relative;
+  padding: 3.5rem 3rem 3.25rem;
+  color: var(--sb-ink);
+  font-family: 'EB Garamond', 'Crimson Pro', 'Georgia', serif;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  min-height: 720px;
+  display: flex;
+  flex-direction: column;
+
+  background-color: var(--sb-parchment);
+  background-image:
+    /* lamplight wash */
+    radial-gradient(ellipse at 50% 0%, rgba(255, 230, 180, 0.4), transparent 60%),
+    /* aged stains */
+    radial-gradient(circle 80px at 22% 25%, rgba(140, 90, 30, 0.06), transparent),
+    radial-gradient(circle 100px at 78% 70%, rgba(140, 90, 30, 0.07), transparent),
+    radial-gradient(circle 60px at 60% 15%, rgba(120, 70, 20, 0.05), transparent),
+    /* subtle paper grain */
+    repeating-linear-gradient(103deg, rgba(140, 90, 30, 0.03) 0 2px, transparent 2px 8px),
+    repeating-linear-gradient( 17deg, rgba(140, 90, 30, 0.025) 0 2px, transparent 2px 6px),
+    linear-gradient(170deg, var(--sb-parchment-hi) 0%, var(--sb-parchment) 45%, var(--sb-parchment-lo) 100%);
+}
+
+/* Inner edge shadow on each leaf (so the gutter darkens into the binding) */
+.sb-leaf--left  { box-shadow: inset -28px 0 40px -18px rgba(60, 30, 5, 0.55); }
+.sb-leaf--right { box-shadow: inset  28px 0 40px -18px rgba(60, 30, 5, 0.55); }
+
+/* ── Running head + folio ────────────────────────────────────────────────── */
+
+.sb-head {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
   letter-spacing: 0.35em;
   text-transform: uppercase;
-  color: var(--parchment-accent);
-  display: block;
-  margin-bottom: 0.75rem;
+  color: var(--sb-ink-muted);
+  padding-bottom: 0.65rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 1px solid rgba(110, 76, 18, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
+.sb-head-swash { color: var(--sb-gilt-deep); font-size: 0.9rem; }
+.sb-leaf--left  .sb-head { flex-direction: row; }
+.sb-leaf--right .sb-head { flex-direction: row-reverse; }
 
-.storybook-chapter-title {
+.sb-folio {
+  margin-top: auto;
+  padding-top: 1.25rem;
   font-family: 'Cinzel', serif;
-  font-size: clamp(2rem, 5vw, 3.5rem);
-  font-weight: 700;
-  color: var(--parchment-text);
-  line-height: 1.15;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.3em;
+  color: var(--sb-ink-muted);
+  text-align: center;
 }
 
-/* Ornamental divider */
-.storybook-ornament {
+/* ── Title page (spread 0) ───────────────────────────────────────────────── */
+
+.sb-title-leaf {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.sb-title-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--sb-gilt-deep);
+  margin-bottom: 0.9rem;
+}
+.sb-title {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.12;
+  color: var(--sb-ink);
+  letter-spacing: 0.02em;
+  margin: 0 0 1.5rem;
+  text-shadow: 0 1px 0 rgba(255, 235, 190, 0.6);
+}
+.sb-title-ornament {
+  width: 180px;
+  height: 16px;
+  background:
+    linear-gradient(90deg,
+      transparent 0%,
+      var(--sb-gilt) 20%,
+      var(--sb-gilt-bright) 50%,
+      var(--sb-gilt) 80%,
+      transparent 100%);
+  mask-image:
+    radial-gradient(circle at center, transparent 4px, #000 4px 6px, transparent 6px),
+    linear-gradient(#000, #000);
+  -webkit-mask-image:
+    radial-gradient(circle at center, transparent 4px, #000 4px 6px, transparent 6px),
+    linear-gradient(#000, #000);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0.9;
+}
+.sb-title-lozenge {
+  width: 10px; height: 10px;
+  transform: rotate(45deg);
+  background: var(--sb-gilt);
+  box-shadow: 0 0 0 2px rgba(255, 235, 190, 0.6), inset 0 0 0 1px var(--sb-gilt-deep);
+  margin: 1.25rem auto;
+}
+.sb-title-session {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--sb-ink-soft);
+}
+
+/* ── Prose typography ─────────────────────────────────────────────────────── */
+
+.sb-prose p {
+  margin: 0 0 1em 0;
+  color: var(--sb-ink);
+  text-indent: 1.6em;
+  text-align: justify;
+  hyphens: auto;
+}
+.sb-prose p:first-child { text-indent: 0; }
+.sb-prose p:last-child  { margin-bottom: 0; }
+.sb-prose em     { font-style: italic; color: var(--sb-ink-soft); }
+.sb-prose strong { font-weight: 600; color: var(--sb-ink); }
+
+/* ── Illuminated initial (first letter of chapter) ───────────────────────── */
+
+.sb-illuminated {
+  float: left;
+  width: 4.2em;
+  height: 4.2em;
+  margin: 0.05em 0.45em 0 0;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  margin: 1.5rem auto;
-  max-width: 280px;
-}
-
-.storybook-ornament::before,
-.storybook-ornament::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(
-    90deg, 
-    transparent, 
-    var(--parchment-accent) 30%, 
-    var(--parchment-accent) 70%, 
-    transparent
-  );
-  opacity: 0.5;
-}
-
-.storybook-ornament-diamond {
-  width: 8px;
-  height: 8px;
-  background: var(--parchment-accent);
-  transform: rotate(45deg);
-  opacity: 0.6;
-  flex-shrink: 0;
-}
-
-/* ── Prose body ───────────────────────────────────────────────────────────── */
-
-.storybook-article {
-  max-width: 68ch;
-  font-size: 1.15rem;
-  line-height: 1.85;
-}
-
-.storybook-prose p {
-  margin: 0 0 1.2em 0;
-  font-family: 'EB Garamond', 'Crimson Pro', 'Georgia', serif;
-  font-size: 1.15rem;
-  line-height: 1.85;
-  color: var(--parchment-text);
-  text-indent: 1.5em;
-  hyphens: auto;
-  text-align: justify;
-}
-
-/* First paragraph after a scene/heading — no indent */
-.storybook-article > .storybook-prose:first-child p:first-child {
-  text-indent: 0;
-}
-
-.storybook-prose p:last-child {
-  margin-bottom: 0;
-}
-
-.storybook-prose em {
-  font-style: italic;
-  color: var(--parchment-accent);
-}
-
-.storybook-prose strong {
-  color: var(--parchment-text);
-  font-weight: 600;
-}
-
-/* ── Drop cap — ornate old-book style ─────────────────────────────────────── */
-
-.storybook-article > .storybook-prose:first-child p:first-child::first-letter {
   font-family: 'Cinzel', serif;
-  font-size: 4.2em;
-  float: left;
-  line-height: 0.8;
-  padding: 0.05em 0.12em 0 0;
-  color: var(--parchment-accent);
   font-weight: 700;
-  text-shadow: 1px 2px 4px rgba(0, 0, 0, 0.4);
+  font-size: 3.3em;
+  line-height: 1;
+  color: var(--sb-gilt-deep);
+
+  /* SVG frame rendered via background */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='%23b9883a'/><stop offset='0.5' stop-color='%23e2b860'/><stop offset='1' stop-color='%236e4c12'/></linearGradient></defs><rect x='2' y='2' width='96' height='96' fill='none' stroke='url(%23g)' stroke-width='2'/><rect x='6' y='6' width='88' height='88' fill='none' stroke='%236e4c12' stroke-width='0.5'/><path d='M2 8 Q8 2 14 2 M98 8 Q92 2 86 2 M2 92 Q8 98 14 98 M98 92 Q92 98 86 98' fill='none' stroke='%236e4c12' stroke-width='1.2'/><path d='M50 4 Q54 8 50 12 Q46 8 50 4 Z' fill='%23b9883a'/><path d='M50 88 Q54 92 50 96 Q46 92 50 88 Z' fill='%23b9883a'/></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-color: rgba(255, 235, 180, 0.55);
+  box-shadow: inset 0 0 20px rgba(110, 76, 18, 0.15);
+  text-shadow: 0 1px 0 rgba(255, 235, 190, 0.8);
 }
 
-/* ── Scene illustrations ──────────────────────────────────────────────────── */
+/* ── Scene plate — full-bleed within a leaf ──────────────────────────────── */
 
-.storybook-scene-figure {
-  margin: 2.5rem 0;
-  border-radius: 4px;
-  overflow: hidden;
-  border: 3px double var(--parchment-border-strong);
-  box-shadow:
-    0 4px 20px var(--parchment-shadow),
-    inset 0 0 30px rgba(0, 0, 0, 0.15);
+.sb-plate {
+  margin: 0 -1rem 1.5rem;
+  padding: 0;
   cursor: zoom-in;
-  background: var(--parchment);
   position: relative;
 }
-
-/* Inner glow edge */
-.storybook-scene-figure::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  box-shadow: inset 0 0 15px rgba(196, 154, 60, 0.08);
-  pointer-events: none;
+.sb-plate-frame {
+  position: relative;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, var(--sb-parchment-hi), var(--sb-parchment-lo));
+  border: 1px solid var(--sb-gilt-deep);
+  box-shadow:
+    inset 0 0 0 1px rgba(226, 184, 96, 0.5),
+    inset 0 0 0 5px var(--sb-parchment),
+    inset 0 0 0 6px var(--sb-gilt),
+    inset 0 0 0 7px var(--sb-gilt-deep),
+    0 4px 14px rgba(0, 0, 0, 0.25);
 }
-
-.storybook-scene-figure img {
+.sb-plate img {
+  display: block;
   width: 100%;
   height: auto;
-  display: block;
-  /* Slight sepia warmth to match the book feel */
-  filter: sepia(8%) saturate(90%);
+  filter: sepia(6%) saturate(95%) contrast(102%);
 }
-
-.storybook-scene-caption {
-  padding: 0.75rem 1.25rem;
-  font-family: 'EB Garamond', 'Crimson Pro', serif;
-  font-style: italic;
-  font-size: 0.95rem;
-  color: var(--parchment-muted);
+.sb-plate-caption {
   text-align: center;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.2) 0%,
-    var(--parchment) 100%
-  );
-  border-top: 1px solid var(--parchment-border);
-}
-
-/* Scene figure spacing when rendered inside the article column */
-.storybook-article figure,
-.storybook-article .storybook-scene-figure {
-  margin-left: 0;
-  margin-right: 0;
-}
-
-/* ── Sidebar: Featured Cast & Memories ────────────────────────────────────── */
-
-.storybook-sidebar-heading {
   font-family: 'Cinzel', serif;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--parchment-accent);
-  margin-bottom: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  color: var(--sb-ink-soft);
+  padding: 0.85rem 0.5rem 0;
 }
 
-.storybook-spotlight-card {
-  display: flex;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid var(--parchment-border);
-  background: linear-gradient(
-    135deg,
-    var(--parchment-light) 0%,
-    var(--parchment) 100%
-  );
+/* SVG corner flourishes at the four corners of each plate */
+.sb-plate-corner {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  z-index: 2;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><g fill='none' stroke='%23b9883a' stroke-width='1.2'><path d='M4 4 C 10 4, 14 8, 14 14 M4 4 C 4 10, 8 14, 14 14'/><circle cx='14' cy='14' r='1.6' fill='%23b9883a'/><path d='M4 4 L 18 18'/></g></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.9;
+}
+.sb-plate-corner.tl { top: 2px;    left: 2px; }
+.sb-plate-corner.tr { top: 2px;    right: 2px; transform: scaleX(-1); }
+.sb-plate-corner.bl { bottom: 2px; left: 2px; transform: scaleY(-1); }
+.sb-plate-corner.br { bottom: 2px; right: 2px; transform: scale(-1,-1); }
+
+/* ── Dramatis Personae (on its own spread) ───────────────────────────────── */
+
+.sb-section-label {
+  font-family: 'Cinzel', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-size: 0.78rem;
+  color: var(--sb-gilt-deep);
+  text-align: center;
+  margin-bottom: 1.5rem;
 }
 
-.storybook-spotlight-portrait {
+.sb-personae {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.sb-persona {
+  display: flex;
+  gap: 0.8rem;
+  padding: 0.85rem;
+  background: rgba(255, 235, 180, 0.35);
+  border: 1px solid rgba(110, 76, 18, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 235, 190, 0.5);
+  border-radius: 1px;
+}
+.sb-persona-avatar {
   width: 56px;
   height: 56px;
-  border-radius: 6px;
+  flex: 0 0 56px;
+  border-radius: 50%;
   overflow: hidden;
-  flex-shrink: 0;
-  border: 1px solid var(--parchment-border-strong);
-  background: var(--parchment);
+  border: 2px solid var(--sb-gilt);
+  box-shadow: inset 0 0 0 1px var(--sb-parchment), 0 0 0 1px var(--sb-gilt-deep);
+  background: var(--sb-parchment-lo);
 }
-
-.storybook-spotlight-name {
+.sb-persona-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sb-persona-name {
   font-family: 'Cinzel', serif;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--parchment-text);
-}
-
-.storybook-spotlight-type {
-  font-size: 0.6rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--parchment-dim);
-  margin-bottom: 0.25rem;
-}
-
-.storybook-spotlight-moment {
-  font-family: 'EB Garamond', 'Crimson Pro', serif;
-  font-style: italic;
-  font-size: 0.82rem;
-  line-height: 1.4;
-  color: var(--parchment-muted);
-}
-
-/* ── Journal section ──────────────────────────────────────────────────────── */
-
-.storybook-journal-section {
-  border-top: 1px solid var(--parchment-border);
-  padding-top: 2rem;
-}
-
-.storybook-journal-entry {
-  padding: 1rem 1.25rem;
-  border-radius: 8px;
-  border: 1px solid var(--parchment-border);
-  background: var(--parchment-light);
-}
-
-.storybook-journal-author {
-  font-family: 'Cinzel', serif;
-  font-weight: 600;
-  color: var(--parchment-text);
-}
-
-.storybook-journal-entry .storybook-prose p {
+  font-weight: 700;
+  color: var(--sb-ink);
   font-size: 0.95rem;
+  line-height: 1.2;
+}
+.sb-persona-kind {
+  font-family: 'Cinzel', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.62rem;
+  color: var(--sb-gilt-deep);
+  margin-bottom: 0.35rem;
+}
+.sb-persona-moment {
+  font-size: 0.88rem;
+  font-style: italic;
+  color: var(--sb-ink-soft);
+  line-height: 1.5;
+}
+
+/* ── Table Memories grid ─────────────────────────────────────────────────── */
+
+.sb-memories {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+.sb-memory {
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 2px solid var(--sb-gilt-deep);
+  box-shadow: inset 0 0 0 1px var(--sb-parchment-hi);
+  cursor: zoom-in;
+  transition: transform 220ms ease;
+}
+.sb-memory:hover { transform: scale(1.03); }
+.sb-memory img, .sb-memory video { width: 100%; height: 100%; object-fit: cover; }
+.sb-memory-slate {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--sb-parchment-lo);
+  color: var(--sb-ink-soft);
+}
+
+/* ── Journal entries ─────────────────────────────────────────────────────── */
+
+.sb-journal-entry {
+  padding: 1rem 1.1rem;
+  background: rgba(255, 235, 180, 0.45);
+  border-left: 3px solid var(--sb-gilt);
+  border-right: 1px solid rgba(110, 76, 18, 0.3);
+  box-shadow: 0 1px 2px rgba(60, 30, 5, 0.12);
+  margin-bottom: 0.9rem;
+}
+.sb-journal-head {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.sb-journal-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  color: var(--sb-ink);
+  font-size: 1rem;
+}
+.sb-journal-author {
+  font-family: 'Cinzel', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.62rem;
+  color: var(--sb-gilt-deep);
+}
+.sb-journal-body p {
+  margin: 0 0 0.65em 0;
+  font-style: italic;
+  color: var(--sb-ink-soft);
+  font-size: 0.98rem;
+  line-height: 1.65;
   text-indent: 0;
   text-align: left;
 }
+.sb-journal-body p:last-child { margin-bottom: 0; }
 
-/* ── Back button & toolbar ────────────────────────────────────────────────── */
-
-.storybook-toolbar {
-  border-bottom: 1px solid var(--parchment-border);
-  padding-bottom: 1rem;
+.sb-journal-form {
+  padding: 1.15rem;
+  background: rgba(255, 235, 180, 0.3);
+  border: 1px dashed rgba(110, 76, 18, 0.4);
+}
+.sb-journal-form textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.7rem 0.85rem;
+  background: rgba(255, 245, 215, 0.75);
+  border: 1px solid rgba(110, 76, 18, 0.4);
+  color: var(--sb-ink);
+  font-family: inherit;
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+.sb-journal-form select {
+  background: rgba(255, 245, 215, 0.75);
+  border: 1px solid rgba(110, 76, 18, 0.4);
+  color: var(--sb-ink);
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 0.4rem 0.6rem;
 }
 
-.storybook-back-btn {
+.sb-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
+  padding: 0.55rem 1.1rem;
   font-family: 'Cinzel', serif;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--parchment-muted);
-  background: none;
-  border: none;
-  padding: 0;
+  letter-spacing: 0.22em;
+  font-size: 0.78rem;
+  color: var(--sb-parchment-hi);
+  background: linear-gradient(180deg, var(--sb-ink-soft), var(--sb-ink));
+  border: 1px solid var(--sb-gilt-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 235, 180, 0.15);
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: background 180ms, color 180ms;
 }
-
-.storybook-back-btn:hover {
-  color: var(--parchment-accent);
+.sb-btn:hover {
+  background: linear-gradient(180deg, var(--sb-gilt-deep), var(--sb-ink-soft));
+  color: var(--sb-gilt-bright);
 }
+.sb-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
 
-.storybook-edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  background: var(--parchment-accent-soft);
-  border: 1px solid var(--parchment-border);
-  color: var(--parchment-accent);
-  font-family: 'Cinzel', serif;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
+/* ── Page-turn controls (arrows floating off the book) ───────────────────── */
 
-.storybook-edit-btn:hover {
-  background: var(--parchment-border);
-  border-color: var(--parchment-border-strong);
-}
-
-/* ── Section dividers (between prose and supplementary content) ────────────── */
-
-.storybook-section-divider {
+.sb-turn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  margin: 2rem 0;
+  color: var(--sb-gilt-bright);
+  background: rgba(20, 10, 5, 0.75);
+  border: 1px solid var(--sb-gilt);
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms, color 180ms;
+  z-index: 5;
+}
+.sb-turn:hover {
+  background: rgba(40, 20, 8, 0.92);
+  color: #fff4d4;
+}
+.sb-turn:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+.sb-turn.prev { left: -28px; border-radius: 3px 0 0 3px; }
+.sb-turn.next { right: -28px; border-radius: 0 3px 3px 0; }
+.sb-turn:not(:disabled):hover.prev { transform: translateY(-50%) translateX(-4px); }
+.sb-turn:not(:disabled):hover.next { transform: translateY(-50%) translateX(4px); }
+
+/* ── Progress pips under the book ────────────────────────────────────────── */
+
+.sb-pips {
+  max-width: 1280px;
+  margin: 1.25rem auto 0;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.sb-pip {
+  width: 10px; height: 10px;
+  border: 1px solid rgba(185, 136, 58, 0.45);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: background 180ms, transform 180ms;
+}
+.sb-pip:hover { background: rgba(185, 136, 58, 0.35); }
+.sb-pip.is-current {
+  background: var(--sb-gilt-bright);
+  transform: scale(1.2);
+  border-color: var(--sb-gilt);
 }
 
-.storybook-section-divider::before,
-.storybook-section-divider::after {
+/* ═══════════════════════════════════════════════════════════════════════════
+   Chapter list — a shelf of bound volumes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sb-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 2rem 1.5rem;
+  padding-bottom: 1.5rem;
+  position: relative;
+}
+.sb-shelf::after {
+  /* wooden shelf plank under the books */
   content: '';
-  flex: 1;
-  max-width: 80px;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--parchment-accent) 50%,
-    transparent
-  );
-  opacity: 0.35;
+  position: absolute;
+  left: 0; right: 0;
+  bottom: -12px;
+  height: 14px;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.08) 0 3px, transparent 3px 10px),
+    linear-gradient(180deg, #5c3a1e, #2e1c0d);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.7);
+  border-radius: 2px;
 }
 
-/* ── Media thumbnail grid ─────────────────────────────────────────────────── */
+.sb-volume {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+}
+.sb-volume:hover { transform: translateY(-10px) rotate(-0.4deg); }
 
-.storybook-media-thumb {
-  aspect-ratio: 1;
-  border-radius: 6px;
+.sb-volume-cover {
+  position: relative;
+  aspect-ratio: 5 / 7;
   overflow: hidden;
-  border: 1px solid var(--parchment-border);
-  cursor: zoom-in;
-  transition: border-color 0.2s ease;
+  border-radius: 2px 6px 6px 2px;
+  background:
+    /* leather texture */
+    repeating-linear-gradient(115deg, rgba(0,0,0,0.08) 0 2px, transparent 2px 6px),
+    linear-gradient(180deg, #4a2817, #2a1408);
+  box-shadow:
+    inset 0 0 0 2px var(--sb-gilt-deep),
+    inset 0 0 0 3px rgba(255, 235, 190, 0.12),
+    inset 8px 0 16px rgba(0, 0, 0, 0.55),   /* spine shadow */
+    3px 8px 22px rgba(0, 0, 0, 0.6);
+}
+.sb-volume-cover img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  opacity: 0.72;
+  filter: sepia(20%) saturate(80%) contrast(105%) brightness(0.75);
+}
+.sb-volume-cover::before {
+  /* central gilt cartouche */
+  content: '';
+  position: absolute;
+  inset: 22% 18%;
+  border: 1px solid var(--sb-gilt);
+  box-shadow: inset 0 0 0 1px rgba(255, 235, 190, 0.25);
+  pointer-events: none;
+}
+.sb-volume-cover::after {
+  /* spine raised band */
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 12px;
+  background:
+    linear-gradient(90deg, rgba(255, 235, 190, 0.22), transparent 60%),
+    linear-gradient(180deg,
+      transparent 20%,
+      var(--sb-gilt) 20%, var(--sb-gilt) 22%,
+      transparent 22%, transparent 48%,
+      var(--sb-gilt) 48%, var(--sb-gilt) 50%,
+      transparent 50%, transparent 78%,
+      var(--sb-gilt) 78%, var(--sb-gilt) 80%,
+      transparent 80%);
+  opacity: 0.7;
+  pointer-events: none;
 }
 
-.storybook-media-thumb:hover {
-  border-color: var(--parchment-accent);
+.sb-volume-plate {
+  position: absolute;
+  left: 22%; right: 18%;
+  top: 26%;
+  text-align: center;
+  color: var(--sb-gilt-bright);
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.8);
+  z-index: 2;
+}
+.sb-volume-plate .num {
+  display: block;
+  font-size: 0.62rem;
+  color: rgba(226, 184, 96, 0.8);
+  margin-bottom: 0.3rem;
+  letter-spacing: 0.3em;
+}
+.sb-volume-plate .nm {
+  display: block;
+  font-size: 0.92rem;
+  line-height: 1.15;
+  letter-spacing: 0.06em;
 }
 
-/* ── Animations ───────────────────────────────────────────────────────────── */
+.sb-volume-badge {
+  position: absolute;
+  top: 8px; right: 8px;
+  padding: 3px 8px;
+  font-family: 'Cinzel', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.58rem;
+  background: rgba(0,0,0,0.7);
+  color: var(--sb-gilt-bright);
+  border: 1px solid rgba(226, 184, 96, 0.4);
+  border-radius: 1px;
+  z-index: 3;
+}
+.sb-volume-badge.draft    { color: #d4c5a0; }
+.sb-volume-badge.pending  { color: #e2b860; border-color: #e2b860; }
+.sb-volume-badge.published{ color: #9be09e; border-color: rgba(155, 224, 158, 0.45); }
 
-@keyframes storybook-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.sb-volume-edit {
+  position: absolute;
+  top: 8px; left: 8px;
+  padding: 4px 6px;
+  background: rgba(0,0,0,0.7);
+  color: var(--sb-gilt-bright);
+  border: 1px solid rgba(226, 184, 96, 0.4);
+  cursor: pointer;
+  z-index: 3;
+  opacity: 0.8;
+}
+.sb-volume-edit:hover { opacity: 1; background: rgba(0,0,0,0.9); }
+
+.sb-volume-label {
+  padding: 0.75rem 0 0;
+  text-align: left;
+}
+.sb-volume-label .title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.02rem;
+  color: rgba(233, 212, 170, 0.92);
+  font-weight: 700;
+  line-height: 1.25;
+}
+.sb-volume-label .meta {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  color: rgba(233, 212, 170, 0.55);
+  margin-top: 0.2rem;
 }
 
-.storybook-page {
-  animation: storybook-fade-in 0.6s ease both;
+/* ═══════════════════════════════════════════════════════════════════════════
+   Hero header above the shelf
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sb-hero {
+  max-width: 1280px;
+  margin: 0 auto 2rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 2rem 0.5rem 1.5rem;
+  border-bottom: 1px solid rgba(185, 136, 58, 0.3);
+}
+.sb-hero h1 {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: clamp(2rem, 4vw, 3rem);
+  color: rgba(233, 212, 170, 0.95);
+  letter-spacing: 0.03em;
+  margin: 0.25rem 0 0.4rem;
+}
+.sb-hero-eyebrow {
+  font-family: 'Cinzel', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5em;
+  font-size: 0.72rem;
+  color: var(--sb-gilt-bright);
+}
+.sb-hero-sub {
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  color: rgba(233, 212, 170, 0.65);
+  font-size: 1.05rem;
+  max-width: 56ch;
+  margin-top: 0.3rem;
 }
 
-/* ── Responsive tweaks ────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsive — single page on small screens
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 768px) {
-  .storybook-chapter-title {
-    font-size: 1.8rem;
+@media (max-width: 860px) {
+  .sb-spread {
+    grid-template-columns: 1fr;
+    min-height: unset;
   }
-
-  .storybook-article {
-    font-size: 1.05rem;
+  .sb-spread::before { display: none; }
+  .sb-leaf {
+    padding: 2.5rem 1.5rem 2.5rem;
+    min-height: unset;
+    box-shadow: none !important;
   }
-
-  .storybook-prose p {
-    font-size: 1.05rem;
-    text-align: left;
-    text-indent: 1em;
-  }
+  .sb-leaf--right { display: none; }
+  .sb-leaf--right.is-mobile-visible { display: flex; }
+  .sb-book-frame { padding: 0.75rem; }
+  .sb-turn { width: 44px; height: 60px; }
+  .sb-turn.prev { left: -22px; }
+  .sb-turn.next { right: -22px; }
+  .sb-illuminated { font-size: 2.6em; width: 3.6em; height: 3.6em; }
 }

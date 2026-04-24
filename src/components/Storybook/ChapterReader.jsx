@@ -1,14 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { ArrowLeft, Edit3, Image as ImageIcon, Feather, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit3, ChevronLeft, ChevronRight, Film, Mic, Send, Trash2 } from 'lucide-react';
 import MediaLightbox from './MediaLightbox';
-import JournalEntryForm from './JournalEntryForm';
 import { useChapterJournal } from '../../hooks/useStorybook';
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ChapterReader — a two-page spread, paginated book reading experience.
+
+   The chapter is broken into "leaves" (pages). Each leaf holds a blend of
+   prose paragraphs and scene plates, plus dedicated spreads for the
+   Dramatis Personae, Table Memories, and In-Character Journal.
+
+   On wide screens we render two leaves side-by-side; on mobile, one at a time.
+   Prev/next turn the pages with a small animation.
+   ──────────────────────────────────────────────────────────────────────────── */
 
 export default function ChapterReader({
   chapter,
   campaignId,
-  campaign,
   characters,
   isDM,
   currentUserId,
@@ -20,264 +29,530 @@ export default function ChapterReader({
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const { entries: journalEntries } = useChapterJournal(campaignId, chapter.id);
 
-  // Split prose into paragraphs and interleave with scene images
-  const paragraphs = useMemo(() => {
-    return (chapter.prose || '').split(/\n\n+/).filter(p => p.trim());
-  }, [chapter.prose]);
+  const [spreadIndex, setSpreadIndex] = useState(0);
+  const [turning, setTurning] = useState(false);
 
+  const paragraphs = useMemo(
+    () => (chapter.prose || '').split(/\n\n+/).filter(p => p.trim()),
+    [chapter.prose]
+  );
   const scenes = chapter.scenes || [];
+  const spotlights = chapter.spotlights || [];
   const media = chapter.media || [];
 
-  // All clickable visuals, for the lightbox
-  const allVisuals = useMemo(() => {
-    return [
+  // Build the ordered list of leaves (pages)
+  const leaves = useMemo(
+    () => buildLeaves({ chapter, paragraphs, scenes, spotlights, media, journalEntries }),
+    [chapter, paragraphs, scenes, spotlights, media, journalEntries]
+  );
+
+  // Pair leaves into spreads (2 per view)
+  const spreads = useMemo(() => {
+    const out = [];
+    for (let i = 0; i < leaves.length; i += 2) {
+      out.push([leaves[i], leaves[i + 1] || null]);
+    }
+    return out.length ? out : [[null, null]];
+  }, [leaves]);
+
+  useEffect(() => {
+    if (spreadIndex >= spreads.length) setSpreadIndex(Math.max(0, spreads.length - 1));
+  }, [spreads.length, spreadIndex]);
+
+  const turnPage = (delta) => {
+    const next = spreadIndex + delta;
+    if (next < 0 || next >= spreads.length) return;
+    setTurning(true);
+    setSpreadIndex(next);
+    setTimeout(() => setTurning(false), 420);
+  };
+
+  // Keyboard page-turn
+  useEffect(() => {
+    const onKey = (e) => {
+      if (lightboxItems) return;
+      if (e.key === 'ArrowRight') turnPage(1);
+      else if (e.key === 'ArrowLeft') turnPage(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [spreadIndex, spreads.length, lightboxItems]);
+
+  const allVisuals = useMemo(
+    () => [
       ...scenes.map(s => ({ id: s.id, kind: 'image', url: s.imageUrl, caption: s.caption })),
       ...media
-    ];
-  }, [scenes, media]);
-
+    ],
+    [scenes, media]
+  );
   const openLightbox = (item) => {
-    const index = allVisuals.findIndex(v => v.id === item.id || v.url === item.url);
-    setLightboxIndex(Math.max(0, index));
+    const idx = allVisuals.findIndex(v => v.id === item.id || v.url === item.url);
+    setLightboxIndex(Math.max(0, idx));
     setLightboxItems(allVisuals);
   };
-
-  const handleNavigate = (delta) => {
+  const navigateLightbox = (delta) => {
     if (!lightboxItems) return;
-    const next = (lightboxIndex + delta + lightboxItems.length) % lightboxItems.length;
-    setLightboxIndex(next);
+    setLightboxIndex((lightboxIndex + delta + lightboxItems.length) % lightboxItems.length);
   };
 
-  const handleSubmitJournal = async (entry) => {
-    await storybook.addJournalEntry(chapter.id, entry);
-  };
-
-  // Distribute scenes between paragraphs
-  const renderedBody = [];
-  paragraphs.forEach((p, i) => {
-    renderedBody.push(
-      <div key={`p-${i}`} className="storybook-prose">
-        <ReactMarkdown>{p}</ReactMarkdown>
-      </div>
-    );
-    const sceneIndex = Math.floor((i + 1) * (scenes.length / Math.max(paragraphs.length, 1)));
-    const prevIndex = Math.floor(i * (scenes.length / Math.max(paragraphs.length, 1)));
-    if (sceneIndex > prevIndex && scenes[sceneIndex - 1]) {
-      const scene = scenes[sceneIndex - 1];
-      renderedBody.push(
-        <figure
-          key={`scene-${scene.id}`}
-          className="storybook-scene-figure"
-          onClick={() => openLightbox(scene)}
-        >
-          <img src={scene.imageUrl} alt={scene.caption} />
-          {scene.caption && (
-            <figcaption className="storybook-scene-caption">
-              {scene.caption}
-            </figcaption>
-          )}
-        </figure>
-      );
-    }
-  });
-
-  // Append any scenes that were not yet shown
-  const shownSceneCount = renderedBody.filter(n => n.key?.startsWith('scene-')).length;
-  scenes.slice(shownSceneCount).forEach(scene => {
-    renderedBody.push(
-      <figure
-        key={`scene-${scene.id}`}
-        className="storybook-scene-figure"
-        onClick={() => openLightbox(scene)}
-      >
-        <img src={scene.imageUrl} alt={scene.caption} />
-        {scene.caption && (
-          <figcaption className="storybook-scene-caption">
-            {scene.caption}
-          </figcaption>
-        )}
-      </figure>
-    );
-  });
+  const [leftLeaf, rightLeaf] = spreads[spreadIndex] || [null, null];
+  const runningHead = chapter.title;
+  const chapterLabel = `Chapter ${toRoman(chapter.chapterNumber)}`;
 
   return (
-    <div className="storybook-page max-w-6xl mx-auto p-4 md:p-8 space-y-8">
-      {/* Toolbar */}
-      <header className="storybook-toolbar flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="sb-desk">
+      <div className="sb-toolbar">
+        <button type="button" className="sb-toolbar-btn" onClick={onBack}>
+          <ArrowLeft size={13} /> Close the book
+        </button>
+        <div style={{
+          fontFamily: "'Cinzel', serif",
+          letterSpacing: '0.3em',
+          textTransform: 'uppercase',
+          fontSize: '0.72rem',
+          color: 'rgba(233, 212, 170, 0.55)'
+        }}>
+          Spread {spreadIndex + 1} of {spreads.length}
+        </div>
+        {isDM && (
+          <button type="button" className="sb-toolbar-btn" onClick={onEdit}>
+            <Edit3 size={13} /> Edit chapter
+          </button>
+        )}
+      </div>
+
+      <div className="sb-book-frame" style={{ position: 'relative' }}>
+        <div className={`sb-spread ${turning ? 'is-turning' : ''}`}>
+          <Leaf
+            leaf={leftLeaf}
+            side="left"
+            chapterNumber={chapter.chapterNumber}
+            chapterLabel={chapterLabel}
+            runningHead={runningHead}
+            folio={spreadIndex * 2 + 1}
+            totalFolios={leaves.length}
+            onOpenLightbox={openLightbox}
+            storybook={storybook}
+            chapterId={chapter.id}
+            currentUserId={currentUserId}
+            isDM={isDM}
+            characters={characters}
+          />
+          <Leaf
+            leaf={rightLeaf}
+            side="right"
+            chapterNumber={chapter.chapterNumber}
+            chapterLabel={chapterLabel}
+            runningHead={runningHead}
+            folio={spreadIndex * 2 + 2}
+            totalFolios={leaves.length}
+            onOpenLightbox={openLightbox}
+            storybook={storybook}
+            chapterId={chapter.id}
+            currentUserId={currentUserId}
+            isDM={isDM}
+            characters={characters}
+          />
+        </div>
+
         <button
           type="button"
-          onClick={onBack}
-          className="storybook-back-btn self-start"
+          className="sb-turn prev"
+          aria-label="Previous spread"
+          disabled={spreadIndex === 0}
+          onClick={() => turnPage(-1)}
         >
-          <ArrowLeft size={14} /> Back to Chronicle
+          <ChevronLeft size={22} />
         </button>
-        <div className="flex flex-wrap gap-2">
-          {isDM && (
+        <button
+          type="button"
+          className="sb-turn next"
+          aria-label="Next spread"
+          disabled={spreadIndex >= spreads.length - 1}
+          onClick={() => turnPage(1)}
+        >
+          <ChevronRight size={22} />
+        </button>
+      </div>
+
+      {spreads.length > 1 && (
+        <div className="sb-pips" role="tablist" aria-label="Jump to spread">
+          {spreads.map((_, i) => (
             <button
+              key={i}
               type="button"
-              onClick={onEdit}
-              className="storybook-edit-btn"
-            >
-              <Edit3 size={13} /> Edit
-            </button>
-          )}
+              className={`sb-pip ${i === spreadIndex ? 'is-current' : ''}`}
+              onClick={() => setSpreadIndex(i)}
+              aria-label={`Spread ${i + 1}`}
+              aria-current={i === spreadIndex ? 'true' : 'false'}
+            />
+          ))}
         </div>
-      </header>
-
-      {/* Chapter Title */}
-      <div className="storybook-chapter-header">
-        <span className="storybook-chapter-label">
-          Chapter {chapter.chapterNumber}{chapter.sessionNumber ? ` · Session ${chapter.sessionNumber}` : ''}
-        </span>
-        <h1 className="storybook-chapter-title">
-          {chapter.title}
-        </h1>
-        <div className="storybook-ornament">
-          <div className="storybook-ornament-diamond" />
-        </div>
-      </div>
-
-      {/* Body: prose + sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
-        <article className="storybook-article space-y-4">
-          {renderedBody.length > 0 ? renderedBody : <p style={{ color: 'var(--parchment-muted)' }}>No prose yet.</p>}
-        </article>
-
-        <aside className="space-y-6">
-          {/* Featured Cast */}
-          {chapter.spotlights?.length > 0 && (
-            <section>
-              <h3 className="storybook-sidebar-heading">
-                Featured Cast
-              </h3>
-              <ul className="space-y-3">
-                {chapter.spotlights.map(s => (
-                  <li
-                    key={`${s.entityType}-${s.entityId}`}
-                    className="storybook-spotlight-card"
-                  >
-                    <div className="storybook-spotlight-portrait">
-                      {s.portraitUrl ? (
-                        <img src={s.portraitUrl} alt={s.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: 'var(--parchment-dim)' }}>
-                          {(s.name || '?').slice(0, 1)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="storybook-spotlight-name">{s.name}</div>
-                      <div className="storybook-spotlight-type">
-                        {s.entityType}
-                      </div>
-                      {s.moment && (
-                        <p className="storybook-spotlight-moment">{s.moment}</p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {/* Table Memories */}
-          {media.length > 0 && (
-            <section>
-              <h3 className="storybook-sidebar-heading">
-                <ImageIcon size={12} /> Table Memories
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {media.map(m => (
-                  <MediaThumb key={m.id} item={m} onClick={() => openLightbox(m)} />
-                ))}
-              </div>
-            </section>
-          )}
-        </aside>
-      </div>
-
-      {/* Journal */}
-      <section className="storybook-journal-section space-y-4">
-        <h3 className="storybook-sidebar-heading">
-          <Feather size={12} /> In-Character Journal
-        </h3>
-
-        {journalEntries.length === 0 ? (
-          <p className="text-sm italic" style={{ color: 'var(--parchment-dim)' }}>No journal entries yet. Be the first to share your character's thoughts.</p>
-        ) : (
-          <ul className="space-y-3">
-            {journalEntries.map(entry => (
-              <li
-                key={entry.id}
-                className="storybook-journal-entry"
-              >
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="storybook-journal-author">
-                    {entry.characterName || entry.authorName}
-                  </span>
-                  {entry.characterName && (
-                    <span className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--parchment-dim)' }}>
-                      ({entry.authorName})
-                    </span>
-                  )}
-                  {(entry.authorId === currentUserId || isDM) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm('Delete this journal entry?')) {
-                          storybook.deleteJournalEntry(chapter.id, entry.id);
-                        }
-                      }}
-                      className="ml-auto hover:text-red-400"
-                      style={{ color: 'var(--parchment-dim)' }}
-                      aria-label="Delete entry"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-                <div className="storybook-prose text-sm">
-                  <ReactMarkdown>{entry.content}</ReactMarkdown>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {currentUserId && (
-          <JournalEntryForm
-            characters={characters}
-            currentUserId={currentUserId}
-            onSubmit={handleSubmitJournal}
-          />
-        )}
-      </section>
+      )}
 
       {lightboxItems && (
         <MediaLightbox
           items={lightboxItems}
           index={lightboxIndex}
           onClose={() => setLightboxItems(null)}
-          onNavigate={handleNavigate}
+          onNavigate={navigateLightbox}
         />
       )}
     </div>
   );
 }
 
-function MediaThumb({ item, onClick }) {
-  const preview = (() => {
-    if (item.kind === 'video') return <video src={item.url} className="w-full h-full object-cover" />;
-    if (item.kind === 'audio') return <div className="w-full h-full flex items-center justify-center text-xs font-semibold" style={{ color: 'var(--parchment-muted)' }}>Audio</div>;
-    return <img src={item.url} alt={item.caption || ''} className="w-full h-full object-cover" />;
-  })();
+/* ── Leaf renderer (one side of a spread) ────────────────────────────────── */
+
+function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, totalFolios,
+                onOpenLightbox, storybook, chapterId, currentUserId, isDM, characters }) {
+  if (!leaf) {
+    // Blank verso page — show just aged parchment with a folio
+    return (
+      <div className={`sb-leaf sb-leaf--${side}`} aria-hidden="true">
+        <div className="sb-head">
+          <span className="sb-head-swash">❦</span>
+          <span>&nbsp;</span>
+        </div>
+        <div style={{ flex: 1 }} />
+        <div className="sb-folio">—</div>
+      </div>
+    );
+  }
+
+  const isTitle = leaf.kind === 'title';
+  const showHead = !isTitle;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="storybook-media-thumb"
-    >
-      {preview}
-    </button>
+    <div className={`sb-leaf sb-leaf--${side}`}>
+      {showHead && (
+        <div className="sb-head">
+          <span>{chapterLabel}</span>
+          <span className="sb-head-swash">❦</span>
+          <span style={{ opacity: 0.7 }}>{truncate(runningHead, 42)}</span>
+        </div>
+      )}
+
+      {leaf.kind === 'title' && <TitleLeaf chapter={{ title: leaf.title, chapterNumber, ...leaf }} />}
+
+      {leaf.kind === 'prose' && (
+        <div className="sb-prose">
+          {leaf.paragraphs.map((p, i) => (
+            <ProseParagraph
+              key={`p-${i}`}
+              content={p}
+              illuminated={leaf.firstInChapter && i === 0}
+            />
+          ))}
+        </div>
+      )}
+
+      {leaf.kind === 'plate' && (
+        <>
+          <PlateSection scene={leaf.scene} onClick={() => onOpenLightbox(leaf.scene)} />
+          {leaf.caption && (
+            <div style={{
+              marginTop: '1rem',
+              fontFamily: "'EB Garamond', serif",
+              fontStyle: 'italic',
+              textAlign: 'center',
+              color: 'var(--sb-ink-soft)'
+            }}>
+              {leaf.caption}
+            </div>
+          )}
+        </>
+      )}
+
+      {leaf.kind === 'personae' && (
+        <>
+          <div className="sb-section-label">Dramatis Personae</div>
+          <div className="sb-personae">
+            {leaf.spotlights.map(s => (
+              <div key={`${s.entityType}-${s.entityId}`} className="sb-persona">
+                <div className="sb-persona-avatar">
+                  {s.portraitUrl
+                    ? <img src={s.portraitUrl} alt={s.name} />
+                    : <div style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'100%', height:'100%', color:'var(--sb-ink-soft)', fontFamily:'Cinzel', fontWeight:700 }}>{(s.name||'?').slice(0,1)}</div>}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="sb-persona-name">{s.name}</div>
+                  <div className="sb-persona-kind">{s.entityType}</div>
+                  {s.moment && <div className="sb-persona-moment">{s.moment}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {leaf.kind === 'memories' && (
+        <>
+          <div className="sb-section-label">Table Memories</div>
+          <div className="sb-memories">
+            {leaf.media.map(m => (
+              <div key={m.id} className="sb-memory" role="button" tabIndex={0} onClick={() => onOpenLightbox(m)}>
+                {m.kind === 'image' && <img src={m.url} alt={m.caption || ''} />}
+                {m.kind === 'video' && <div className="sb-memory-slate"><Film size={24} /></div>}
+                {m.kind === 'audio' && <div className="sb-memory-slate"><Mic size={24} /></div>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {leaf.kind === 'journal' && (
+        <>
+          <div className="sb-section-label">In-Character Journal</div>
+          {leaf.entries.length === 0
+            ? <p style={{ textAlign:'center', fontStyle:'italic', color:'var(--sb-ink-muted)' }}>The page awaits the first voice.</p>
+            : leaf.entries.map(entry => (
+                <div key={entry.id} className="sb-journal-entry">
+                  <div className="sb-journal-head">
+                    <span className="sb-journal-name">{entry.characterName || entry.authorName}</span>
+                    {entry.characterName && <span className="sb-journal-author">— {entry.authorName}</span>}
+                    {(entry.authorId === currentUserId || isDM) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Delete this journal entry?')) {
+                            storybook.deleteJournalEntry(chapterId, entry.id);
+                          }
+                        }}
+                        aria-label="Delete entry"
+                        style={{ marginLeft:'auto', background:'transparent', border:'none', color:'var(--sb-ink-muted)', cursor:'pointer' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="sb-journal-body">
+                    <ReactMarkdown>{entry.content}</ReactMarkdown>
+                  </div>
+                </div>
+              ))
+          }
+          {leaf.isLastJournal && currentUserId && (
+            <div style={{ marginTop: '1rem' }}>
+              <JournalComposer
+                characters={characters}
+                currentUserId={currentUserId}
+                onSubmit={(entry) => storybook.addJournalEntry(chapterId, entry)}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="sb-folio">
+        {folio}{totalFolios > 0 ? ` · ${totalFolios}` : ''}
+      </div>
+    </div>
   );
+}
+
+/* ── Renderers for page content ──────────────────────────────────────────── */
+
+function TitleLeaf({ chapter }) {
+  return (
+    <div className="sb-title-leaf" style={{ flex: 1 }}>
+      <div className="sb-title-eyebrow">Chapter {toRoman(chapter.chapterNumber)}</div>
+      <h1 className="sb-title">{chapter.title}</h1>
+      <div className="sb-title-ornament" aria-hidden="true" />
+      <div className="sb-title-lozenge" aria-hidden="true" />
+      {chapter.sessionNumber && (
+        <div className="sb-title-session">from the chronicle of Session {chapter.sessionNumber}</div>
+      )}
+    </div>
+  );
+}
+
+function ProseParagraph({ content, illuminated }) {
+  // Take the first character for the illuminated initial; render the rest as
+  // a single paragraph after the drop-cap box.
+  if (!illuminated) {
+    return <div><ReactMarkdown>{content}</ReactMarkdown></div>;
+  }
+  const first = content.trimStart().charAt(0);
+  const rest = content.trimStart().slice(1);
+  return (
+    <div>
+      <span className="sb-illuminated">{first}</span>
+      <ReactMarkdown>{rest}</ReactMarkdown>
+    </div>
+  );
+}
+
+function PlateSection({ scene, onClick }) {
+  return (
+    <div className="sb-plate" onClick={onClick} role="button" tabIndex={0}>
+      <div className="sb-plate-frame">
+        <img src={scene.imageUrl} alt={scene.caption || ''} />
+        <span className="sb-plate-corner tl" />
+        <span className="sb-plate-corner tr" />
+        <span className="sb-plate-corner bl" />
+        <span className="sb-plate-corner br" />
+      </div>
+      {scene.caption && <div className="sb-plate-caption">{scene.caption}</div>}
+    </div>
+  );
+}
+
+/* ── Journal composer ────────────────────────────────────────────────────── */
+
+function JournalComposer({ characters, currentUserId, onSubmit }) {
+  const myCharacters = useMemo(
+    () => (characters || []).filter(c => c.userId === currentUserId || c.ownerId === currentUserId),
+    [characters, currentUserId]
+  );
+  const [characterId, setCharacterId] = useState(myCharacters[0]?.id || '');
+  const [content, setContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const selected = myCharacters.find(c => c.id === characterId);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!content.trim()) return;
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        content: content.trim(),
+        characterId: selected?.id || null,
+        characterName: selected?.name || ''
+      });
+      setContent('');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form className="sb-journal-form" onSubmit={handleSubmit}>
+      {myCharacters.length > 1 && (
+        <div style={{ marginBottom: '0.65rem' }}>
+          <label style={{ fontFamily:"'Cinzel', serif", textTransform:'uppercase', letterSpacing:'0.22em', fontSize:'0.7rem', color:'var(--sb-gilt-deep)', marginRight:'0.6rem' }}>
+            Writing as
+          </label>
+          <select value={characterId} onChange={(e) => setCharacterId(e.target.value)}>
+            {myCharacters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+      )}
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={selected ? `What did ${selected.name} feel, recall, or fear?` : 'Pen an entry to this chapter…'}
+      />
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'0.75rem', flexWrap:'wrap', gap:'0.5rem' }}>
+        <span style={{ fontFamily:"'Cinzel', serif", textTransform:'uppercase', letterSpacing:'0.22em', fontSize:'0.68rem', color:'var(--sb-gilt-deep)' }}>
+          {selected ? `By ${selected.name}` : 'Anonymous entry'}
+        </span>
+        <button type="submit" className="sb-btn" disabled={!content.trim() || submitting}>
+          <Send size={13} />
+          {submitting ? 'Inking…' : 'Enter in the ledger'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/* ── Pagination — deciding which content lands on which leaf ────────────── */
+
+function buildLeaves({ chapter, paragraphs, scenes, spotlights, media, journalEntries }) {
+  const leaves = [];
+
+  // 1. Title page
+  leaves.push({
+    kind: 'title',
+    title: chapter.title,
+    chapterNumber: chapter.chapterNumber,
+    sessionNumber: chapter.sessionNumber
+  });
+
+  // 2. Prose + scenes, interleaved
+  //    Simple heuristic: assign each scene to roughly evenly-spaced slots
+  //    between paragraphs; then pack each page with ~4 paragraphs.
+  const slots = [];
+  paragraphs.forEach(p => slots.push({ type: 'p', value: p }));
+  if (scenes.length) {
+    const step = Math.max(1, Math.floor(paragraphs.length / (scenes.length + 1)));
+    let insertAt = step;
+    scenes.forEach(sc => {
+      slots.splice(Math.min(insertAt, slots.length), 0, { type: 'scene', value: sc });
+      insertAt += step + 1;
+    });
+  }
+
+  const PARAGRAPHS_PER_LEAF = 4;
+  let current = { kind: 'prose', paragraphs: [], firstInChapter: true };
+  let pCount = 0;
+
+  const flushProse = () => {
+    if (current.paragraphs.length) {
+      leaves.push(current);
+      current = { kind: 'prose', paragraphs: [], firstInChapter: false };
+      pCount = 0;
+    }
+  };
+
+  for (const slot of slots) {
+    if (slot.type === 'p') {
+      current.paragraphs.push(slot.value);
+      pCount += 1;
+      if (pCount >= PARAGRAPHS_PER_LEAF) flushProse();
+    } else {
+      flushProse();
+      leaves.push({
+        kind: 'plate',
+        scene: slot.value
+      });
+    }
+  }
+  flushProse();
+
+  // 3. Dramatis personae
+  if (spotlights.length) {
+    leaves.push({ kind: 'personae', spotlights });
+  }
+
+  // 4. Table memories
+  if (media.length) {
+    leaves.push({ kind: 'memories', media });
+  }
+
+  // 5. Journal — break entries into chunks of 3, last one gets the composer
+  const JOURNAL_PER_LEAF = 3;
+  const hasEntries = journalEntries.length > 0;
+  if (hasEntries) {
+    for (let i = 0; i < journalEntries.length; i += JOURNAL_PER_LEAF) {
+      const chunk = journalEntries.slice(i, i + JOURNAL_PER_LEAF);
+      const isLast = i + JOURNAL_PER_LEAF >= journalEntries.length;
+      leaves.push({
+        kind: 'journal',
+        entries: chunk,
+        isLastJournal: isLast
+      });
+    }
+  } else {
+    leaves.push({ kind: 'journal', entries: [], isLastJournal: true });
+  }
+
+  return leaves;
+}
+
+function truncate(s, n) {
+  if (!s) return '';
+  return s.length <= n ? s : s.slice(0, n - 1) + '…';
+}
+
+function toRoman(n) {
+  if (!n || n < 1) return '';
+  const map = [
+    [1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],
+    [100,'C'],[90,'XC'],[50,'L'],[40,'XL'],
+    [10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']
+  ];
+  let out = '', v = n;
+  for (const [num, sym] of map) { while (v >= num) { out += sym; v -= num; } }
+  return out;
 }

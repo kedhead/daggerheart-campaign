@@ -94,61 +94,28 @@ export default function StorybookView({
 
   // ── List view ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen p-6 space-y-8 lr-fade-in" style={{ background: '#1e1a14', fontFamily: 'var(--font-body)' }}>
-      <div
-        className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 relative"
-        style={{ borderBottom: '1px solid rgba(196, 154, 60, 0.2)' }}
-      >
-        <div className="space-y-2 relative z-10">
-          <span style={{ fontFamily: "'Cinzel', serif", fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.35em', textTransform: 'uppercase', color: '#c49a3c' }}>
-            The Chronicle
-          </span>
-          <h1 className="text-3xl md:text-5xl font-bold flex items-center gap-4" style={{ fontFamily: "'Cinzel', serif", color: '#d4c5a0' }}>
-            <BookMarked style={{ color: '#c49a3c' }} size={44} />
+    <div className="sb-desk min-h-screen lr-fade-in">
+      <div className="sb-hero">
+        <div>
+          <span className="sb-hero-eyebrow">The Chronicle</span>
+          <h1>
+            <BookMarked style={{ color: 'var(--sb-gilt-bright)', verticalAlign: '-6px', marginRight: '0.5rem' }} size={40} />
             Story So Far
           </h1>
-          <p className="text-base max-w-2xl" style={{ fontFamily: "'EB Garamond', 'Crimson Pro', serif", color: '#a0926e' }}>
-            An illustrated chronicle of every session, told in watercolor and ink.
-            {visibleChapters.length > 0 && ` ${visibleChapters.length} chapter${visibleChapters.length === 1 ? '' : 's'} recorded.`}
+          <p className="sb-hero-sub">
+            An illustrated chronicle of every session, bound in leather and set down in ink.
+            {visibleChapters.length > 0 && ` ${visibleChapters.length} volume${visibleChapters.length === 1 ? '' : 's'} on the shelf.`}
           </p>
         </div>
         {isDM && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition"
-              style={{
-                background: 'rgba(196, 154, 60, 0.08)',
-                border: '1px solid rgba(196, 154, 60, 0.2)',
-                color: '#a0926e',
-                fontFamily: "'Cinzel', serif",
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase'
-              }}
-            >
-              <SettingsIcon size={16} />
-              <span>Style settings</span>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem' }}>
+            <button type="button" onClick={() => setIsSettingsOpen(true)} className="sb-toolbar-btn">
+              <SettingsIcon size={14} />
+              Style
             </button>
-            <button
-              type="button"
-              onClick={() => setIsGenerateOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition"
-              style={{
-                background: 'rgba(196, 154, 60, 0.15)',
-                border: '1px solid rgba(196, 154, 60, 0.35)',
-                color: '#c49a3c',
-                fontFamily: "'Cinzel', serif",
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase'
-              }}
-            >
-              <Wand2 size={16} />
-              <span>Generate chapter</span>
+            <button type="button" onClick={() => setIsGenerateOpen(true)} className="sb-btn">
+              <Wand2 size={14} />
+              Scribe a new chapter
             </button>
           </div>
         )}
@@ -168,9 +135,9 @@ export default function StorybookView({
       )}
 
       {storybook.loading ? (
-        <div className="flex items-center justify-center py-20" style={{ color: '#6e6348' }}>
-          <Sparkles className="animate-pulse" size={20} />
-          <span className="ml-3 text-sm font-semibold uppercase tracking-wider" style={{ fontFamily: "'Cinzel', serif" }}>Loading chronicle…</span>
+        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '4rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', color: 'rgba(233, 212, 170, 0.55)', fontFamily: "'Cinzel', serif", textTransform: 'uppercase', letterSpacing: '0.3em', fontSize: '0.78rem' }}>
+          <Sparkles className="animate-pulse" size={18} />
+          Loading chronicle…
         </div>
       ) : visibleChapters.length === 0 ? (
         <EmptyState isDM={isDM} onGenerate={() => setIsGenerateOpen(true)} />
@@ -218,40 +185,36 @@ export default function StorybookView({
 
 function EmptyState({ isDM, onGenerate }) {
   return (
-    <div
-      className="text-center py-20 px-6 rounded-lg"
-      style={{
-        background: '#2a2419',
-        border: '2px solid rgba(196, 154, 60, 0.15)'
-      }}
-    >
-      <BookMarked size={56} className="mx-auto mb-4" style={{ color: '#6e6348' }} />
-      <h3 className="text-xl font-bold mb-2" style={{ fontFamily: "'Cinzel', serif", color: '#d4c5a0' }}>No chapters yet</h3>
-      <p className="max-w-md mx-auto" style={{ color: '#a0926e', fontFamily: "'EB Garamond', 'Crimson Pro', serif" }}>
-        {isDM
-          ? 'Finalize a session to get an auto-drafted chapter, or generate one manually. The AI turns your session notes into illustrated prose.'
-          : "Your GM hasn't published any chapters of the chronicle yet. Check back after the next session."}
-      </p>
-      {isDM && (
-        <button
-          type="button"
-          onClick={onGenerate}
-          className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg transition"
-          style={{
-            background: 'rgba(196, 154, 60, 0.15)',
-            border: '1px solid rgba(196, 154, 60, 0.3)',
-            color: '#c49a3c',
-            fontFamily: "'Cinzel', serif",
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase'
-          }}
-        >
-          <Wand2 size={16} />
-          Generate your first chapter
-        </button>
-      )}
+    <div style={{ maxWidth: 720, margin: '2rem auto' }}>
+      <div className="sb-book-frame" style={{ padding: '0.75rem' }}>
+        <div className="sb-spread" style={{ minHeight: 0 }}>
+          <div className="sb-leaf sb-leaf--left" style={{ padding: '3rem 2.25rem', minHeight: 'unset' }}>
+            <div className="sb-title-leaf" style={{ flex: 1 }}>
+              <BookMarked size={40} style={{ color: 'var(--sb-gilt-deep)', margin: '0 auto 1rem', display: 'block' }} />
+              <div className="sb-title-eyebrow">An Empty Volume</div>
+              <h1 className="sb-title" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>No chapters bound yet</h1>
+              <div className="sb-title-ornament" aria-hidden="true" />
+              <p style={{ marginTop: '1.25rem', fontStyle: 'italic', color: 'var(--sb-ink-soft)' }}>
+                {isDM
+                  ? 'Finalize a session and the chronicler will draft a chapter from its notes — or commission one by hand from any completed session.'
+                  : 'The chronicler has yet to set down a chapter. Return after the next session to find the ink dried.'}
+              </p>
+              {isDM && (
+                <div style={{ marginTop: '1.5rem' }}>
+                  <button type="button" onClick={onGenerate} className="sb-btn">
+                    <Wand2 size={14} />
+                    Scribe the first chapter
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="sb-leaf sb-leaf--right" aria-hidden="true" style={{ minHeight: 'unset' }}>
+            <div className="sb-head"><span className="sb-head-swash">❦</span><span>&nbsp;</span></div>
+            <div style={{ flex: 1 }} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
