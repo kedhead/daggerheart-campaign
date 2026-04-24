@@ -59,11 +59,11 @@ async function uploadDataUrl(dataUrl, storagePath) {
   return { url, storagePath };
 }
 
-async function describeImage(imageUrl, subjectHint, apiKey) {
+async function describeImage(imageUrl, subjectHint, entityType, apiKey) {
   const res = await fetch('/api/generate-storybook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'describe', imageUrl, subjectHint, apiKey: apiKey || undefined })
+    body: JSON.stringify({ action: 'describe', imageUrl, subjectHint, entityType, apiKey: apiKey || undefined })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -159,11 +159,22 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
   try {
     let description = fallbackDescription;
     if (sourcePortraitUrl) {
-      const visionDescription = await describeImage(sourcePortraitUrl, entity.name, apiKey);
+      // Build a rich subject hint so the vision model has grounding, not just a name.
+      const hintParts = [entity.name];
+      if (entityType === 'character') {
+        if (entity.ancestry) hintParts.push(entity.ancestry);
+        if (entity.characterClass) hintParts.push(entity.characterClass);
+      } else if (entityType === 'npc') {
+        if (entity.occupation) hintParts.push(entity.occupation);
+      } else if (entityType === 'adversary') {
+        if (entity.role) hintParts.push(entity.role);
+      }
+      const subjectHint = hintParts.filter(Boolean).join(', ');
+      const visionDescription = await describeImage(sourcePortraitUrl, subjectHint, entityType, apiKey);
       if (visionDescription) description = visionDescription;
     }
 
-    const portraitPrompt = `Head-and-shoulders portrait of ${entity.name}. ${description}. Neutral background, facing slightly to one side, no text.`;
+    const portraitPrompt = `Head-and-shoulders portrait of ${entity.name}: ${description} Neutral background, facing slightly to one side, no text, no labels. Match the described appearance exactly — do not add horns, fangs, tails, or monstrous features that are not in the description.`;
 
     const effectiveStyleKey = styleKey === 'custom' ? (styleCustom || 'watercolor') : styleKey;
     const dataUrl = await generateStylizedImage({
@@ -206,13 +217,15 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
 
 // ── Scene generation ──────────────────────────────────────────────────────────
 
-async function generateSceneImage({ scene, entityDescriptions, styleKey, styleCustom, gameSystem, campaignId, apiKey }) {
-  const featuredDescriptions = (scene.featuredEntityIds || [])
-    .map(id => entityDescriptions[id])
+async function generateSceneImage({ scene, entityDescriptions, entityNames, styleKey, styleCustom, gameSystem, campaignId, apiKey }) {
+  const featured = (scene.featuredEntityIds || [])
+    .map(id => entityDescriptions[id] ? { name: entityNames?.[id] || '', description: entityDescriptions[id] } : null)
     .filter(Boolean);
 
-  const featuredClause = featuredDescriptions.length
-    ? ` Featuring: ${featuredDescriptions.join('; ')}.`
+  const featuredClause = featured.length
+    ? ` The characters shown are (match these exact descriptions, do not add horns, fangs, tails, or monstrous features unless described): ${
+        featured.map(f => f.name ? `${f.name} — ${f.description}` : f.description).join(' || ')
+      }.`
     : '';
 
   const fullPrompt = `${scene.prompt}${featuredClause}`;
@@ -376,12 +389,14 @@ export async function generateChapter({
   const rosters = { characters, npcs, adversaries };
   const entityDescriptions = {};
   const entityPortraitUrls = {};
+  const entityNames = {};
   const entityTypes = {};
 
   const portraitJobs = Array.from(featuredIds).map(async (entityId, idx) => {
     const { entity, entityType } = findEntityInRosters({ entityId, rosters });
     if (!entity || !entityType) return;
     entityTypes[entityId] = entityType;
+    entityNames[entityId] = entity.name;
     onProgress({
       stage: 'portraits',
       current: idx,
@@ -411,6 +426,7 @@ export async function generateChapter({
       const scene = await generateSceneImage({
         scene: { ...scenePrompt, id: `scene_${i}_${Date.now()}` },
         entityDescriptions,
+        entityNames,
         styleKey,
         styleCustom,
         gameSystem,
@@ -489,10 +505,12 @@ export async function regenerateScene({
     adversaries: entities.adversaries || []
   };
   const entityDescriptions = {};
+  const entityNames = {};
   const featured = scene.featuredEntityIds || [];
   for (const id of featured) {
     const { entity, entityType } = findEntityInRosters({ entityId: id, rosters });
     if (!entity || !entityType) continue;
+    entityNames[id] = entity.name;
     const { description } = await ensureStyledPortrait({
       entity, entityType, styleKey, styleCustom, campaignId, apiKey, gameSystem
     });
@@ -501,6 +519,7 @@ export async function regenerateScene({
   return await generateSceneImage({
     scene: { ...scene, id: scene.id || `scene_${Date.now()}` },
     entityDescriptions,
+    entityNames,
     styleKey,
     styleCustom,
     gameSystem,

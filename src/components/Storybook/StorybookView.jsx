@@ -100,16 +100,19 @@ export default function StorybookView({
         style={{ borderBottom: '1px solid var(--line)' }}
       >
         <div className="space-y-2 relative z-10">
-          <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/40">
+          <span style={{
+            fontFamily: 'Cinzel, serif', fontVariant: 'small-caps',
+            letterSpacing: '0.4em', fontSize: '0.75rem', color: 'rgba(242,227,191,0.5)'
+          }}>
             The Chronicle
           </span>
-          <h1 className="text-3xl md:text-5xl font-bold text-white flex items-center gap-4 font-cinzel">
-            <BookMarked className="text-[color:var(--primary)]" size={44} />
+          <h1 className="sb-hero-title flex items-center gap-4">
+            <BookMarked className="text-[color:var(--primary)]" size={40} />
             Story So Far
           </h1>
-          <p className="text-white/60 text-base max-w-2xl">
-            An illustrated chronicle of every session, told in watercolor and ink.
-            {visibleChapters.length > 0 && ` ${visibleChapters.length} chapter${visibleChapters.length === 1 ? '' : 's'} recorded.`}
+          <p className="sb-hero-sub">
+            An illustrated chronicle of every session, set down in watercolour and ink.
+            {visibleChapters.length > 0 && ` ${visibleChapters.length} chapter${visibleChapters.length === 1 ? '' : 's'} bound so far.`}
           </p>
         </div>
         {isDM && (
@@ -117,22 +120,19 @@ export default function StorybookView({
             <button
               type="button"
               onClick={() => setIsSettingsOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] text-white/80 hover:bg-white/[0.06] hover:border-white/20 transition"
+              className="sb-btn sb-btn-ghost"
+              style={{ color: 'rgba(242,227,191,0.8)', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(242,227,191,0.25)' }}
             >
-              <SettingsIcon size={16} />
-              <span className="text-sm font-semibold">Style settings</span>
+              <SettingsIcon size={14} />
+              Style
             </button>
             <button
               type="button"
               onClick={() => setIsGenerateOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-white transition"
-              style={{
-                background: 'color-mix(in srgb, var(--primary) 20%, transparent)',
-                borderColor: 'color-mix(in srgb, var(--primary) 40%, transparent)'
-              }}
+              className="sb-btn"
             >
-              <Wand2 size={16} />
-              <span className="text-sm font-bold">Generate chapter</span>
+              <Wand2 size={14} />
+              Scribe a new chapter
             </button>
           </div>
         )}
@@ -202,34 +202,28 @@ export default function StorybookView({
 
 function EmptyState({ isDM, onGenerate }) {
   return (
-    <div
-      className="text-center py-20 px-6 rounded-3xl border"
-      style={{
-        background: 'color-mix(in srgb, var(--surface) 60%, transparent)',
-        borderColor: 'var(--line)'
-      }}
-    >
-      <BookMarked size={56} className="mx-auto mb-4 text-white/30" />
-      <h3 className="text-xl font-bold text-white/90 mb-2 font-cinzel">No chapters yet</h3>
-      <p className="text-white/50 max-w-md mx-auto">
-        {isDM
-          ? 'Finalize a session to get an auto-drafted chapter, or generate one manually. The AI turns your session notes into illustrated prose.'
-          : 'Your GM hasn’t published any chapters of the chronicle yet. Check back after the next session.'}
-      </p>
-      {isDM && (
-        <button
-          type="button"
-          onClick={onGenerate}
-          className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold transition"
-          style={{
-            background: 'color-mix(in srgb, var(--primary) 25%, transparent)',
-            border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)'
-          }}
-        >
-          <Wand2 size={16} />
-          Generate your first chapter
-        </button>
-      )}
+    <div className="sb-room" style={{ padding: '3rem 1rem 5rem' }}>
+      <div className="sb-page" style={{ textAlign: 'center' }}>
+        <BookMarked size={48} style={{ margin: '0 auto 1rem', color: '#8b5a24' }} />
+        <span className="sb-eyebrow">An Empty Volume</span>
+        <h2 className="sb-title" style={{ fontSize: 'clamp(1.6rem, 3.5vw, 2.25rem)' }}>
+          No chapters bound yet
+        </h2>
+        <div className="sb-fleuron" aria-hidden="true" />
+        <p style={{ textAlign: 'center', fontStyle: 'italic', color: '#4a2f14', maxWidth: '48ch', margin: '0 auto' }}>
+          {isDM
+            ? 'Finish a session and the chronicler will draft a chapter from the notes. You can also commission one by hand from any completed session.'
+            : 'The chronicler has not yet set down any chapter. Return after the next session to find the ink dried.'}
+        </p>
+        {isDM && (
+          <div style={{ marginTop: '1.75rem' }}>
+            <button type="button" className="sb-btn" onClick={onGenerate}>
+              <Wand2 size={14} />
+              Scribe the first chapter
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

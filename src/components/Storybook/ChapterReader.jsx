@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { ArrowLeft, Edit3, Image as ImageIcon, Feather, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit3, Feather, Trash2, Film, Mic, Send } from 'lucide-react';
 import MediaLightbox from './MediaLightbox';
-import JournalEntryForm from './JournalEntryForm';
 import { useChapterJournal } from '../../hooks/useStorybook';
 
 export default function ChapterReader({
@@ -20,15 +19,15 @@ export default function ChapterReader({
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const { entries: journalEntries } = useChapterJournal(campaignId, chapter.id);
 
-  // Split prose into paragraphs and interleave with scene images
-  const paragraphs = useMemo(() => {
-    return (chapter.prose || '').split(/\n\n+/).filter(p => p.trim());
-  }, [chapter.prose]);
+  const paragraphs = useMemo(
+    () => (chapter.prose || '').split(/\n\n+/).filter(p => p.trim()),
+    [chapter.prose]
+  );
 
   const scenes = chapter.scenes || [];
+  const spotlights = chapter.spotlights || [];
   const media = chapter.media || [];
 
-  // All clickable visuals, for the lightbox
   const allVisuals = useMemo(() => {
     return [
       ...scenes.map(s => ({ id: s.id, kind: 'image', url: s.imageUrl, caption: s.caption })),
@@ -37,258 +36,236 @@ export default function ChapterReader({
   }, [scenes, media]);
 
   const openLightbox = (item) => {
-    const index = allVisuals.findIndex(v => v.id === item.id || v.url === item.url);
-    setLightboxIndex(Math.max(0, index));
+    const idx = allVisuals.findIndex(v => v.id === item.id || v.url === item.url);
+    setLightboxIndex(Math.max(0, idx));
     setLightboxItems(allVisuals);
   };
-
-  const handleNavigate = (delta) => {
+  const navigateLightbox = (delta) => {
     if (!lightboxItems) return;
-    const next = (lightboxIndex + delta + lightboxItems.length) % lightboxItems.length;
-    setLightboxIndex(next);
+    setLightboxIndex((lightboxIndex + delta + lightboxItems.length) % lightboxItems.length);
   };
 
-  const handleSubmitJournal = async (entry) => {
-    await storybook.addJournalEntry(chapter.id, entry);
-  };
-
-  // Distribute scenes between paragraphs
-  const renderedBody = [];
+  // Interleave scenes evenly between paragraphs
+  const body = [];
   paragraphs.forEach((p, i) => {
-    renderedBody.push(
-      <div key={`p-${i}`} className="storybook-prose">
+    body.push(
+      <div key={`p-${i}`} className="sb-para">
         <ReactMarkdown>{p}</ReactMarkdown>
       </div>
     );
-    const sceneIndex = Math.floor((i + 1) * (scenes.length / Math.max(paragraphs.length, 1)));
-    const prevIndex = Math.floor(i * (scenes.length / Math.max(paragraphs.length, 1)));
-    if (sceneIndex > prevIndex && scenes[sceneIndex - 1]) {
-      const scene = scenes[sceneIndex - 1];
-      renderedBody.push(
-        <figure
-          key={`scene-${scene.id}`}
-          className="my-8 rounded-2xl overflow-hidden border cursor-zoom-in"
-          style={{ borderColor: 'var(--line-strong)' }}
-          onClick={() => openLightbox(scene)}
-        >
-          <img src={scene.imageUrl} alt={scene.caption} className="w-full h-auto" />
-          {scene.caption && (
-            <figcaption
-              className="px-5 py-3 text-sm italic"
-              style={{ color: 'var(--text-muted)', background: 'color-mix(in srgb, var(--surface) 70%, transparent)' }}
-            >
-              {scene.caption}
-            </figcaption>
-          )}
-        </figure>
-      );
+    const nextIdx = Math.floor((i + 1) * (scenes.length / Math.max(paragraphs.length, 1)));
+    const prevIdx = Math.floor(i * (scenes.length / Math.max(paragraphs.length, 1)));
+    if (nextIdx > prevIdx && scenes[nextIdx - 1]) {
+      const sc = scenes[nextIdx - 1];
+      body.push(<Plate key={`pl-${sc.id}`} scene={sc} onClick={() => openLightbox(sc)} />);
     }
   });
-
-  // Append any scenes that were not yet shown
-  const shownSceneCount = renderedBody.filter(n => n.key?.startsWith('scene-')).length;
-  scenes.slice(shownSceneCount).forEach(scene => {
-    renderedBody.push(
-      <figure
-        key={`scene-${scene.id}`}
-        className="my-8 rounded-2xl overflow-hidden border cursor-zoom-in"
-        style={{ borderColor: 'var(--line-strong)' }}
-        onClick={() => openLightbox(scene)}
-      >
-        <img src={scene.imageUrl} alt={scene.caption} className="w-full h-auto" />
-        {scene.caption && (
-          <figcaption
-            className="px-5 py-3 text-sm italic"
-            style={{ color: 'var(--text-muted)', background: 'color-mix(in srgb, var(--surface) 70%, transparent)' }}
-          >
-            {scene.caption}
-          </figcaption>
-        )}
-      </figure>
-    );
+  const shown = body.filter(n => n.key?.startsWith('pl-')).length;
+  scenes.slice(shown).forEach(sc => {
+    body.push(<Plate key={`pl-${sc.id}`} scene={sc} onClick={() => openLightbox(sc)} />);
   });
 
   return (
-    <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8 lr-fade-in">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6" style={{ borderBottom: '1px solid var(--line)' }}>
-        <button
-          type="button"
-          onClick={onBack}
-          className="self-start inline-flex items-center gap-2 text-white/60 hover:text-white text-sm font-semibold"
-        >
-          <ArrowLeft size={16} /> Back to Chronicle
+    <div className="sb-room">
+      <div className="sb-room-header">
+        <button type="button" className="sb-backlink" onClick={onBack}>
+          <ArrowLeft size={14} /> Close the book
         </button>
-        <div className="flex flex-wrap gap-2">
-          {isDM && (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-white/80 hover:bg-white/10 text-sm font-semibold"
-            >
-              <Edit3 size={14} /> Edit
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="text-center space-y-3">
-        <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/40">
-          Chapter {chapter.chapterNumber}{chapter.sessionNumber ? ` • Session ${chapter.sessionNumber}` : ''}
-        </span>
-        <h1 className="text-4xl md:text-6xl font-black text-white font-cinzel leading-tight">
-          {chapter.title}
-        </h1>
-        <div className="mx-auto h-[2px] w-20 rounded-full" style={{ background: 'var(--accent)' }} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
-        <article className="space-y-4 storybook-article" style={{ fontFamily: 'var(--font-body)', color: 'var(--text)' }}>
-          {renderedBody.length > 0 ? renderedBody : <p className="text-white/50">No prose yet.</p>}
-        </article>
-
-        <aside className="space-y-6">
-          {chapter.spotlights?.length > 0 && (
-            <section>
-              <h3 className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 mb-3">
-                Featured Cast
-              </h3>
-              <ul className="space-y-3">
-                {chapter.spotlights.map(s => (
-                  <li
-                    key={`${s.entityType}-${s.entityId}`}
-                    className="flex gap-3 p-3 rounded-xl border"
-                    style={{
-                      background: 'color-mix(in srgb, var(--surface) 80%, transparent)',
-                      borderColor: 'var(--line)'
-                    }}
-                  >
-                    <div
-                      className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0"
-                      style={{ background: 'var(--surface-hi)' }}
-                    >
-                      {s.portraitUrl ? (
-                        <img src={s.portraitUrl} alt={s.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">
-                          {(s.name || '?').slice(0, 1)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-white font-cinzel">{s.name}</div>
-                      <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">
-                        {s.entityType}
-                      </div>
-                      {s.moment && (
-                        <p className="text-xs text-white/70 leading-snug">{s.moment}</p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {media.length > 0 && (
-            <section>
-              <h3 className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 mb-3 flex items-center gap-2">
-                <ImageIcon size={12} /> Table Memories
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {media.map(m => (
-                  <MediaThumb key={m.id} item={m} onClick={() => openLightbox(m)} />
-                ))}
-              </div>
-            </section>
-          )}
-        </aside>
-      </div>
-
-      <section className="space-y-4 pt-8" style={{ borderTop: '1px solid var(--line)' }}>
-        <h3 className="text-xs font-bold uppercase tracking-[0.25em] text-white/40 flex items-center gap-2">
-          <Feather size={12} /> In-Character Journal
-        </h3>
-
-        {journalEntries.length === 0 ? (
-          <p className="text-sm text-white/40 italic">No journal entries yet. Be the first to share your character's thoughts.</p>
-        ) : (
-          <ul className="space-y-3">
-            {journalEntries.map(entry => (
-              <li
-                key={entry.id}
-                className="p-4 rounded-xl border"
-                style={{
-                  background: 'color-mix(in srgb, var(--surface) 70%, transparent)',
-                  borderColor: 'var(--line)'
-                }}
-              >
-                <div className="flex items-baseline gap-2 mb-2">
-                  <span className="font-bold text-white font-cinzel">
-                    {entry.characterName || entry.authorName}
-                  </span>
-                  {entry.characterName && (
-                    <span className="text-[10px] uppercase tracking-widest text-white/30">
-                      ({entry.authorName})
-                    </span>
-                  )}
-                  {(entry.authorId === currentUserId || isDM) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm('Delete this journal entry?')) {
-                          storybook.deleteJournalEntry(chapter.id, entry.id);
-                        }
-                      }}
-                      className="ml-auto text-white/30 hover:text-red-400"
-                      aria-label="Delete entry"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-                <div className="storybook-prose text-sm" style={{ color: 'var(--text)' }}>
-                  <ReactMarkdown>{entry.content}</ReactMarkdown>
-                </div>
-              </li>
-            ))}
-          </ul>
+        {isDM && (
+          <button type="button" className="sb-backlink" onClick={onEdit}>
+            <Edit3 size={14} /> Edit chapter
+          </button>
         )}
+      </div>
+
+      <article className="sb-page">
+        <span className="sb-eyebrow">
+          Chapter {toRoman(chapter.chapterNumber)}
+          {chapter.sessionNumber ? ` · Session ${chapter.sessionNumber}` : ''}
+        </span>
+        <h1 className="sb-title">{chapter.title}</h1>
+        <div className="sb-fleuron" aria-hidden="true" />
+
+        <div className="sb-body">
+          {body.length > 0 ? body : <p className="sb-para" style={{ textAlign: 'center' }}>No prose yet.</p>}
+        </div>
+
+        {spotlights.length > 0 && (
+          <>
+            <div className="sb-rule" aria-hidden="true" />
+            <h2 className="sb-personae-title">Dramatis Personae</h2>
+            <div className="sb-personae-grid">
+              {spotlights.map(s => (
+                <div key={`${s.entityType}-${s.entityId}`} className="sb-persona">
+                  <div className="sb-persona-avatar">
+                    {s.portraitUrl
+                      ? <img src={s.portraitUrl} alt={s.name} />
+                      : <div style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'100%', height:'100%', color:'#5c3b16', fontFamily:'Cinzel', fontWeight:700 }}>{(s.name||'?').slice(0,1)}</div>}
+                  </div>
+                  <div className="sb-persona-body">
+                    <div className="sb-persona-name">{s.name}</div>
+                    <div className="sb-persona-kind">{s.entityType}</div>
+                    {s.moment && <div className="sb-persona-moment">{s.moment}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {media.length > 0 && (
+          <>
+            <div className="sb-rule" aria-hidden="true" />
+            <h2 className="sb-personae-title">Table Memories</h2>
+            <div className="sb-memories-grid">
+              {media.map(m => (
+                <div key={m.id} className="sb-memory" onClick={() => openLightbox(m)} role="button" tabIndex={0}>
+                  {m.kind === 'image' && <img src={m.url} alt={m.caption || ''} />}
+                  {m.kind === 'video' && (
+                    <div className="sb-memory-placeholder"><Film size={28} /></div>
+                  )}
+                  {m.kind === 'audio' && (
+                    <div className="sb-memory-placeholder"><Mic size={28} /></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="sb-rule" aria-hidden="true" />
+        <h2 className="sb-personae-title">
+          <Feather size={14} style={{ display:'inline', marginRight:'0.5rem', verticalAlign:'-2px' }} />
+          In-Character Journal
+        </h2>
+
+        {journalEntries.length === 0
+          ? <p style={{ textAlign:'center', fontStyle:'italic', color:'#8b5a24', margin:'0 0 1.25rem' }}>The page awaits the first voice.</p>
+          : (
+            <div style={{ marginBottom: '1.25rem' }}>
+              {journalEntries.map(entry => (
+                <div key={entry.id} className="sb-journal-entry">
+                  <div className="sb-journal-head">
+                    <span className="sb-journal-name">{entry.characterName || entry.authorName}</span>
+                    {entry.characterName && <span className="sb-journal-author">— {entry.authorName}</span>}
+                    {(entry.authorId === currentUserId || isDM) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('Delete this journal entry?')) {
+                            storybook.deleteJournalEntry(chapter.id, entry.id);
+                          }
+                        }}
+                        style={{ marginLeft:'auto', background:'transparent', border:'none', color:'#8b5a24', cursor:'pointer' }}
+                        aria-label="Delete entry"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="sb-journal-body">
+                    <ReactMarkdown>{entry.content}</ReactMarkdown>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        }
 
         {currentUserId && (
-          <JournalEntryForm
+          <JournalComposer
             characters={characters}
             currentUserId={currentUserId}
-            onSubmit={handleSubmitJournal}
+            onSubmit={(entry) => storybook.addJournalEntry(chapter.id, entry)}
           />
         )}
-      </section>
+      </article>
 
       {lightboxItems && (
         <MediaLightbox
           items={lightboxItems}
           index={lightboxIndex}
           onClose={() => setLightboxItems(null)}
-          onNavigate={handleNavigate}
+          onNavigate={navigateLightbox}
         />
       )}
     </div>
   );
 }
 
-function MediaThumb({ item, onClick }) {
-  const preview = (() => {
-    if (item.kind === 'video') return <video src={item.url} className="w-full h-full object-cover" />;
-    if (item.kind === 'audio') return <div className="w-full h-full flex items-center justify-center text-white/60 text-xs font-semibold">Audio</div>;
-    return <img src={item.url} alt={item.caption || ''} className="w-full h-full object-cover" />;
-  })();
+function Plate({ scene, onClick }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="aspect-square rounded-lg overflow-hidden border cursor-zoom-in"
-      style={{ borderColor: 'var(--line)' }}
-    >
-      {preview}
-    </button>
+    <figure className="sb-plate" onClick={onClick}>
+      <img src={scene.imageUrl} alt={scene.caption || ''} />
+      {scene.caption && <figcaption className="sb-plate-caption">{scene.caption}</figcaption>}
+    </figure>
   );
+}
+
+function JournalComposer({ characters, currentUserId, onSubmit }) {
+  const myCharacters = useMemo(
+    () => (characters || []).filter(c => c.userId === currentUserId || c.ownerId === currentUserId),
+    [characters, currentUserId]
+  );
+  const [characterId, setCharacterId] = useState(myCharacters[0]?.id || '');
+  const [content, setContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const selected = myCharacters.find(c => c.id === characterId);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!content.trim()) return;
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        content: content.trim(),
+        characterId: selected?.id || null,
+        characterName: selected?.name || ''
+      });
+      setContent('');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form className="sb-journal-form" onSubmit={handleSubmit}>
+      {myCharacters.length > 1 && (
+        <div style={{ marginBottom: '0.65rem' }}>
+          <label style={{ fontVariant:'small-caps', letterSpacing:'0.2em', fontSize:'0.75rem', color:'#6b4a22', marginRight:'0.5rem' }}>
+            Writing as
+          </label>
+          <select value={characterId} onChange={(e) => setCharacterId(e.target.value)}>
+            {myCharacters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+      )}
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={selected ? `What did ${selected.name} feel, remember, or fear?` : 'Pen an entry to this chapter…'}
+      />
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'0.75rem', flexWrap:'wrap', gap:'0.5rem' }}>
+        <span style={{ fontFamily:'Cinzel', fontVariant:'small-caps', letterSpacing:'0.18em', fontSize:'0.7rem', color:'#6b4a22' }}>
+          {selected ? `By ${selected.name}` : 'Anonymous entry'}
+        </span>
+        <button type="submit" className="sb-btn" disabled={!content.trim() || submitting}>
+          <Send size={13} />
+          {submitting ? 'Inking…' : 'Enter in the ledger'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function toRoman(n) {
+  if (!n || n < 1) return '';
+  const map = [
+    [1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],
+    [100,'C'],[90,'XC'],[50,'L'],[40,'XL'],
+    [10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']
+  ];
+  let out = '', v = n;
+  for (const [num, sym] of map) { while (v >= num) { out += sym; v -= num; } }
+  return out;
 }

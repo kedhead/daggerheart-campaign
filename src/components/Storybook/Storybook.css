@@ -1,44 +1,499 @@
-/* Storybook typography — generous reading rhythm for chapter prose */
+/* ============================================================================
+   Storybook — immersive book reading experience
+   ========================================================================= */
 
-.storybook-article {
-  max-width: 68ch;
-  font-size: 1.05rem;
+/* ── Parchment page ─────────────────────────────────────────────────────── */
+
+.sb-room {
+  /* Dark "desk" surround so the parchment page sits in a cinematic frame */
+  min-height: 100%;
+  padding: 2.5rem 1rem 4rem;
+  background:
+    radial-gradient(ellipse at top, rgba(80, 40, 15, 0.22), transparent 60%),
+    radial-gradient(ellipse at bottom, rgba(30, 10, 5, 0.35), transparent 55%);
+}
+
+.sb-page {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 4.5rem clamp(1.75rem, 6vw, 5rem) 5rem;
+  position: relative;
+  color: #2b2014;
+  font-family: 'EB Garamond', 'Georgia', 'Cormorant Garamond', ui-serif, serif;
+  font-size: 1.08rem;
   line-height: 1.75;
+  border-radius: 4px;
+
+  /* Aged parchment — warm cream base + a second radial darkening at the edges
+     to fake the vignette on old paper. */
+  background-color: #f2e3bf;
+  background-image:
+    radial-gradient(circle at 25% 15%, rgba(255, 240, 200, 0.65), transparent 55%),
+    radial-gradient(circle at 80% 85%, rgba(110, 70, 25, 0.18), transparent 60%),
+    repeating-linear-gradient(
+      115deg,
+      rgba(160, 110, 40, 0.025) 0 3px,
+      transparent 3px 9px
+    ),
+    linear-gradient(180deg, #f6e7c2 0%, #ecd9ad 100%);
+
+  box-shadow:
+    inset 0 0 2px 1px rgba(60, 35, 15, 0.15),
+    inset 0 0 60px rgba(110, 70, 25, 0.18),
+    0 0 0 1px rgba(50, 28, 12, 0.5),
+    0 25px 65px rgba(0, 0, 0, 0.55),
+    0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-.storybook-prose p {
+/* Torn/aged edge effect on the page */
+.sb-page::before,
+.sb-page::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 18px;
+  pointer-events: none;
+}
+.sb-page::before { top: 0;    background: linear-gradient(180deg, rgba(80,45,15,0.18), transparent); }
+.sb-page::after  { bottom: 0; background: linear-gradient(0deg,   rgba(80,45,15,0.18), transparent); }
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+
+.sb-eyebrow {
+  display: block;
+  text-align: center;
+  font-family: 'Cinzel', 'Cormorant SC', serif;
+  font-variant: small-caps;
+  font-weight: 600;
+  color: #6b4a22;
+  letter-spacing: 0.45em;
+  font-size: 0.78rem;
+  margin-bottom: 0.75rem;
+}
+
+.sb-title {
+  text-align: center;
+  font-family: 'Cinzel', 'Cormorant SC', serif;
+  font-weight: 700;
+  font-size: clamp(2.25rem, 5vw, 3.25rem);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  color: #321f0d;
+  margin: 0 0 0.35em;
+}
+
+.sb-fleuron {
+  display: block;
+  text-align: center;
+  color: #8b5a24;
+  font-size: 1.5rem;
+  margin: 1rem auto 2.5rem;
+  letter-spacing: 0.6em;
+  text-indent: 0.6em;
+}
+.sb-fleuron::before { content: '❦   ❦   ❦'; }
+
+.sb-body {
+  font-family: inherit;
+  color: #2b2014;
+}
+
+.sb-body p {
   margin: 0 0 1.1em 0;
-  font-family: var(--font-body, ui-serif, Georgia, serif);
-  color: var(--text, #e5e7eb);
+  text-indent: 1.8em;
+  hyphens: auto;
+  text-align: justify;
 }
-
-.storybook-prose p:last-child {
-  margin-bottom: 0;
+.sb-body p:first-of-type {
+  text-indent: 0;
 }
+.sb-body p:last-child { margin-bottom: 0; }
 
-.storybook-prose em {
-  font-style: italic;
-  color: color-mix(in srgb, var(--text) 90%, var(--primary));
-}
+.sb-body em     { font-style: italic; color: #4a2f14; }
+.sb-body strong { font-weight: 700; color: #321f0d; }
 
-.storybook-prose strong {
-  color: var(--text);
-  font-weight: 700;
-}
-
-/* Drop-cap on the first paragraph inside .storybook-article */
-.storybook-article > .storybook-prose:first-child p:first-child::first-letter {
-  font-family: var(--font-display, 'Cinzel', serif);
-  font-size: 3.6em;
+/* Drop cap on the very first paragraph of a chapter */
+.sb-body > .sb-para:first-child p:first-of-type::first-letter {
+  font-family: 'Cinzel', 'Cormorant SC', serif;
+  font-size: 4.4em;
   float: left;
-  line-height: 0.85;
-  padding: 0.1em 0.14em 0 0;
-  color: var(--primary, #a78bfa);
+  line-height: 0.88;
+  padding: 0.04em 0.12em 0 0;
+  color: #7a3f12;
   font-weight: 700;
+  text-shadow: 0 1px 0 rgba(255, 225, 180, 0.6);
 }
 
-/* Scene figure spacing when rendered inside the article column */
-.storybook-article figure {
-  margin-left: 0;
-  margin-right: 0;
+/* ── Scene plate (a framed illustration inside the book) ─────────────────── */
+
+.sb-plate {
+  margin: 2.5rem -0.5rem;
+  padding: 0.5rem;
+  background: linear-gradient(#e9d4a0, #d4b878);
+  border: 1px solid rgba(60, 35, 15, 0.4);
+  box-shadow:
+    inset 0 0 0 3px #f2e3bf,
+    inset 0 0 0 4px rgba(60, 35, 15, 0.3),
+    0 8px 22px rgba(60, 35, 15, 0.25);
+  cursor: zoom-in;
+  transition: transform 280ms ease, box-shadow 280ms ease;
+}
+.sb-plate:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 0 0 3px #f2e3bf,
+    inset 0 0 0 4px rgba(60, 35, 15, 0.4),
+    0 14px 30px rgba(60, 35, 15, 0.32);
+}
+.sb-plate img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.sb-plate-caption {
+  text-align: center;
+  font-family: 'Cinzel', 'Cormorant SC', serif;
+  font-variant: small-caps;
+  letter-spacing: 0.15em;
+  color: #5c3b16;
+  padding: 0.9rem 1rem 0.4rem;
+  font-size: 0.88rem;
+  background: #f2e3bf;
+}
+
+/* ── Section rule ────────────────────────────────────────────────────────── */
+
+.sb-rule {
+  margin: 3rem auto 2rem;
+  text-align: center;
+  color: #8b5a24;
+  letter-spacing: 0.5em;
+  font-size: 1.1rem;
+}
+.sb-rule::before { content: '⚜   ⚜   ⚜'; }
+
+/* ── Dramatis Personae ──────────────────────────────────────────────────── */
+
+.sb-personae-title {
+  text-align: center;
+  font-family: 'Cinzel', 'Cormorant SC', serif;
+  font-variant: small-caps;
+  letter-spacing: 0.35em;
+  font-size: 1rem;
+  color: #6b4a22;
+  margin: 0 0 1.5rem;
+}
+
+.sb-personae-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.sb-persona {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding: 0.9rem;
+  background: rgba(255, 240, 200, 0.4);
+  border: 1px solid rgba(110, 70, 25, 0.35);
+  border-radius: 2px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 240, 200, 0.6),
+    0 2px 4px rgba(60, 35, 15, 0.12);
+}
+.sb-persona-avatar {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #8b5a24;
+  background: #d4b878;
+  box-shadow: inset 0 0 0 1px #f2e3bf;
+}
+.sb-persona-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sb-persona-body { flex: 1; min-width: 0; }
+.sb-persona-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  color: #321f0d;
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+.sb-persona-kind {
+  font-variant: small-caps;
+  letter-spacing: 0.2em;
+  font-size: 0.68rem;
+  color: #8b5a24;
+  margin-bottom: 0.35rem;
+}
+.sb-persona-moment {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #3a2a14;
+}
+
+/* ── Table Memories (player-uploaded media) ─────────────────────────────── */
+
+.sb-memories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.75rem;
+}
+.sb-memory {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(110, 70, 25, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(255, 240, 200, 0.7);
+  cursor: zoom-in;
+  transition: transform 220ms ease;
+}
+.sb-memory:hover { transform: scale(1.03); }
+.sb-memory img, .sb-memory video { width: 100%; height: 100%; object-fit: cover; }
+.sb-memory-placeholder {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: #d4b878;
+  color: #5c3b16;
+}
+
+/* ── Journal entries ─────────────────────────────────────────────────────── */
+
+.sb-journal-entry {
+  padding: 1.1rem 1.25rem;
+  background: rgba(255, 240, 200, 0.55);
+  border-left: 3px solid #8b5a24;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 1px 3px rgba(60, 35, 15, 0.1);
+}
+.sb-journal-entry + .sb-journal-entry { margin-top: 1rem; }
+.sb-journal-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.sb-journal-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  color: #321f0d;
+  font-size: 1.05rem;
+}
+.sb-journal-author {
+  font-variant: small-caps;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  color: #8b5a24;
+}
+
+.sb-journal-body p {
+  margin: 0 0 0.7em 0;
+  color: #3a2a14;
+  font-style: italic;
+  line-height: 1.65;
+}
+.sb-journal-body p:last-child { margin-bottom: 0; }
+
+/* Composer for new journal entries */
+.sb-journal-form {
+  padding: 1.25rem;
+  background: rgba(255, 240, 200, 0.4);
+  border: 1px dashed rgba(110, 70, 25, 0.5);
+  border-radius: 4px;
+}
+.sb-journal-form textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 0.75rem 0.9rem;
+  background: rgba(255, 248, 228, 0.7);
+  border: 1px solid rgba(110, 70, 25, 0.4);
+  color: #2b2014;
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.6;
+  font-style: italic;
+  resize: vertical;
+  border-radius: 2px;
+}
+.sb-journal-form textarea:focus {
+  outline: none;
+  border-color: #8b5a24;
+  background: #fff8e4;
+}
+.sb-journal-form select {
+  background: rgba(255, 248, 228, 0.7);
+  border: 1px solid rgba(110, 70, 25, 0.4);
+  color: #2b2014;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 2px;
+}
+.sb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 1rem;
+  font-family: 'Cinzel', serif;
+  font-variant: small-caps;
+  letter-spacing: 0.18em;
+  font-size: 0.82rem;
+  color: #f2e3bf;
+  background: #5c3b16;
+  border: 1px solid #321f0d;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 180ms ease, transform 120ms ease;
+}
+.sb-btn:hover { background: #7a4f1f; }
+.sb-btn:active { transform: translateY(1px); }
+.sb-btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+.sb-btn-ghost {
+  background: transparent;
+  color: #5c3b16;
+}
+.sb-btn-ghost:hover { background: rgba(110, 70, 25, 0.12); }
+
+/* ── Chapter header strip (outside the book page) ────────────────────────── */
+
+.sb-room-header {
+  max-width: 860px;
+  margin: 0 auto 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0 0.5rem;
+}
+.sb-room-header .sb-backlink {
+  color: rgba(255, 240, 200, 0.7);
+  font-family: 'Cinzel', serif;
+  font-variant: small-caps;
+  letter-spacing: 0.25em;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: color 180ms;
+}
+.sb-room-header .sb-backlink:hover { color: #f2e3bf; }
+
+/* ── Chapter list — "books on a shelf" ──────────────────────────────────── */
+
+.sb-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.75rem 1.5rem;
+}
+
+.sb-book {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sb-book:hover { transform: translateY(-6px) rotate(-0.4deg); }
+
+.sb-book-cover {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 2px 6px 6px 2px;
+  box-shadow:
+    inset 0 0 0 4px rgba(60, 35, 15, 0.35),
+    inset 6px 0 14px rgba(0, 0, 0, 0.45),   /* spine shadow */
+    2px 6px 18px rgba(0, 0, 0, 0.55);
+  background: #2a170a;
+}
+.sb-book-cover img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.sb-book-cover::before {
+  /* spine highlight */
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 8px;
+  background: linear-gradient(90deg, rgba(255,215,140,0.22), rgba(0,0,0,0) 70%);
+  pointer-events: none;
+}
+.sb-book-cover::after {
+  /* inner border + aged sheen */
+  content: '';
+  position: absolute; inset: 10px;
+  border: 1px solid rgba(255, 220, 150, 0.35);
+  pointer-events: none;
+}
+
+.sb-book-label {
+  margin-top: 0.9rem;
+  text-align: left;
+}
+.sb-book-num {
+  font-family: 'Cinzel', serif;
+  font-variant: small-caps;
+  letter-spacing: 0.3em;
+  font-size: 0.7rem;
+  color: rgba(242, 227, 191, 0.5);
+}
+.sb-book-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f2e3bf;
+  line-height: 1.25;
+  margin-top: 0.15rem;
+}
+.sb-book-meta {
+  font-size: 0.8rem;
+  color: rgba(242, 227, 191, 0.55);
+  margin-top: 0.25rem;
+}
+.sb-book-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-family: 'Cinzel', serif;
+  font-variant: small-caps;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #f2e3bf;
+  border: 1px solid rgba(242, 227, 191, 0.3);
+}
+.sb-book-badge.is-draft    { background: rgba(148, 163, 184, 0.75); }
+.sb-book-badge.is-pending  { background: rgba(180, 100, 20, 0.85); }
+.sb-book-badge.is-published{ background: rgba(60, 110, 55, 0.85); }
+
+/* ── Hero (list view header above the shelf) ────────────────────────────── */
+
+.sb-hero-title {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2.25rem, 5vw, 3rem);
+  font-weight: 700;
+  color: #f2e3bf;
+  letter-spacing: 0.02em;
+}
+.sb-hero-sub {
+  font-family: 'EB Garamond', 'Georgia', serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: rgba(242, 227, 191, 0.6);
+  max-width: 56ch;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .sb-page { padding: 3rem 1.25rem 3.5rem; font-size: 1.02rem; }
+  .sb-plate { margin: 1.8rem -0.25rem; }
+  .sb-personae-grid { grid-template-columns: 1fr; }
 }

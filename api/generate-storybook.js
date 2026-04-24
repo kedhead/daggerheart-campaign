@@ -46,22 +46,32 @@ export default async function handler(req, res) {
 // ── action: describe ──────────────────────────────────────────────────────────
 
 async function describeImage(req, res, openai) {
-  const { imageUrl, subjectHint } = req.body;
+  const { imageUrl, subjectHint, entityType } = req.body;
   if (!imageUrl) return res.status(400).json({ error: 'Missing required field: imageUrl' });
 
+  const kindLabel = entityType === 'adversary' ? 'an adversary or creature'
+    : entityType === 'npc' ? 'a non-player character'
+    : entityType === 'character' ? 'a player character'
+    : 'a character';
+
   const instruction = [
-    'Describe the physical appearance of the subject in this image in 1-2 tight sentences,',
-    'written as a brief for an illustrator who will redraw them in a different art style.',
-    'Cover: species or ancestry, hair, eyes, skin tone, outfit, signature gear, notable features.',
-    'Avoid narrative flourish, mood words, or scene details. Just the look of the subject.'
+    `Describe ONLY what you can actually see in the image for ${kindLabel}.`,
+    'Write 2-3 tight sentences as a brief for an illustrator who will redraw them in a different art style.',
+    'Cover in order: (1) species/ancestry (human, halfling, elf, dwarf, goblin, beast-kin, etc.) or creature type if non-humanoid,',
+    'and overall build/height; (2) hair color and style, eye color, skin tone, facial features;',
+    '(3) clothing, armor, signature weapon or gear, distinguishing marks.',
+    'CRITICAL RULES: Do not invent features that are not clearly visible. Do not add monster-like traits',
+    '(horns, fangs, claws, tails, glowing eyes, extra limbs) unless they are clearly present in the image.',
+    'Do not use fantasy archetype labels ("barbarian", "warlock") — describe what is actually shown.',
+    'No mood words, no narrative, no scene background.'
   ].join(' ');
 
-  const userText = subjectHint ? `Subject: ${subjectHint}. ${instruction}` : instruction;
+  const userText = subjectHint ? `Subject: ${subjectHint}.\n\n${instruction}` : instruction;
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
-    temperature: 0.2,
-    max_tokens: 180,
+    temperature: 0.15,
+    max_tokens: 260,
     messages: [
       {
         role: 'user',

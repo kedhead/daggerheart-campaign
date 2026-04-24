@@ -1,104 +1,91 @@
-import { Edit3, Eye } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 
-const STATUS_STYLES = {
-  draft:           { label: 'Draft',     bg: 'rgba(148, 163, 184, 0.18)', text: '#cbd5e1' },
-  pending_review:  { label: 'Needs review', bg: 'rgba(251, 191, 36, 0.18)', text: '#fbbf24' },
-  published:       { label: 'Published', bg: 'rgba(34, 197, 94, 0.18)',  text: '#4ade80' }
+const STATUS_CLASSES = {
+  draft:          { cls: 'is-draft',     label: 'Draft' },
+  pending_review: { cls: 'is-pending',   label: 'Needs review' },
+  published:      { cls: 'is-published', label: 'Published' }
 };
 
 export default function ChapterList({ chapters, isDM, onOpen, onEdit }) {
   const sorted = [...chapters].sort((a, b) => (b.chapterNumber || 0) - (a.chapterNumber || 0));
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div className="sb-shelf">
       {sorted.map(chapter => {
         const cover = chapter.scenes?.[0]?.imageUrl || null;
-        const status = STATUS_STYLES[chapter.status] || STATUS_STYLES.draft;
-        const excerpt = (chapter.prose || '').split('\n').find(l => l.trim());
+        const status = STATUS_CLASSES[chapter.status] || STATUS_CLASSES.draft;
 
         return (
-          <button
-            key={chapter.id}
-            type="button"
-            onClick={() => onOpen(chapter.id)}
-            className="group text-left relative overflow-hidden rounded-2xl border transition hover:scale-[1.01] hover:shadow-2xl"
-            style={{
-              background: 'color-mix(in srgb, var(--surface) 85%, transparent)',
-              borderColor: 'var(--line)'
-            }}
-          >
-            <div className="relative aspect-[16/9] overflow-hidden">
-              {cover ? (
-                <img src={cover} alt={chapter.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-              ) : (
-                <div
-                  className="w-full h-full flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, var(--surface-hi), var(--surface))' }}
-                >
-                  <span className="text-white/20 font-cinzel text-xl">Chapter {chapter.chapterNumber}</span>
-                </div>
-              )}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.1) 50%, transparent)' }}
-              />
-              <div className="absolute top-3 left-3 flex gap-2">
-                <span
-                  className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
-                  style={{
-                    background: 'rgba(0,0,0,0.6)',
-                    color: 'var(--text)',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                  }}
-                >
-                  Ch. {chapter.chapterNumber}
-                </span>
+          <div key={chapter.id} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              className="sb-book"
+              onClick={() => onOpen(chapter.id)}
+              aria-label={`Open ${chapter.title}`}
+            >
+              <div className="sb-book-cover">
+                {cover
+                  ? <img src={cover} alt="" />
+                  : (
+                    <div style={{
+                      width:'100%', height:'100%',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      background: 'linear-gradient(135deg, #4a2f14, #2a170a)',
+                      color: '#f2e3bf',
+                      fontFamily: 'Cinzel, serif',
+                      fontWeight: 700,
+                      letterSpacing: '0.25em',
+                      fontSize: '1.1rem'
+                    }}>
+                      {toRoman(chapter.chapterNumber)}
+                    </div>
+                  )}
                 {isDM && (
-                  <span
-                    className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
-                    style={{ background: status.bg, color: status.text }}
-                  >
-                    {status.label}
-                  </span>
+                  <span className={`sb-book-badge ${status.cls}`}>{status.label}</span>
                 )}
               </div>
-            </div>
-
-            <div className="p-5 space-y-2">
-              <h3 className="font-cinzel text-xl font-bold text-white leading-tight line-clamp-2">
-                {chapter.title || 'Untitled chapter'}
-              </h3>
-              {excerpt && (
-                <p className="text-sm text-white/60 line-clamp-3">{excerpt}</p>
-              )}
-              <div className="flex items-center justify-between pt-2 text-xs text-white/40">
-                <span>
+              <div className="sb-book-label">
+                <div className="sb-book-num">Chapter {toRoman(chapter.chapterNumber)}</div>
+                <div className="sb-book-title">{chapter.title || 'Untitled chapter'}</div>
+                <div className="sb-book-meta">
                   {chapter.sessionNumber ? `Session ${chapter.sessionNumber}` : 'Freeform'}
-                  {chapter.scenes?.length ? ` • ${chapter.scenes.length} scene${chapter.scenes.length === 1 ? '' : 's'}` : ''}
-                </span>
-                {isDM && (
-                  <span className="flex items-center gap-2">
-                    <Eye size={12} /> Open
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => { e.stopPropagation(); onEdit(chapter.id); }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.stopPropagation();
-                          onEdit(chapter.id);
-                        }
-                      }}
-                      className="ml-3 inline-flex items-center gap-1 hover:text-white/80 cursor-pointer"
-                    >
-                      <Edit3 size={12} /> Edit
-                    </span>
-                  </span>
-                )}
+                  {chapter.scenes?.length ? ` · ${chapter.scenes.length} plate${chapter.scenes.length === 1 ? '' : 's'}` : ''}
+                </div>
               </div>
-            </div>
-          </button>
+            </button>
+            {isDM && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEdit(chapter.id); }}
+                aria-label="Edit chapter"
+                style={{
+                  position: 'absolute', top: '0.5rem', left: '0.5rem',
+                  background: 'rgba(0,0,0,0.65)',
+                  color: '#f2e3bf',
+                  border: '1px solid rgba(242,227,191,0.3)',
+                  padding: '0.3rem 0.45rem',
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                  opacity: 0.85
+                }}
+              >
+                <Edit3 size={12} />
+              </button>
+            )}
+          </div>
         );
       })}
     </div>
   );
+}
+
+function toRoman(n) {
+  if (!n || n < 1) return '';
+  const map = [
+    [1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],
+    [100,'C'],[90,'XC'],[50,'L'],[40,'XL'],
+    [10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']
+  ];
+  let out = '', v = n;
+  for (const [num, sym] of map) { while (v >= num) { out += sym; v -= num; } }
+  return out;
 }
