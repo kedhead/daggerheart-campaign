@@ -628,49 +628,31 @@ function buildChapterLeaves({ chapter, chIdx, journalEntries }) {
   }
 
   // ── Scene distribution ──────────────────────────────────────────────────
-  // With inline weaving, pages could end up with no scene at all. Distribute
-  // scenes evenly across the flow leaves so every page that can have art
-  // does — and if there are more scenes than flow leaves, surplus scenes
-  // get their own dedicated plate leaves between prose leaves so nothing
-  // is lost.
+  // Every scene gets attached to a flow leaf so each page is a real "story
+  // page" with prose AND illustration. If there are more scenes than flow
+  // leaves, multiple scenes share a leaf rather than forming standalone
+  // plate-only pages (which felt like dead pages between the prose).
   if (scenes.length > 0) {
     if (flowLeaves.length === 0) {
-      // No prose at all — each scene becomes its own leaf
-      scenes.forEach(sc => {
+      // Truly no prose to bind to — fall back to plate-only leaves.
+      scenes.forEach((sc, i) => {
         flowLeaves.push({
           kind: 'flow', chapterIndex: chIdx,
           blocks: [{ kind: 'scene', value: sc }],
-          firstInChapter: flowLeaves.length === 0
+          firstInChapter: i === 0
         });
       });
-    } else if (scenes.length <= flowLeaves.length) {
-      // One scene per (evenly-spaced) leaf
+    } else {
+      // Round-robin distribute scenes across flow leaves. With scenes <=
+      // leaves, each scene gets its own leaf; with scenes > leaves, a few
+      // leaves carry an extra scene at the bottom.
       scenes.forEach((sc, i) => {
-        const leafIdx = Math.floor((i + 0.5) * flowLeaves.length / scenes.length);
+        const leafIdx = Math.min(
+          flowLeaves.length - 1,
+          Math.floor((i * flowLeaves.length) / scenes.length)
+        );
         flowLeaves[leafIdx].blocks.push({ kind: 'scene', value: sc });
       });
-    } else {
-      // More scenes than leaves — put one scene on each flow leaf and
-      // splice extra plate-only leaves after the middle leaves.
-      scenes.slice(0, flowLeaves.length).forEach((sc, i) => {
-        flowLeaves[i].blocks.push({ kind: 'scene', value: sc });
-      });
-      const extras = scenes.slice(flowLeaves.length);
-      // Distribute extras by inserting plate leaves after each flow leaf
-      // starting from the middle outward.
-      const withExtras = [];
-      flowLeaves.forEach((leaf, i) => {
-        withExtras.push(leaf);
-        if (extras[i]) {
-          withExtras.push({
-            kind: 'flow', chapterIndex: chIdx,
-            blocks: [{ kind: 'scene', value: extras[i] }],
-            firstInChapter: false
-          });
-        }
-      });
-      flowLeaves.length = 0;
-      withExtras.forEach(l => flowLeaves.push(l));
     }
   }
 
