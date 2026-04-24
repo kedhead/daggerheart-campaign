@@ -599,55 +599,82 @@ function buildChapterLeaves({ chapter, chIdx, journalEntries }) {
     sessionNumber: chapter.sessionNumber
   });
 
-  // Flow leaves (prose + inline scenes)
-  const stream = [];
-  const pCount = paragraphs.length;
-  const sCount = scenes.length;
-  const sceneBoundaries = new Set();
-  if (sCount > 0 && pCount > 0) {
-    for (let i = 1; i <= sCount; i++) {
-      const after = Math.max(1, Math.min(pCount, Math.floor((i * pCount) / (sCount + 1))));
-      sceneBoundaries.add(after);
-    }
-  }
-  let sceneCursor = 0;
-  paragraphs.forEach((p, idx) => {
-    stream.push({ kind: 'p', value: p });
-    if (sceneBoundaries.has(idx + 1) && sceneCursor < sCount) {
-      stream.push({ kind: 'scene', value: scenes[sceneCursor++] });
-    }
-  });
-  while (sceneCursor < sCount) stream.push({ kind: 'scene', value: scenes[sceneCursor++] });
-
-  // Flow leaves (prose + inline scenes) — paginate by word count so each leaf
-  // holds roughly one page's worth of text. Previously we budgeted by block
-  // count, which made a chapter of long paragraphs pack onto a single leaf
-  // and get clipped by the page height.
-  const WORDS_PER_LEAF = 320;       // fits comfortably in a 720px parchment leaf
-  const SCENE_WORD_EQUIV = 90;      // a scene plate occupies ~90 words of vertical space
-  const FIRST_LEAF_DROPCAP_PENALTY = 20; // the illuminated initial steals ~20 words worth
-
+  // ── Prose pagination — word-count budget per leaf ────────────────────────
+  // Pack paragraphs into flow leaves sized to roughly one physical page of
+  // prose. Each flow leaf has a firstInChapter flag so the illuminated
+  // initial only attaches to the opening leaf.
+  const WORDS_PER_LEAF = 320;
+  const FIRST_LEAF_DROPCAP_PENALTY = 20;
   const wordsIn = (s) => (s ? s.trim().split(/\s+/).length : 0);
 
-  let leaf = { kind: 'flow', chapterIndex: chIdx, blocks: [], firstInChapter: true };
-  let weight = FIRST_LEAF_DROPCAP_PENALTY;
-  const flush = () => {
-    if (leaf.blocks.length) {
-      leaves.push(leaf);
-      leaf = { kind: 'flow', chapterIndex: chIdx, blocks: [], firstInChapter: false };
-      weight = 0;
+  const flowLeaves = [];
+  {
+    let leaf = { kind: 'flow', chapterIndex: chIdx, blocks: [], firstInChapter: true };
+    let weight = FIRST_LEAF_DROPCAP_PENALTY;
+    const flush = () => {
+      if (leaf.blocks.length) {
+        flowLeaves.push(leaf);
+        leaf = { kind: 'flow', chapterIndex: chIdx, blocks: [], firstInChapter: false };
+        weight = 0;
+      }
+    };
+    for (const p of paragraphs) {
+      const w = wordsIn(p);
+      if (weight + w > WORDS_PER_LEAF && leaf.blocks.length > 0) flush();
+      leaf.blocks.push({ kind: 'p', value: p });
+      weight += w;
     }
-  };
-  for (const item of stream) {
-    const w = item.kind === 'scene' ? SCENE_WORD_EQUIV : wordsIn(item.value);
-    // If adding this block would exceed the budget AND we already have
-    // something on the leaf, flush first. Single oversized blocks still get
-    // their own leaf so they don't get dropped.
-    if (weight + w > WORDS_PER_LEAF && leaf.blocks.length > 0) flush();
-    leaf.blocks.push(item);
-    weight += w;
+    flush();
   }
-  flush();
+
+  // ── Scene distribution ──────────────────────────────────────────────────
+  // With inline weaving, pages could end up with no scene at all. Distribute
+  // scenes evenly across the flow leaves so every page that can have art
+  // does — and if there are more scenes than flow leaves, surplus scenes
+  // get their own dedicated plate leaves between prose leaves so nothing
+  // is lost.
+  if (scenes.length > 0) {
+    if (flowLeaves.length === 0) {
+      // No prose at all — each scene becomes its own leaf
+      scenes.forEach(sc => {
+        flowLeaves.push({
+          kind: 'flow', chapterIndex: chIdx,
+          blocks: [{ kind: 'scene', value: sc }],
+          firstInChapter: flowLeaves.length === 0
+        });
+      });
+    } else if (scenes.length <= flowLeaves.length) {
+      // One scene per (evenly-spaced) leaf
+      scenes.forEach((sc, i) => {
+        const leafIdx = Math.floor((i + 0.5) * flowLeaves.length / scenes.length);
+        flowLeaves[leafIdx].blocks.push({ kind: 'scene', value: sc });
+      });
+    } else {
+      // More scenes than leaves — put one scene on each flow leaf and
+      // splice extra plate-only leaves after the middle leaves.
+      scenes.slice(0, flowLeaves.length).forEach((sc, i) => {
+        flowLeaves[i].blocks.push({ kind: 'scene', value: sc });
+      });
+      const extras = scenes.slice(flowLeaves.length);
+      // Distribute extras by inserting plate leaves after each flow leaf
+      // starting from the middle outward.
+      const withExtras = [];
+      flowLeaves.forEach((leaf, i) => {
+        withExtras.push(leaf);
+        if (extras[i]) {
+          withExtras.push({
+            kind: 'flow', chapterIndex: chIdx,
+            blocks: [{ kind: 'scene', value: extras[i] }],
+            firstInChapter: false
+          });
+        }
+      });
+      flowLeaves.length = 0;
+      withExtras.forEach(l => flowLeaves.push(l));
+    }
+  }
+
+  flowLeaves.forEach(l => leaves.push(l));
 
   if (spotlights.length) leaves.push({ kind: 'personae', chapterIndex: chIdx, spotlights });
   if (media.length) leaves.push({ kind: 'memories', chapterIndex: chIdx, media });
