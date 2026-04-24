@@ -74,17 +74,30 @@ async function describeImage(imageUrl, subjectHint, apiKey) {
   return data.description || '';
 }
 
-async function generateStylizedImage({ prompt, type, styleKey, gameSystem, apiKey, imageModel, size = '1024x1024' }) {
+// Models that natively accept reference images — for these we skip the
+// vision-describe step and hand the original portraits directly to the model
+// so likeness survives the style change.
+const REFERENCE_CAPABLE_MODELS = new Set(['nano-banana', 'gpt-image-1']);
+const usesReferenceImages = (imageModel) => REFERENCE_CAPABLE_MODELS.has(imageModel);
+
+async function generateStylizedImage({ prompt, type, styleKey, gameSystem, apiKey, imageModel, referenceImages, size = '1024x1024' }) {
   const res = await fetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, type, styleKey, gameSystem, size, apiKey: apiKey || undefined, imageModel: imageModel || undefined })
+    body: JSON.stringify({
+      prompt, type, styleKey, gameSystem, size,
+      apiKey: apiKey || undefined,
+      imageModel: imageModel || undefined,
+      referenceImages: referenceImages && referenceImages.length ? referenceImages : undefined
+    })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || `generate-image failed: ${res.statusText}`);
   }
   const data = await res.json();
+  // gpt-image-1 returns inline base64 data URLs which don't need re-downloading
+  if (data.imageUrl?.startsWith('data:')) return data.imageUrl;
   const dataUrl = await downloadImageAsDataUrl(data.imageUrl);
   return dataUrl;
 }
@@ -174,20 +187,24 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
   const fallbackDescription = buildFallbackDescription(entity, entityType);
 
   try {
+    const canUseRefImage = usesReferenceImages(imageModel) && !!sourcePortraitUrl;
     let description = fallbackDescription;
-    if (sourcePortraitUrl) {
+
+    // For text-only models (DALL-E 3, Flux), use GPT-4o-mini vision to describe
+    // the portrait so the redraw prompt preserves likeness. Reference-capable
+    // models (nano-banana, gpt-image-1) get the portrait itself — no describe
+    // step needed, and likeness survives the style change much more faithfully.
+    if (!canUseRefImage && sourcePortraitUrl) {
       const visionDescription = await describeImage(sourcePortraitUrl, entity.name, apiKey);
       if (visionDescription) description = visionDescription;
     }
 
-    // CRITICAL: Prepend ancestry visual hint so the race anatomy is never lost,
-    // even if the vision description focused on clothing/expression instead.
     const ancestryHint = getAncestryVisualHint(entity.ancestry);
-    const racePrefix = ancestryHint
-      ? `IMPORTANT — the subject is ${ancestryHint}. `
-      : '';
+    const racePrefix = ancestryHint ? `IMPORTANT — the subject is ${ancestryHint}. ` : '';
 
-    const portraitPrompt = `${racePrefix}Head-and-shoulders portrait of ${entity.name}. ${description}. Neutral background, facing slightly to one side, no text.`;
+    const portraitPrompt = canUseRefImage
+      ? `${racePrefix}Head-and-shoulders portrait of ${entity.name}, redrawn in the requested storybook style. Preserve the exact face, hair, eye colour, clothing, and gear shown in the reference image. Neutral background, no text, no labels.`
+      : `${racePrefix}Head-and-shoulders portrait of ${entity.name}. ${description}. Neutral background, facing slightly to one side, no text.`;
 
     const effectiveStyleKey = styleKey === 'custom' ? (styleCustom || 'watercolor') : styleKey;
     const dataUrl = await generateStylizedImage({
@@ -196,7 +213,8 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
       styleKey: effectiveStyleKey,
       gameSystem,
       apiKey,
-      imageModel
+      imageModel,
+      referenceImages: canUseRefImage ? [sourcePortraitUrl] : undefined
     });
 
     const storagePath = `campaigns/${campaignId}/storybook/styled-portraits/${entity.id}_${Date.now()}.png`;
@@ -236,7 +254,7 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
 
 // ── Scene generation ──────────────────────────────────────────────────────────
 
-async function generateSceneImage({ scene, entityDescriptions, entityAncestryHints, styleKey, styleCustom, gameSystem, campaignId, apiKey, imageModel }) {
+async function generateSceneImage({ scene, entityDescriptions, entityAncestryHints, entityPortraits, styleKey, styleCustom, gameSystem, campaignId, apiKey, imageModel }) {
   // Build featured entity descriptions with ancestry hints prominently placed
   const featuredParts = (scene.featuredEntityIds || []).map(id => {
     const desc = entityDescriptions[id];
@@ -247,9 +265,21 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
     return desc || hint;
   }).filter(Boolean);
 
-  const featuredClause = featuredParts.length
-    ? ` Characters in this scene (render their species accurately): ${featuredParts.join('; ')}.`
-    : '';
+  // Collect reference portrait URLs for models that accept them. We cap at 4
+  // references so nano-banana/gpt-image-1 stay fast.
+  const canUseRefImages = usesReferenceImages(imageModel);
+  const referenceImages = canUseRefImages
+    ? (scene.featuredEntityIds || [])
+        .map(id => entityPortraits?.[id])
+        .filter(Boolean)
+        .slice(0, 4)
+    : undefined;
+
+  const featuredClause = canUseRefImages && referenceImages?.length
+    ? ` The characters in this scene are the people shown in the reference images — preserve their exact faces, species, clothing, and gear from the references.`
+    : featuredParts.length
+      ? ` Characters in this scene (render their species accurately): ${featuredParts.join('; ')}.`
+      : '';
 
   const fullPrompt = `${scene.prompt}${featuredClause}`;
   const effectiveStyleKey = styleKey === 'custom' ? (styleCustom || 'watercolor') : styleKey;
@@ -261,6 +291,7 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
     gameSystem,
     apiKey,
     imageModel,
+    referenceImages,
     size: '1792x1024'
   });
 
@@ -460,6 +491,7 @@ export async function generateChapter({
         scene: { ...scenePrompt, id: `scene_${i}_${Date.now()}` },
         entityDescriptions,
         entityAncestryHints,
+        entityPortraits: entityPortraitUrls,
         styleKey,
         styleCustom,
         gameSystem,
@@ -541,14 +573,16 @@ export async function regenerateScene({
   };
   const entityDescriptions = {};
   const entityAncestryHints = {};
+  const entityPortraits = {};
   const featured = scene.featuredEntityIds || [];
   for (const id of featured) {
     const { entity, entityType } = findEntityInRosters({ entityId: id, rosters });
     if (!entity || !entityType) continue;
-    const { description } = await ensureStyledPortrait({
+    const { url, description } = await ensureStyledPortrait({
       entity, entityType, styleKey, styleCustom, campaignId, apiKey, imageModel, gameSystem
     });
     entityDescriptions[id] = description;
+    if (url) entityPortraits[id] = url;
     if (entity.ancestry) {
       const hint = getAncestryVisualHint(entity.ancestry);
       if (hint) entityAncestryHints[id] = `${entity.name} is ${hint}`;
@@ -558,6 +592,7 @@ export async function regenerateScene({
     scene: { ...scene, id: scene.id || `scene_${Date.now()}` },
     entityDescriptions,
     entityAncestryHints,
+    entityPortraits,
     styleKey,
     styleCustom,
     gameSystem,

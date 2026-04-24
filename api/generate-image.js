@@ -28,7 +28,8 @@ export default async function handler(req, res) {
       animated = false,
       styleKey,               // optional: for storybook-* types
       gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
-      imageModel,             // optional: 'flux-pro' for Replicate Flux, default is DALL-E 3
+      imageModel,             // optional: 'nano-banana' | 'gpt-image-1' | 'flux-pro' | '' (dall-e-3)
+      referenceImages,        // optional: array of image URLs to use as likeness reference
       apiKey: clientApiKey   // optional client-provided key (used by portrait callers)
     } = req.body;
 
@@ -61,8 +62,118 @@ export default async function handler(req, res) {
       const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
       const imageSize = validSizes.includes(size) ? size : '1024x1024';
 
-      // --- Replicate Flux Pro path (better at species/anatomy accuracy) ---
       const replicateKey = process.env.REPLICATE_API_TOKEN;
+      const refs = Array.isArray(referenceImages) ? referenceImages.filter(Boolean) : [];
+
+      // --- Google Gemini 2.5 Flash Image ("nano-banana") via Replicate ---
+      //     Best for character likeness — accepts the original portrait(s)
+      //     as reference images and redraws them in the requested style.
+      if (imageModel === 'nano-banana' && replicateKey) {
+        console.log('Using Replicate nano-banana (Gemini 2.5 Flash Image) for storybook image, refs:', refs.length);
+        try {
+          const createRes = await fetch('https://api.replicate.com/v1/models/google/nano-banana/predictions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${replicateKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'wait'
+            },
+            body: JSON.stringify({
+              input: {
+                prompt: fullPrompt,
+                image_input: refs,
+                output_format: 'png'
+              }
+            })
+          });
+          if (createRes.ok) {
+            let prediction = await createRes.json();
+            if (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+              const pollUrl = prediction.urls?.get || `https://api.replicate.com/v1/predictions/${prediction.id}`;
+              const deadline = Date.now() + 55000;
+              while (Date.now() < deadline && prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+                await new Promise(r => setTimeout(r, 2000));
+                const pollRes = await fetch(pollUrl, { headers: { 'Authorization': `Bearer ${replicateKey}` } });
+                if (pollRes.ok) prediction = await pollRes.json();
+              }
+            }
+            if (prediction.status === 'succeeded' && prediction.output) {
+              const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+              if (url) return res.status(200).json({ imageUrl: url, prompt: fullPrompt, model: 'nano-banana' });
+            }
+            console.warn('nano-banana prediction failed, falling back:', prediction.status, prediction.error);
+          } else {
+            const errText = await createRes.text().catch(() => createRes.statusText);
+            console.error('Replicate nano-banana error:', errText);
+          }
+        } catch (err) {
+          console.error('nano-banana error, falling back:', err.message);
+        }
+      }
+
+      // --- OpenAI gpt-image-1 (reference-capable) ---
+      //     Uses /v1/images/edits when references are provided, otherwise
+      //     /v1/images/generations. Requires a verified OpenAI organisation.
+      if (imageModel === 'gpt-image-1') {
+        const openaiKey = clientApiKey || process.env.OPENAI_API_KEY;
+        if (openaiKey) {
+          console.log('Using OpenAI gpt-image-1 for storybook image, refs:', refs.length);
+          try {
+            if (refs.length > 0) {
+              // Download each reference image and upload as multipart
+              const form = new FormData();
+              form.append('model', 'gpt-image-1');
+              form.append('prompt', fullPrompt);
+              form.append('size', imageSize === '1792x1024' ? '1536x1024' : imageSize === '1024x1792' ? '1024x1536' : '1024x1024');
+              form.append('n', '1');
+              for (let i = 0; i < Math.min(refs.length, 4); i++) {
+                const imgRes = await fetch(refs[i]);
+                if (!imgRes.ok) continue;
+                const buf = await imgRes.arrayBuffer();
+                form.append('image[]', new Blob([buf], { type: imgRes.headers.get('content-type') || 'image/png' }), `ref${i}.png`);
+              }
+              const gptRes = await fetch('https://api.openai.com/v1/images/edits', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${openaiKey}` },
+                body: form
+              });
+              if (gptRes.ok) {
+                const data = await gptRes.json();
+                const b64 = data.data?.[0]?.b64_json;
+                const directUrl = data.data?.[0]?.url;
+                if (b64) return res.status(200).json({ imageUrl: `data:image/png;base64,${b64}`, prompt: fullPrompt, model: 'gpt-image-1' });
+                if (directUrl) return res.status(200).json({ imageUrl: directUrl, prompt: fullPrompt, model: 'gpt-image-1' });
+              } else {
+                console.error('gpt-image-1 edits error:', await gptRes.text().catch(() => gptRes.statusText));
+              }
+            } else {
+              const gptRes = await fetch('https://api.openai.com/v1/images/generations', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: 'gpt-image-1',
+                  prompt: fullPrompt,
+                  size: imageSize === '1792x1024' ? '1536x1024' : imageSize === '1024x1792' ? '1024x1536' : '1024x1024',
+                  n: 1
+                })
+              });
+              if (gptRes.ok) {
+                const data = await gptRes.json();
+                const b64 = data.data?.[0]?.b64_json;
+                const directUrl = data.data?.[0]?.url;
+                if (b64) return res.status(200).json({ imageUrl: `data:image/png;base64,${b64}`, prompt: fullPrompt, model: 'gpt-image-1' });
+                if (directUrl) return res.status(200).json({ imageUrl: directUrl, prompt: fullPrompt, model: 'gpt-image-1' });
+              } else {
+                console.error('gpt-image-1 generations error:', await gptRes.text().catch(() => gptRes.statusText));
+              }
+            }
+          } catch (err) {
+            console.error('gpt-image-1 error, falling back:', err.message);
+          }
+        }
+      }
+
+      // --- Replicate Flux Pro path (better at species/anatomy accuracy) ---
       if (imageModel === 'flux-pro' && replicateKey) {
         console.log('Using Replicate Flux Pro for storybook image');
         try {
