@@ -1,7 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Storybook — The Bound Volume
-   A leather-wrapped, two-page spread reading experience. The page turns,
-   illuminated initials, gilded plates, and running heads are the signature.
+   Storybook — single scrolling chapter on an illuminated parchment page.
+   Dropped the two-page spread + leaf pagination; kept all the visual
+   identity (leather desk, gilded plates, illuminated initial, ornate
+   dividers, Cinzel + EB Garamond typography).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
@@ -25,32 +26,30 @@
   min-height: 100%;
   padding: 2rem 1rem 4rem;
   background:
-    /* warm lamplight pool top-center */
     radial-gradient(ellipse 60% 40% at 50% 8%, rgba(230, 180, 100, 0.12), transparent 70%),
-    /* vignette shadow bottom */
     radial-gradient(ellipse 80% 60% at 50% 110%, rgba(0, 0, 0, 0.55), transparent 60%),
-    /* leather grain — layered diagonal striations */
     repeating-linear-gradient(115deg, rgba(0,0,0,0.04) 0 2px, transparent 2px 7px),
     repeating-linear-gradient( 25deg, rgba(255,200,130,0.02) 0 1px, transparent 1px 5px),
     linear-gradient(180deg, var(--sb-leather-hi) 0%, var(--sb-leather) 50%, var(--sb-leather-lo) 100%);
 }
 
-/* ── Toolbar (outside the book) ──────────────────────────────────────────── */
+/* ── Toolbar (sticky above the parchment) ────────────────────────────────── */
 
 .sb-toolbar {
-  max-width: 1280px;
+  max-width: 880px;
   margin: 0 auto 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   padding: 0 0.5rem;
+  flex-wrap: wrap;
 }
 .sb-toolbar-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.9rem;
+  padding: 0.5rem 0.85rem;
   font-family: 'Cinzel', serif;
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -62,232 +61,133 @@
   cursor: pointer;
   transition: color 180ms, background 180ms, border-color 180ms;
 }
-.sb-toolbar-btn:hover {
+.sb-toolbar-btn:hover:not(:disabled) {
   color: var(--sb-gilt-bright);
   background: rgba(0, 0, 0, 0.5);
   border-color: var(--sb-gilt);
 }
 
-/* ── The book: leather cover + raised bands ──────────────────────────────── */
+/* ── Parchment page ──────────────────────────────────────────────────────── */
 
-.sb-book-frame {
-  max-width: 1280px;
+.sb-page {
+  max-width: 880px;
   margin: 0 auto;
-  padding: 1.25rem;
-  border-radius: 4px 8px 8px 4px;
-  background:
-    linear-gradient(90deg,
-      #0a0604 0 8px,                  /* spine shadow */
-      #1a100a 8px 14px,
-      var(--sb-leather) 14px 100%
-    ),
-    radial-gradient(ellipse at 30% 20%, rgba(185, 136, 58, 0.12), transparent 60%);
-  background-blend-mode: normal, screen;
-  border: 1px solid #000;
-  box-shadow:
-    0 0 0 1px rgba(185, 136, 58, 0.15),
-    0 30px 60px rgba(0, 0, 0, 0.75),
-    0 10px 20px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 6px #1a100a,
-    inset 0 0 0 7px rgba(185, 136, 58, 0.25);
-  position: relative;
-}
-
-/* Corner cartouches (little gilt brackets) */
-.sb-book-frame::before,
-.sb-book-frame::after {
-  content: '';
-  position: absolute;
-  width: 28px;
-  height: 28px;
-  background:
-    linear-gradient(45deg, transparent 48%, var(--sb-gilt) 49% 51%, transparent 52%),
-    linear-gradient(135deg, transparent 48%, var(--sb-gilt) 49% 51%, transparent 52%);
-  opacity: 0.6;
-}
-.sb-book-frame::before { top: 14px; left: 14px; }
-.sb-book-frame::after  { top: 14px; right: 14px; transform: scaleX(-1); }
-
-/* ── The spread: two facing pages ────────────────────────────────────────── */
-
-.sb-spread {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-  position: relative;
-  /* Content can grow beyond the 720px page height when a leaf's text is
-     dense — clipping it was dropping half the chapter on the floor. */
-  overflow: visible;
-  border-radius: 2px;
-  min-height: 720px;
-  background: var(--sb-parchment);
-}
-
-/* Gutter shadow where pages meet */
-.sb-spread::before {
-  content: '';
-  position: absolute;
-  top: 0; bottom: 0;
-  left: 50%;
-  width: 38px;
-  transform: translateX(-50%);
-  pointer-events: none;
-  background:
-    linear-gradient(90deg,
-      transparent 0%,
-      rgba(0,0,0,0.25) 40%,
-      rgba(0,0,0,0.45) 50%,
-      rgba(0,0,0,0.25) 60%,
-      transparent 100%);
-  z-index: 3;
-}
-
-/* Animated page turn */
-.sb-spread.is-turning .sb-leaf {
-  animation: sb-leaf-turn 420ms cubic-bezier(0.4, 0.1, 0.2, 1);
-  transform-origin: center center;
-}
-@keyframes sb-leaf-turn {
-  0%   { opacity: 0.3; transform: rotateY(-8deg) translateX(-6px); }
-  100% { opacity: 1;   transform: rotateY(0)      translateX(0); }
-}
-
-/* ── Individual leaf (page) ──────────────────────────────────────────────── */
-
-.sb-leaf {
-  position: relative;
-  padding: 3.5rem 3rem 3.25rem;
+  padding: 3.5rem clamp(1.75rem, 5vw, 4.5rem) 3.5rem;
   color: var(--sb-ink);
   font-family: 'EB Garamond', 'Crimson Pro', 'Georgia', serif;
-  font-size: 1.06rem;
+  font-size: 1.08rem;
   line-height: 1.8;
-  min-height: 720px;
-  display: flex;
-  flex-direction: column;
+  position: relative;
 
+  /* Aged parchment — base + two grains + spotlight + edge vignette */
   background-color: var(--sb-parchment);
   background-image:
-    /* lamplight wash */
     radial-gradient(ellipse at 50% 0%, rgba(255, 230, 180, 0.4), transparent 60%),
-    /* aged stains */
     radial-gradient(circle 80px at 22% 25%, rgba(140, 90, 30, 0.06), transparent),
     radial-gradient(circle 100px at 78% 70%, rgba(140, 90, 30, 0.07), transparent),
     radial-gradient(circle 60px at 60% 15%, rgba(120, 70, 20, 0.05), transparent),
-    /* subtle paper grain */
     repeating-linear-gradient(103deg, rgba(140, 90, 30, 0.03) 0 2px, transparent 2px 8px),
     repeating-linear-gradient( 17deg, rgba(140, 90, 30, 0.025) 0 2px, transparent 2px 6px),
     linear-gradient(170deg, var(--sb-parchment-hi) 0%, var(--sb-parchment) 45%, var(--sb-parchment-lo) 100%);
+
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 2px 1px rgba(60, 35, 15, 0.15),
+    inset 0 0 60px rgba(110, 70, 25, 0.14),
+    0 0 0 1px rgba(50, 28, 12, 0.5),
+    0 25px 65px rgba(0, 0, 0, 0.55),
+    0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* Inner edge shadow on each leaf (so the gutter darkens into the binding) */
-.sb-leaf--left  { box-shadow: inset -28px 0 40px -18px rgba(60, 30, 5, 0.55); }
-.sb-leaf--right { box-shadow: inset  28px 0 40px -18px rgba(60, 30, 5, 0.55); }
-
-/* ── Running head + folio ────────────────────────────────────────────────── */
-
-.sb-head {
-  font-family: 'Cinzel', serif;
-  font-size: 0.68rem;
-  letter-spacing: 0.35em;
-  text-transform: uppercase;
-  color: var(--sb-ink-muted);
-  padding-bottom: 0.65rem;
-  margin-bottom: 1.75rem;
-  border-bottom: 1px solid rgba(110, 76, 18, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+/* Slight torn-look shading at top and bottom of the page */
+.sb-page::before,
+.sb-page::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 18px;
+  pointer-events: none;
 }
-.sb-head-swash { color: var(--sb-gilt-deep); font-size: 0.9rem; }
-.sb-leaf--left  .sb-head { flex-direction: row; }
-.sb-leaf--right .sb-head { flex-direction: row-reverse; }
+.sb-page::before { top: 0;    background: linear-gradient(180deg, rgba(80,45,15,0.18), transparent); }
+.sb-page::after  { bottom: 0; background: linear-gradient(0deg,   rgba(80,45,15,0.18), transparent); }
 
-.sb-folio {
-  margin-top: auto;
-  padding-top: 1.25rem;
-  font-family: 'Cinzel', serif;
-  font-size: 0.72rem;
-  letter-spacing: 0.3em;
-  color: var(--sb-ink-muted);
+/* ── Chapter header ─────────────────────────────────────────────────────── */
+
+.sb-chapter-header {
   text-align: center;
+  margin-bottom: 1.5rem;
 }
-
-/* ── Title page (spread 0) ───────────────────────────────────────────────── */
-
-.sb-title-leaf {
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-.sb-title-eyebrow {
+.sb-eyebrow {
+  display: block;
   font-family: 'Cinzel', serif;
-  font-size: 0.7rem;
-  letter-spacing: 0.5em;
   text-transform: uppercase;
+  letter-spacing: 0.45em;
+  font-size: 0.76rem;
   color: var(--sb-gilt-deep);
-  margin-bottom: 0.9rem;
+  margin-bottom: 0.75rem;
 }
 .sb-title {
   font-family: 'Cinzel', serif;
   font-weight: 700;
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-size: clamp(2rem, 4vw, 3rem);
   line-height: 1.12;
-  color: var(--sb-ink);
   letter-spacing: 0.02em;
-  margin: 0 0 1.5rem;
+  color: var(--sb-ink);
+  margin: 0 0 0.75rem;
   text-shadow: 0 1px 0 rgba(255, 235, 190, 0.6);
-}
-.sb-title-ornament {
-  width: 180px;
-  height: 16px;
-  background:
-    linear-gradient(90deg,
-      transparent 0%,
-      var(--sb-gilt) 20%,
-      var(--sb-gilt-bright) 50%,
-      var(--sb-gilt) 80%,
-      transparent 100%);
-  mask-image:
-    radial-gradient(circle at center, transparent 4px, #000 4px 6px, transparent 6px),
-    linear-gradient(#000, #000);
-  -webkit-mask-image:
-    radial-gradient(circle at center, transparent 4px, #000 4px 6px, transparent 6px),
-    linear-gradient(#000, #000);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
-  opacity: 0.9;
-}
-.sb-title-lozenge {
-  width: 10px; height: 10px;
-  transform: rotate(45deg);
-  background: var(--sb-gilt);
-  box-shadow: 0 0 0 2px rgba(255, 235, 190, 0.6), inset 0 0 0 1px var(--sb-gilt-deep);
-  margin: 1.25rem auto;
 }
 .sb-title-session {
   font-family: 'EB Garamond', serif;
   font-style: italic;
   font-size: 1.05rem;
   color: var(--sb-ink-soft);
+  margin-bottom: 0.25rem;
 }
+.sb-fleuron {
+  display: block;
+  margin: 1rem auto 0;
+  text-align: center;
+  color: var(--sb-gilt-deep);
+  font-size: 1.4rem;
+  letter-spacing: 0.6em;
+  text-indent: 0.6em;
+}
+.sb-fleuron::before { content: '❦   ❦   ❦'; }
 
-/* ── Prose typography ─────────────────────────────────────────────────────── */
+.sb-rule {
+  margin: 2.5rem auto 1.5rem;
+  text-align: center;
+  color: var(--sb-gilt-deep);
+  letter-spacing: 0.5em;
+  font-size: 1rem;
+}
+.sb-rule::before { content: '⚜   ⚜   ⚜'; }
 
-.sb-prose p {
+/* ── Prose ──────────────────────────────────────────────────────────────── */
+
+.sb-prose {
+  max-width: 68ch;
+  margin: 0 auto;
+}
+.sb-prose p,
+.sb-para p {
   margin: 0 0 1em 0;
   color: var(--sb-ink);
   text-indent: 1.6em;
   text-align: justify;
   hyphens: auto;
 }
-.sb-prose p:first-child { text-indent: 0; }
-.sb-prose p:last-child  { margin-bottom: 0; }
-.sb-prose em     { font-style: italic; color: var(--sb-ink-soft); }
+.sb-prose p:last-child,
+.sb-para p:last-child { margin-bottom: 0; }
+.sb-para { margin-bottom: 1em; }
+.sb-para:last-child { margin-bottom: 0; }
+.sb-prose em    { font-style: italic; color: var(--sb-ink-soft); }
 .sb-prose strong { font-weight: 600; color: var(--sb-ink); }
 
-/* ── Illuminated initial (first letter of chapter) ───────────────────────── */
+/* First paragraph of the chapter has no indent (drop cap handles that) */
+.sb-para--opening p:first-child { text-indent: 0; }
 
+/* Illuminated initial on the opening paragraph */
 .sb-illuminated {
   float: left;
   width: 4.2em;
@@ -303,7 +203,6 @@
   line-height: 1;
   color: var(--sb-gilt-deep);
 
-  /* SVG frame rendered via background */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='%23b9883a'/><stop offset='0.5' stop-color='%23e2b860'/><stop offset='1' stop-color='%236e4c12'/></linearGradient></defs><rect x='2' y='2' width='96' height='96' fill='none' stroke='url(%23g)' stroke-width='2'/><rect x='6' y='6' width='88' height='88' fill='none' stroke='%236e4c12' stroke-width='0.5'/><path d='M2 8 Q8 2 14 2 M98 8 Q92 2 86 2 M2 92 Q8 98 14 98 M98 92 Q92 98 86 98' fill='none' stroke='%236e4c12' stroke-width='1.2'/><path d='M50 4 Q54 8 50 12 Q46 8 50 4 Z' fill='%23b9883a'/><path d='M50 88 Q54 92 50 96 Q46 92 50 88 Z' fill='%23b9883a'/></svg>");
   background-size: contain;
   background-repeat: no-repeat;
@@ -312,14 +211,14 @@
   text-shadow: 0 1px 0 rgba(255, 235, 190, 0.8);
 }
 
-/* ── Scene plate — full-bleed within a leaf ──────────────────────────────── */
+/* ── Scene plate (inline figure) ────────────────────────────────────────── */
 
 .sb-plate {
-  margin: 1.25rem -0.5rem 1.5rem;
+  margin: 1.5rem 0 1.75rem;
   padding: 0;
   cursor: zoom-in;
   position: relative;
-  clear: both;                        /* avoid overlapping the illuminated initial */
+  clear: both;
 }
 .sb-plate-frame {
   position: relative;
@@ -337,9 +236,9 @@
   display: block;
   width: 100%;
   height: auto;
-  max-height: 480px;                  /* cap so a tall plate doesn't devour the leaf */
-  object-fit: contain;                /* show the whole painting, don't crop */
-  background: var(--sb-parchment);    /* letterbox fill for non-matching aspect ratios */
+  max-height: 520px;
+  object-fit: contain;
+  background: var(--sb-parchment);
   filter: sepia(6%) saturate(95%) contrast(102%);
 }
 .sb-plate-caption {
@@ -347,12 +246,10 @@
   font-family: 'Cinzel', serif;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   color: var(--sb-ink-soft);
   padding: 0.85rem 0.5rem 0;
 }
-
-/* SVG corner flourishes at the four corners of each plate */
 .sb-plate-corner {
   position: absolute;
   width: 34px;
@@ -369,17 +266,19 @@
 .sb-plate-corner.bl { bottom: 2px; left: 2px; transform: scaleY(-1); }
 .sb-plate-corner.br { bottom: 2px; right: 2px; transform: scale(-1,-1); }
 
-/* ── Dramatis Personae (on its own spread) ───────────────────────────────── */
+/* ── Section labels (Dramatis Personae etc.) ─────────────────────────────── */
 
 .sb-section-label {
   font-family: 'Cinzel', serif;
   text-transform: uppercase;
   letter-spacing: 0.3em;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   color: var(--sb-gilt-deep);
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
+
+/* ── Dramatis Personae ──────────────────────────────────────────────────── */
 
 .sb-personae {
   display: grid;
@@ -396,9 +295,7 @@
   border-radius: 1px;
 }
 .sb-persona-avatar {
-  width: 56px;
-  height: 56px;
-  flex: 0 0 56px;
+  width: 56px; height: 56px; flex: 0 0 56px;
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid var(--sb-gilt);
@@ -452,7 +349,7 @@
   color: var(--sb-ink-soft);
 }
 
-/* ── Journal entries ─────────────────────────────────────────────────────── */
+/* ── Journal ────────────────────────────────────────────────────────────── */
 
 .sb-journal-entry {
   padding: 1rem 1.1rem;
@@ -517,6 +414,8 @@
   padding: 0.4rem 0.6rem;
 }
 
+/* ── Gilded inked button ────────────────────────────────────────────────── */
+
 .sb-btn {
   display: inline-flex;
   align-items: center;
@@ -533,238 +432,146 @@
   cursor: pointer;
   transition: background 180ms, color 180ms;
 }
-.sb-btn:hover {
-  background: linear-gradient(180deg, var(--sb-gilt-deep), var(--sb-ink-soft));
-  color: var(--sb-gilt-bright);
-}
+.sb-btn:hover { background: linear-gradient(180deg, var(--sb-gilt-deep), var(--sb-ink-soft)); color: var(--sb-gilt-bright); }
 .sb-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
 
-/* ── Page-turn controls (arrows floating off the book) ───────────────────── */
+/* ── End-of-chapter navigation ──────────────────────────────────────────── */
 
-.sb-turn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 56px;
-  height: 80px;
+.sb-chapter-nav {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px dashed rgba(110, 76, 18, 0.35);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+.sb-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--sb-ink);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 180ms, transform 180ms;
+}
+.sb-nav-link:hover:not(:disabled) {
+  color: var(--sb-gilt-deep);
+  transform: translateX(-4px);
+}
+.sb-nav-link--right { justify-self: end; text-align: right; }
+.sb-nav-link--right:hover:not(:disabled) { transform: translateX(4px); }
+.sb-nav-link:disabled { opacity: 0.2; cursor: not-allowed; }
+.sb-nav-kicker {
+  display: block;
+  font-family: 'Cinzel', serif;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  font-size: 0.68rem;
+  color: var(--sb-gilt-deep);
+  margin-bottom: 0.2rem;
+}
+.sb-nav-title {
+  display: block;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--sb-ink);
+  max-width: 20ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Table of Contents overlay ──────────────────────────────────────────── */
+
+.sb-toc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--sb-gilt-bright);
-  background: rgba(20, 10, 5, 0.75);
-  border: 1px solid var(--sb-gilt);
-  cursor: pointer;
-  transition: transform 180ms ease, background 180ms, color 180ms;
-  z-index: 5;
+  padding: 2rem 1rem;
+  background: rgba(10, 5, 2, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
-.sb-turn:hover {
-  background: rgba(40, 20, 8, 0.92);
-  color: #fff4d4;
-}
-.sb-turn:disabled {
-  opacity: 0.2;
-  cursor: not-allowed;
-}
-.sb-turn.prev { left: -28px; border-radius: 3px 0 0 3px; }
-.sb-turn.next { right: -28px; border-radius: 0 3px 3px 0; }
-.sb-turn:not(:disabled):hover.prev { transform: translateY(-50%) translateX(-4px); }
-.sb-turn:not(:disabled):hover.next { transform: translateY(-50%) translateX(4px); }
-
-/* ── Progress pips under the book ────────────────────────────────────────── */
-
-.sb-pips {
-  max-width: 1280px;
-  margin: 1.25rem auto 0;
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.sb-pip {
-  width: 10px; height: 10px;
-  border: 1px solid rgba(185, 136, 58, 0.45);
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-  transition: background 180ms, transform 180ms;
-}
-.sb-pip:hover { background: rgba(185, 136, 58, 0.35); }
-.sb-pip.is-current {
-  background: var(--sb-gilt-bright);
-  transform: scale(1.2);
-  border-color: var(--sb-gilt);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   Chapter list — a shelf of bound volumes
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-.sb-shelf {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 2rem 1.5rem;
-  padding-bottom: 1.5rem;
+.sb-toc {
   position: relative;
-}
-.sb-shelf::after {
-  /* wooden shelf plank under the books */
-  content: '';
-  position: absolute;
-  left: 0; right: 0;
-  bottom: -12px;
-  height: 14px;
-  background:
-    repeating-linear-gradient(90deg, rgba(0,0,0,0.08) 0 3px, transparent 3px 10px),
-    linear-gradient(180deg, #5c3a1e, #2e1c0d);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.7);
-  border-radius: 2px;
-}
+  max-width: 560px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 2.5rem clamp(1.5rem, 4vw, 2.75rem);
+  color: var(--sb-ink);
+  font-family: 'EB Garamond', serif;
 
-.sb-volume {
+  background-color: var(--sb-parchment);
+  background-image:
+    radial-gradient(ellipse at 50% 0%, rgba(255, 230, 180, 0.4), transparent 60%),
+    repeating-linear-gradient(103deg, rgba(140, 90, 30, 0.03) 0 2px, transparent 2px 8px),
+    linear-gradient(170deg, var(--sb-parchment-hi) 0%, var(--sb-parchment) 45%, var(--sb-parchment-lo) 100%);
+
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(50, 28, 12, 0.5),
+    0 25px 60px rgba(0, 0, 0, 0.55),
+    inset 0 0 60px rgba(110, 70, 25, 0.14);
+}
+.sb-toc-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: 1px solid rgba(110, 76, 18, 0.4);
+  color: var(--sb-ink-muted);
+  padding: 6px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.sb-toc-close:hover { color: var(--sb-gilt-deep); border-color: var(--sb-gilt-deep); }
+
+.sb-toc-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+.sb-toc-row {
+  display: flex;
+  align-items: baseline;
+  width: 100%;
+  gap: 0.9rem;
+  padding: 0.75rem 0.5rem;
   background: transparent;
   border: none;
-  padding: 0;
+  border-bottom: 1px dotted rgba(110, 76, 18, 0.3);
   text-align: left;
   cursor: pointer;
-  transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
-  display: flex;
-  flex-direction: column;
+  color: var(--sb-ink);
+  font-family: inherit;
+  transition: background 180ms;
 }
-.sb-volume:hover { transform: translateY(-10px) rotate(-0.4deg); }
-
-.sb-volume-cover {
-  position: relative;
-  aspect-ratio: 5 / 7;
-  overflow: hidden;
-  border-radius: 2px 6px 6px 2px;
-  background:
-    /* leather texture */
-    repeating-linear-gradient(115deg, rgba(0,0,0,0.08) 0 2px, transparent 2px 6px),
-    linear-gradient(180deg, #4a2817, #2a1408);
-  box-shadow:
-    inset 0 0 0 2px var(--sb-gilt-deep),
-    inset 0 0 0 3px rgba(255, 235, 190, 0.12),
-    inset 8px 0 16px rgba(0, 0, 0, 0.55),   /* spine shadow */
-    3px 8px 22px rgba(0, 0, 0, 0.6);
-}
-.sb-volume-cover img {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover;
-  opacity: 0.72;
-  filter: sepia(20%) saturate(80%) contrast(105%) brightness(0.75);
-}
-.sb-volume-cover::before {
-  /* central gilt cartouche */
-  content: '';
-  position: absolute;
-  inset: 22% 18%;
-  border: 1px solid var(--sb-gilt);
-  box-shadow: inset 0 0 0 1px rgba(255, 235, 190, 0.25);
-  pointer-events: none;
-}
-.sb-volume-cover::after {
-  /* spine raised band */
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 12px;
-  background:
-    linear-gradient(90deg, rgba(255, 235, 190, 0.22), transparent 60%),
-    linear-gradient(180deg,
-      transparent 20%,
-      var(--sb-gilt) 20%, var(--sb-gilt) 22%,
-      transparent 22%, transparent 48%,
-      var(--sb-gilt) 48%, var(--sb-gilt) 50%,
-      transparent 50%, transparent 78%,
-      var(--sb-gilt) 78%, var(--sb-gilt) 80%,
-      transparent 80%);
-  opacity: 0.7;
-  pointer-events: none;
-}
-
-.sb-volume-plate {
-  position: absolute;
-  left: 22%; right: 18%;
-  top: 26%;
-  text-align: center;
-  color: var(--sb-gilt-bright);
+.sb-toc-row:hover { background: rgba(255, 235, 180, 0.45); }
+.sb-toc-row.is-current { background: rgba(226, 184, 96, 0.2); }
+.sb-toc-num {
   font-family: 'Cinzel', serif;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-shadow: 0 1px 0 rgba(0,0,0,0.8);
-  z-index: 2;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  color: var(--sb-gilt-deep);
+  min-width: 5em;
 }
-.sb-volume-plate .num {
-  display: block;
-  font-size: 0.62rem;
-  color: rgba(226, 184, 96, 0.8);
-  margin-bottom: 0.3rem;
-  letter-spacing: 0.3em;
-}
-.sb-volume-plate .nm {
-  display: block;
-  font-size: 0.92rem;
-  line-height: 1.15;
-  letter-spacing: 0.06em;
-}
-
-.sb-volume-badge {
-  position: absolute;
-  top: 8px; right: 8px;
-  padding: 3px 8px;
-  font-family: 'Cinzel', serif;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 0.58rem;
-  background: rgba(0,0,0,0.7);
-  color: var(--sb-gilt-bright);
-  border: 1px solid rgba(226, 184, 96, 0.4);
-  border-radius: 1px;
-  z-index: 3;
-}
-.sb-volume-badge.draft    { color: #d4c5a0; }
-.sb-volume-badge.pending  { color: #e2b860; border-color: #e2b860; }
-.sb-volume-badge.published{ color: #9be09e; border-color: rgba(155, 224, 158, 0.45); }
-
-.sb-volume-edit {
-  position: absolute;
-  top: 8px; left: 8px;
-  padding: 4px 6px;
-  background: rgba(0,0,0,0.7);
-  color: var(--sb-gilt-bright);
-  border: 1px solid rgba(226, 184, 96, 0.4);
-  cursor: pointer;
-  z-index: 3;
-  opacity: 0.8;
-}
-.sb-volume-edit:hover { opacity: 1; background: rgba(0,0,0,0.9); }
-
-.sb-volume-label {
-  padding: 0.75rem 0 0;
-  text-align: left;
-}
-.sb-volume-label .title {
-  font-family: 'Cinzel', serif;
-  font-size: 1.02rem;
-  color: rgba(233, 212, 170, 0.92);
-  font-weight: 700;
-  line-height: 1.25;
-}
-.sb-volume-label .meta {
-  font-family: 'EB Garamond', serif;
+.sb-toc-title {
+  flex: 1;
+  font-size: 1.04rem;
   font-style: italic;
-  font-size: 0.82rem;
-  color: rgba(233, 212, 170, 0.55);
-  margin-top: 0.2rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Hero header above the shelf
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ── Hero header (empty state reuse) ────────────────────────────────────── */
 
 .sb-hero {
   max-width: 1280px;
@@ -800,26 +607,13 @@
   margin-top: 0.3rem;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Responsive — single page on small screens
-   ═══════════════════════════════════════════════════════════════════════════ */
+/* ── Small screens ──────────────────────────────────────────────────────── */
 
-@media (max-width: 860px) {
-  .sb-spread {
-    grid-template-columns: 1fr;
-    min-height: unset;
-  }
-  .sb-spread::before { display: none; }
-  .sb-leaf {
-    padding: 2.5rem 1.5rem 2.5rem;
-    min-height: unset;
-    box-shadow: none !important;
-  }
-  .sb-leaf--right { display: none; }
-  .sb-leaf--right.is-mobile-visible { display: flex; }
-  .sb-book-frame { padding: 0.75rem; }
-  .sb-turn { width: 44px; height: 60px; }
-  .sb-turn.prev { left: -22px; }
-  .sb-turn.next { right: -22px; }
+@media (max-width: 640px) {
+  .sb-page { padding: 2.5rem 1.25rem 2.75rem; font-size: 1.02rem; }
   .sb-illuminated { font-size: 2.6em; width: 3.6em; height: 3.6em; }
+  .sb-chapter-nav { grid-template-columns: 1fr; }
+  .sb-chapter-nav .sb-fleuron { display: none; }
+  .sb-nav-link, .sb-nav-link--right { justify-self: stretch; text-align: left; }
+  .sb-plate img { max-height: 360px; }
 }

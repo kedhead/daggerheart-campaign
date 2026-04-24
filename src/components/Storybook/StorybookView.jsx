@@ -167,34 +167,26 @@ export default function StorybookView({
 function EmptyState({ isDM, onGenerate }) {
   return (
     <div style={{ maxWidth: 720, margin: '2rem auto' }}>
-      <div className="sb-book-frame" style={{ padding: '0.75rem' }}>
-        <div className="sb-spread" style={{ minHeight: 0 }}>
-          <div className="sb-leaf sb-leaf--left" style={{ padding: '3rem 2.25rem', minHeight: 'unset' }}>
-            <div className="sb-title-leaf" style={{ flex: 1 }}>
-              <BookMarked size={40} style={{ color: 'var(--sb-gilt-deep)', margin: '0 auto 1rem', display: 'block' }} />
-              <div className="sb-title-eyebrow">An Empty Volume</div>
-              <h1 className="sb-title" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>No chapters bound yet</h1>
-              <div className="sb-title-ornament" aria-hidden="true" />
-              <p style={{ marginTop: '1.25rem', fontStyle: 'italic', color: 'var(--sb-ink-soft)' }}>
-                {isDM
-                  ? 'Finalize a session and the chronicler will draft a chapter from its notes — or commission one by hand from any completed session.'
-                  : 'The chronicler has yet to set down a chapter. Return after the next session to find the ink dried.'}
-              </p>
-              {isDM && (
-                <div style={{ marginTop: '1.5rem' }}>
-                  <button type="button" onClick={onGenerate} className="sb-btn">
-                    <Wand2 size={14} />
-                    Scribe the first chapter
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="sb-leaf sb-leaf--right" aria-hidden="true" style={{ minHeight: 'unset' }}>
-            <div className="sb-head"><span className="sb-head-swash">❦</span><span>&nbsp;</span></div>
-            <div style={{ flex: 1 }} />
-          </div>
+      <div className="sb-page" style={{ textAlign: 'center' }}>
+        <div className="sb-chapter-header">
+          <BookMarked size={40} style={{ color: 'var(--sb-gilt-deep)', margin: '0 auto 1rem', display: 'block' }} />
+          <span className="sb-eyebrow">An Empty Volume</span>
+          <h1 className="sb-title" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.25rem)' }}>No chapters bound yet</h1>
+          <div className="sb-fleuron" aria-hidden="true" />
         </div>
+        <p style={{ fontStyle: 'italic', color: 'var(--sb-ink-soft)', maxWidth: '48ch', margin: '0 auto' }}>
+          {isDM
+            ? 'Finalize a session and the chronicler will draft a chapter from its notes — or commission one by hand from any completed session.'
+            : 'The chronicler has yet to set down a chapter. Return after the next session to find the ink dried.'}
+        </p>
+        {isDM && (
+          <div style={{ marginTop: '1.75rem' }}>
+            <button type="button" onClick={onGenerate} className="sb-btn">
+              <Wand2 size={14} />
+              Scribe the first chapter
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
