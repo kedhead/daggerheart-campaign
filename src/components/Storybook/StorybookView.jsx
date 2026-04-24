@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { BookMarked, Wand2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
+import { BookMarked, Wand2, Settings as SettingsIcon, Sparkles, ListOrdered } from 'lucide-react';
 import { useStorybook } from '../../hooks/useStorybook';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import ChapterReader from './ChapterReader';
 import ChapterEditor from './ChapterEditor';
 import GenerateChapterModal from './GenerateChapterModal';
 import StorybookSettingsPanel from './StorybookSettingsPanel';
+import ReorderChaptersModal from './ReorderChaptersModal';
 import PendingDraftBanner from './PendingDraftBanner';
 import './Storybook.css';
 
@@ -31,6 +32,7 @@ export default function StorybookView({
   const [editingChapterId, setEditingChapterId] = useState(null);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReorderOpen, setIsReorderOpen] = useState(false);
 
   const editingChapter = useMemo(
     () => storybook.chapters.find(c => c.id === editingChapterId) || null,
@@ -84,6 +86,12 @@ export default function StorybookView({
             </span>
           </div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem' }}>
+            {visibleChapters.length > 1 && (
+              <button type="button" onClick={() => setIsReorderOpen(true)} className="sb-toolbar-btn">
+                <ListOrdered size={13} />
+                Reorder
+              </button>
+            )}
             <button type="button" onClick={() => setIsSettingsOpen(true)} className="sb-toolbar-btn">
               <SettingsIcon size={13} />
               Style
@@ -149,6 +157,15 @@ export default function StorybookView({
           apiKey={openaiKey}
           currentUserId={currentUserId}
           addChapter={storybook.addChapter}
+        />
+      )}
+
+      {isReorderOpen && (
+        <ReorderChaptersModal
+          isOpen={isReorderOpen}
+          onClose={() => setIsReorderOpen(false)}
+          chapters={storybook.chapters}
+          updateChapter={storybook.updateChapter}
         />
       )}
 
