@@ -157,9 +157,9 @@ export default function GenerateChapterModal({
                 disabled={!includeIllustrations || running}
                 className="p-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm"
               >
-                <option value={2}>2 scenes</option>
-                <option value={3}>3 scenes</option>
-                <option value={4}>4 scenes</option>
+                {[2,3,4,5,6,7,8].map(n => (
+                  <option key={n} value={n}>{n} scenes</option>
+                ))}
               </select>
             </div>
             <p className="text-[11px] text-white/40">

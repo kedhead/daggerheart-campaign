@@ -1,59 +1,62 @@
 import { useMemo, useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { ArrowLeft, Edit3, ChevronLeft, ChevronRight, Film, Mic, Send, Trash2 } from 'lucide-react';
+import { Edit3, ChevronLeft, ChevronRight, Film, Mic, Send, Trash2, BookOpen } from 'lucide-react';
 import MediaLightbox from './MediaLightbox';
-import { useChapterJournal } from '../../hooks/useStorybook';
+import { useAllJournals } from '../../hooks/useStorybook';
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   ChapterReader — a two-page spread, paginated book reading experience.
+   ChapterReader — the whole chronicle as a single bound book.
 
-   The chapter is broken into "leaves" (pages). Each leaf holds a blend of
-   prose paragraphs and scene plates, plus dedicated spreads for the
-   Dramatis Personae, Table Memories, and In-Character Journal.
-
-   On wide screens we render two leaves side-by-side; on mobile, one at a time.
-   Prev/next turn the pages with a small animation.
+   Props historically took a single `chapter`. Now it takes an array of
+   `chapters` (chronological) and paginates every chapter into one continuous
+   book with a title page and a table of contents up front. The DM can edit
+   whichever chapter is currently open via the toolbar.
    ──────────────────────────────────────────────────────────────────────────── */
 
 export default function ChapterReader({
-  chapter,
+  chapters,
+  campaign,
   campaignId,
   characters,
   isDM,
   currentUserId,
   storybook,
   onBack,
-  onEdit
+  onEditChapter,
+  initialChapterId = null
 }) {
   const [lightboxItems, setLightboxItems] = useState(null);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const { entries: journalEntries } = useChapterJournal(campaignId, chapter.id);
-
   const [spreadIndex, setSpreadIndex] = useState(0);
   const [turning, setTurning] = useState(false);
 
-  const paragraphs = useMemo(
-    () => (chapter.prose || '').split(/\n\n+/).filter(p => p.trim()),
-    [chapter.prose]
+  const orderedChapters = useMemo(
+    () => [...(chapters || [])].sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0)),
+    [chapters]
   );
-  const scenes = chapter.scenes || [];
-  const spotlights = chapter.spotlights || [];
-  const media = chapter.media || [];
+  const chapterIds = useMemo(() => orderedChapters.map(c => c.id), [orderedChapters]);
+  const journalsByChapter = useAllJournals(campaignId, chapterIds);
 
-  // Build the ordered list of leaves (pages)
-  const leaves = useMemo(
-    () => buildLeaves({ chapter, paragraphs, scenes, spotlights, media, journalEntries }),
-    [chapter, paragraphs, scenes, spotlights, media, journalEntries]
+  const { leaves, chapterStartLeafIndex } = useMemo(
+    () => buildBookLeaves({ chapters: orderedChapters, journalsByChapter, campaignName: campaign?.name }),
+    [orderedChapters, journalsByChapter, campaign?.name]
   );
 
-  // Pair leaves into spreads (2 per view)
   const spreads = useMemo(() => {
     const out = [];
-    for (let i = 0; i < leaves.length; i += 2) {
-      out.push([leaves[i], leaves[i + 1] || null]);
-    }
+    for (let i = 0; i < leaves.length; i += 2) out.push([leaves[i], leaves[i + 1] || null]);
     return out.length ? out : [[null, null]];
   }, [leaves]);
+
+  // Jump to initial chapter on first mount
+  useEffect(() => {
+    if (!initialChapterId) return;
+    const chIdx = orderedChapters.findIndex(c => c.id === initialChapterId);
+    if (chIdx < 0) return;
+    const leafIdx = chapterStartLeafIndex[chIdx];
+    if (leafIdx != null) setSpreadIndex(Math.floor(leafIdx / 2));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialChapterId]);
 
   useEffect(() => {
     if (spreadIndex >= spreads.length) setSpreadIndex(Math.max(0, spreads.length - 1));
@@ -67,26 +70,46 @@ export default function ChapterReader({
     setTimeout(() => setTurning(false), 420);
   };
 
-  // Keyboard page-turn
   useEffect(() => {
     const onKey = (e) => {
       if (lightboxItems) return;
+      if (e.target?.tagName === 'TEXTAREA' || e.target?.tagName === 'INPUT' || e.target?.tagName === 'SELECT') return;
       if (e.key === 'ArrowRight') turnPage(1);
       else if (e.key === 'ArrowLeft') turnPage(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spreadIndex, spreads.length, lightboxItems]);
 
-  const allVisuals = useMemo(
-    () => [
-      ...scenes.map(s => ({ id: s.id, kind: 'image', url: s.imageUrl, caption: s.caption })),
-      ...media
-    ],
-    [scenes, media]
-  );
+  const jumpToChapter = (chapterIdx) => {
+    const leafIdx = chapterStartLeafIndex[chapterIdx];
+    if (leafIdx == null) return;
+    setSpreadIndex(Math.floor(leafIdx / 2));
+  };
+
+  const jumpToTOC = () => setSpreadIndex(0); // TOC is in first spread after title
+
+  // Which chapter is currently on screen? Pick from the LEFT leaf of the spread,
+  // then fall back to the right leaf.
+  const [leftLeaf, rightLeaf] = spreads[spreadIndex] || [null, null];
+  const currentChapterIdx = (leftLeaf?.chapterIndex ?? rightLeaf?.chapterIndex);
+  const currentChapter = currentChapterIdx != null ? orderedChapters[currentChapterIdx] : null;
+  const runningHead = currentChapter?.title || 'The Chronicle';
+  const chapterLabel = currentChapter ? `Chapter ${toRoman(currentChapter.chapterNumber)}` : 'The Chronicle';
+
+  // Build the "lightbox pool" — any visual in any chapter
+  const allVisuals = useMemo(() => {
+    const pool = [];
+    orderedChapters.forEach(ch => {
+      (ch.scenes || []).forEach(s => pool.push({ id: `${ch.id}-${s.id}`, kind: 'image', url: s.imageUrl, caption: s.caption }));
+      (ch.media || []).forEach(m => pool.push({ ...m, id: `${ch.id}-${m.id}` }));
+    });
+    return pool;
+  }, [orderedChapters]);
+
   const openLightbox = (item) => {
-    const idx = allVisuals.findIndex(v => v.id === item.id || v.url === item.url);
+    const idx = allVisuals.findIndex(v => v.url === item.url);
     setLightboxIndex(Math.max(0, idx));
     setLightboxItems(allVisuals);
   };
@@ -95,30 +118,52 @@ export default function ChapterReader({
     setLightboxIndex((lightboxIndex + delta + lightboxItems.length) % lightboxItems.length);
   };
 
-  const [leftLeaf, rightLeaf] = spreads[spreadIndex] || [null, null];
-  const runningHead = chapter.title;
-  const chapterLabel = `Chapter ${toRoman(chapter.chapterNumber)}`;
-
   return (
-    <div className="sb-desk">
+    <div>
       <div className="sb-toolbar">
-        <button type="button" className="sb-toolbar-btn" onClick={onBack}>
-          <ArrowLeft size={13} /> Close the book
+        <button type="button" className="sb-toolbar-btn" onClick={jumpToTOC}>
+          <BookOpen size={13} /> Contents
         </button>
-        <div style={{
-          fontFamily: "'Cinzel', serif",
-          letterSpacing: '0.3em',
-          textTransform: 'uppercase',
-          fontSize: '0.72rem',
-          color: 'rgba(233, 212, 170, 0.55)'
-        }}>
-          Spread {spreadIndex + 1} of {spreads.length}
+        <div style={{ display:'flex', alignItems:'center', gap:'0.6rem', flexWrap:'wrap' }}>
+          {orderedChapters.length > 0 && (
+            <select
+              value={currentChapterIdx ?? ''}
+              onChange={(e) => jumpToChapter(Number(e.target.value))}
+              style={{
+                fontFamily:"'Cinzel', serif",
+                fontSize:'0.72rem', letterSpacing:'0.18em',
+                textTransform:'uppercase',
+                background:'rgba(0,0,0,0.4)',
+                color:'var(--sb-gilt-bright)',
+                border:'1px solid rgba(185,136,58,0.4)',
+                padding:'0.5rem 0.75rem',
+                cursor:'pointer'
+              }}
+            >
+              <option value="" disabled>Jump to chapter…</option>
+              {orderedChapters.map((ch, idx) => (
+                <option key={ch.id} value={idx}>
+                  {`Ch. ${toRoman(ch.chapterNumber)} — ${ch.title || 'Untitled'}`}
+                </option>
+              ))}
+            </select>
+          )}
+          <span style={{
+            fontFamily:"'Cinzel', serif",
+            letterSpacing:'0.22em',
+            textTransform:'uppercase',
+            fontSize:'0.7rem',
+            color:'rgba(233, 212, 170, 0.5)'
+          }}>
+            Spread {spreadIndex + 1} of {spreads.length}
+          </span>
         </div>
-        {isDM && (
-          <button type="button" className="sb-toolbar-btn" onClick={onEdit}>
-            <Edit3 size={13} /> Edit chapter
+        {isDM && currentChapter && (
+          <button type="button" className="sb-toolbar-btn" onClick={() => onEditChapter(currentChapter.id)}>
+            <Edit3 size={13} /> Edit this chapter
           </button>
         )}
+        {isDM && !currentChapter && <div />}
       </div>
 
       <div className="sb-book-frame" style={{ position: 'relative' }}>
@@ -126,32 +171,32 @@ export default function ChapterReader({
           <Leaf
             leaf={leftLeaf}
             side="left"
-            chapterNumber={chapter.chapterNumber}
-            chapterLabel={chapterLabel}
-            runningHead={runningHead}
+            chapters={orderedChapters}
             folio={spreadIndex * 2 + 1}
             totalFolios={leaves.length}
+            chapterLabel={chapterLabel}
+            runningHead={runningHead}
             onOpenLightbox={openLightbox}
             storybook={storybook}
-            chapterId={chapter.id}
             currentUserId={currentUserId}
             isDM={isDM}
             characters={characters}
+            onJumpToChapter={jumpToChapter}
           />
           <Leaf
             leaf={rightLeaf}
             side="right"
-            chapterNumber={chapter.chapterNumber}
-            chapterLabel={chapterLabel}
-            runningHead={runningHead}
+            chapters={orderedChapters}
             folio={spreadIndex * 2 + 2}
             totalFolios={leaves.length}
+            chapterLabel={chapterLabel}
+            runningHead={runningHead}
             onOpenLightbox={openLightbox}
             storybook={storybook}
-            chapterId={chapter.id}
             currentUserId={currentUserId}
             isDM={isDM}
             characters={characters}
+            onJumpToChapter={jumpToChapter}
           />
         </div>
 
@@ -175,21 +220,6 @@ export default function ChapterReader({
         </button>
       </div>
 
-      {spreads.length > 1 && (
-        <div className="sb-pips" role="tablist" aria-label="Jump to spread">
-          {spreads.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`sb-pip ${i === spreadIndex ? 'is-current' : ''}`}
-              onClick={() => setSpreadIndex(i)}
-              aria-label={`Spread ${i + 1}`}
-              aria-current={i === spreadIndex ? 'true' : 'false'}
-            />
-          ))}
-        </div>
-      )}
-
       {lightboxItems && (
         <MediaLightbox
           items={lightboxItems}
@@ -204,24 +234,22 @@ export default function ChapterReader({
 
 /* ── Leaf renderer (one side of a spread) ────────────────────────────────── */
 
-function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, totalFolios,
-                onOpenLightbox, storybook, chapterId, currentUserId, isDM, characters }) {
+function Leaf({ leaf, side, chapters, folio, totalFolios, chapterLabel, runningHead,
+                onOpenLightbox, storybook, currentUserId, isDM, characters, onJumpToChapter }) {
   if (!leaf) {
-    // Blank verso page — show just aged parchment with a folio
     return (
       <div className={`sb-leaf sb-leaf--${side}`} aria-hidden="true">
-        <div className="sb-head">
-          <span className="sb-head-swash">❦</span>
-          <span>&nbsp;</span>
-        </div>
+        <div className="sb-head"><span className="sb-head-swash">❦</span><span>&nbsp;</span></div>
         <div style={{ flex: 1 }} />
         <div className="sb-folio">—</div>
       </div>
     );
   }
 
-  const isTitle = leaf.kind === 'title';
-  const showHead = !isTitle;
+  // Book-level leaves (no chapter head)
+  const isTitle = leaf.kind === 'booktitle' || leaf.kind === 'title';
+  const isTOC = leaf.kind === 'toc';
+  const showHead = !isTitle && !isTOC;
 
   return (
     <div className={`sb-leaf sb-leaf--${side}`}>
@@ -233,13 +261,21 @@ function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, tot
         </div>
       )}
 
-      {leaf.kind === 'title' && <TitleLeaf chapter={{ title: leaf.title, chapterNumber, ...leaf }} />}
+      {leaf.kind === 'booktitle' && <BookTitleLeaf campaignName={leaf.campaignName} chapterCount={leaf.chapterCount} />}
+
+      {leaf.kind === 'toc' && <TOCLeaf chapters={chapters} leafFolio={leaf.chapterFolios} onJump={onJumpToChapter} />}
+
+      {leaf.kind === 'title' && (
+        <ChapterTitleLeaf
+          title={leaf.title}
+          chapterNumber={leaf.chapterNumber}
+          sessionNumber={leaf.sessionNumber}
+        />
+      )}
 
       {leaf.kind === 'flow' && (
         <div className="sb-prose">
           {(() => {
-            // Find the index of the first paragraph block on this leaf to
-            // anchor the illuminated initial (only on the very first leaf).
             let firstProseSeen = false;
             return leaf.blocks.map((blk, i) => {
               if (blk.kind === 'p') {
@@ -247,12 +283,11 @@ function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, tot
                 firstProseSeen = true;
                 return <ProseParagraph key={`b-${i}`} content={blk.value} illuminated={illuminated} />;
               }
-              // scene plate inline
               return (
                 <PlateSection
                   key={`b-${i}`}
                   scene={blk.value}
-                  onClick={() => onOpenLightbox(blk.value)}
+                  onClick={() => onOpenLightbox({ url: blk.value.imageUrl })}
                 />
               );
             });
@@ -287,7 +322,7 @@ function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, tot
           <div className="sb-section-label">Table Memories</div>
           <div className="sb-memories">
             {leaf.media.map(m => (
-              <div key={m.id} className="sb-memory" role="button" tabIndex={0} onClick={() => onOpenLightbox(m)}>
+              <div key={m.id} className="sb-memory" role="button" tabIndex={0} onClick={() => onOpenLightbox({ url: m.url })}>
                 {m.kind === 'image' && <img src={m.url} alt={m.caption || ''} />}
                 {m.kind === 'video' && <div className="sb-memory-slate"><Film size={24} /></div>}
                 {m.kind === 'audio' && <div className="sb-memory-slate"><Mic size={24} /></div>}
@@ -312,7 +347,7 @@ function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, tot
                         type="button"
                         onClick={() => {
                           if (window.confirm('Delete this journal entry?')) {
-                            storybook.deleteJournalEntry(chapterId, entry.id);
+                            storybook.deleteJournalEntry(leaf.chapterId, entry.id);
                           }
                         }}
                         aria-label="Delete entry"
@@ -333,7 +368,7 @@ function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, tot
               <JournalComposer
                 characters={characters}
                 currentUserId={currentUserId}
-                onSubmit={(entry) => storybook.addJournalEntry(chapterId, entry)}
+                onSubmit={(entry) => storybook.addJournalEntry(leaf.chapterId, entry)}
               />
             </div>
           )}
@@ -347,25 +382,81 @@ function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, tot
   );
 }
 
-/* ── Renderers for page content ──────────────────────────────────────────── */
+/* ── Leaf variants ──────────────────────────────────────────────────────── */
 
-function TitleLeaf({ chapter }) {
+function BookTitleLeaf({ campaignName, chapterCount }) {
   return (
     <div className="sb-title-leaf" style={{ flex: 1 }}>
-      <div className="sb-title-eyebrow">Chapter {toRoman(chapter.chapterNumber)}</div>
-      <h1 className="sb-title">{chapter.title}</h1>
+      <div className="sb-title-eyebrow">The Chronicle Of</div>
+      <h1 className="sb-title">{campaignName || 'the Campaign'}</h1>
       <div className="sb-title-ornament" aria-hidden="true" />
       <div className="sb-title-lozenge" aria-hidden="true" />
-      {chapter.sessionNumber && (
-        <div className="sb-title-session">from the chronicle of Session {chapter.sessionNumber}</div>
+      <div className="sb-title-session">
+        {chapterCount > 0
+          ? `${chapterCount} chapter${chapterCount === 1 ? '' : 's'} bound into this volume.`
+          : 'An as-yet-unwritten tome.'}
+      </div>
+    </div>
+  );
+}
+
+function ChapterTitleLeaf({ title, chapterNumber, sessionNumber }) {
+  return (
+    <div className="sb-title-leaf" style={{ flex: 1 }}>
+      <div className="sb-title-eyebrow">Chapter {toRoman(chapterNumber)}</div>
+      <h1 className="sb-title">{title}</h1>
+      <div className="sb-title-ornament" aria-hidden="true" />
+      <div className="sb-title-lozenge" aria-hidden="true" />
+      {sessionNumber && (
+        <div className="sb-title-session">from the chronicle of Session {sessionNumber}</div>
       )}
     </div>
   );
 }
 
+function TOCLeaf({ chapters, leafFolio, onJump }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <div className="sb-section-label">Contents</div>
+      <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+        {chapters.map((ch, idx) => (
+          <li key={ch.id} style={{ margin: '0.35rem 0' }}>
+            <button
+              type="button"
+              onClick={() => onJump(idx)}
+              style={{
+                display:'flex', width:'100%',
+                alignItems:'baseline', gap:'0.75rem',
+                background:'none', border:'none', padding:'0.35rem 0',
+                textAlign:'left',
+                fontFamily:"'EB Garamond', serif",
+                fontSize:'1.02rem',
+                color:'var(--sb-ink)',
+                cursor:'pointer',
+                borderBottom:'1px dotted rgba(110,76,18,0.25)'
+              }}
+            >
+              <span style={{ fontFamily:"'Cinzel', serif", fontSize:'0.72rem', letterSpacing:'0.2em', color:'var(--sb-gilt-deep)', minWidth:'4.5em' }}>
+                Ch. {toRoman(ch.chapterNumber)}
+              </span>
+              <span style={{ flex: 1, fontStyle: 'italic' }}>{ch.title || 'Untitled chapter'}</span>
+              <span style={{ fontFamily:"'Cinzel', serif", fontSize:'0.72rem', color:'var(--sb-ink-muted)', letterSpacing:'0.15em' }}>
+                {leafFolio?.[idx] ?? '—'}
+              </span>
+            </button>
+          </li>
+        ))}
+        {chapters.length === 0 && (
+          <li style={{ textAlign:'center', fontStyle:'italic', color:'var(--sb-ink-muted)', margin:'2rem 0' }}>
+            The chronicler has yet to set down a chapter.
+          </li>
+        )}
+      </ol>
+    </div>
+  );
+}
+
 function ProseParagraph({ content, illuminated }) {
-  // Take the first character for the illuminated initial; render the rest as
-  // a single paragraph after the drop-cap box.
   if (!illuminated) {
     return <div><ReactMarkdown>{content}</ReactMarkdown></div>;
   }
@@ -452,65 +543,92 @@ function JournalComposer({ characters, currentUserId, onSubmit }) {
   );
 }
 
-/* ── Pagination — scenes flow inline with prose, like figures in a real book
-   Instead of forcing each scene to its own spread (which chopped the prose
-   into 1-2 paragraph gasps), we pack paragraphs and scenes together onto a
-   leaf until the leaf is "full". Prose weight is the real budget; scene
-   plates consume space equivalent to a long paragraph.
-   ─────────────────────────────────────────────────────────────────────── */
+/* ── Book-wide leaf builder ──────────────────────────────────────────────── */
 
-function buildLeaves({ chapter, paragraphs, scenes, spotlights, media, journalEntries }) {
+function buildBookLeaves({ chapters, journalsByChapter, campaignName }) {
+  const leaves = [];
+  const chapterStartLeafIndex = [];   // leafIndex where each chapter's title page is
+  const chapterStartFolio = [];       // human-facing folio number for TOC
+
+  // 1. Book cover / title page
+  leaves.push({
+    kind: 'booktitle',
+    campaignName,
+    chapterCount: chapters.length
+  });
+
+  // 2. Table of Contents (populated after we know where each chapter lands)
+  const tocLeafIndex = leaves.length;
+  leaves.push({ kind: 'toc', chapterFolios: [] }); // placeholder, patched later
+
+  // 3. Each chapter's run of leaves
+  chapters.forEach((chapter, chIdx) => {
+    const chapterLeaves = buildChapterLeaves({
+      chapter,
+      chIdx,
+      journalEntries: journalsByChapter[chapter.id] || []
+    });
+    chapterStartLeafIndex.push(leaves.length);
+    chapterStartFolio.push(leaves.length + 1); // 1-indexed folio of chapter title
+    chapterLeaves.forEach(l => leaves.push(l));
+  });
+
+  // Patch the TOC with the computed folios
+  leaves[tocLeafIndex] = {
+    kind: 'toc',
+    chapterFolios: chapterStartFolio
+  };
+
+  return { leaves, chapterStartLeafIndex };
+}
+
+function buildChapterLeaves({ chapter, chIdx, journalEntries }) {
+  const paragraphs = (chapter.prose || '').split(/\n\n+/).filter(p => p.trim());
+  const scenes = chapter.scenes || [];
+  const spotlights = chapter.spotlights || [];
+  const media = chapter.media || [];
+
   const leaves = [];
 
-  // 1. Title page
+  // Title leaf for this chapter
   leaves.push({
     kind: 'title',
+    chapterIndex: chIdx,
     title: chapter.title,
     chapterNumber: chapter.chapterNumber,
     sessionNumber: chapter.sessionNumber
   });
 
-  // 2. Build an ordered content stream: paragraphs interleaved with scenes.
-  //    Scenes anchor at roughly evenly-spaced paragraph boundaries so they
-  //    illustrate the section they fall next to.
+  // Flow leaves (prose + inline scenes)
   const stream = [];
   const pCount = paragraphs.length;
   const sCount = scenes.length;
   const sceneBoundaries = new Set();
   if (sCount > 0 && pCount > 0) {
     for (let i = 1; i <= sCount; i++) {
-      // Place scene i after paragraph index = floor(i * pCount / (sCount + 1))
       const after = Math.max(1, Math.min(pCount, Math.floor((i * pCount) / (sCount + 1))));
       sceneBoundaries.add(after);
     }
   }
-
   let sceneCursor = 0;
   paragraphs.forEach((p, idx) => {
     stream.push({ kind: 'p', value: p });
-    // Insert any scenes whose anchor boundary was this paragraph (idx+1)
     if (sceneBoundaries.has(idx + 1) && sceneCursor < sCount) {
       stream.push({ kind: 'scene', value: scenes[sceneCursor++] });
     }
   });
-  // Any scenes left over (chapter had more scenes than paragraphs) — append
   while (sceneCursor < sCount) stream.push({ kind: 'scene', value: scenes[sceneCursor++] });
 
-  // 3. Pack the stream onto leaves. Each leaf has a "weight budget":
-  //    a paragraph is ~1 unit, a scene plate is ~2 units. Budget 5 per leaf
-  //    keeps pages visually balanced and lets prose breathe.
   const LEAF_BUDGET = 5;
-  let leaf = { kind: 'flow', blocks: [], firstInChapter: true };
+  let leaf = { kind: 'flow', chapterIndex: chIdx, blocks: [], firstInChapter: true };
   let weight = 0;
-
   const flush = () => {
     if (leaf.blocks.length) {
       leaves.push(leaf);
-      leaf = { kind: 'flow', blocks: [], firstInChapter: false };
+      leaf = { kind: 'flow', chapterIndex: chIdx, blocks: [], firstInChapter: false };
       weight = 0;
     }
   };
-
   for (const item of stream) {
     const w = item.kind === 'scene' ? 2 : 1;
     if (weight + w > LEAF_BUDGET && leaf.blocks.length > 0) flush();
@@ -519,31 +637,24 @@ function buildLeaves({ chapter, paragraphs, scenes, spotlights, media, journalEn
   }
   flush();
 
-  // 4. Dramatis personae
-  if (spotlights.length) {
-    leaves.push({ kind: 'personae', spotlights });
-  }
+  if (spotlights.length) leaves.push({ kind: 'personae', chapterIndex: chIdx, spotlights });
+  if (media.length) leaves.push({ kind: 'memories', chapterIndex: chIdx, media });
 
-  // 5. Table memories
-  if (media.length) {
-    leaves.push({ kind: 'memories', media });
-  }
-
-  // 6. Journal — break entries into chunks of 3, last one gets the composer
   const JOURNAL_PER_LEAF = 3;
-  const hasEntries = journalEntries.length > 0;
-  if (hasEntries) {
+  if (journalEntries.length > 0) {
     for (let i = 0; i < journalEntries.length; i += JOURNAL_PER_LEAF) {
       const chunk = journalEntries.slice(i, i + JOURNAL_PER_LEAF);
       const isLast = i + JOURNAL_PER_LEAF >= journalEntries.length;
       leaves.push({
-        kind: 'journal',
-        entries: chunk,
-        isLastJournal: isLast
+        kind: 'journal', chapterIndex: chIdx,
+        chapterId: chapter.id, entries: chunk, isLastJournal: isLast
       });
     }
   } else {
-    leaves.push({ kind: 'journal', entries: [], isLastJournal: true });
+    leaves.push({
+      kind: 'journal', chapterIndex: chIdx,
+      chapterId: chapter.id, entries: [], isLastJournal: true
+    });
   }
 
   return leaves;

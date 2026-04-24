@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { BookMarked, Wand2, Settings as SettingsIcon, Sparkles, ArrowLeft } from 'lucide-react';
+import { BookMarked, Wand2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
 import { useStorybook } from '../../hooks/useStorybook';
 import { useAPIKey } from '../../hooks/useAPIKey';
-import ChapterList from './ChapterList';
 import ChapterReader from './ChapterReader';
 import ChapterEditor from './ChapterEditor';
 import GenerateChapterModal from './GenerateChapterModal';
@@ -29,15 +28,10 @@ export default function StorybookView({
   const { keys } = useAPIKey(campaign?.createdBy);
   const openaiKey = keys?.openai || null;
 
-  const [activeChapterId, setActiveChapterId] = useState(null);
   const [editingChapterId, setEditingChapterId] = useState(null);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const activeChapter = useMemo(
-    () => storybook.chapters.find(c => c.id === activeChapterId) || null,
-    [storybook.chapters, activeChapterId]
-  );
   const editingChapter = useMemo(
     () => storybook.chapters.find(c => c.id === editingChapterId) || null,
     [storybook.chapters, editingChapterId]
@@ -49,29 +43,7 @@ export default function StorybookView({
 
   const pendingCount = storybook.pendingDrafts.length;
 
-  // ── Reader view ────────────────────────────────────────────────────────────
-  if (activeChapter) {
-    return (
-      <ChapterReader
-        chapter={activeChapter}
-        campaignId={campaignId}
-        campaign={campaign}
-        characters={characters}
-        npcs={npcs}
-        adversaries={adversaries}
-        isDM={isDM}
-        currentUserId={currentUserId}
-        storybook={storybook}
-        onBack={() => setActiveChapterId(null)}
-        onEdit={() => {
-          setEditingChapterId(activeChapter.id);
-          setActiveChapterId(null);
-        }}
-      />
-    );
-  }
-
-  // ── Editor view ────────────────────────────────────────────────────────────
+  // ── Editor view (DM-only, per-chapter) ────────────────────────────────────
   if (editingChapter) {
     return (
       <ChapterEditor
@@ -92,25 +64,28 @@ export default function StorybookView({
     );
   }
 
-  // ── List view ──────────────────────────────────────────────────────────────
+  // ── Book view (the primary experience — everyone lands here) ─────────────
+  //
+  // When there are no chapters yet, show the empty-book state. Otherwise
+  // open the single bound book with every published/visible chapter, and
+  // float DM controls (Generate / Style / Pending drafts) above the book.
+
+  const hasContent = !storybook.loading && visibleChapters.length > 0;
+
   return (
     <div className="sb-desk min-h-screen lr-fade-in">
-      <div className="sb-hero">
-        <div>
-          <span className="sb-hero-eyebrow">The Chronicle</span>
-          <h1>
-            <BookMarked style={{ color: 'var(--sb-gilt-bright)', verticalAlign: '-6px', marginRight: '0.5rem' }} size={40} />
-            Story So Far
-          </h1>
-          <p className="sb-hero-sub">
-            An illustrated chronicle of every session, bound in leather and set down in ink.
-            {visibleChapters.length > 0 && ` ${visibleChapters.length} volume${visibleChapters.length === 1 ? '' : 's'} on the shelf.`}
-          </p>
-        </div>
-        {isDM && (
+      {/* DM action bar + pending drafts live above the book */}
+      {isDM && (pendingCount > 0 || true) && (
+        <div className="sb-toolbar" style={{ marginBottom: pendingCount > 0 ? '1rem' : '1.25rem' }}>
+          <div style={{ display:'flex', alignItems:'baseline', gap:'0.75rem' }}>
+            <span className="sb-hero-eyebrow" style={{ letterSpacing: '0.35em' }}>The Chronicle</span>
+            <span style={{ fontFamily:"'EB Garamond', serif", fontStyle:'italic', color:'rgba(233,212,170,0.55)' }}>
+              {visibleChapters.length} chapter{visibleChapters.length === 1 ? '' : 's'} · {campaign?.name || 'this campaign'}
+            </span>
+          </div>
           <div style={{ display:'flex', flexWrap:'wrap', gap:'0.5rem' }}>
             <button type="button" onClick={() => setIsSettingsOpen(true)} className="sb-toolbar-btn">
-              <SettingsIcon size={14} />
+              <SettingsIcon size={13} />
               Style
             </button>
             <button type="button" onClick={() => setIsGenerateOpen(true)} className="sb-btn">
@@ -118,20 +93,22 @@ export default function StorybookView({
               Scribe a new chapter
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {isDM && pendingCount > 0 && (
-        <PendingDraftBanner
-          drafts={storybook.pendingDrafts}
-          onReview={(chapterId) => setEditingChapterId(chapterId)}
-          onApprove={(chapterId) => storybook.publishChapter(chapterId)}
-          onDiscard={(chapterId) => {
-            if (window.confirm('Discard this auto-draft? The chapter will be permanently deleted.')) {
-              storybook.deleteChapter(chapterId);
-            }
-          }}
-        />
+        <div style={{ maxWidth: 1280, margin: '0 auto 1.25rem' }}>
+          <PendingDraftBanner
+            drafts={storybook.pendingDrafts}
+            onReview={(chapterId) => setEditingChapterId(chapterId)}
+            onApprove={(chapterId) => storybook.publishChapter(chapterId)}
+            onDiscard={(chapterId) => {
+              if (window.confirm('Discard this auto-draft? The chapter will be permanently deleted.')) {
+                storybook.deleteChapter(chapterId);
+              }
+            }}
+          />
+        </div>
       )}
 
       {storybook.loading ? (
@@ -139,14 +116,18 @@ export default function StorybookView({
           <Sparkles className="animate-pulse" size={18} />
           Loading chronicle…
         </div>
-      ) : visibleChapters.length === 0 ? (
+      ) : !hasContent ? (
         <EmptyState isDM={isDM} onGenerate={() => setIsGenerateOpen(true)} />
       ) : (
-        <ChapterList
+        <ChapterReader
           chapters={visibleChapters}
+          campaign={campaign}
+          campaignId={campaignId}
+          characters={characters}
           isDM={isDM}
-          onOpen={(id) => setActiveChapterId(id)}
-          onEdit={(id) => setEditingChapterId(id)}
+          currentUserId={currentUserId}
+          storybook={storybook}
+          onEditChapter={(chapterId) => setEditingChapterId(chapterId)}
         />
       )}
 

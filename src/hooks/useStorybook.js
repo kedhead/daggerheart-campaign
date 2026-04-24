@@ -242,3 +242,37 @@ export function useChapterJournal(campaignId, chapterId) {
 
   return { entries, loading };
 }
+
+/**
+ * useAllJournals — subscribes to journalEntries of every chapter at once.
+ * Returns a map { [chapterId]: entries[] }. Used by the single-book reader
+ * so each chapter's journal leaf can show live entries without needing a
+ * separate hook call per chapter (which would break the rules of hooks).
+ */
+export function useAllJournals(campaignId, chapterIds) {
+  const [byChapter, setByChapter] = useState({});
+  const key = (chapterIds || []).join(',');
+
+  useEffect(() => {
+    if (!campaignId || !chapterIds?.length) {
+      setByChapter({});
+      return;
+    }
+    const unsubs = chapterIds.map(chapterId => {
+      const path = `campaigns/${campaignId}/storybook/${chapterId}/journalEntries`;
+      const q = query(collection(db, path), orderBy('createdAt', 'asc'));
+      return onSnapshot(
+        q,
+        snap => {
+          const entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setByChapter(prev => ({ ...prev, [chapterId]: entries }));
+        },
+        err => console.error('[useAllJournals] subscribe error:', err)
+      );
+    });
+    return () => unsubs.forEach(u => u());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId, key]);
+
+  return byChapter;
+}

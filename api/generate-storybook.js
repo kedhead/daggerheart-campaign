@@ -93,7 +93,7 @@ async function generateChapter(req, res, openai) {
     return res.status(400).json({ error: 'Missing required field: session.title' });
   }
 
-  const numScenes = Math.max(2, Math.min(4, Number(sceneCount) || 3));
+  const numScenes = Math.max(2, Math.min(8, Number(sceneCount) || 3));
 
   const rosterLines = [];
   const pushRoster = (label, list) => {
@@ -205,7 +205,7 @@ Produce exactly ${numScenes} scenes. Return ONLY the JSON object.`;
   return res.status(200).json({
     title: parsed.title,
     prose: parsed.prose,
-    scenes: parsed.scenes.slice(0, 4).map(s => ({
+    scenes: parsed.scenes.slice(0, 8).map(s => ({
       caption: s.caption || '',
       prompt: s.prompt || '',
       featuredEntityIds: Array.isArray(s.featuredEntityIds) ? s.featuredEntityIds.filter(Boolean) : []
