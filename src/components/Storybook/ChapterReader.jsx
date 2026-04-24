@@ -619,9 +619,18 @@ function buildChapterLeaves({ chapter, chIdx, journalEntries }) {
   });
   while (sceneCursor < sCount) stream.push({ kind: 'scene', value: scenes[sceneCursor++] });
 
-  const LEAF_BUDGET = 5;
+  // Flow leaves (prose + inline scenes) — paginate by word count so each leaf
+  // holds roughly one page's worth of text. Previously we budgeted by block
+  // count, which made a chapter of long paragraphs pack onto a single leaf
+  // and get clipped by the page height.
+  const WORDS_PER_LEAF = 320;       // fits comfortably in a 720px parchment leaf
+  const SCENE_WORD_EQUIV = 90;      // a scene plate occupies ~90 words of vertical space
+  const FIRST_LEAF_DROPCAP_PENALTY = 20; // the illuminated initial steals ~20 words worth
+
+  const wordsIn = (s) => (s ? s.trim().split(/\s+/).length : 0);
+
   let leaf = { kind: 'flow', chapterIndex: chIdx, blocks: [], firstInChapter: true };
-  let weight = 0;
+  let weight = FIRST_LEAF_DROPCAP_PENALTY;
   const flush = () => {
     if (leaf.blocks.length) {
       leaves.push(leaf);
@@ -630,8 +639,11 @@ function buildChapterLeaves({ chapter, chIdx, journalEntries }) {
     }
   };
   for (const item of stream) {
-    const w = item.kind === 'scene' ? 2 : 1;
-    if (weight + w > LEAF_BUDGET && leaf.blocks.length > 0) flush();
+    const w = item.kind === 'scene' ? SCENE_WORD_EQUIV : wordsIn(item.value);
+    // If adding this block would exceed the budget AND we already have
+    // something on the leaf, flush first. Single oversized blocks still get
+    // their own leaf so they don't get dropped.
+    if (weight + w > WORDS_PER_LEAF && leaf.blocks.length > 0) flush();
     leaf.blocks.push(item);
     weight += w;
   }
