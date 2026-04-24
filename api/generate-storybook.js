@@ -121,17 +121,23 @@ async function generateChapter(req, res, openai) {
     session.liveNotesCompiled ? `Live notes:\n${session.liveNotesCompiled}` : null
   ].filter(Boolean).join('\n\n');
 
-  const systemPrompt = `You are the chronicler of an ongoing ${gameSystem === 'starwarsd6' ? 'space opera' : 'high fantasy'} campaign. You transform a game session's notes into a captivating illustrated storybook chapter.
+  const systemPrompt = `You are the chronicler of an ongoing ${gameSystem === 'starwarsd6' ? 'space opera' : 'high fantasy'} campaign. You transform a game session's notes into a captivating illustrated storybook chapter — a real, engrossing chapter of a novel, not a bullet-point recap.
+
+VOICE AND SHAPE:
+- Write in past-tense, third-person omniscient narrative voice, the kind you'd read in a printed fantasy novel. Confident, lyrical, specific.
+- Show, don't tell. Give us sensory detail: the smell of rain on stone, the catch in a character's breath, the way light falls across a face.
+- Let scenes breathe. Use dialogue when the notes imply it. Quote characters directly when the notes provide words; otherwise paraphrase naturally.
+- Vary paragraph length — some urgent and short, others long and immersive. At least one paragraph per major beat in the notes.
+- Produce **8 to 14 paragraphs** of genuine prose. A chapter, not a blurb. Never fewer than 8 unless the notes are extremely thin.
 
 STRICT RULES:
-1. Use only facts present in the session notes or campaign context. DO NOT invent major new plot points, NPCs, or locations that weren't mentioned.
-2. You MAY elaborate on atmosphere, emotions, and sensory detail. Lean into dramatic, evocative prose.
-3. Mention every named entity from the notes at least once.
-4. For each scene prompt, set a vivid visual composition. These prompts will be passed to an image generator; the client will concatenate a style preamble before them, so focus on subject, action, environment, lighting, and composition.
-5. In each scene, list featuredEntityIds drawn ONLY from the provided entity roster (use the id field exactly as given). The client will substitute each entity's physical description into the prompt so the character's actual look is preserved.
-6. Title should be evocative, 2-6 words, no quotes.
-7. Return valid JSON matching the schema exactly.
-8. RACE / ANCESTRY ACCURACY: Pay close attention to each character's ancestry listed in the roster (e.g. Drakona, Galapa, Katari, Fungril). When writing scene visual prompts, ALWAYS explicitly mention the character's species/ancestry and key physical traits (scales, shell, fur, hooves, etc.). Never assume characters are human unless their ancestry is explicitly "Human". This is critical for accurate illustration.`;
+1. Use only facts present in the session notes or campaign context. DO NOT invent major new plot points, NPCs, or locations that weren't mentioned. You MAY flesh out moments, interiority, atmosphere, and implied details.
+2. Mention every named entity from the notes at least once, by name.
+3. For each scene prompt, set a vivid visual composition. These prompts will be passed to an image generator; the client will concatenate a style preamble before them, so focus on subject, action, environment, lighting, and composition.
+4. In each scene, list featuredEntityIds drawn ONLY from the provided entity roster (use the id field exactly as given). The client will substitute each entity's physical description into the prompt so the character's actual look is preserved.
+5. Title should be evocative, 2-6 words, no quotes.
+6. Return valid JSON matching the schema exactly.
+7. RACE / ANCESTRY ACCURACY: Pay close attention to each character's ancestry listed in the roster (e.g. Drakona, Galapa, Katari, Fungril). When writing scene visual prompts, ALWAYS explicitly mention the character's species/ancestry and key physical traits (scales, shell, fur, hooves, etc.). Never assume characters are human unless their ancestry is explicitly "Human". This is critical for accurate illustration.`;
 
   const userPrompt = `# Campaign context
 ${campaignContext || '(no campaign context provided)'}
@@ -151,7 +157,7 @@ ${sessionNotes || '(no notes provided — produce a short evocative recap using 
 # Output JSON schema
 {
   "title": "Chapter title",
-  "prose": "Full markdown narration, 4-8 paragraphs, separated by blank lines. No headings, no lists.",
+  "prose": "Full markdown narration — 8 to 14 paragraphs of real novel-grade storytelling, separated by blank lines. Use dialogue, sensory detail, and varying paragraph length. No headings, no lists.",
   "scenes": [
     {
       "caption": "Short caption shown under the image (one sentence).",
@@ -174,7 +180,8 @@ Produce exactly ${numScenes} scenes. Return ONLY the JSON object.`;
 
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
-    temperature: 0.8,
+    temperature: 0.85,
+    max_tokens: 4000,          // room for a ~12-paragraph chapter + scenes + spotlights JSON
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: systemPrompt },

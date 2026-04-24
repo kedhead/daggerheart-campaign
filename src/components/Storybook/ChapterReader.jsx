@@ -235,33 +235,29 @@ function Leaf({ leaf, side, chapterNumber, chapterLabel, runningHead, folio, tot
 
       {leaf.kind === 'title' && <TitleLeaf chapter={{ title: leaf.title, chapterNumber, ...leaf }} />}
 
-      {leaf.kind === 'prose' && (
+      {leaf.kind === 'flow' && (
         <div className="sb-prose">
-          {leaf.paragraphs.map((p, i) => (
-            <ProseParagraph
-              key={`p-${i}`}
-              content={p}
-              illuminated={leaf.firstInChapter && i === 0}
-            />
-          ))}
+          {(() => {
+            // Find the index of the first paragraph block on this leaf to
+            // anchor the illuminated initial (only on the very first leaf).
+            let firstProseSeen = false;
+            return leaf.blocks.map((blk, i) => {
+              if (blk.kind === 'p') {
+                const illuminated = leaf.firstInChapter && !firstProseSeen;
+                firstProseSeen = true;
+                return <ProseParagraph key={`b-${i}`} content={blk.value} illuminated={illuminated} />;
+              }
+              // scene plate inline
+              return (
+                <PlateSection
+                  key={`b-${i}`}
+                  scene={blk.value}
+                  onClick={() => onOpenLightbox(blk.value)}
+                />
+              );
+            });
+          })()}
         </div>
-      )}
-
-      {leaf.kind === 'plate' && (
-        <>
-          <PlateSection scene={leaf.scene} onClick={() => onOpenLightbox(leaf.scene)} />
-          {leaf.caption && (
-            <div style={{
-              marginTop: '1rem',
-              fontFamily: "'EB Garamond', serif",
-              fontStyle: 'italic',
-              textAlign: 'center',
-              color: 'var(--sb-ink-soft)'
-            }}>
-              {leaf.caption}
-            </div>
-          )}
-        </>
       )}
 
       {leaf.kind === 'personae' && (
@@ -456,7 +452,12 @@ function JournalComposer({ characters, currentUserId, onSubmit }) {
   );
 }
 
-/* ── Pagination — deciding which content lands on which leaf ────────────── */
+/* ── Pagination — scenes flow inline with prose, like figures in a real book
+   Instead of forcing each scene to its own spread (which chopped the prose
+   into 1-2 paragraph gasps), we pack paragraphs and scenes together onto a
+   leaf until the leaf is "full". Prose weight is the real budget; scene
+   plates consume space equivalent to a long paragraph.
+   ─────────────────────────────────────────────────────────────────────── */
 
 function buildLeaves({ chapter, paragraphs, scenes, spotlights, media, journalEntries }) {
   const leaves = [];
@@ -469,58 +470,66 @@ function buildLeaves({ chapter, paragraphs, scenes, spotlights, media, journalEn
     sessionNumber: chapter.sessionNumber
   });
 
-  // 2. Prose + scenes, interleaved
-  //    Simple heuristic: assign each scene to roughly evenly-spaced slots
-  //    between paragraphs; then pack each page with ~4 paragraphs.
-  const slots = [];
-  paragraphs.forEach(p => slots.push({ type: 'p', value: p }));
-  if (scenes.length) {
-    const step = Math.max(1, Math.floor(paragraphs.length / (scenes.length + 1)));
-    let insertAt = step;
-    scenes.forEach(sc => {
-      slots.splice(Math.min(insertAt, slots.length), 0, { type: 'scene', value: sc });
-      insertAt += step + 1;
-    });
+  // 2. Build an ordered content stream: paragraphs interleaved with scenes.
+  //    Scenes anchor at roughly evenly-spaced paragraph boundaries so they
+  //    illustrate the section they fall next to.
+  const stream = [];
+  const pCount = paragraphs.length;
+  const sCount = scenes.length;
+  const sceneBoundaries = new Set();
+  if (sCount > 0 && pCount > 0) {
+    for (let i = 1; i <= sCount; i++) {
+      // Place scene i after paragraph index = floor(i * pCount / (sCount + 1))
+      const after = Math.max(1, Math.min(pCount, Math.floor((i * pCount) / (sCount + 1))));
+      sceneBoundaries.add(after);
+    }
   }
 
-  const PARAGRAPHS_PER_LEAF = 4;
-  let current = { kind: 'prose', paragraphs: [], firstInChapter: true };
-  let pCount = 0;
+  let sceneCursor = 0;
+  paragraphs.forEach((p, idx) => {
+    stream.push({ kind: 'p', value: p });
+    // Insert any scenes whose anchor boundary was this paragraph (idx+1)
+    if (sceneBoundaries.has(idx + 1) && sceneCursor < sCount) {
+      stream.push({ kind: 'scene', value: scenes[sceneCursor++] });
+    }
+  });
+  // Any scenes left over (chapter had more scenes than paragraphs) — append
+  while (sceneCursor < sCount) stream.push({ kind: 'scene', value: scenes[sceneCursor++] });
 
-  const flushProse = () => {
-    if (current.paragraphs.length) {
-      leaves.push(current);
-      current = { kind: 'prose', paragraphs: [], firstInChapter: false };
-      pCount = 0;
+  // 3. Pack the stream onto leaves. Each leaf has a "weight budget":
+  //    a paragraph is ~1 unit, a scene plate is ~2 units. Budget 5 per leaf
+  //    keeps pages visually balanced and lets prose breathe.
+  const LEAF_BUDGET = 5;
+  let leaf = { kind: 'flow', blocks: [], firstInChapter: true };
+  let weight = 0;
+
+  const flush = () => {
+    if (leaf.blocks.length) {
+      leaves.push(leaf);
+      leaf = { kind: 'flow', blocks: [], firstInChapter: false };
+      weight = 0;
     }
   };
 
-  for (const slot of slots) {
-    if (slot.type === 'p') {
-      current.paragraphs.push(slot.value);
-      pCount += 1;
-      if (pCount >= PARAGRAPHS_PER_LEAF) flushProse();
-    } else {
-      flushProse();
-      leaves.push({
-        kind: 'plate',
-        scene: slot.value
-      });
-    }
+  for (const item of stream) {
+    const w = item.kind === 'scene' ? 2 : 1;
+    if (weight + w > LEAF_BUDGET && leaf.blocks.length > 0) flush();
+    leaf.blocks.push(item);
+    weight += w;
   }
-  flushProse();
+  flush();
 
-  // 3. Dramatis personae
+  // 4. Dramatis personae
   if (spotlights.length) {
     leaves.push({ kind: 'personae', spotlights });
   }
 
-  // 4. Table memories
+  // 5. Table memories
   if (media.length) {
     leaves.push({ kind: 'memories', media });
   }
 
-  // 5. Journal — break entries into chunks of 3, last one gets the composer
+  // 6. Journal — break entries into chunks of 3, last one gets the composer
   const JOURNAL_PER_LEAF = 3;
   const hasEntries = journalEntries.length > 0;
   if (hasEntries) {

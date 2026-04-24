@@ -313,10 +313,15 @@
 /* ── Scene plate — full-bleed within a leaf ──────────────────────────────── */
 
 .sb-plate {
-  margin: 0 -1rem 1.5rem;
+  margin: 1.25rem -1rem 1.5rem;
   padding: 0;
   cursor: zoom-in;
   position: relative;
+  clear: both;                /* so inline plates don't overlap the illuminated initial */
+}
+.sb-plate img {
+  max-height: 360px;          /* keep inline plates from towering over prose pages */
+  object-fit: cover;
 }
 .sb-plate-frame {
   position: relative;
