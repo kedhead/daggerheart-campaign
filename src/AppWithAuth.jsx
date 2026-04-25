@@ -36,6 +36,7 @@ import PlayerDisplay from './components/PlayerDisplay/PlayerDisplay';
 import DMDisplayControl from './components/PlayerDisplay/DMDisplayControl';
 import BattleMapStudio from './components/BattleMapStudio/BattleMapStudio';
 import StorybookView from './components/Storybook/StorybookView';
+import PublicChronicleView from './components/Storybook/PublicChronicleView';
 import BattleMapDisplayWindow from './components/BattleMapDisplay/BattleMapDisplayWindow';
 import { DiceRollerFloat } from './components/DiceRoller/index';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
@@ -782,6 +783,13 @@ function AppContent() {
   const viewParam = urlParams.get('view');
   const campaignIdParam = urlParams.get('campaign');
   const joinCampaignId = urlParams.get('join');
+  const publicChronicleId = urlParams.get('chronicle');
+
+  // ── Public chronicle share link — no auth required ─────────────────────
+  // This must run BEFORE the auth gate so anonymous visitors can read.
+  if (publicChronicleId) {
+    return <PublicChronicleView campaignId={publicChronicleId} />;
+  }
 
   useEffect(() => {
     if (currentUser) {

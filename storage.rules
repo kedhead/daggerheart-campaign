@@ -26,6 +26,12 @@ service firebase.storage {
       return campaign.dmId == request.auth.uid;
     }
 
+    // True when the campaign has flipped on a public read-only chronicle.
+    // Used to allow unauthenticated reads of storybook images via a share link.
+    function isChroniclePublic(campaignId) {
+      return getCampaign(campaignId).get('chroniclePublic', false) == true;
+    }
+
     // Campaign files rules
     match /campaigns/{campaignId}/files/{fileName} {
       // Allow read if user is a member of the campaign
@@ -120,7 +126,7 @@ service firebase.storage {
 
     // Storybook illustrations (AI-generated scenes, 10MB cap)
     match /campaigns/{campaignId}/storybook/images/{fileName} {
-      allow read: if isAuthenticated() && isCampaignMember(campaignId);
+      allow read: if (isAuthenticated() && isCampaignMember(campaignId)) || isChroniclePublic(campaignId);
       allow create: if isAuthenticated() && isCampaignMember(campaignId)
                     && request.resource.size < 10 * 1024 * 1024;
       allow delete: if isAuthenticated() && isCampaignDM(campaignId);
@@ -128,7 +134,7 @@ service firebase.storage {
 
     // Storybook styled portraits (per-entity cached, 10MB cap)
     match /campaigns/{campaignId}/storybook/styled-portraits/{fileName} {
-      allow read: if isAuthenticated() && isCampaignMember(campaignId);
+      allow read: if (isAuthenticated() && isCampaignMember(campaignId)) || isChroniclePublic(campaignId);
       allow create: if isAuthenticated() && isCampaignMember(campaignId)
                     && request.resource.size < 10 * 1024 * 1024;
       allow delete: if isAuthenticated() && isCampaignDM(campaignId);
@@ -136,7 +142,7 @@ service firebase.storage {
 
     // Storybook user-uploaded media (images/video/audio, 500MB cap for video)
     match /campaigns/{campaignId}/storybook/media/{fileName} {
-      allow read: if isAuthenticated() && isCampaignMember(campaignId);
+      allow read: if (isAuthenticated() && isCampaignMember(campaignId)) || isChroniclePublic(campaignId);
       allow create: if isAuthenticated() && isCampaignMember(campaignId)
                     && request.resource.size < 500 * 1024 * 1024;
       allow delete: if isAuthenticated() && (isCampaignDM(campaignId) || isCampaignMember(campaignId));

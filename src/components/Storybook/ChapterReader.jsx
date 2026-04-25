@@ -29,7 +29,8 @@ export default function ChapterReader({
   currentUserId,
   storybook,
   onEditChapter,
-  initialChapterId = null
+  initialChapterId = null,
+  hideJournal = false
 }) {
   const orderedChapters = useMemo(
     () => [...(chapters || [])].sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0)),
@@ -45,7 +46,9 @@ export default function ChapterReader({
   });
 
   const chapterIds = useMemo(() => orderedChapters.map(c => c.id), [orderedChapters]);
-  const journalsByChapter = useAllJournals(campaignId, chapterIds);
+  // Public/share-link visitors don't have permission to read journalEntries,
+  // and we explicitly want them hidden anyway, so skip the subscription.
+  const journalsByChapter = useAllJournals(campaignId, hideJournal ? [] : chapterIds);
 
   const [tocOpen, setTocOpen] = useState(false);
   const [lightboxItems, setLightboxItems] = useState(null);
@@ -250,6 +253,7 @@ export default function ChapterReader({
           </section>
         )}
 
+        {!hideJournal && (
         <section>
           <div className="sb-rule" aria-hidden="true" />
           <div className="sb-section-label">In-Character Journal</div>
@@ -294,6 +298,7 @@ export default function ChapterReader({
             </div>
           )}
         </section>
+        )}
 
         {/* End-of-chapter navigation */}
         <div className="sb-chapter-nav" aria-label="Chapter navigation">

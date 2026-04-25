@@ -55,14 +55,14 @@ service cloud.firestore {
 
     // Shared campaigns collection
     match /campaigns/{campaignId} {
-      // Read: public campaigns OR member/DM/creator OR superadmin
-      allow read: if isAuthenticated() && (
+      // Read: public campaigns OR member/DM/creator OR superadmin OR a public chronicle visitor
+      allow read: if (isAuthenticated() && (
         resource.data.isPublic == true ||
         isMember(resource.data) ||
         isDM(resource.data) ||
         getUserId() == resource.data.createdBy ||
         isSuperAdmin()
-      );
+      )) || resource.data.get('chroniclePublic', false) == true;
 
       // Create: anyone authenticated
       allow create: if isAuthenticated();
@@ -309,8 +309,12 @@ service cloud.firestore {
 
       // Storybook (Story So Far — illustrated chapter chronicle)
       match /storybook/{chapterId} {
-        // All members can read chapters; filtering of drafts happens client-side.
-        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // Authenticated members + superadmins. Plus: when the campaign's
+        // chroniclePublic flag is on, anyone (including unauthenticated
+        // visitors hitting a share link) can read chapters. Journal entries
+        // remain private even when the chronicle is public.
+        allow read: if (isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin()))
+          || get(/databases/$(database)/documents/campaigns/$(campaignId)).data.get('chroniclePublic', false) == true;
         // Only DM/creator can create, edit, or delete chapters.
         allow create, update, delete: if isAuthenticated() && (
           isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) ||
@@ -318,7 +322,7 @@ service cloud.firestore {
           isSuperAdmin()
         );
 
-        // Journal entries — player-authored in-character responses to a chapter.
+        // Journal entries — campaign members only, never exposed publicly.
         match /journalEntries/{entryId} {
           allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
           // Any member may create an entry, but the authorId must be their own uid.
