@@ -381,6 +381,10 @@ function CampaignApp() {
             notes={notes}
             campaignFrame={campaignFrame}
             currentUserId={currentUser.uid}
+            addEncounter={addEncounter}
+            addAdversary={addAdversary}
+            addNPC={addNPC}
+            addLocation={addLocation}
           />
         );
       case 'files':

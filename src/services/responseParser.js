@@ -298,6 +298,78 @@ export const responseParser = {
   },
 
   /**
+   * Parse Session Plan response (GM Assistant mode)
+   * @param {string} responseText - AI response text
+   * @returns {object|null} Parsed session plan, or null if no JSON block found
+   */
+  parseSessionPlan(responseText) {
+    const fenced = responseText.match(/```json\s*\n([\s\S]*?)\n```/);
+    const candidate = fenced ? fenced[1] : (() => {
+      const brace = responseText.match(/\{[\s\S]*\}/);
+      return brace ? brace[0] : null;
+    })();
+    if (!candidate) return null;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(candidate);
+    } catch {
+      return null;
+    }
+
+    return this._validateSessionPlan(parsed);
+  },
+
+  _validateSessionPlan(data) {
+    const encounters = Array.isArray(data.encounters) ? data.encounters : [];
+    const validRoles = ['minion', 'horde', 'standard', 'bruiser', 'skulk', 'ranged', 'support', 'social', 'leader', 'solo'];
+    const validEncounterTypes = ['combat', 'puzzle', 'social', 'exploration'];
+
+    return {
+      sessionTitle: String(data.sessionTitle || 'Untitled Session'),
+      estimatedDurationHours: Number(data.estimatedDurationHours) || 3,
+      partyLevel: Number(data.partyLevel) || 1,
+      partySize: Number(data.partySize) || 4,
+      primaryLocation: String(data.primaryLocation || ''),
+      pacingOutline: Array.isArray(data.pacingOutline) ? data.pacingOutline.map(String) : [],
+      encounters: encounters.map((enc) => ({
+        name: String(enc.name || 'Unnamed Encounter'),
+        type: validEncounterTypes.includes(enc.type) ? enc.type : 'combat',
+        summary: String(enc.summary || ''),
+        estimatedMinutes: Number(enc.estimatedMinutes) || 30,
+        adversariesNeeded: Array.isArray(enc.adversariesNeeded) ? enc.adversariesNeeded.map((a) => ({
+          concept: String(a.concept || ''),
+          tier: [1, 2, 3, 4].includes(Number(a.tier)) ? Number(a.tier) : 1,
+          role: validRoles.includes(a.role) ? a.role : 'standard',
+          quantity: Math.max(1, Number(a.quantity) || 1),
+          reuseExistingName: a.reuseExistingName || null
+        })) : [],
+        puzzleSpec: enc.puzzleSpec ? {
+          premise: String(enc.puzzleSpec.premise || ''),
+          mechanism: String(enc.puzzleSpec.mechanism || ''),
+          solution: String(enc.puzzleSpec.solution || ''),
+          failureState: String(enc.puzzleSpec.failureState || '')
+        } : null,
+        environment: String(enc.environment || ''),
+        bpEstimate: Number(enc.bpEstimate) || 0
+      })),
+      newNPCs: Array.isArray(data.newNPCs) ? data.newNPCs.map((n) => ({
+        name: String(n.name || ''), occupation: String(n.occupation || ''), blurb: String(n.blurb || '')
+      })).filter(n => n.name) : [],
+      newLocations: Array.isArray(data.newLocations) ? data.newLocations.map((l) => ({
+        name: String(l.name || ''), type: String(l.type || 'other'), blurb: String(l.blurb || '')
+      })).filter(l => l.name) : [],
+      events: Array.isArray(data.events) ? data.events.map((e) => ({
+        title: String(e.title || ''), trigger: String(e.trigger || ''), outcome: String(e.outcome || '')
+      })).filter(e => e.title) : [],
+      mapsRequested: Array.isArray(data.mapsRequested) ? data.mapsRequested.map((m) => ({
+        label: String(m.label || ''), kind: m.kind === 'location' ? 'location' : 'battle'
+      })).filter(m => m.label) : [],
+      gmNotes: String(data.gmNotes || '')
+    };
+  },
+
+  /**
    * Main parse function - routes to appropriate parser
    * @param {string} type - Type of content
    * @param {string} responseText - AI response text
@@ -317,6 +389,8 @@ export const responseParser = {
         return this.parseEncounter(responseText);
       case 'lore':
         return this.parseLore(responseText);
+      case 'session-plan':
+        return this.parseSessionPlan(responseText);
       case 'array':
         return this.parseArray(responseText);
       case 'text':
