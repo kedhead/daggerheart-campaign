@@ -36,7 +36,8 @@ export default function SessionPlanCard({
   const [expandedEncounter, setExpandedEncounter] = useState(null);
 
   const budget = calculateBPBudget(plan.partySize || 4);
-  const totalMinutes = plan.encounters.reduce((sum, e) => sum + (e.estimatedMinutes || 0), 0);
+  const encounters = Array.isArray(plan.encounters) ? plan.encounters : [];
+  const totalMinutes = encounters.reduce((sum, e) => sum + (e.estimatedMinutes || 0), 0);
   const targetMinutes = (plan.estimatedDurationHours || 3) * 60;
 
   const toggleMap = (label) => {
@@ -73,9 +74,9 @@ export default function SessionPlanCard({
         </Section>
       )}
 
-      <Section title={`Encounters (${plan.encounters.length})`}>
+      <Section title={`Encounters (${encounters.length})`}>
         <div className="space-y-2">
-          {plan.encounters.map((enc, i) => {
+          {encounters.map((enc, i) => {
             const Icon = TYPE_ICONS[enc.type] || Sword;
             const colorCls = TYPE_COLORS[enc.type] || TYPE_COLORS.combat;
             const isExpanded = expandedEncounter === i;

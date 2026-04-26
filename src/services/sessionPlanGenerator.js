@@ -105,8 +105,13 @@ export async function buildPreviewFromPlan({
     (adversaries || []).filter(a => a?.name).map(a => [a.name.toLowerCase(), a])
   );
 
-  for (const enc of plan.encounters) {
-    for (const need of enc.adversariesNeeded) {
+  const planEncounters = Array.isArray(plan.encounters) ? plan.encounters : [];
+  const planNewLocations = Array.isArray(plan.newLocations) ? plan.newLocations : [];
+  const planNewNPCs = Array.isArray(plan.newNPCs) ? plan.newNPCs : [];
+  const planMapsRequested = Array.isArray(plan.mapsRequested) ? plan.mapsRequested : [];
+
+  for (const enc of planEncounters) {
+    for (const need of (enc.adversariesNeeded || [])) {
       // Skip if mapped to an existing adversary by name
       if (need.reuseExistingName && reuseByName.has(need.reuseExistingName.toLowerCase())) continue;
       const k = conceptKey(need);
@@ -115,10 +120,10 @@ export async function buildPreviewFromPlan({
   }
 
   const totalSteps =
-    plan.newLocations.length +
-    plan.newNPCs.length +
+    planNewLocations.length +
+    planNewNPCs.length +
     adversaryConceptsToBuild.size +
-    plan.encounters.length +
+    planEncounters.length +
     (generateMapsFor.length || 0);
 
   let step = 0;
@@ -131,7 +136,7 @@ export async function buildPreviewFromPlan({
 
   // ── 1. Locations ───────────────────────────────────────────────────────
   const previewLocations = [];
-  for (const loc of plan.newLocations) {
+  for (const loc of planNewLocations) {
     tick(`Fleshing out location: ${loc.name}`);
     try {
       const fleshed = await fleshOutLocationWithAI(
@@ -162,7 +167,7 @@ export async function buildPreviewFromPlan({
 
   // ── 2. NPCs ────────────────────────────────────────────────────────────
   const previewNPCs = [];
-  for (const npc of plan.newNPCs) {
+  for (const npc of planNewNPCs) {
     tick(`Fleshing out NPC: ${npc.name}`);
     try {
       const npcPrompt = promptBuilder.buildNPCPrompt({
@@ -247,7 +252,7 @@ export async function buildPreviewFromPlan({
   // We don't ship Firestore IDs at preview time — we use an internal staging key
   // (_stagedAdvKey) to refer to in-memory adversaries, which commitPreview then
   // resolves to real Firestore ids after writing the adversary docs.
-  const previewEncounters = plan.encounters.map((enc, idx) => {
+  const previewEncounters = planEncounters.map((enc, idx) => {
     tick(`Building encounter: ${enc.name}`);
     const adversarySlots = enc.adversariesNeeded.map((need) => {
       const reuse = need.reuseExistingName
@@ -280,13 +285,16 @@ export async function buildPreviewFromPlan({
 
   // ── 5. Maps (opt-in only) ──────────────────────────────────────────────
   const previewMaps = [];
-  for (const mapReq of plan.mapsRequested) {
+  for (const mapReq of planMapsRequested) {
     if (!generateMapsFor.includes(mapReq.label)) continue;
     tick(`Generating map: ${mapReq.label}`);
     try {
+      const birdsEyePrefix = 'Top-down bird\'s-eye view battle map, tabletop RPG grid map style, high detail, 4K quality.';
+      const locationContext = plan.primaryLocation ? ` Primary location: ${plan.primaryLocation}.` : '';
       const result = await generateBattleMap({
-        prompt: `${mapReq.label} for the session "${plan.sessionTitle}". ${plan.primaryLocation ? `Primary location: ${plan.primaryLocation}.` : ''}`,
-        type: mapReq.kind === 'location' ? 'outdoor' : 'battle-map'
+        prompt: `${birdsEyePrefix} ${mapReq.label} for the session "${plan.sessionTitle}".${locationContext}`,
+        type: mapReq.kind === 'location' ? 'outdoor' : 'battle-map',
+        size: '1792x1024'
       });
       previewMaps.push({ label: mapReq.label, kind: mapReq.kind, url: result?.url || result?.imageUrl || '', _planSource: mapReq });
     } catch (err) {
