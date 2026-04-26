@@ -147,6 +147,62 @@ async function retrieveContext(systemKey, message, apiKey) {
   return 'Rules reference not loaded. Rely on general knowledge.';
 }
 
+// ── GM session planner mode ───────────────────────────────────────────
+function buildGMPlannerSystemPrompt(cfg, campaignSection, contextText) {
+  return `${cfg.systemPromptIntro}
+
+You are now operating as a **GM Session Planner**. The user is the GM. They will describe a session at a high level (location, number of encounters, party size/level, themes, mix of combat/puzzle/social, time budget) and you will return a **single JSON session plan** that the GM can review, refine, and approve.
+
+${campaignSection}=== RELEVANT RULES REFERENCE ===
+${contextText}
+=== END RULES ===
+
+OUTPUT FORMAT — return ONLY one fenced JSON code block, with no prose before or after, matching exactly this shape:
+
+\`\`\`json
+{
+  "sessionTitle": "string",
+  "estimatedDurationHours": number,
+  "partyLevel": number,
+  "partySize": number,
+  "primaryLocation": "string",
+  "pacingOutline": ["Hook: ...", "Rising: ...", "Climax: ...", "Resolution: ..."],
+  "encounters": [
+    {
+      "name": "string",
+      "type": "combat" | "puzzle" | "social" | "exploration",
+      "summary": "2-3 sentences setting the scene and stakes",
+      "estimatedMinutes": number,
+      "adversariesNeeded": [
+        { "concept": "vivid one-sentence creature concept", "tier": 1|2|3|4, "role": "minion|horde|standard|bruiser|skulk|ranged|support|social|leader|solo", "quantity": number, "reuseExistingName": "exact name from existing campaign adversaries OR null" }
+      ],
+      "puzzleSpec": null | { "premise": "string", "mechanism": "what the players must do", "solution": "intended solution + a hint", "failureState": "what happens if they fail" },
+      "environment": "string (matches a campaign environment if available)",
+      "bpEstimate": number
+    }
+  ],
+  "newNPCs":      [{ "name": "string", "occupation": "string", "blurb": "1-2 sentences" }],
+  "newLocations": [{ "name": "string", "type": "city|town|village|dungeon|wilderness|landmark|other", "blurb": "1-2 sentences" }],
+  "events":       [{ "title": "string", "trigger": "what triggers this event in-session", "outcome": "consequence" }],
+  "mapsRequested":[{ "label": "string", "kind": "battle" | "location" }],
+  "gmNotes": "Markdown-formatted notes the GM can paste into their session log: hooks, secrets, pacing tips, key NPC voices, contingencies."
+}
+\`\`\`
+
+DESIGN RULES:
+- Use existing campaign NPCs, locations, and adversaries when they fit. Set "reuseExistingName" to the exact name from the campaign list to avoid spawning duplicates. Only invent new ones when there's no good fit.
+- Daggerheart Battle Points budget per encounter = (3 × partySize) + 2. Costs: minion/horde=1, standard/bruiser/skulk/ranged/support/social=2, leader=3, solo=5. Encounter-by-encounter the bpEstimate must respect this budget.
+- Match encounter difficulty to partyLevel — pick adversary tiers in line with party level (lvl 1–3 → tier 1, lvl 4–6 → tier 2, lvl 7–9 → tier 3, lvl 10+ → tier 4).
+- Honor the GM's requested counts and types (e.g., "2 puzzle encounters" → exactly 2 entries with type:"puzzle" and a non-null puzzleSpec).
+- Estimate encounter minutes so the SUM of estimatedMinutes is close to estimatedDurationHours × 60.
+- gmNotes must be a single Markdown string. No code blocks inside it.
+- Ground every encounter / NPC / location in the campaign's themes. Reference named places, factions, and lore from the campaign context above.
+- mapsRequested is OPTIONAL and limited — only include the 1-3 most useful maps for the session. The GM will opt in per map.
+
+If the GM's prior message already approved a plan and now asks for a refinement, return a NEW complete plan reflecting the change — never partial. Always one fenced JSON block, nothing else.
+`;
+}
+
 // ── Main handler ──────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -165,21 +221,28 @@ export default async function handler(req, res) {
       provider = 'anthropic',
       campaignContext = '',
       gameSystem = 'daggerheart',
+      mode = 'chat',
     } = req.body;
 
     if (!message) return res.status(400).json({ error: 'Missing required field: message' });
 
     const cfg = SYSTEMS[gameSystem] || SYSTEMS.daggerheart;
 
-    // 1. Retrieve relevant rules context
-    const contextText = await retrieveContext(gameSystem, message, apiKey);
+    // 1. Retrieve relevant rules context.
+    //    For GM session-planning, bias retrieval toward encounter/adversary/pacing material.
+    const retrievalQuery = mode === 'gm-plan'
+      ? `${message}\nencounter design adversary tier role battle points pacing puzzle session structure environment`
+      : message;
+    const contextText = await retrieveContext(gameSystem, retrievalQuery, apiKey);
 
     // 2. Build system prompt
     const campaignSection = campaignContext
       ? `=== YOUR CAMPAIGN ===\n${campaignContext}\n=== END CAMPAIGN ===\n\n`
       : '';
 
-    const systemPrompt = `${cfg.systemPromptIntro}
+    const systemPrompt = mode === 'gm-plan'
+      ? buildGMPlannerSystemPrompt(cfg, campaignSection, contextText)
+      : `${cfg.systemPromptIntro}
 ${campaignContext ? cfg.campaignIntro : cfg.noCampaignIntro}
 
 ${cfg.tone}

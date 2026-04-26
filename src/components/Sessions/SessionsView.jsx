@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import { Plus, BookOpen, ScrollText } from 'lucide-react';
+import { Plus, BookOpen, ScrollText, Sparkles } from 'lucide-react';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
 import SessionLive from './SessionLive';
+import GMAssistantPanel from './GMAssistantPanel';
 import Modal from '../Modal';
 import { autoDraftChapterFromSession } from '../../services/storybookGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -25,7 +26,12 @@ export default function SessionsView({
   encounters = [],
   notes = [],
   campaignFrame = null,
-  currentUserId
+  currentUserId,
+  // GM Assistant write handlers (optional — feature is gracefully disabled if missing)
+  addEncounter,
+  addAdversary,
+  addNPC,
+  addLocation
 }) {
   const { keys } = useAPIKey(campaign?.createdBy);
   const { info, success, error: toastError } = useToast();
@@ -54,6 +60,16 @@ export default function SessionsView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
   const [liveSession, setLiveSession] = useState(null);
+  const [isGMAssistantOpen, setIsGMAssistantOpen] = useState(false);
+
+  const gmAssistantHandlers = {
+    addSession,
+    addEncounter,
+    addAdversary,
+    addNPC,
+    addLocation
+  };
+  const gmAssistantReady = isDM && !!addEncounter && !!addAdversary && !!addNPC && !!addLocation;
 
   const handleAdd = () => {
     setEditingSession(null);
@@ -137,15 +153,46 @@ export default function SessionsView({
           </p>
         </div>
         {isDM && (
-          <button
-            className="btn btn-primary flex items-center gap-2 px-6 py-3 text-lg shadow-lg shadow-[rgb(var(--color-primary))/20]"
-            onClick={handleAdd}
-          >
-            <Plus size={24} />
-            Log Session
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {gmAssistantReady && (
+              <button
+                type="button"
+                className="btn btn-secondary flex items-center gap-2 px-5 py-3"
+                onClick={() => setIsGMAssistantOpen((v) => !v)}
+              >
+                <Sparkles size={20} />
+                {isGMAssistantOpen ? 'Hide GM Assistant' : 'Plan with AI'}
+              </button>
+            )}
+            <button
+              className="btn btn-primary flex items-center gap-2 px-6 py-3 text-lg shadow-lg shadow-[rgb(var(--color-primary))/20]"
+              onClick={handleAdd}
+            >
+              <Plus size={24} />
+              Log Session
+            </button>
+          </div>
         )}
       </div>
+
+      {gmAssistantReady && isGMAssistantOpen && (
+        <GMAssistantPanel
+          campaign={campaign}
+          campaignFrame={campaignFrame}
+          characters={characters}
+          npcs={npcs}
+          adversaries={adversaries}
+          locations={locations}
+          lore={lore}
+          sessions={sessions}
+          encounters={encounters}
+          isDM={isDM}
+          currentUserId={currentUserId}
+          handlers={gmAssistantHandlers}
+          onClose={() => setIsGMAssistantOpen(false)}
+          onSaved={() => { /* sessions list auto-refreshes via Firestore subscription */ }}
+        />
+      )}
 
       {sortedSessions.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 bg-[var(--bg-secondary)] border border-white/5 rounded-xl text-center space-y-4">
