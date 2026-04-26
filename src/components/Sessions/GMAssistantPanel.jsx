@@ -39,7 +39,7 @@ export default function GMAssistantPanel({
   onClose,
   onSaved
 }) {
-  const { keys, sharedConfig, hasKey } = useAPIKey(currentUserId);
+  const { keys, sharedConfig, hasKey, getEffectiveKey } = useAPIKey(currentUserId);
   const inputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -81,11 +81,16 @@ export default function GMAssistantPanel({
   }
 
   const resolveProvider = () => {
-    const hasAnthropic = hasKey('anthropic') || (sharedConfig && sharedConfig.hasAnthropicKey);
-    const hasOpenAI = hasKey('openai') || (sharedConfig && sharedConfig.hasOpenaiKey);
-    if (hasAnthropic && keys?.anthropic) return { provider: 'anthropic', apiKey: keys.anthropic };
-    if (hasOpenAI && keys?.openai) return { provider: 'openai', apiKey: keys.openai };
-    return { provider: '1min', apiKey: '' };
+    // Prefer Anthropic, fall back to OpenAI — getEffectiveKey handles own vs. shared key priority.
+    for (const provider of ['anthropic', 'openai']) {
+      if (hasKey(provider)) {
+        const { key } = getEffectiveKey(provider);
+        if (key) return { provider, apiKey: key };
+      }
+    }
+    throw new Error(
+      'No AI API key configured. Please add an Anthropic or OpenAI key in Settings → AI Keys.'
+    );
   };
 
   const sendBrief = async (briefText) => {
