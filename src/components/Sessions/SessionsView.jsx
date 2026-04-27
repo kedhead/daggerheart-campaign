@@ -32,6 +32,7 @@ export default function SessionsView({
   addAdversary,
   addNPC,
   addLocation,
+  addLore,
   onEncounterClick
 }) {
   const { keys } = useAPIKey(campaign?.createdBy);
@@ -68,7 +69,8 @@ export default function SessionsView({
     addEncounter,
     addAdversary,
     addNPC,
-    addLocation
+    addLocation,
+    addLore
   };
   const gmAssistantReady = isDM && !!addEncounter && !!addAdversary && !!addNPC && !!addLocation;
 

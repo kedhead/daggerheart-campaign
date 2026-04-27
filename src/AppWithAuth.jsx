@@ -385,6 +385,7 @@ function CampaignApp() {
             addAdversary={addAdversary}
             addNPC={addNPC}
             addLocation={addLocation}
+            addLore={addLore}
             onEncounterClick={(id) => setCurrentView('encounters')}
           />
         );
