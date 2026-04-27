@@ -31,7 +31,8 @@ export default function SessionsView({
   addEncounter,
   addAdversary,
   addNPC,
-  addLocation
+  addLocation,
+  onEncounterClick
 }) {
   const { keys } = useAPIKey(campaign?.createdBy);
   const { info, success, error: toastError } = useToast();
@@ -219,6 +220,7 @@ export default function SessionsView({
               onEdit={() => handleEdit(session)}
               onDelete={() => deleteSession(session.id)}
               onGoLive={() => handleGoLive(session)}
+              onEncounterClick={onEncounterClick}
               isDM={isDM}
               campaign={campaign}
             />

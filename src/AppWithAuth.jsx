@@ -385,6 +385,7 @@ function CampaignApp() {
             addAdversary={addAdversary}
             addNPC={addNPC}
             addLocation={addLocation}
+            onEncounterClick={(id) => setCurrentView('encounters')}
           />
         );
       case 'files':
