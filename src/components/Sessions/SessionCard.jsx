@@ -111,21 +111,24 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
             <div className="space-y-2">
               <h4 className="text-sm font-bold text-[rgb(var(--color-primary-light))]/60 uppercase tracking-wider flex items-center gap-2">
                 <LinkIcon size={14} />
-                Encounter Links
+                Linked Encounters
               </h4>
               <div className="flex flex-wrap gap-2">
-                {session.encounterLinks.split(',').map((link, index) => (
-                  <a
-                    key={index}
-                    href={link.trim()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-1.5 bg-[rgb(var(--color-primary))/10] hover:bg-[rgb(var(--color-primary))/20] border border-[rgb(var(--color-primary))/30] rounded-md text-[rgb(var(--color-primary-light))] text-sm transition-colors"
-                  >
-                    Encounter {index + 1}
-                    <LinkIcon size={12} />
-                  </a>
-                ))}
+                {session.encounterLinks.split(',').map((link, index) => {
+                  // Strip the internal encounter:// scheme — these are Firestore IDs, not URLs
+                  const encounterId = link.trim().replace(/^encounter:\/\//, '');
+                  if (!encounterId) return null;
+                  return (
+                    <span
+                      key={index}
+                      title={`Encounter ID: ${encounterId}`}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-[rgb(var(--color-primary))/10] border border-[rgb(var(--color-primary))/30] rounded-md text-[rgb(var(--color-primary-light))] text-sm"
+                    >
+                      <LinkIcon size={12} />
+                      Encounter {index + 1}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}
