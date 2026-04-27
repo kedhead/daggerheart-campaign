@@ -1,6 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Sparkles, Send, Loader2, X, Bot, User, AlertTriangle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc } from 'firebase/firestore';
+import { db, storage } from '../../config/firebase';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { buildCampaignContext } from '../../services/campaignContext';
 import {
@@ -172,10 +175,56 @@ export default function GMAssistantPanel({
     setSaveProgress({ step: 0, total: 1, label: 'Starting…' });
     setErrorMsg(null);
 
+    // Handler that uploads a generated image URL (DALL-E / Replicate) to
+    // Firebase Storage and saves a doc in the maps subcollection so the
+    // image appears in Maps & Files and the Player Display.
+    const addMapFile = async ({ name, url, tag }) => {
+      try {
+        // Download via the existing server-side proxy (avoids CORS on DALL-E URLs)
+        const resp = await fetch('/api/download-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl: url })
+        });
+        if (!resp.ok) throw new Error(`Proxy fetch failed: ${resp.status}`);
+        const { dataUrl } = await resp.json();
+        if (!dataUrl) throw new Error('No dataUrl returned from proxy');
+
+        // Upload the base64 data URL to Firebase Storage (mirrors FilesView.handleGenerateMap)
+        const timestamp = Date.now();
+        const storagePath = `campaigns/${campaign.id}/maps/${timestamp}-${name.replace(/\s+/g, '_')}.png`;
+        const storageRef = ref(storage, storagePath);
+        await uploadString(storageRef, dataUrl, 'data_url');
+        const downloadUrl = await getDownloadURL(storageRef);
+
+        // Save metadata doc to maps subcollection (same schema as FilesView)
+        const mapDoc = {
+          id: timestamp.toString(),
+          name: `${name}.png`,
+          size: 0,
+          contentType: 'image/png',
+          dataUrl: downloadUrl,
+          downloadUrl,
+          storagePath,
+          timeCreated: new Date().toISOString(),
+          uploadedBy: 'GM Assistant',
+          isGeneratedMap: true,
+          mapType: tag || 'battle-map',
+          tag
+        };
+        const mapsRef = collection(db, `campaigns/${campaign.id}/maps`);
+        await addDoc(mapsRef, mapDoc);
+        return downloadUrl;
+      } catch (err) {
+        console.error('addMapFile failed for', name, err);
+        return url; // fall back to original URL
+      }
+    };
+
     try {
       const result = await commitPreview({
         preview: edited,
-        handlers,
+        handlers: { ...handlers, addMapFile },
         onProgress: (step, total, label) => setSaveProgress({ step, total, label })
       });
 
@@ -187,7 +236,7 @@ export default function GMAssistantPanel({
       setLatestPlan(null);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: `Saved **${edited.sessionDraft.title}** to your campaign — ${result.encounterIds.length} encounter(s), ${edited.adversaries.length} adversary stat block(s), ${edited.npcs.length} NPC(s), ${edited.locations.length} location(s).` }
+        { role: 'assistant', content: `Saved **${edited.sessionDraft.title}** to your campaign — ${result.encounterIds.length} encounter(s), ${edited.adversaries.length} adversary stat block(s), ${edited.npcs.length} NPC(s), ${edited.locations.length} location(s)${result.mapCount ? `, ${result.mapCount} map/handout(s) added to Maps & Files` : ''}.` }
       ]);
       onSaved?.(result);
     } catch (err) {

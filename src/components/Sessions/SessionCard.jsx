@@ -5,7 +5,7 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionCard.css';
 
-export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM, campaign, isEmbedded = false, entities }) {
+export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM, campaign, isEmbedded = false, entities, onEncounterClick }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
@@ -115,18 +115,20 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
               </h4>
               <div className="flex flex-wrap gap-2">
                 {session.encounterLinks.split(',').map((link, index) => {
-                  // Strip the internal encounter:// scheme — these are Firestore IDs, not URLs
+                  // Encounters stored as plain Firestore IDs (or legacy encounter:// URIs)
                   const encounterId = link.trim().replace(/^encounter:\/\//, '');
                   if (!encounterId) return null;
+                  const Wrapper = onEncounterClick ? 'button' : 'span';
                   return (
-                    <span
+                    <Wrapper
                       key={index}
-                      title={`Encounter ID: ${encounterId}`}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-[rgb(var(--color-primary))/10] border border-[rgb(var(--color-primary))/30] rounded-md text-[rgb(var(--color-primary-light))] text-sm"
+                      title={onEncounterClick ? `Open encounter ${index + 1}` : `Encounter ID: ${encounterId}`}
+                      onClick={onEncounterClick ? () => onEncounterClick(encounterId) : undefined}
+                      className={`flex items-center gap-2 px-3 py-1.5 bg-[rgb(var(--color-primary))/10] border border-[rgb(var(--color-primary))/30] rounded-md text-[rgb(var(--color-primary-light))] text-sm transition-colors ${onEncounterClick ? 'hover:bg-[rgb(var(--color-primary))/20] cursor-pointer' : ''}`}
                     >
                       <LinkIcon size={12} />
                       Encounter {index + 1}
-                    </span>
+                    </Wrapper>
                   );
                 })}
               </div>

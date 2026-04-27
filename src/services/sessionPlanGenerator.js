@@ -421,8 +421,13 @@ function assembleSessionNotes(plan) {
  * @returns {Promise<{ sessionId: string|null, errors: Array<{ step, message }> }>}
  */
 export async function commitPreview({ preview, handlers, onProgress = () => {} }) {
-  const { addLocation, addNPC, addAdversary, addEncounter, addSession } = handlers || {};
+  const { addLocation, addNPC, addAdversary, addEncounter, addSession, addMapFile } = handlers || {};
   if (!addSession) throw new Error('addSession handler is required');
+
+  const mapItems = [
+    ...(preview.maps || []).map(m => ({ name: m.label, url: m.url, tag: m.kind || 'battle-map' })),
+    ...(preview.encounters || []).filter(e => e.handoutUrl).map(e => ({ name: `${e.name} Handout`, url: e.handoutUrl, tag: 'puzzle-handout' }))
+  ];
 
   const errors = [];
   const total =
@@ -430,6 +435,7 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
     preview.npcs.length +
     preview.adversaries.length +
     preview.encounters.length +
+    mapItems.length +
     1; // session
   let step = 0;
   const tick = (label) => { step += 1; onProgress(step, total, label); };
@@ -520,13 +526,30 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
     }
   }
 
+  // ── Maps & Handouts ──────────────────────────────────────────────
+  let mapCount = 0;
+  if (addMapFile) {
+    for (const item of mapItems) {
+      if (!item.url) continue;
+      tick(`Uploading to Maps & Files: ${item.name}`);
+      try {
+        await addMapFile(item);
+        mapCount++;
+      } catch (err) {
+        console.error('addMapFile failed:', err);
+        errors.push({ step: `Map: ${item.name}`, message: err.message });
+      }
+    }
+  }
+
   // ── Session ────────────────────────────────────────────────────────────
   tick(`Saving session: ${preview.sessionDraft.title}`);
   let sessionId = null;
   try {
     const sessionDoc = {
       ...preview.sessionDraft,
-      encounterLinks: createdEncounterIds.map(e => `encounter://${e.id}`).join(',')
+      // Store encounter IDs as plain comma-separated Firestore IDs (not encounter:// URIs)
+      encounterLinks: createdEncounterIds.map(e => e.id).join(',')
     };
     const result = await addSession(sessionDoc);
     sessionId = result?.id || null;
@@ -535,7 +558,7 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
     errors.push({ step: `Session: ${preview.sessionDraft.title}`, message: err.message });
   }
 
-  return { sessionId, errors, encounterIds: createdEncounterIds };
+  return { sessionId, errors, encounterIds: createdEncounterIds, mapCount };
 }
 
 /**
