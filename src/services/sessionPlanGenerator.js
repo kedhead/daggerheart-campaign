@@ -126,7 +126,7 @@ export async function buildPreviewFromPlan({
     planNewNPCs.length +
     adversaryConceptsToBuild.size +
     planEncounters.length +
-    planPuzzleEncounters.length +
+    planPuzzleEncounters.length * 2 + // handout image + GM sheet per puzzle
     (generateMapsFor.length || 0);
 
   let step = 0;
@@ -286,13 +286,15 @@ export async function buildPreviewFromPlan({
     };
   });
 
-  // ── 4.5. Puzzle handout charts (auto-generated for every puzzle encounter) ──
-  // Generates a parchment-style visual diagram illustrating the puzzle mechanism
-  // so the GM can show or print it as a player handout. The solution is kept
-  // DM-only — only the mechanism/elements are depicted visually.
+  // ── 4.5. Puzzle handout charts + GM solution sheets ───────────────────
+  // For each puzzle encounter:
+  //   a) A player-facing visual handout (parchment diagram with clues but not the answer)
+  //   b) A GM solution sheet (AI-written text with step-by-step solution, hints, failure)
   for (let i = 0; i < previewEncounters.length; i++) {
     const enc = previewEncounters[i];
     if (enc.type !== 'puzzle' || !enc.puzzleSpec) continue;
+
+    // a) Player handout image
     tick(`Generating puzzle handout: ${enc.name}`);
     try {
       const result = await generateBattleMap({
@@ -301,12 +303,22 @@ export async function buildPreviewFromPlan({
         size: '1024x1024'
       });
       previewEncounters[i] = {
-        ...enc,
+        ...previewEncounters[i],
         handoutUrl: result?.url || result?.imageUrl || ''
       };
     } catch (err) {
       console.error('Puzzle handout generation failed:', err);
-      previewEncounters[i] = { ...enc, handoutUrl: '', _handoutError: err.message };
+      previewEncounters[i] = { ...previewEncounters[i], handoutUrl: '', _handoutError: err.message };
+    }
+
+    // b) GM solution sheet (text)
+    tick(`Generating GM solution sheet: ${enc.name}`);
+    try {
+      const sheet = await generatePuzzleGMSheet(previewEncounters[i], apiKey, provider);
+      previewEncounters[i] = { ...previewEncounters[i], gmSheet: sheet };
+    } catch (err) {
+      console.error('GM sheet generation failed:', err);
+      previewEncounters[i] = { ...previewEncounters[i], gmSheet: '', _gmSheetError: err.message };
     }
   }
 
@@ -359,22 +371,80 @@ export async function buildPreviewFromPlan({
  */
 /**
  * Build a DALL-E prompt for a puzzle encounter handout.
- * Depicts the puzzle mechanism/elements visually WITHOUT revealing the solution —
- * the chart is meant to be shown to players as an in-world prop.
+ *
+ * The image must be a FUNCTIONAL puzzle diagram — specific labelled elements,
+ * cryptic-but-real visual clues the players can actually interact with.
+ * It deliberately omits the solution sequence but shows all the components.
  */
 function buildPuzzleHandoutPrompt(enc) {
   const spec = enc.puzzleSpec;
-  const parts = [
-    'Fantasy TTRPG puzzle handout prop on aged parchment paper, manuscript illustration style.',
-    `The puzzle is titled "${enc.name}".`,
-    spec.premise ? `Context: ${spec.premise}.` : '',
-    spec.mechanism
-      ? `Visually depict the puzzle mechanism: ${spec.mechanism}. Draw diagrams, symbols, numbered sequences, valves, runes, or other visual elements that a player could interact with.`
-      : 'Draw a detailed diagram of the puzzle elements.',
-    'Do NOT include the solution or any text giving away the answer.',
-    'Style: sepia ink on parchment, archaic script labels, decorative alchemical borders, worn edges, handout prop quality, high detail.',
-  ].filter(Boolean).join(' ');
-  return parts;
+
+  // Extract key nouns from mechanism to drive the visual
+  const mechanism = spec.mechanism || '';
+  const premise = spec.premise || '';
+
+  // Build a hyper-specific diagram description so DALL-E draws something
+  // players can actually USE at the table, not just decorative art.
+  return [
+    'Fantasy TTRPG puzzle handout, aged parchment, technical diagram style — NOT decorative art.',
+    `Title at top in archaic calligraphy: "${enc.name}".`,
+    // Central interactive diagram
+    `Central diagram: ${mechanism}.`,
+    `Context shown in margin notes: "${premise.slice(0, 120)}".`,
+    // Force specific visual elements
+    'The diagram MUST include: numbered component labels (1, 2, 3, 4…), directional arrows or alignment marks, '
+    + 'distinct symbols or glyphs on each interactive element (use alchemical, runic, or cardinal symbols), '
+    + 'a sequence indicator (numbered slots or a step-tracker bar at the bottom), '
+    + 'and at least one cryptic in-world clue written in small italics (e.g., a riddle, a directional phrase, or an alignment hint).',
+    // Style
+    'Style: sepia ink, manuscript cross-hatching, decorative border with puzzle-relevant iconography, '
+    + 'high legibility for table use, 1024x1024, no colour outside brown/sepia tones.',
+    // Hard constraint
+    'DO NOT depict the solution or correct sequence order. Show the COMPONENTS and CLUES only.',
+  ].join(' ');
+}
+
+/**
+ * Ask the AI to write a structured GM solution sheet for a puzzle encounter.
+ * Returns a Markdown string the GM can reference at the table.
+ */
+async function generatePuzzleGMSheet(enc, apiKey, provider) {
+  const spec = enc.puzzleSpec;
+  const prompt = `You are writing a GM reference sheet for a puzzle encounter in a tabletop RPG.
+
+PUZZLE: "${enc.name}"
+Premise: ${spec.premise || 'N/A'}
+Mechanism: ${spec.mechanism || 'N/A'}
+Solution: ${spec.solution || 'N/A'}
+Failure state: ${spec.failureState || 'N/A'}
+
+Write a concise GM solution sheet in Markdown with these exact sections:
+
+## Solution Steps
+Numbered step-by-step instructions for how the puzzle is solved correctly.
+
+## Clues on the Handout
+List exactly what cryptic clues appear on the player handout and what they hint at (so the GM knows what to point players toward).
+
+## Hint Ladder
+Three tiered hints the GM can give if players are stuck:
+- **Subtle hint** (for mild struggle, ~5 min in)
+- **Medium hint** (for significant struggle, ~15 min in)
+- **Overt hint** (last resort, preserves momentum)
+
+## Success
+What happens and what to describe when the puzzle is solved correctly.
+
+## Failure
+What happens and what to describe when the puzzle is failed or the players give up.
+
+## GM Notes
+Any pacing advice, optional flourishes, or things to watch for at the table.
+
+Be specific, practical, and table-ready. This is for the GM's eyes only.`;
+
+  const raw = await aiService.generate(prompt, apiKey, provider);
+  return raw.trim();
 }
 
 function assembleSessionNotes(plan) {
@@ -512,7 +582,8 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
         encounterType: enc.type || 'combat',
         puzzleSpec: enc.puzzleSpec || null,
         estimatedMinutes: enc.estimatedMinutes || null,
-        handoutUrl: enc.handoutUrl || ''
+        handoutUrl: enc.handoutUrl || '',
+        gmSheet: enc.gmSheet || ''
       };
 
       if (addEncounter) {
@@ -523,6 +594,23 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
     } catch (err) {
       console.error('addEncounter failed:', err);
       errors.push({ step: `Encounter: ${enc.name}`, message: err.message });
+    }
+
+    // Save GM solution sheet as a DM-only lore entry so the GM can find it at the table
+    const { addLore } = handlers || {};
+    if (addLore && enc.gmSheet) {
+      try {
+        await addLore({
+          title: `GM Sheet: ${enc.name}`,
+          category: 'dm-notes',
+          content: enc.gmSheet,
+          tags: ['puzzle', 'gm-only', 'solution'],
+          dmOnly: true
+        });
+      } catch (err) {
+        console.error('addLore (GM sheet) failed:', err);
+        // Non-fatal — the sheet is also visible in the encounter preview
+      }
     }
   }
 

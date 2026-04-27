@@ -300,24 +300,49 @@ function EncounterEditor({ encounter, onChange, onRemove }) {
       )}
       {/* Puzzle handout chart — auto-generated player prop */}
       {encounter.type === 'puzzle' && (
-        <div className="space-y-1">
-          <span className="text-xs uppercase tracking-wider text-white/40 font-semibold">Puzzle Handout Chart</span>
-          {encounter.handoutUrl ? (
-            <div className="space-y-1">
-              <img
-                src={encounter.handoutUrl}
-                alt={`Puzzle handout: ${encounter.name}`}
-                className="w-full max-h-64 object-contain rounded-lg border border-white/10 bg-black/20"
-              />
-              <p className="text-xs text-white/40">Show this to players as an in-world prop. Solution is DM-only in the puzzle spec above.</p>
-            </div>
-          ) : encounter._handoutError ? (
-            <p className="text-xs text-amber-300 flex items-center gap-1">
-              <AlertTriangle size={12} /> Handout generation failed: {encounter._handoutError}
-            </p>
-          ) : (
-            <p className="text-xs text-white/30 italic">No handout generated (non-puzzle encounter).</p>
-          )}
+        <div className="space-y-3">
+          {/* Player handout */}
+          <div className="space-y-1">
+            <span className="text-xs uppercase tracking-wider text-white/40 font-semibold flex items-center gap-1.5">
+              <span>🗺</span> Player Handout Chart
+            </span>
+            {encounter.handoutUrl ? (
+              <div className="space-y-1">
+                <img
+                  src={encounter.handoutUrl}
+                  alt={`Puzzle handout: ${encounter.name}`}
+                  className="w-full max-h-72 object-contain rounded-lg border border-white/10 bg-black/20"
+                />
+                <p className="text-xs text-white/40">Show this to players as an in-world prop.</p>
+              </div>
+            ) : encounter._handoutError ? (
+              <p className="text-xs text-amber-300 flex items-center gap-1">
+                <AlertTriangle size={12} /> Handout generation failed: {encounter._handoutError}
+              </p>
+            ) : (
+              <p className="text-xs text-white/30 italic">Handout image not generated.</p>
+            )}
+          </div>
+
+          {/* GM solution sheet — DM only */}
+          <div className="space-y-1">
+            <span className="text-xs uppercase tracking-wider text-amber-400/70 font-semibold flex items-center gap-1.5">
+              <span>🔒</span> GM Solution Sheet <span className="normal-case text-amber-400/40">(DM eyes only)</span>
+            </span>
+            {encounter.gmSheet ? (
+              <div className="bg-amber-950/20 border border-amber-700/30 rounded-lg p-3 max-h-80 overflow-y-auto">
+                <pre className="text-xs text-amber-100/80 whitespace-pre-wrap font-mono leading-relaxed">
+                  {encounter.gmSheet}
+                </pre>
+              </div>
+            ) : encounter._gmSheetError ? (
+              <p className="text-xs text-amber-300 flex items-center gap-1">
+                <AlertTriangle size={12} /> GM sheet generation failed: {encounter._gmSheetError}
+              </p>
+            ) : (
+              <p className="text-xs text-white/30 italic">GM sheet not generated.</p>
+            )}
+          </div>
         </div>
       )}
     </div>
