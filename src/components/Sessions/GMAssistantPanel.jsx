@@ -81,16 +81,17 @@ export default function GMAssistantPanel({
   }
 
   const resolveProvider = () => {
-    // Prefer Anthropic, fall back to OpenAI — getEffectiveKey handles own vs. shared key priority.
+    // Prefer using user's own key if available (Anthropic first, then OpenAI).
+    // If no client key is configured, pass an empty apiKey — the Vercel backend
+    // will use its own server-side ANTHROPIC_API_KEY / OPENAI_API_KEY env vars.
     for (const provider of ['anthropic', 'openai']) {
       if (hasKey(provider)) {
         const { key } = getEffectiveKey(provider);
         if (key) return { provider, apiKey: key };
       }
     }
-    throw new Error(
-      'No AI API key configured. Please add an Anthropic or OpenAI key in Settings → AI Keys.'
-    );
+    // No client key — let the server use its env vars (always valid on Vercel).
+    return { provider: 'anthropic', apiKey: '' };
   };
 
   const sendBrief = async (briefText) => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Save, Trash2, AlertTriangle, MapPin, Users, Sword, BookOpen, ScrollText, Map } from 'lucide-react';
 import Modal from '../Modal';
 
@@ -18,15 +18,20 @@ export default function SessionPreviewModal({
   const [edited, setEdited] = useState(preview);
   const [activeTab, setActiveTab] = useState('session');
 
-  if (!preview) return null;
+  // Sync edited state when preview prop changes (e.g., first time modal opens)
+  useEffect(() => {
+    if (preview) setEdited(preview);
+  }, [preview]);
+
+  if (!preview || !edited) return null;
 
   const tabs = [
     { id: 'session', label: 'Session', icon: BookOpen, count: 1 },
-    { id: 'encounters', label: 'Encounters', icon: Sword, count: edited.encounters.length },
-    { id: 'adversaries', label: 'Adversaries', icon: ScrollText, count: edited.adversaries.length },
-    { id: 'npcs', label: 'NPCs', icon: Users, count: edited.npcs.length },
-    { id: 'locations', label: 'Locations', icon: MapPin, count: edited.locations.length },
-    ...(edited.maps.length ? [{ id: 'maps', label: 'Maps', icon: Map, count: edited.maps.length }] : [])
+    { id: 'encounters', label: 'Encounters', icon: Sword, count: (edited.encounters || []).length },
+    { id: 'adversaries', label: 'Adversaries', icon: ScrollText, count: (edited.adversaries || []).length },
+    { id: 'npcs', label: 'NPCs', icon: Users, count: (edited.npcs || []).length },
+    { id: 'locations', label: 'Locations', icon: MapPin, count: (edited.locations || []).length },
+    ...((edited.maps || []).length ? [{ id: 'maps', label: 'Maps', icon: Map, count: (edited.maps || []).length }] : [])
   ];
 
   const updateList = (key, idx, patch) => {
