@@ -287,16 +287,64 @@ export default async function handler(req, res) {
     let enhancedPrompt = prompt;
 
     if (type === 'battle-map' || type === 'special') {
-      enhancedPrompt = `Overhead orthographic top-down view D&D battle map, tabletop RPG gaming mat style, ${prompt}, flat perspective looking straight down, no horizon visible, suitable for miniature placement, high detail fantasy illustration, square grid compatible, professional VTT map, no text or labels, clean crisp edges`;
+      enhancedPrompt = `Overhead orthographic top-down view D&D battle map, tabletop RPG gaming mat style, ${prompt}, flat perspective looking straight down, no horizon visible, suitable for miniature placement, high detail fantasy illustration, square grid compatible, professional VTT map, no text or labels, clean crisp edges, edge-to-edge rendering, fills the entire 16:9 widescreen canvas completely, absolutely no letterboxing, borders, or margins`;
     } else if (type === 'dungeon') {
-      enhancedPrompt = `Overhead orthographic top-down view dungeon battle map for D&D, ${prompt}, stone floor tiles, walls visible from above, flat perspective looking straight down, dark fantasy torchlit atmosphere, suitable for miniature combat, VTT ready, no text labels, clean edges`;
+      enhancedPrompt = `Overhead orthographic top-down view dungeon battle map for D&D, ${prompt}, stone floor tiles, walls visible from above, flat perspective looking straight down, dark fantasy torchlit atmosphere, suitable for miniature combat, VTT ready, no text labels, clean edges, edge-to-edge rendering, fills the entire 16:9 widescreen canvas completely, absolutely no letterboxing, borders, or margins`;
     } else if (type === 'outdoor') {
-      enhancedPrompt = `Overhead orthographic top-down view outdoor battle map for D&D, ${prompt}, flat perspective looking straight down from above, natural terrain visible from bird's eye view, fantasy RPG style, grid-compatible layout, VTT ready, no text or labels`;
+      enhancedPrompt = `Overhead orthographic top-down view outdoor battle map for D&D, ${prompt}, flat perspective looking straight down from above, natural terrain visible from bird's eye view, fantasy RPG style, grid-compatible layout, VTT ready, no text or labels, edge-to-edge rendering, fills the entire 16:9 widescreen canvas completely, absolutely no letterboxing, borders, or margins`;
     } else if (type === 'city') {
-      enhancedPrompt = `Overhead orthographic top-down view city street battle map for D&D, ${prompt}, medieval fantasy buildings from above, flat perspective looking straight down, cobblestone streets, suitable for miniature combat, VTT ready, no text or labels`;
+      enhancedPrompt = `Overhead orthographic top-down view city street battle map for D&D, ${prompt}, medieval fantasy buildings from above, flat perspective looking straight down, cobblestone streets, suitable for miniature combat, VTT ready, no text or labels, edge-to-edge rendering, fills the entire 16:9 widescreen canvas completely, absolutely no letterboxing, borders, or margins`;
     } else if (type === 'asset') {
       // Note: Magic Art 7.0 doesn't allow "transparent" - use "plain background" instead
       enhancedPrompt = `${prompt}, top-down view token for D&D VTT, plain solid color background, isolated object, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
+    }
+
+    // --- Gemini 2.5 Flash Image ("nano-banana") for Handouts ---
+    if (type === 'handout') {
+      const replicateKey = process.env.REPLICATE_API_TOKEN;
+      if (replicateKey) {
+        console.log('Using Replicate nano-banana (Gemini 2.5 Flash Image) for handout');
+        try {
+          const createRes = await fetch('https://api.replicate.com/v1/models/google/nano-banana/predictions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${replicateKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'wait'
+            },
+            body: JSON.stringify({
+              input: {
+                prompt: enhancedPrompt,
+                aspect_ratio: size === '1792x1024' ? '16:9' : '1:1',
+                output_format: 'png'
+              }
+            })
+          });
+          
+          if (createRes.ok) {
+            let prediction = await createRes.json();
+            if (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+              const pollUrl = prediction.urls?.get || `https://api.replicate.com/v1/predictions/${prediction.id}`;
+              const deadline = Date.now() + 55000;
+              while (Date.now() < deadline && prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+                await new Promise(r => setTimeout(r, 2000));
+                const pollRes = await fetch(pollUrl, { headers: { 'Authorization': `Bearer ${replicateKey}` } });
+                if (pollRes.ok) prediction = await pollRes.json();
+              }
+            }
+            if (prediction.status === 'succeeded' && prediction.output) {
+              const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+              if (url) return res.status(200).json({ imageUrl: url, prompt: enhancedPrompt, model: 'nano-banana' });
+            }
+            console.warn('nano-banana handout failed, falling back to DALL-E 3:', prediction.status, prediction.error);
+          } else {
+            const errText = await createRes.text().catch(() => createRes.statusText);
+            console.error('Replicate nano-banana error:', errText);
+          }
+        } catch (err) {
+          console.error('nano-banana error, falling back:', err.message);
+        }
+      }
     }
 
     // --- DALL-E 3 Direct: bypass 1min.ai entirely for speed & reliability ---

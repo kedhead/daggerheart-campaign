@@ -383,24 +383,20 @@ function buildPuzzleHandoutPrompt(enc) {
   const mechanism = spec.mechanism || '';
   const premise = spec.premise || '';
 
-  // Build a hyper-specific diagram description so DALL-E draws something
-  // players can actually USE at the table, not just decorative art.
+  // Build a hyper-specific diagram description tailored for Gemini 2.5 Flash Image
+  // which is much better at rendering exact text and technical structures than DALL-E 3.
   return [
-    'Fantasy TTRPG puzzle handout, aged parchment, technical diagram style — NOT decorative art.',
-    `Title at top in archaic calligraphy: "${enc.name}".`,
-    // Central interactive diagram
-    `Central diagram: ${mechanism}.`,
-    `Context shown in margin notes: "${premise.slice(0, 120)}".`,
-    // Force specific visual elements
-    'The diagram MUST include: numbered component labels (1, 2, 3, 4…), directional arrows or alignment marks, '
-    + 'distinct symbols or glyphs on each interactive element (use alchemical, runic, or cardinal symbols), '
-    + 'a sequence indicator (numbered slots or a step-tracker bar at the bottom), '
-    + 'and at least one cryptic in-world clue written in small italics (e.g., a riddle, a directional phrase, or an alignment hint).',
-    // Style
-    'Style: sepia ink, manuscript cross-hatching, decorative border with puzzle-relevant iconography, '
-    + 'high legibility for table use, 1024x1024, no colour outside brown/sepia tones.',
-    // Hard constraint
-    'DO NOT depict the solution or correct sequence order. Show the COMPONENTS and CLUES only.',
+    'Technical schematic drawing of a fantasy TTRPG puzzle, drawn on aged parchment.',
+    'This is a functional puzzle diagram for players to solve at the table. Do not draw generic fantasy art or characters.',
+    `At the top, write the exact title prominently: "${enc.name}".`,
+    `Draw the central mechanism: ${mechanism}.`,
+    `Include margin notes that read exactly: "${premise.slice(0, 120)}".`,
+    'You MUST include numbered labels (1, 2, 3, 4) pointing to the interactive parts.',
+    'Draw distinct alchemical, runic, or cardinal symbols on the moving parts.',
+    'Draw a sequence indicator bar at the bottom with blank slots.',
+    'Include at least one cryptic written clue in italics (a short riddle or alignment hint).',
+    'Style: Flat top-down orthographic view, sepia ink, clean and highly legible lines, cross-hatching, no heavy shading or 3D perspective.',
+    'CRITICAL: Do NOT show the solution. Show only the components in an unsolved, default state.'
   ].join(' ');
 }
 
