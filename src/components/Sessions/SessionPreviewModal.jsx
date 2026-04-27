@@ -298,6 +298,28 @@ function EncounterEditor({ encounter, onChange, onRemove }) {
           ))}
         </div>
       )}
+      {/* Puzzle handout chart — auto-generated player prop */}
+      {encounter.type === 'puzzle' && (
+        <div className="space-y-1">
+          <span className="text-xs uppercase tracking-wider text-white/40 font-semibold">Puzzle Handout Chart</span>
+          {encounter.handoutUrl ? (
+            <div className="space-y-1">
+              <img
+                src={encounter.handoutUrl}
+                alt={`Puzzle handout: ${encounter.name}`}
+                className="w-full max-h-64 object-contain rounded-lg border border-white/10 bg-black/20"
+              />
+              <p className="text-xs text-white/40">Show this to players as an in-world prop. Solution is DM-only in the puzzle spec above.</p>
+            </div>
+          ) : encounter._handoutError ? (
+            <p className="text-xs text-amber-300 flex items-center gap-1">
+              <AlertTriangle size={12} /> Handout generation failed: {encounter._handoutError}
+            </p>
+          ) : (
+            <p className="text-xs text-white/30 italic">No handout generated (non-puzzle encounter).</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

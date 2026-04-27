@@ -119,11 +119,14 @@ export async function buildPreviewFromPlan({
     }
   }
 
+  const planPuzzleEncounters = planEncounters.filter(enc => enc.type === 'puzzle' && enc.puzzleSpec);
+
   const totalSteps =
     planNewLocations.length +
     planNewNPCs.length +
     adversaryConceptsToBuild.size +
     planEncounters.length +
+    planPuzzleEncounters.length +
     (generateMapsFor.length || 0);
 
   let step = 0;
@@ -283,6 +286,30 @@ export async function buildPreviewFromPlan({
     };
   });
 
+  // ── 4.5. Puzzle handout charts (auto-generated for every puzzle encounter) ──
+  // Generates a parchment-style visual diagram illustrating the puzzle mechanism
+  // so the GM can show or print it as a player handout. The solution is kept
+  // DM-only — only the mechanism/elements are depicted visually.
+  for (let i = 0; i < previewEncounters.length; i++) {
+    const enc = previewEncounters[i];
+    if (enc.type !== 'puzzle' || !enc.puzzleSpec) continue;
+    tick(`Generating puzzle handout: ${enc.name}`);
+    try {
+      const result = await generateBattleMap({
+        prompt: buildPuzzleHandoutPrompt(enc),
+        type: 'handout',
+        size: '1024x1024'
+      });
+      previewEncounters[i] = {
+        ...enc,
+        handoutUrl: result?.url || result?.imageUrl || ''
+      };
+    } catch (err) {
+      console.error('Puzzle handout generation failed:', err);
+      previewEncounters[i] = { ...enc, handoutUrl: '', _handoutError: err.message };
+    }
+  }
+
   // ── 5. Maps (opt-in only) ──────────────────────────────────────────────
   const previewMaps = [];
   for (const mapReq of planMapsRequested) {
@@ -330,6 +357,26 @@ export async function buildPreviewFromPlan({
 /**
  * Compose Markdown DM notes from the plan.
  */
+/**
+ * Build a DALL-E prompt for a puzzle encounter handout.
+ * Depicts the puzzle mechanism/elements visually WITHOUT revealing the solution —
+ * the chart is meant to be shown to players as an in-world prop.
+ */
+function buildPuzzleHandoutPrompt(enc) {
+  const spec = enc.puzzleSpec;
+  const parts = [
+    'Fantasy TTRPG puzzle handout prop on aged parchment paper, manuscript illustration style.',
+    `The puzzle is titled "${enc.name}".`,
+    spec.premise ? `Context: ${spec.premise}.` : '',
+    spec.mechanism
+      ? `Visually depict the puzzle mechanism: ${spec.mechanism}. Draw diagrams, symbols, numbered sequences, valves, runes, or other visual elements that a player could interact with.`
+      : 'Draw a detailed diagram of the puzzle elements.',
+    'Do NOT include the solution or any text giving away the answer.',
+    'Style: sepia ink on parchment, archaic script labels, decorative alchemical borders, worn edges, handout prop quality, high detail.',
+  ].filter(Boolean).join(' ');
+  return parts;
+}
+
 function assembleSessionNotes(plan) {
   const lines = [];
   if (plan.gmNotes) {
@@ -458,7 +505,8 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
         // Extra GM-assistant metadata, harmless to other consumers
         encounterType: enc.type || 'combat',
         puzzleSpec: enc.puzzleSpec || null,
-        estimatedMinutes: enc.estimatedMinutes || null
+        estimatedMinutes: enc.estimatedMinutes || null,
+        handoutUrl: enc.handoutUrl || ''
       };
 
       if (addEncounter) {
