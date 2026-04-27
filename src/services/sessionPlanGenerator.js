@@ -300,7 +300,7 @@ export async function buildPreviewFromPlan({
       const result = await generateBattleMap({
         prompt: buildPuzzleHandoutPrompt(enc),
         type: 'handout',
-        size: '1024x1024'
+        size: '1792x1024'  // Landscape — matches battle map aspect ratio, better for wide tables
       });
       previewEncounters[i] = {
         ...previewEncounters[i],
