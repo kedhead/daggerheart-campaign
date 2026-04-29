@@ -28,6 +28,14 @@ export default function ChapterEditor({
   const [saving, setSaving] = useState(false);
   const [regeneratingId, setRegeneratingId] = useState(null);
 
+  // Per-scene editable prompts. We keep edits in local state and only persist
+  // them on Regenerate or explicit Save, so a stray keystroke doesn't write
+  // to Firestore on every character.
+  const [editedPrompts, setEditedPrompts] = useState({});
+  // Image model used for any in-editor regeneration. Defaults to the campaign
+  // default — Gemini 2.5 Flash with reference images for best likeness.
+  const [regenModel, setRegenModel] = useState('nano-banana');
+
   const styleKey = chapter.styleKey || campaign?.storybookStyle || DEFAULT_STYLE_KEY;
   const styleCustom = chapter.styleCustom || campaign?.storybookStyleCustom || '';
   const gameSystem = campaign?.gameSystem || 'daggerheart';
@@ -66,21 +74,53 @@ export default function ChapterEditor({
     await storybook.updateChapter(chapter.id, { scenes: nextScenes });
   };
 
+  const promptValue = (scene) =>
+    Object.prototype.hasOwnProperty.call(editedPrompts, scene.id)
+      ? editedPrompts[scene.id]
+      : (scene.prompt || '');
+
+  const handlePromptChange = (sceneId, value) => {
+    setEditedPrompts(prev => ({ ...prev, [sceneId]: value }));
+  };
+
+  const handlePromptSave = async (scene) => {
+    const next = (chapter.scenes || []).map(s =>
+      s.id === scene.id ? { ...s, prompt: promptValue(scene) } : s
+    );
+    await storybook.updateChapter(chapter.id, { scenes: next });
+    setEditedPrompts(prev => {
+      const copy = { ...prev };
+      delete copy[scene.id];
+      return copy;
+    });
+  };
+
   const handleSceneRegenerate = async (scene) => {
     setRegeneratingId(scene.id);
     try {
+      // Pass the (possibly edited) prompt through; the new image will be
+      // generated from this exact text. Saving the prompt onto the chapter
+      // happens after the regeneration succeeds so a failed call doesn't
+      // overwrite the previous prompt.
+      const sceneWithPrompt = { ...scene, prompt: promptValue(scene) };
       const newScene = await regenerateScene({
-        scene,
+        scene: sceneWithPrompt,
         chapter,
         entities: { characters, npcs, adversaries },
         campaignId,
         apiKey,
         gameSystem,
         styleKey,
-        styleCustom
+        styleCustom,
+        imageModel: regenModel
       });
       const nextScenes = (chapter.scenes || []).map(s => s.id === scene.id ? { ...newScene, id: scene.id } : s);
       await storybook.updateChapter(chapter.id, { scenes: nextScenes });
+      setEditedPrompts(prev => {
+        const copy = { ...prev };
+        delete copy[scene.id];
+        return copy;
+      });
     } catch (err) {
       alert(`Regeneration failed: ${err.message}`);
     } finally {
@@ -194,10 +234,36 @@ export default function ChapterEditor({
 
       {activeTab === 'scenes' && (
         <div className="space-y-4">
+          {/* Image-model selector applied to every regeneration in this session */}
+          <div
+            className="flex flex-wrap items-center gap-3 p-3 rounded-lg border"
+            style={{
+              background: 'color-mix(in srgb, var(--surface) 60%, transparent)',
+              borderColor: 'var(--line)'
+            }}
+          >
+            <label className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+              Regenerate using
+            </label>
+            <select
+              value={regenModel}
+              onChange={(e) => setRegenModel(e.target.value)}
+              className="p-2 rounded bg-black/20 border border-white/10 text-white text-xs"
+            >
+              <option value="nano-banana">Gemini 2.5 Flash — references portraits (recommended)</option>
+              <option value="gpt-image-1">OpenAI gpt-image-1 — references portraits</option>
+              <option value="flux-pro">Flux 1.1 Pro — stylised, no references</option>
+              <option value="">DALL-E 3 — describe-then-redraw</option>
+            </select>
+          </div>
+
           {(chapter.scenes || []).length === 0 && (
             <p className="text-sm text-white/50 italic">No scenes on this chapter yet.</p>
           )}
-          {(chapter.scenes || []).map((scene, idx) => (
+          {(chapter.scenes || []).map((scene, idx) => {
+            const promptDirty = Object.prototype.hasOwnProperty.call(editedPrompts, scene.id)
+              && editedPrompts[scene.id] !== (scene.prompt || '');
+            return (
             <div
               key={scene.id}
               className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 p-4 rounded-xl border"
@@ -220,6 +286,35 @@ export default function ChapterEditor({
                   rows={2}
                   className="w-full p-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm"
                 />
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                      Image prompt {promptDirty && <span className="text-amber-300 ml-1">(unsaved)</span>}
+                    </label>
+                    {promptDirty && (
+                      <button
+                        type="button"
+                        onClick={() => handlePromptSave(scene)}
+                        className="text-[10px] font-semibold text-white/70 hover:text-white px-2 py-0.5 rounded border border-white/15"
+                      >
+                        Save prompt
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    value={promptValue(scene)}
+                    onChange={(e) => handlePromptChange(scene.id, e.target.value)}
+                    placeholder="Visual prompt — what should appear in this scene?"
+                    rows={4}
+                    className="w-full p-2 rounded-lg bg-black/30 border border-white/10 text-white/85 text-xs font-mono"
+                    style={{ lineHeight: 1.5 }}
+                  />
+                  <p className="text-[10px] text-white/35">
+                    Edit the prompt to fine-tune the image. Regenerate uses whatever's in this box and saves it back to the chapter.
+                  </p>
+                </div>
+
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -238,15 +333,9 @@ export default function ChapterEditor({
                     <Trash2 size={12} /> Remove
                   </button>
                 </div>
-                {scene.prompt && (
-                  <details className="text-xs text-white/40">
-                    <summary className="cursor-pointer hover:text-white/60">View prompt</summary>
-                    <p className="mt-2 p-2 rounded bg-black/30 font-mono whitespace-pre-wrap text-white/50">{scene.prompt}</p>
-                  </details>
-                )}
               </div>
             </div>
-          ))}
+          );})}
         </div>
       )}
 
