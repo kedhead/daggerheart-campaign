@@ -398,15 +398,23 @@
 @media (max-width: 480px) {
   .dh-chat-window {
     width: 100vw !important;
+    /* Use the live visual viewport when available (set by JS via
+       visualViewport API) so the window shrinks when the iOS keyboard
+       appears and the input area stays visible. Fallbacks: dvh on
+       browsers that support it, then vh. */
     height: 100vh !important;
+    height: 100dvh !important;
+    height: var(--chat-vvh, 100dvh) !important;
     max-height: 100vh;
+    max-height: 100dvh;
+    max-height: var(--chat-vvh, 100dvh);
     margin: 0;
     border-radius: 0;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: auto;
     z-index: 1001;
     /* Above everything */
   }

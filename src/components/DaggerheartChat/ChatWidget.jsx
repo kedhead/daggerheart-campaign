@@ -99,6 +99,28 @@ export default function ChatWidget({
         }
     }, [isOpen]);
 
+    // iOS Safari: when the on-screen keyboard appears, position:fixed elements
+    // anchor to the layout viewport (which doesn't shrink), so the input area
+    // ends up below the keyboard. Track visualViewport.height and expose it as
+    // a CSS variable so the mobile-fullscreen chat window can size to the
+    // actually-visible area.
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const vv = window.visualViewport;
+        if (!vv) return undefined;
+        const update = () => {
+            document.documentElement.style.setProperty('--chat-vvh', `${vv.height}px`);
+        };
+        update();
+        vv.addEventListener('resize', update);
+        vv.addEventListener('scroll', update);
+        return () => {
+            vv.removeEventListener('resize', update);
+            vv.removeEventListener('scroll', update);
+            document.documentElement.style.removeProperty('--chat-vvh');
+        };
+    }, [isOpen]);
+
     const handleResizeStart = (e) => {
         e.preventDefault();
         e.stopPropagation();
