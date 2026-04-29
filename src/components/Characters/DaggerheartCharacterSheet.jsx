@@ -8,7 +8,7 @@ import { DAGGERHEART_ARMOR } from '../../data/daggerheartItems';
 import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
-import { useQuickRoll } from '../../hooks/useQuickRoll';
+import { useDice } from '../../dice';
 import LevelUpWizard from './LevelUpWizard';
 import BeastformPanel from './BeastformPanel';
 import CompanionSheet from './CompanionSheet';
@@ -68,11 +68,32 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [rollBonus, setRollBonus] = useState(null);
   const rollResultTimer = useRef(null);
 
-  const { roll, rollDamage } = useQuickRoll(campaign?.id);
+  const { roll, rollDamage } = useDice(campaign?.id);
 
+  // Translate a canonical roll document into the legacy fields the inline
+  // overlay JSX consumes. Single source of truth is still the doc; this is
+  // just a view-shape adapter.
   const showRollResult = (label, type, data) => {
     if (rollResultTimer.current) clearTimeout(rollResultTimer.current);
-    setLastRoll({ label, type, ...data });
+    let view;
+    if (type === 'daggerheart') {
+      const hope = data.dice?.find(d => d.groupId === 'hope')?.value;
+      const fear = data.dice?.find(d => d.groupId === 'fear')?.value;
+      view = {
+        label, type,
+        hopeDie: hope,
+        fearDie: fear,
+        modifier: data.modifier,
+        total: data.total,
+        outcome: data.outcome,
+        isDoubles: !!data.flags?.isDoubles,
+      };
+    } else {
+      const rolls = (data.dice || []).map(d => d.value);
+      const dieType = data.dice?.[0]?.sides;
+      view = { label, type, rolls, dieType, modifier: data.modifier, total: data.total };
+    }
+    setLastRoll(view);
     rollResultTimer.current = setTimeout(() => setLastRoll(null), 6000);
   };
 

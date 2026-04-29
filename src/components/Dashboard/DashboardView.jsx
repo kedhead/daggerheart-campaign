@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Users, BookOpen, ScrollText, ExternalLink, Edit3, Swords, Crown, Calendar, UsersRound, MapPin } from 'lucide-react';
-import DiceRoller from '../DiceRoller';
+import { DiceRoller } from '../../dice';
 import DMSoundboard from '../Soundboard/DMSoundboard';
 import Modal from '../Modal';
 import RelationshipGraph from '../RelationshipGraph/RelationshipGraph';
@@ -384,8 +384,8 @@ export default function DashboardView({
               <DiceRoller
                 isDM={isDM}
                 campaignId={campaign.id}
-                characters={characters}
-                currentUserId={currentUserId}
+                gameSystem={campaign.gameSystem || 'daggerheart'}
+                variant="inline"
               />
             </section>
 

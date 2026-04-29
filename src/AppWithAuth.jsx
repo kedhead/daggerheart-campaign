@@ -38,7 +38,7 @@ import BattleMapStudio from './components/BattleMapStudio/BattleMapStudio';
 import StorybookView from './components/Storybook/StorybookView';
 import PublicChronicleView from './components/Storybook/PublicChronicleView';
 import BattleMapDisplayWindow from './components/BattleMapDisplay/BattleMapDisplayWindow';
-import { DiceRollerFloat } from './components/DiceRoller/index';
+import { DiceRoller, DiceTray } from './dice';
 import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
 import ChatWidget from './components/DaggerheartChat/ChatWidget';
@@ -760,10 +760,12 @@ function CampaignApp() {
         />
       )}
 
-      <DiceRollerFloat
+      <DiceTray campaignId={currentCampaignId} />
+      <DiceRoller
         campaignId={currentCampaignId}
         gameSystem={campaign?.gameSystem || 'daggerheart'}
         isDM={isDM}
+        variant="fab"
       />
 
       <CommandPalette

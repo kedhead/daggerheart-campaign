@@ -1,12 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
 import useImage from 'use-image';
 import { Maximize, Minimize, RotateCw, Grid } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
-import Dice3DOverlay from '../DiceRoller/Dice3DOverlay';
-import DiceRollerFloat from '../DiceRoller/DiceRollerFloat';
+import { DiceTray, DiceRoller, RollHistory } from '../../dice';
 import AudioReceiver from '../Soundboard/AudioReceiver';
 import './BattleMapDisplayWindow.css';
 
@@ -289,10 +288,6 @@ export default function BattleMapDisplayWindow({ campaignId }) {
   const [showControls, setShowControls] = useState(false);
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
-  const [diceRoll, setDiceRoll] = useState(null);
-  const [showDiceOverlay, setShowDiceOverlay] = useState(false);
-  const lastRollIdRef = useRef(null);
-
   // Rotate map by 90 degrees
   const rotateMap = useCallback(() => {
     setRotation(prev => (prev + 90) % 360);
@@ -318,43 +313,6 @@ export default function BattleMapDisplayWindow({ campaignId }) {
       (error) => {
         console.error('Battle map display subscription error:', error);
         setLoading(false);
-      }
-    );
-
-    return unsubscribe;
-  }, [campaignId]);
-
-  // Subscribe to dice rolls
-  useEffect(() => {
-    if (!campaignId) return;
-
-    let isFirstSnapshot = true;
-
-    const unsubscribe = onSnapshot(
-      doc(db, `campaigns/${campaignId}/battleMapDisplay/diceRoll`),
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          const data = docSnapshot.data();
-
-          // On first snapshot, just record the current rollId without triggering animation
-          if (isFirstSnapshot) {
-            isFirstSnapshot = false;
-            lastRollIdRef.current = data.rollId || null;
-            return;
-          }
-
-          // Only show if it's a new roll (different rollId)
-          if (data.rollId && data.rollId !== lastRollIdRef.current) {
-            lastRollIdRef.current = data.rollId;
-            setDiceRoll(data);
-            setShowDiceOverlay(true);
-          }
-        } else {
-          isFirstSnapshot = false;
-        }
-      },
-      (error) => {
-        console.error('Dice roll subscription error:', error);
       }
     );
 
@@ -443,19 +401,11 @@ export default function BattleMapDisplayWindow({ campaignId }) {
         </div>
       )}
 
-      {/* 3D Dice Roll Overlay — passive display only.
-          History is written by the originating client (DiceRollerFloat /
-          useQuickRoll); this window never re-derives or re-writes numbers
-          from its own physics animation. */}
-      <Dice3DOverlay
-        show={showDiceOverlay}
-        rollData={diceRoll}
-        onComplete={() => setShowDiceOverlay(false)}
-        onClose={() => setShowDiceOverlay(false)}
-      />
-
-      {/* Single unified dice roller — the same pop-out used elsewhere in the app */}
-      <DiceRollerFloat campaignId={campaignId} />
+      {/* Unified dice system: every viewer reads canonical roll docs from
+          campaigns/{id}/rolls. Numbers are never derived from physics. */}
+      <DiceTray campaignId={campaignId} />
+      <RollHistory campaignId={campaignId} variant="sidebar" />
+      <DiceRoller campaignId={campaignId} variant="fab" />
 
       {/* Audio Receiver for DM Soundboard */}
       <AudioReceiver campaignId={campaignId} />

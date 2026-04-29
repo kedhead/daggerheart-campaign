@@ -1,0 +1,53 @@
+// Subscribes to the latest roll in campaigns/{campaignId}/rolls and emits
+// it to a callback exactly once per roll, only when the roll happened
+// AFTER this hook mounted. Used by DiceTray to trigger animations.
+//
+// Why clientTime > mountTime instead of orderBy(createdAt) alone? Because
+// serverTimestamp() is null while a write is pending, so the originating
+// client briefly sees its own doc with createdAt=null. Filtering on
+// clientTime (set on the writing device) gives us a stable monotonic
+// ordering that includes pending writes.
+
+import { useEffect, useRef } from 'react';
+import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
+import { db } from '../config/firebase.js';
+import { ROLLS_PATH } from './service.js';
+
+export function useLiveRoll(campaignId, onRoll) {
+  const onRollRef = useRef(onRoll);
+  onRollRef.current = onRoll;
+
+  useEffect(() => {
+    if (!campaignId) return undefined;
+    const mountTime = Date.now();
+    const seen = new Set();
+
+    const q = query(
+      collection(db, ROLLS_PATH(campaignId)),
+      orderBy('clientTime', 'desc'),
+      limit(1)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      snap.docChanges().forEach(change => {
+        if (change.type !== 'added' && change.type !== 'modified') return;
+        const data = change.doc.data();
+        const id = change.doc.id;
+        if (seen.has(id)) return;
+        const clientTime = typeof data.clientTime === 'number' ? data.clientTime : 0;
+        if (clientTime <= mountTime) {
+          // Existing roll loaded as part of initial snapshot — record it but
+          // don't animate. The hook only triggers for NEW rolls.
+          seen.add(id);
+          return;
+        }
+        seen.add(id);
+        if (onRollRef.current) onRollRef.current({ id, ...data });
+      });
+    }, (err) => {
+      console.error('[useLiveRoll] subscription error:', err);
+    });
+
+    return unsub;
+  }, [campaignId]);
+}

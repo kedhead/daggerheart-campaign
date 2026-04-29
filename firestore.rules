@@ -207,7 +207,15 @@ service cloud.firestore {
         allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
-      // Dice Rolls (shared roll history)
+      // Canonical dice rolls — single source of truth for the rebuilt dice
+      // system. Every roll in the app is one document here. Numbers are
+      // never re-derived elsewhere; all viewers read from this collection.
+      match /rolls/{rollId} {
+        allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+      }
+
+      // Legacy dice rolls (no longer written; kept readable for any older clients).
       match /diceRolls/{rollId} {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
         allow write: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());

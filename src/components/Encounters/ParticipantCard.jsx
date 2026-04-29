@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Heart, Zap, Skull, ChevronDown, ChevronRight, Shield, Swords, Target, X, Check } from 'lucide-react';
 import { DAGGERHEART_CONDITIONS } from '../../hooks/useActiveEncounter';
-import { parseDamageNotation } from '../../hooks/useQuickRoll';
+import { parseDamageNotation } from '../../dice';
 
 export default function ParticipantCard({
   participant,

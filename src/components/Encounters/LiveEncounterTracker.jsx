@@ -3,7 +3,7 @@ import { Play, Pause, StopCircle, RotateCcw, Skull, Heart, Users, ChevronLeft, A
 import ParticipantCard from './ParticipantCard';
 import EnvironmentEffectsPanel from './EnvironmentEffectsPanel';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
-import { useQuickRoll } from '../../hooks/useQuickRoll';
+import { useDice } from '../../dice';
 
 export default function LiveEncounterTracker({
   campaignId,
@@ -25,7 +25,7 @@ export default function LiveEncounterTracker({
     endEncounter
   } = useActiveEncounter(campaignId);
 
-  const { rollDamage } = useQuickRoll(campaignId);
+  const { rollDamage } = useDice(campaignId);
 
   const [expandedParticipant, setExpandedParticipant] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);

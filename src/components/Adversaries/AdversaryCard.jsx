@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Edit, Trash2, Eye, EyeOff, Skull, Swords, Heart, Zap, Target, ChevronDown, ChevronUp, ImageIcon, Wand2, Loader2 } from 'lucide-react';
 import './AdversariesView.css';
-import { useQuickRoll, parseDamageNotation } from '../../hooks/useQuickRoll';
+import { useDice, parseDamageNotation } from '../../dice';
 
 export default function AdversaryCard({
   adversary,
@@ -14,7 +14,7 @@ export default function AdversaryCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
-  const { rollDamage } = useQuickRoll(campaignId);
+  const { rollDamage } = useDice(campaignId);
 
   const tierColors = {
     1: '#22c55e', // green

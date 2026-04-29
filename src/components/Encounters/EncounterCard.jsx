@@ -3,13 +3,13 @@ import { ChevronDown, ChevronUp, Edit2, Trash2, ExternalLink, Swords, Play, User
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
-import { useQuickRoll, parseDamageNotation } from '../../hooks/useQuickRoll';
+import { useDice, parseDamageNotation } from '../../dice';
 
 export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM, campaign, isEmbedded = false, entities, adversaries = [], environments = [] }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
-  const { rollDamage } = useQuickRoll(campaign?.id);
+  const { rollDamage } = useDice(campaign?.id);
 
   // Check if this is a BP-based encounter
   const hasBPData = encounter.adversarySlots?.length > 0;
