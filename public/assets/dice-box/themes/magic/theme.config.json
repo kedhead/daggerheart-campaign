@@ -11,8 +11,7 @@
 			"dark": "diffuse-dark.png"
 		},
 		"diffuseLevel": 1,
-		"bumpTexture": "normal.png",
-		"bumpLevel": 0.5,
+		"bumpLevel": 0,
 		"specularTexture": "specular.jpg",
 		"specularPower": 2
 	},
