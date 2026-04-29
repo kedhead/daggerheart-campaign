@@ -1,14 +1,13 @@
-import { Home, User, Dices, BookOpen, MoreHorizontal } from 'lucide-react';
+import { Home, User, BookOpen, MoreHorizontal } from 'lucide-react';
 
 const TABS = [
   { id: 'dashboard', label: 'Home', icon: Home, action: 'view' },
   { id: 'my-sheet', label: 'Sheet', icon: User, action: 'view' },
-  { id: 'roll', label: 'Roll', icon: Dices, action: 'roll' },
   { id: 'lore', label: 'Lore', icon: BookOpen, action: 'view' },
   { id: 'more', label: 'More', icon: MoreHorizontal, action: 'more' },
 ];
 
-export default function BottomNav({ currentView, setCurrentView, onRoll, onMore }) {
+export default function BottomNav({ currentView, setCurrentView, onMore }) {
   return (
     <nav
       className="lr-mobile-only lr-bottom-nav"
@@ -35,7 +34,6 @@ export default function BottomNav({ currentView, setCurrentView, onRoll, onMore 
         const isActive = tab.action === 'view' && currentView === tab.id;
         const handleClick = () => {
           if (tab.action === 'view') setCurrentView?.(tab.id);
-          else if (tab.action === 'roll') onRoll?.();
           else if (tab.action === 'more') onMore?.();
         };
         return (

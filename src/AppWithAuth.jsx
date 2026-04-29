@@ -740,7 +740,6 @@ function CampaignApp() {
       <BottomNav
         currentView={currentView}
         setCurrentView={setCurrentView}
-        onRoll={() => document.querySelector('.dice-roller-float > button')?.click()}
         onMore={() => window.dispatchEvent(new CustomEvent('lr-open-sidebar'))}
       />
 

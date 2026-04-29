@@ -107,6 +107,12 @@
   right: 1.5rem;
   z-index: 8000;
 }
+/* Lift the FAB above the mobile bottom nav (~56px + safe-area). */
+@media (max-width: 900px) {
+  .dice-roller--fab {
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+}
 .dice-fab-btn {
   width: 56px;
   height: 56px;
