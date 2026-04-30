@@ -58,14 +58,16 @@ export default async function handler(req, res) {
         oil: 'Classical oil painting fairytale illustration, rich textured brushwork, warm golden lighting, Arthur Rackham inspired, no text or labels',
         'ink-wash': 'Ink and watercolor wash storybook illustration, expressive brushstrokes, muted palette, intimate composition, no text or labels',
         illuminated: 'Illuminated manuscript illustration, gilded borders, medieval tapestry aesthetic, stylised figures, no text or labels',
-        'children-storybook': "Classic children's storybook illustration, friendly line art with soft colour fills, whimsical, Tony DiTerlizzi inspired, no text or labels"
+        'children-storybook': "Classic children's storybook illustration, friendly line art with soft colour fills, whimsical, Tony DiTerlizzi inspired, no text or labels",
+        'fantasy-anime': 'Fantasy anime illustration, bold black ink outlines, vibrant saturated colour palette, painterly cel-shaded fills with soft highlights, expressive stylised character poses, rich adventure atmosphere reminiscent of modern western-anime fantasy box art, no text or labels'
       };
       const scifiPreambles = {
         watercolor: 'Soft watercolor sci-fi illustration, washed pastel tones, painterly space opera atmosphere, no text or labels',
         oil: 'Oil painting sci-fi concept illustration, textured brushwork, dramatic cinematic lighting, space opera, no text or labels',
         'ink-wash': 'Ink and watercolor wash sci-fi illustration, expressive strokes, muted palette, no text or labels',
         illuminated: 'Retro-futurist illuminated sci-fi illustration, ornamental borders, stylised figures, no text or labels',
-        'children-storybook': "Classic children's storybook sci-fi illustration, friendly line art with soft colour fills, whimsical, no text or labels"
+        'children-storybook': "Classic children's storybook sci-fi illustration, friendly line art with soft colour fills, whimsical, no text or labels",
+        'fantasy-anime': 'Sci-fi anime illustration, bold black ink outlines, vibrant saturated colour palette, painterly cel-shaded fills with soft highlights, expressive stylised character poses, sleek space-opera adventure atmosphere, no text or labels'
       };
       const presets = gameSystem === 'starwarsd6' ? scifiPreambles : fantasyPreambles;
       const preamble = (styleKey && styleKey !== 'custom' && presets[styleKey])

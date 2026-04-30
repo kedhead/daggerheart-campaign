@@ -32,6 +32,7 @@ export const STORYBOOK_STYLES = [
   { key: 'ink-wash', label: 'Ink & watercolor wash' },
   { key: 'illuminated', label: 'Illuminated manuscript' },
   { key: 'children-storybook', label: "Classic children's storybook" },
+  { key: 'fantasy-anime', label: 'Fantasy anime' },
   { key: 'custom', label: 'Custom (advanced)' }
 ];
 
