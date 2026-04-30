@@ -118,7 +118,12 @@ export default async function handler(req, res) {
             body: JSON.stringify({
               input: {
                 prompt: fullPrompt,
-                image_input: refs,
+                // Only include image_input when there are actual references —
+                // sending an empty array causes a Replicate validation error.
+                ...(refs.length > 0 && { image_input: refs }),
+                aspect_ratio: imageSize === '1792x1024' ? '16:9'
+                  : imageSize === '1024x1792' ? '9:16'
+                  : '1:1',
                 output_format: 'png'
               }
             })
@@ -171,8 +176,10 @@ export default async function handler(req, res) {
             : imageSize === '1024x1792' ? '1024x1536'
             : '1024x1024';
           let gptRes;
+          let imagesAdded = 0;
+          let form = null;
           if (refs.length > 0) {
-            const form = new FormData();
+            form = new FormData();
             form.append('model', imageModel);
             form.append('prompt', fullPrompt);
             form.append('size', sizeForGpt);
@@ -182,13 +189,18 @@ export default async function handler(req, res) {
               if (!imgRes.ok) continue;
               const buf = await imgRes.arrayBuffer();
               form.append('image[]', new Blob([buf], { type: imgRes.headers.get('content-type') || 'image/png' }), `ref${i}.png`);
+              imagesAdded++;
             }
+          }
+          if (imagesAdded > 0) {
+            // Edits endpoint — uses the downloaded reference images for likeness
             gptRes = await fetch('https://api.openai.com/v1/images/edits', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${openaiKey}` },
               body: form
             });
           } else {
+            // No references available (or all downloads failed) — use generations
             gptRes = await fetch('https://api.openai.com/v1/images/generations', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },

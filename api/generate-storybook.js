@@ -94,6 +94,9 @@ async function generateChapter(req, res, openai) {
   }
 
   const numScenes = Math.max(2, Math.min(8, Number(sceneCount) || 3));
+  // Scale token budget with scene count so the model has room to produce all
+  // requested scenes after generating 8-14 paragraphs of prose.
+  const max_tokens = Math.min(4000 + Math.max(0, numScenes - 3) * 1000, 8000);
 
   const rosterLines = [];
   const pushRoster = (label, list) => {
@@ -180,7 +183,7 @@ Produce exactly ${numScenes} scenes. Return ONLY the JSON object.`;
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o',
     temperature: 0.85,
-    max_tokens: 4000,          // room for a ~12-paragraph chapter + scenes + spotlights JSON
+    max_tokens,
     response_format: { type: 'json_object' },
     messages: [
       { role: 'system', content: systemPrompt },
