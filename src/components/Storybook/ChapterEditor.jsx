@@ -32,9 +32,9 @@ export default function ChapterEditor({
   // them on Regenerate or explicit Save, so a stray keystroke doesn't write
   // to Firestore on every character.
   const [editedPrompts, setEditedPrompts] = useState({});
-  // Image model used for any in-editor regeneration. Defaults to the campaign
-  // default — Gemini 2.5 Flash with reference images for best likeness.
-  const [regenModel, setRegenModel] = useState('nano-banana');
+  // Image model used for any in-editor regeneration. Defaults to nano-banana-2
+  // (Gemini 2.5 Flash Image v2) — reference-capable and the freshest model.
+  const [regenModel, setRegenModel] = useState('nano-banana-2');
 
   const styleKey = chapter.styleKey || campaign?.storybookStyle || DEFAULT_STYLE_KEY;
   const styleCustom = chapter.styleCustom || campaign?.storybookStyleCustom || '';
@@ -250,7 +250,9 @@ export default function ChapterEditor({
               onChange={(e) => setRegenModel(e.target.value)}
               className="p-2 rounded bg-black/20 border border-white/10 text-white text-xs"
             >
-              <option value="nano-banana">Gemini 2.5 Flash — references portraits (recommended)</option>
+              <option value="nano-banana-2">Gemini 2.5 Flash Image v2 — references portraits (recommended)</option>
+              <option value="nano-banana">Gemini 2.5 Flash Image v1 — references portraits</option>
+              <option value="gpt-image-2">OpenAI gpt-image-2 — references portraits</option>
               <option value="gpt-image-1">OpenAI gpt-image-1 — references portraits</option>
               <option value="flux-pro">Flux 1.1 Pro — stylised, no references</option>
               <option value="">DALL-E 3 — describe-then-redraw</option>

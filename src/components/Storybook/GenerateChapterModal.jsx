@@ -42,10 +42,10 @@ export default function GenerateChapterModal({
   const [sceneCount, setSceneCount] = useState(3);
   const [styleKey, setStyleKey] = useState(defaultStyle);
   const [styleCustom, setStyleCustom] = useState(defaultCustom);
-  // Default to nano-banana (Gemini 2.5 Flash) since it accepts the original
-  // character portraits as references and preserves likeness far better than
-  // the describe-then-redraw DALL-E 3 path.
-  const [imageModel, setImageModel] = useState('nano-banana');
+  // Default to nano-banana-2 (Gemini 2.5 Flash Image v2) since it accepts the
+  // original character portraits as references and preserves likeness far
+  // better than DALL-E 3's describe-then-redraw.
+  const [imageModel, setImageModel] = useState('nano-banana-2');
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState(null);
@@ -183,16 +183,22 @@ export default function GenerateChapterModal({
                 disabled={running}
                 className="w-full p-3 rounded-xl bg-black/20 border border-white/10 text-white focus:outline-none focus:border-[color:var(--primary)]"
               >
-                <option value="nano-banana">Gemini 2.5 Flash — uses portraits as references (recommended)</option>
+                <option value="nano-banana-2">Gemini 2.5 Flash Image v2 — uses portraits as references (recommended)</option>
+                <option value="nano-banana">Gemini 2.5 Flash Image v1 — uses portraits as references</option>
+                <option value="gpt-image-2">OpenAI gpt-image-2 — uses portraits as references</option>
                 <option value="gpt-image-1">OpenAI gpt-image-1 — uses portraits as references</option>
                 <option value="flux-pro">Flux 1.1 Pro — fast, stylised</option>
                 <option value="">DALL-E 3 — describe-then-redraw (fallback)</option>
               </select>
               <p className="text-[11px] text-white/40">
-                {imageModel === 'nano-banana'
-                  ? 'Passes each character\'s existing portrait to Google Gemini 2.5 Flash Image via Replicate — best for preserving actual likeness. Requires REPLICATE_API_TOKEN.'
+                {imageModel === 'nano-banana-2'
+                  ? 'Passes each character\'s existing portrait to Google\'s newest Gemini Flash Image (v2) via Replicate — best for preserving actual likeness. Requires REPLICATE_API_TOKEN.'
+                  : imageModel === 'nano-banana'
+                  ? 'Original Gemini 2.5 Flash Image via Replicate — also reference-capable. Use if v2 isn\'t cooperating.'
+                  : imageModel === 'gpt-image-2'
+                  ? 'OpenAI\'s newest reference-capable image model. Requires a verified OpenAI organisation with image-2 access.'
                   : imageModel === 'gpt-image-1'
-                  ? 'Passes each character\'s portrait to OpenAI\'s reference-capable image model. Requires a verified OpenAI organisation.'
+                  ? 'Original OpenAI gpt-image-1 with portrait references. Requires a verified OpenAI organisation.'
                   : imageModel === 'flux-pro'
                   ? 'Flux 1.1 Pro via Replicate — stylised but text-only (no reference images).'
                   : 'DALL-E 3 with describe-then-redraw — preserves likeness via a vision description, not the original portrait.'}

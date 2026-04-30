@@ -72,29 +72,41 @@ export default async function handler(req, res) {
         || (styleKey && styleKey.length > 6 ? styleKey : null) // treat as custom preamble if long
         || presets.watercolor;
 
-      const fullPrompt = `${preamble}. ${prompt}`;
+      const fullPromptBase = `${preamble}. ${prompt}`;
       const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
       const imageSize = validSizes.includes(size) ? size : '1024x1024';
 
       const replicateKey = process.env.REPLICATE_API_TOKEN;
       const refs = Array.isArray(referenceImages) ? referenceImages.filter(Boolean) : [];
 
-      // --- Google Gemini 2.5 Flash Image ("nano-banana") via Replicate ---
+      // When we have reference images we prepend a strong likeness directive
+      // BEFORE the style preamble so the model treats the references as the
+      // source of truth — the narrative scene text often describes characters
+      // generically, which without this dominates the references and produces
+      // "fake" characters that don't match the originals.
+      const likenessDirective = refs.length > 0
+        ? `CRITICAL CHARACTER REFERENCE: The reference image${refs.length > 1 ? 's' : ''} attached show the EXACT character${refs.length > 1 ? 's' : ''} that must appear in this image. Faithfully reproduce their face, hair, eye colour, skin tone, body proportions, species/ancestry, clothing, and gear from the reference${refs.length > 1 ? 's' : ''}. Do NOT invent new characters. Do NOT swap their species. Where any text below could conflict with the references, the references win. `
+        : '';
+
+      const fullPrompt = `${likenessDirective}${fullPromptBase}`;
+
+      // --- Google Gemini 2.5 Flash Image ("nano-banana", and v2) via Replicate ---
       //     Best for character likeness — accepts the original portrait(s)
       //     as reference images and redraws them in the requested style.
       //     When the user explicitly selects nano-banana and it can't run,
-      //     we fail loudly so the UI shows the real reason — silently
-      //     falling through to DALL-E hides config bugs and lands users on
-      //     a content-filter error from a different model.
-      if (imageModel === 'nano-banana') {
+      //     we fail loudly so the UI shows the real reason.
+      if (imageModel === 'nano-banana' || imageModel === 'nano-banana-2') {
         if (!replicateKey) {
           return res.status(500).json({
-            error: 'REPLICATE_API_TOKEN is not configured on the server, so nano-banana (Gemini 2.5 Flash Image) cannot run. Set the env var in Vercel or pick a different image model.'
+            error: 'REPLICATE_API_TOKEN is not configured on the server, so nano-banana cannot run. Set the env var in Vercel or pick a different image model.'
           });
         }
-        console.log('Using Replicate nano-banana (Gemini 2.5 Flash Image) for storybook image, refs:', refs.length);
+        const replicatePath = imageModel === 'nano-banana-2'
+          ? 'google/nano-banana-2'
+          : 'google/nano-banana';
+        console.log(`Using Replicate ${replicatePath} for storybook image, refs: ${refs.length}`);
         try {
-          const createRes = await fetch('https://api.replicate.com/v1/models/google/nano-banana/predictions', {
+          const createRes = await fetch(`https://api.replicate.com/v1/models/${replicatePath}/predictions`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${replicateKey}`,
@@ -111,9 +123,9 @@ export default async function handler(req, res) {
           });
           if (!createRes.ok) {
             const errText = await createRes.text().catch(() => createRes.statusText);
-            console.error('Replicate nano-banana error:', errText);
+            console.error(`Replicate ${replicatePath} error:`, errText);
             return res.status(createRes.status || 500).json({
-              error: `Replicate nano-banana error: ${truncateErr(errText)}`
+              error: `Replicate ${replicatePath} error: ${truncateErr(errText)}`
             });
           }
           let prediction = await createRes.json();
@@ -128,41 +140,38 @@ export default async function handler(req, res) {
           }
           if (prediction.status === 'succeeded' && prediction.output) {
             const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-            if (url) return res.status(200).json({ imageUrl: url, prompt: fullPrompt, model: 'nano-banana' });
-            return res.status(500).json({ error: 'nano-banana returned no output URL.' });
+            if (url) return res.status(200).json({ imageUrl: url, prompt: fullPrompt, model: imageModel });
+            return res.status(500).json({ error: `${imageModel} returned no output URL.` });
           }
           return res.status(500).json({
-            error: `nano-banana prediction ${prediction.status}: ${truncateErr(prediction.error || 'unknown reason')}`
+            error: `${imageModel} prediction ${prediction.status}: ${truncateErr(prediction.error || 'unknown reason')}`
           });
         } catch (err) {
-          console.error('nano-banana error:', err);
-          return res.status(500).json({ error: `nano-banana request failed: ${err.message}` });
+          console.error(`${imageModel} error:`, err);
+          return res.status(500).json({ error: `${imageModel} request failed: ${err.message}` });
         }
       }
 
-      // --- OpenAI gpt-image-1 (reference-capable) ---
+      // --- OpenAI gpt-image-1 / gpt-image-2 (reference-capable) ---
       //     Uses /v1/images/edits when references are provided, otherwise
-      //     /v1/images/generations. Requires a verified OpenAI organisation.
-      //     Like nano-banana, when the user explicitly selects this model
-      //     and it can't run, return a clear error instead of falling
-      //     through to DALL-E so the failure reason is visible.
-      if (imageModel === 'gpt-image-1') {
+      //     /v1/images/generations. Requires a verified OpenAI organisation
+      //     (and gpt-image-2 may require a higher org tier).
+      if (imageModel === 'gpt-image-1' || imageModel === 'gpt-image-2') {
         const openaiKey = clientApiKey || process.env.OPENAI_API_KEY;
         if (!openaiKey) {
           return res.status(500).json({
-            error: 'No OpenAI API key configured, so gpt-image-1 cannot run. Add OPENAI_API_KEY to the server env or pick a different image model.'
+            error: `No OpenAI API key configured, so ${imageModel} cannot run. Add OPENAI_API_KEY to the server env or pick a different image model.`
           });
         }
-        console.log('Using OpenAI gpt-image-1 for storybook image, refs:', refs.length);
+        console.log(`Using OpenAI ${imageModel} for storybook image, refs:`, refs.length);
         try {
           const sizeForGpt = imageSize === '1792x1024' ? '1536x1024'
             : imageSize === '1024x1792' ? '1024x1536'
             : '1024x1024';
           let gptRes;
           if (refs.length > 0) {
-            // Download each reference image and upload as multipart
             const form = new FormData();
-            form.append('model', 'gpt-image-1');
+            form.append('model', imageModel);
             form.append('prompt', fullPrompt);
             form.append('size', sizeForGpt);
             form.append('n', '1');
@@ -181,25 +190,25 @@ export default async function handler(req, res) {
             gptRes = await fetch('https://api.openai.com/v1/images/generations', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'gpt-image-1', prompt: fullPrompt, size: sizeForGpt, n: 1 })
+              body: JSON.stringify({ model: imageModel, prompt: fullPrompt, size: sizeForGpt, n: 1 })
             });
           }
           if (!gptRes.ok) {
             const errText = await gptRes.text().catch(() => gptRes.statusText);
-            console.error('gpt-image-1 error:', errText);
+            console.error(`${imageModel} error:`, errText);
             return res.status(gptRes.status || 500).json({
-              error: `gpt-image-1 error: ${truncateErr(errText)}`
+              error: `${imageModel} error: ${truncateErr(errText)}`
             });
           }
           const data = await gptRes.json();
           const b64 = data.data?.[0]?.b64_json;
           const directUrl = data.data?.[0]?.url;
-          if (b64) return res.status(200).json({ imageUrl: `data:image/png;base64,${b64}`, prompt: fullPrompt, model: 'gpt-image-1' });
-          if (directUrl) return res.status(200).json({ imageUrl: directUrl, prompt: fullPrompt, model: 'gpt-image-1' });
-          return res.status(500).json({ error: 'gpt-image-1 returned no image data.' });
+          if (b64) return res.status(200).json({ imageUrl: `data:image/png;base64,${b64}`, prompt: fullPrompt, model: imageModel });
+          if (directUrl) return res.status(200).json({ imageUrl: directUrl, prompt: fullPrompt, model: imageModel });
+          return res.status(500).json({ error: `${imageModel} returned no image data.` });
         } catch (err) {
-          console.error('gpt-image-1 error:', err);
-          return res.status(500).json({ error: `gpt-image-1 request failed: ${err.message}` });
+          console.error(`${imageModel} error:`, err);
+          return res.status(500).json({ error: `${imageModel} request failed: ${err.message}` });
         }
       }
 

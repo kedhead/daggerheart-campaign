@@ -133,11 +133,10 @@ VOICE AND SHAPE:
 STRICT RULES:
 1. Use only facts present in the session notes or campaign context. DO NOT invent major new plot points, NPCs, or locations that weren't mentioned. You MAY flesh out moments, interiority, atmosphere, and implied details.
 2. Mention every named entity from the notes at least once, by name.
-3. For each scene prompt, set a vivid visual composition. These prompts will be passed to an image generator; the client will concatenate a style preamble before them, so focus on subject, action, environment, lighting, and composition.
-4. In each scene, list featuredEntityIds drawn ONLY from the provided entity roster (use the id field exactly as given). The client will substitute each entity's physical description into the prompt so the character's actual look is preserved.
+3. For each scene prompt, focus on ACTION, SETTING, LIGHTING, MOOD, and COMPOSITION. The image model will receive each featured character's actual portrait as a reference image, so do NOT re-describe the characters' faces, builds, hair, eye colour, skin tone, or detailed clothing in the scene prompt — that would conflict with the references and produce wrong-looking characters. Refer to each character by NAME ("Yargal raises his axe"), not by physical description. You may briefly mention species/ancestry only when it's directly relevant to the action ("the halfling Yargal climbs onto the dwarf's shoulders").
+4. EVERY character who appears in a scene MUST have their id listed in that scene's featuredEntityIds array, drawn from the entity roster. If a character is not in the roster they cannot appear in the scene at all — substitute an unnamed environment / atmosphere shot instead. This is the single most important rule for likeness preservation.
 5. Title should be evocative, 2-6 words, no quotes.
-6. Return valid JSON matching the schema exactly.
-7. RACE / ANCESTRY ACCURACY: Pay close attention to each character's ancestry listed in the roster (e.g. Drakona, Galapa, Katari, Fungril). When writing scene visual prompts, ALWAYS explicitly mention the character's species/ancestry and key physical traits (scales, shell, fur, hooves, etc.). Never assume characters are human unless their ancestry is explicitly "Human". This is critical for accurate illustration.`;
+6. Return valid JSON matching the schema exactly.`;
 
   const userPrompt = `# Campaign context
 ${campaignContext || '(no campaign context provided)'}

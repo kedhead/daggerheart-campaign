@@ -77,7 +77,12 @@ async function describeImage(imageUrl, subjectHint, apiKey) {
 // Models that natively accept reference images — for these we skip the
 // vision-describe step and hand the original portraits directly to the model
 // so likeness survives the style change.
-const REFERENCE_CAPABLE_MODELS = new Set(['nano-banana', 'gpt-image-1']);
+const REFERENCE_CAPABLE_MODELS = new Set([
+  'nano-banana',
+  'nano-banana-2',
+  'gpt-image-1',
+  'gpt-image-2'
+]);
 const usesReferenceImages = (imageModel) => REFERENCE_CAPABLE_MODELS.has(imageModel);
 
 async function generateStylizedImage({ prompt, type, styleKey, gameSystem, apiKey, imageModel, referenceImages, size = '1024x1024' }) {
