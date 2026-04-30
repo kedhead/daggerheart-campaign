@@ -441,16 +441,22 @@ export async function generateChapter({
   (chapterText.scenes || []).forEach(s => (s.featuredEntityIds || []).forEach(id => featuredIds.add(id)));
   (chapterText.spotlights || []).forEach(s => s.entityId && featuredIds.add(s.entityId));
 
-  // Ensure styled portraits for each featured entity (parallel, best-effort)
+  // Ensure styled portraits for each featured entity (parallel, best-effort).
+  // We track the entity's *source* portrait separately and use that as the
+  // scene reference image, since the styled portrait is already a redraw and
+  // using it as a reference would compound the interpretation drift.
   const rosters = { characters, npcs, adversaries };
   const entityDescriptions = {};
-  const entityPortraitUrls = {};
+  const entityStyledPortraits = {}; // for Dramatis Personae cards
+  const entitySourcePortraits = {}; // raw avatar/imageUrl, used as scene refs
   const entityTypes = {};
 
   const portraitJobs = Array.from(featuredIds).map(async (entityId, idx) => {
     const { entity, entityType } = findEntityInRosters({ entityId, rosters });
     if (!entity || !entityType) return;
     entityTypes[entityId] = entityType;
+    const portraitField = ENTITY_PORTRAIT_FIELD[entityType];
+    if (entity[portraitField]) entitySourcePortraits[entityId] = entity[portraitField];
     onProgress({
       stage: 'portraits',
       current: idx,
@@ -460,7 +466,7 @@ export async function generateChapter({
     const { url, description } = await ensureStyledPortrait({
       entity, entityType, styleKey, styleCustom, campaignId, apiKey, imageModel, gameSystem
     });
-    entityPortraitUrls[entityId] = url;
+    entityStyledPortraits[entityId] = url;
     entityDescriptions[entityId] = description;
   });
   await Promise.all(portraitJobs);
@@ -491,7 +497,7 @@ export async function generateChapter({
         scene: { ...scenePrompt, id: `scene_${i}_${Date.now()}` },
         entityDescriptions,
         entityAncestryHints,
-        entityPortraits: entityPortraitUrls,
+        entityPortraits: entitySourcePortraits,   // original portraits as references
         styleKey,
         styleCustom,
         gameSystem,
@@ -513,7 +519,7 @@ export async function generateChapter({
       entityId: s.entityId,
       entityType: s.entityType,
       name: entity?.name || '',
-      portraitUrl: entityPortraitUrls[s.entityId] || entity?.storybookPortrait?.url || entity?.[portraitField] || null,
+      portraitUrl: entityStyledPortraits[s.entityId] || entity?.storybookPortrait?.url || entity?.[portraitField] || null,
       moment: s.moment
     };
   }).filter(s => s.name);
@@ -573,16 +579,26 @@ export async function regenerateScene({
   };
   const entityDescriptions = {};
   const entityAncestryHints = {};
-  const entityPortraits = {};
+  const entityPortraits = {};   // original portraits — used as reference images
   const featured = scene.featuredEntityIds || [];
+  const refCapable = usesReferenceImages(imageModel);
   for (const id of featured) {
     const { entity, entityType } = findEntityInRosters({ entityId: id, rosters });
     if (!entity || !entityType) continue;
-    const { url, description } = await ensureStyledPortrait({
-      entity, entityType, styleKey, styleCustom, campaignId, apiKey, imageModel, gameSystem
-    });
-    entityDescriptions[id] = description;
-    if (url) entityPortraits[id] = url;
+    const portraitField = ENTITY_PORTRAIT_FIELD[entityType];
+    if (entity[portraitField]) entityPortraits[id] = entity[portraitField];
+
+    // For text-only models we still need a written description to anchor
+    // the scene prompt. Reference-capable models get the portrait directly,
+    // so we can skip the (slow, expensive) describe-then-redraw step.
+    if (!refCapable) {
+      const { description } = await ensureStyledPortrait({
+        entity, entityType, styleKey, styleCustom, campaignId, apiKey, imageModel, gameSystem
+      });
+      entityDescriptions[id] = description;
+    } else {
+      entityDescriptions[id] = buildFallbackDescription(entity, entityType);
+    }
     if (entity.ancestry) {
       const hint = getAncestryVisualHint(entity.ancestry);
       if (hint) entityAncestryHints[id] = `${entity.name} is ${hint}`;
