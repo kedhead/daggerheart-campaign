@@ -489,6 +489,7 @@ export async function generateChapter({
 
   // Generate scene illustrations sequentially to respect rate limits
   const scenes = [];
+  const sceneErrors = [];
   const scenePromptList = chapterText.scenes || [];
   for (let i = 0; i < scenePromptList.length; i++) {
     const scenePrompt = scenePromptList[i];
@@ -514,7 +515,19 @@ export async function generateChapter({
       scenes.push(scene);
     } catch (err) {
       console.error('[storybook] Scene generation failed, continuing:', err);
+      sceneErrors.push({ index: i + 1, message: err?.message || String(err) });
     }
+  }
+
+  // If every single scene failed, the run is effectively useless — throw with
+  // the actual reasons so the user sees the real errors instead of a chapter
+  // with no art.
+  if (scenePromptList.length > 0 && scenes.length === 0 && sceneErrors.length > 0) {
+    const summary = sceneErrors
+      .map(e => `Scene ${e.index}: ${e.message}`)
+      .slice(0, 3)
+      .join('  •  ');
+    throw new Error(`All ${sceneErrors.length} scene${sceneErrors.length === 1 ? '' : 's'} failed. ${summary}`);
   }
 
   // Build spotlight cards
