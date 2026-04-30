@@ -9,6 +9,20 @@ export const config = {
   maxDuration: 300
 };
 
+// Trim and tidy a third-party API error string so it's safe to surface to
+// the client without dumping a full HTML page or stack trace.
+function truncateErr(input) {
+  if (!input) return '';
+  let str = typeof input === 'string' ? input : (() => { try { return JSON.stringify(input); } catch { return String(input); } })();
+  // If it's a JSON envelope, extract the most useful message field
+  try {
+    const parsed = JSON.parse(str);
+    str = parsed?.detail || parsed?.error?.message || parsed?.error || parsed?.message || str;
+  } catch { /* not JSON, keep raw */ }
+  if (typeof str !== 'string') str = String(str);
+  return str.length > 240 ? str.slice(0, 237) + '…' : str;
+}
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -68,7 +82,16 @@ export default async function handler(req, res) {
       // --- Google Gemini 2.5 Flash Image ("nano-banana") via Replicate ---
       //     Best for character likeness — accepts the original portrait(s)
       //     as reference images and redraws them in the requested style.
-      if (imageModel === 'nano-banana' && replicateKey) {
+      //     When the user explicitly selects nano-banana and it can't run,
+      //     we fail loudly so the UI shows the real reason — silently
+      //     falling through to DALL-E hides config bugs and lands users on
+      //     a content-filter error from a different model.
+      if (imageModel === 'nano-banana') {
+        if (!replicateKey) {
+          return res.status(500).json({
+            error: 'REPLICATE_API_TOKEN is not configured on the server, so nano-banana (Gemini 2.5 Flash Image) cannot run. Set the env var in Vercel or pick a different image model.'
+          });
+        }
         console.log('Using Replicate nano-banana (Gemini 2.5 Flash Image) for storybook image, refs:', refs.length);
         try {
           const createRes = await fetch('https://api.replicate.com/v1/models/google/nano-banana/predictions', {
@@ -86,90 +109,97 @@ export default async function handler(req, res) {
               }
             })
           });
-          if (createRes.ok) {
-            let prediction = await createRes.json();
-            if (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-              const pollUrl = prediction.urls?.get || `https://api.replicate.com/v1/predictions/${prediction.id}`;
-              const deadline = Date.now() + 55000;
-              while (Date.now() < deadline && prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-                await new Promise(r => setTimeout(r, 2000));
-                const pollRes = await fetch(pollUrl, { headers: { 'Authorization': `Bearer ${replicateKey}` } });
-                if (pollRes.ok) prediction = await pollRes.json();
-              }
-            }
-            if (prediction.status === 'succeeded' && prediction.output) {
-              const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-              if (url) return res.status(200).json({ imageUrl: url, prompt: fullPrompt, model: 'nano-banana' });
-            }
-            console.warn('nano-banana prediction failed, falling back:', prediction.status, prediction.error);
-          } else {
+          if (!createRes.ok) {
             const errText = await createRes.text().catch(() => createRes.statusText);
             console.error('Replicate nano-banana error:', errText);
+            return res.status(createRes.status || 500).json({
+              error: `Replicate nano-banana error: ${truncateErr(errText)}`
+            });
           }
+          let prediction = await createRes.json();
+          if (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+            const pollUrl = prediction.urls?.get || `https://api.replicate.com/v1/predictions/${prediction.id}`;
+            const deadline = Date.now() + 55000;
+            while (Date.now() < deadline && prediction.status !== 'succeeded' && prediction.status !== 'failed') {
+              await new Promise(r => setTimeout(r, 2000));
+              const pollRes = await fetch(pollUrl, { headers: { 'Authorization': `Bearer ${replicateKey}` } });
+              if (pollRes.ok) prediction = await pollRes.json();
+            }
+          }
+          if (prediction.status === 'succeeded' && prediction.output) {
+            const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+            if (url) return res.status(200).json({ imageUrl: url, prompt: fullPrompt, model: 'nano-banana' });
+            return res.status(500).json({ error: 'nano-banana returned no output URL.' });
+          }
+          return res.status(500).json({
+            error: `nano-banana prediction ${prediction.status}: ${truncateErr(prediction.error || 'unknown reason')}`
+          });
         } catch (err) {
-          console.error('nano-banana error, falling back:', err.message);
+          console.error('nano-banana error:', err);
+          return res.status(500).json({ error: `nano-banana request failed: ${err.message}` });
         }
       }
 
       // --- OpenAI gpt-image-1 (reference-capable) ---
       //     Uses /v1/images/edits when references are provided, otherwise
       //     /v1/images/generations. Requires a verified OpenAI organisation.
+      //     Like nano-banana, when the user explicitly selects this model
+      //     and it can't run, return a clear error instead of falling
+      //     through to DALL-E so the failure reason is visible.
       if (imageModel === 'gpt-image-1') {
         const openaiKey = clientApiKey || process.env.OPENAI_API_KEY;
-        if (openaiKey) {
-          console.log('Using OpenAI gpt-image-1 for storybook image, refs:', refs.length);
-          try {
-            if (refs.length > 0) {
-              // Download each reference image and upload as multipart
-              const form = new FormData();
-              form.append('model', 'gpt-image-1');
-              form.append('prompt', fullPrompt);
-              form.append('size', imageSize === '1792x1024' ? '1536x1024' : imageSize === '1024x1792' ? '1024x1536' : '1024x1024');
-              form.append('n', '1');
-              for (let i = 0; i < Math.min(refs.length, 4); i++) {
-                const imgRes = await fetch(refs[i]);
-                if (!imgRes.ok) continue;
-                const buf = await imgRes.arrayBuffer();
-                form.append('image[]', new Blob([buf], { type: imgRes.headers.get('content-type') || 'image/png' }), `ref${i}.png`);
-              }
-              const gptRes = await fetch('https://api.openai.com/v1/images/edits', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${openaiKey}` },
-                body: form
-              });
-              if (gptRes.ok) {
-                const data = await gptRes.json();
-                const b64 = data.data?.[0]?.b64_json;
-                const directUrl = data.data?.[0]?.url;
-                if (b64) return res.status(200).json({ imageUrl: `data:image/png;base64,${b64}`, prompt: fullPrompt, model: 'gpt-image-1' });
-                if (directUrl) return res.status(200).json({ imageUrl: directUrl, prompt: fullPrompt, model: 'gpt-image-1' });
-              } else {
-                console.error('gpt-image-1 edits error:', await gptRes.text().catch(() => gptRes.statusText));
-              }
-            } else {
-              const gptRes = await fetch('https://api.openai.com/v1/images/generations', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  model: 'gpt-image-1',
-                  prompt: fullPrompt,
-                  size: imageSize === '1792x1024' ? '1536x1024' : imageSize === '1024x1792' ? '1024x1536' : '1024x1024',
-                  n: 1
-                })
-              });
-              if (gptRes.ok) {
-                const data = await gptRes.json();
-                const b64 = data.data?.[0]?.b64_json;
-                const directUrl = data.data?.[0]?.url;
-                if (b64) return res.status(200).json({ imageUrl: `data:image/png;base64,${b64}`, prompt: fullPrompt, model: 'gpt-image-1' });
-                if (directUrl) return res.status(200).json({ imageUrl: directUrl, prompt: fullPrompt, model: 'gpt-image-1' });
-              } else {
-                console.error('gpt-image-1 generations error:', await gptRes.text().catch(() => gptRes.statusText));
-              }
+        if (!openaiKey) {
+          return res.status(500).json({
+            error: 'No OpenAI API key configured, so gpt-image-1 cannot run. Add OPENAI_API_KEY to the server env or pick a different image model.'
+          });
+        }
+        console.log('Using OpenAI gpt-image-1 for storybook image, refs:', refs.length);
+        try {
+          const sizeForGpt = imageSize === '1792x1024' ? '1536x1024'
+            : imageSize === '1024x1792' ? '1024x1536'
+            : '1024x1024';
+          let gptRes;
+          if (refs.length > 0) {
+            // Download each reference image and upload as multipart
+            const form = new FormData();
+            form.append('model', 'gpt-image-1');
+            form.append('prompt', fullPrompt);
+            form.append('size', sizeForGpt);
+            form.append('n', '1');
+            for (let i = 0; i < Math.min(refs.length, 4); i++) {
+              const imgRes = await fetch(refs[i]);
+              if (!imgRes.ok) continue;
+              const buf = await imgRes.arrayBuffer();
+              form.append('image[]', new Blob([buf], { type: imgRes.headers.get('content-type') || 'image/png' }), `ref${i}.png`);
             }
-          } catch (err) {
-            console.error('gpt-image-1 error, falling back:', err.message);
+            gptRes = await fetch('https://api.openai.com/v1/images/edits', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${openaiKey}` },
+              body: form
+            });
+          } else {
+            gptRes = await fetch('https://api.openai.com/v1/images/generations', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: 'gpt-image-1', prompt: fullPrompt, size: sizeForGpt, n: 1 })
+            });
           }
+          if (!gptRes.ok) {
+            const errText = await gptRes.text().catch(() => gptRes.statusText);
+            console.error('gpt-image-1 error:', errText);
+            return res.status(gptRes.status || 500).json({
+              error: `gpt-image-1 error: ${truncateErr(errText)}`
+            });
+          }
+          const data = await gptRes.json();
+          const b64 = data.data?.[0]?.b64_json;
+          const directUrl = data.data?.[0]?.url;
+          if (b64) return res.status(200).json({ imageUrl: `data:image/png;base64,${b64}`, prompt: fullPrompt, model: 'gpt-image-1' });
+          if (directUrl) return res.status(200).json({ imageUrl: directUrl, prompt: fullPrompt, model: 'gpt-image-1' });
+          return res.status(500).json({ error: 'gpt-image-1 returned no image data.' });
+        } catch (err) {
+          console.error('gpt-image-1 error:', err);
+          return res.status(500).json({ error: `gpt-image-1 request failed: ${err.message}` });
         }
       }
 
