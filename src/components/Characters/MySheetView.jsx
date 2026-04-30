@@ -4,6 +4,7 @@ import DaggerheartCharacterSheet from './DaggerheartCharacterSheet';
 import DaggerheartCharacterForm from './DaggerheartCharacterForm';
 import CharacterCreationWizard from './CharacterCreationWizard';
 import Modal from '../Modal';
+import { getCharacterOwnerId } from '../../utils/characterOwnership';
 
 export default function MySheetView({
   characters,
@@ -20,7 +21,7 @@ export default function MySheetView({
   onGoToRoster,
 }) {
   const myCharacters = useMemo(
-    () => (characters || []).filter((c) => c.createdBy === currentUserId),
+    () => (characters || []).filter((c) => getCharacterOwnerId(c) === currentUserId),
     [characters, currentUserId]
   );
 

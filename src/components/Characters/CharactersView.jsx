@@ -12,7 +12,9 @@ import StarWarsD6Form from './forms/StarWarsD6Form';
 import StarWarsD6Card from './cards/StarWarsD6Card';
 import GenericForm from './forms/GenericForm';
 import GenericCard from './cards/GenericCard';
+import AssignPlayerControl from './AssignPlayerControl';
 import Modal from '../Modal';
+import { getCharacterOwnerId } from '../../utils/characterOwnership';
 import './CharactersView.css';
 
 // Map game systems to their form/card components
@@ -82,7 +84,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
 
   // Players can only edit their own characters, DMs can edit all
   const canEditCharacter = (character) => {
-    return isDM || character.createdBy === currentUserId;
+    return isDM || getCharacterOwnerId(character) === currentUserId;
   };
 
   const filteredCharacters = characters.filter(char =>
@@ -283,18 +285,29 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
           : 'grid-cols-1 md:grid-cols-2 2xl:grid-cols-3'
           }`}>
           {filteredCharacters.map(character => (
-            <CardComponent
-              key={character.id}
-              character={character}
-              onEdit={() => handleEdit(character)}
-              onDelete={() => deleteCharacter(character.id)}
-              isDM={isDM}
-              canEdit={canEditCharacter(character)}
-              campaign={campaign}
-              updateCharacter={isSheetMode ? updateCharacter : undefined}
-              items={isSheetMode ? items : undefined}
-              onDemiplaneUpdate={isDaggerheart && canEditCharacter(character) ? () => setDemiplaneTarget(character) : undefined}
-            />
+            <div key={character.id} className="space-y-2">
+              <CardComponent
+                character={character}
+                onEdit={() => handleEdit(character)}
+                onDelete={() => deleteCharacter(character.id)}
+                isDM={isDM}
+                canEdit={canEditCharacter(character)}
+                campaign={campaign}
+                updateCharacter={isSheetMode ? updateCharacter : undefined}
+                items={isSheetMode ? items : undefined}
+                onDemiplaneUpdate={isDaggerheart && canEditCharacter(character) ? () => setDemiplaneTarget(character) : undefined}
+              />
+              {isDM && (
+                <div className="flex justify-end px-1">
+                  <AssignPlayerControl
+                    character={character}
+                    campaign={campaign}
+                    updateCharacter={updateCharacter}
+                    isDM={isDM}
+                  />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
