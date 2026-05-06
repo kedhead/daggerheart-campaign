@@ -55,38 +55,39 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
 
   const armorName = character.armorName || (character.armorItems?.[0]?.name) || '';
 
-  const tabProps = { character, roll, rollDamage, campaignId, rollBonus, setRollBonus };
+  const tabProps = { character, roll, rollDamage, campaignId, rollBonus, setRollBonus, items };
 
   return (
     <div className="lrp-portal">
-      {/* Header row */}
+      {/* Floating nav buttons — don't consume layout space */}
       <div style={{
-        paddingTop: 'max(44px, env(safe-area-inset-top, 44px))',
-        position: 'relative', zIndex: 5,
+        position: 'absolute',
+        top: 'max(10px, env(safe-area-inset-top, 10px))',
+        left: 16, right: 16,
+        zIndex: 10,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        pointerEvents: 'none',
       }}>
-        <div style={{
-          padding: '6px 16px 12px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          {showBack ? (
-            <button onClick={onBack} className="lrp-icon-btn" aria-label="Back to character list">
-              <ChevronLeft size={20} />
-            </button>
-          ) : (
-            <div style={{ width: 36 }} />
-          )}
-          <button onClick={onExit} className="lrp-icon-btn" aria-label="Exit portal">
-            <X size={20} />
+        {showBack ? (
+          <button onClick={onBack} className="lrp-icon-btn" aria-label="Back to character list"
+            style={{ pointerEvents: 'auto' }}>
+            <ChevronLeft size={20} />
           </button>
-        </div>
+        ) : (
+          <div style={{ width: 36 }} />
+        )}
+        <button onClick={onExit} className="lrp-icon-btn" aria-label="Exit portal"
+          style={{ pointerEvents: 'auto' }}>
+          <X size={20} />
+        </button>
       </div>
 
       {/* Scrollable body */}
       <div className="lrp-content">
         <div className="lrp-inner">
 
-          {/* ── Hero card ── */}
-          <div style={{ padding: '0 18px' }}>
+          {/* ── Hero card — padded to clear floating buttons ── */}
+          <div style={{ padding: 'max(64px, calc(env(safe-area-inset-top, 0px) + 56px)) 18px 0' }}>
             <div style={{
               position: 'relative', borderRadius: 20,
               border: '1.5px solid rgba(234,179,8,0.4)',

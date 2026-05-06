@@ -3,6 +3,18 @@ import { getCardByName } from '../../../data/daggerheartDomainCards';
 import { extractCardDice } from '../../../utils/daggerheartRollUtils';
 import { RollResultBanner } from '../../../dice';
 
+function parseGrimoireEntries(description) {
+  // Grimoire descriptions have the form: "SpellName: text. SpellName: text."
+  // Split on ". " followed by a title-case word and a colon.
+  const parts = description.split(/\.\s+(?=[A-Z][a-zA-Z ']+:)/);
+  if (parts.length < 2) return null;
+  return parts.map(part => {
+    const colon = part.indexOf(':');
+    if (colon === -1) return null;
+    return { name: part.slice(0, colon).trim(), text: part.slice(colon + 1).trim().replace(/\.$/, '') };
+  }).filter(Boolean);
+}
+
 const DOMAIN_COLORS = {
   Sage: '#22c55e', Arcana: '#a78bfa', Blade: '#f5c543', Bone: '#94a3b8',
   Codex: '#60a5fa', Grace: '#f472b6', Midnight: '#7c3aed', Splendor: '#fbbf24',
@@ -99,6 +111,7 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
               const dc = DOMAIN_COLORS[card.domain] || '#a78bfa';
               const glyph = DOMAIN_GLYPHS[card.domain] || '✦';
               const isOpen = openCard === card.name;
+              const grimoireEntries = card.type === 'Grimoire' ? parseGrimoireEntries(card.description) : null;
               const diceParsed = extractCardDice(card.description);
               return (
                 <div key={card.name} className="lrp-spell-card"
@@ -112,6 +125,7 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
                         </div>
                         <div style={{ fontSize: 9, color: dc, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 700, marginTop: 6 }}>
                           {card.domain} · Lv {card.level} · {card.type}
+                          {grimoireEntries && ` · ${grimoireEntries.length} spells`}
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
@@ -122,14 +136,40 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
                   </div>
                   {isOpen && (
                     <div style={{ padding: '0 14px 14px' }}>
-                      <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5, marginBottom: 10 }}>
-                        {card.description}
-                      </div>
+                      {grimoireEntries ? (
+                        /* Grimoire: show each spell as its own entry */
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 10 }}>
+                          {grimoireEntries.map((entry, ei) => {
+                            const entryDice = extractCardDice(entry.text);
+                            return (
+                              <div key={ei} style={{
+                                padding: '10px 12px', borderRadius: 10,
+                                background: `rgba(0,0,0,0.25)`, border: `1px solid ${dc}22`,
+                              }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: dc, marginBottom: 4 }}>{entry.name}</div>
+                                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>{entry.text}</div>
+                                {entryDice && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <RollPill kind="spell" label="Roll"
+                                      formula={`${entryDice.quantity}d${entryDice.dieType}${entryDice.modifier ? `+${entryDice.modifier}` : ''}`}
+                                      onClick={() => handleDiceRoll(card, entryDice)} />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        /* Regular card: show full description */
+                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5, marginBottom: 10 }}>
+                          {card.description}
+                        </div>
+                      )}
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         {card.type === 'Spell' && (
                           <RollPill kind="spell" label="Spellcast" onClick={() => handleSpellRoll(card)} />
                         )}
-                        {diceParsed && (
+                        {!grimoireEntries && diceParsed && (
                           <RollPill kind="spell" label="Roll"
                             formula={`${diceParsed.quantity}d${diceParsed.dieType}${diceParsed.modifier ? `+${diceParsed.modifier}` : ''}`}
                             onClick={() => handleDiceRoll(card, diceParsed)} />

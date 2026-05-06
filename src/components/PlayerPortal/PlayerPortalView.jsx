@@ -40,7 +40,7 @@ function CharacterSelectScreen({ characters, playerName, campaign, onSelect, onE
   if (characters.length === 0) {
     return (
       <div className="lrp-portal">
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', paddingTop: 'max(60px, env(safe-area-inset-top, 60px))' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center', paddingTop: 'max(24px, env(safe-area-inset-top, 24px))' }}>
           <div className="lrp-cinzel" style={{ fontSize: 22, color: '#fdf6dc', fontWeight: 800, letterSpacing: '0.04em' }}>
             No Characters Found
           </div>
@@ -63,7 +63,7 @@ function CharacterSelectScreen({ characters, playerName, campaign, onSelect, onE
   return (
     <div className="lrp-portal">
       <div className="lrp-content">
-        <div className="lrp-inner" style={{ paddingTop: 'max(50px, env(safe-area-inset-top, 50px))', paddingBottom: 40 }}>
+        <div className="lrp-inner" style={{ paddingTop: 'max(18px, env(safe-area-inset-top, 18px))', paddingBottom: 40 }}>
 
           {/* Greeting header */}
           <div style={{ padding: '12px 22px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

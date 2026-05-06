@@ -1,13 +1,21 @@
-export default function InventoryTab({ character }) {
+export default function InventoryTab({ character, items }) {
   const gold = character.gold ?? 0;
-  const equippedItems = character.equippedItems || [];
   const inventoryText = typeof character.inventory === 'string' ? character.inventory : '';
   const notes = character.playerNotes || '';
 
-  // Build item groups from equippedItems (catalog items) + inventory text
-  const equipped = equippedItems.filter(i => i.equipped !== false);
-  const carried  = equippedItems.filter(i => i.equipped === false && !i.consumable);
-  const consumable = equippedItems.filter(i => i.consumable);
+  // Resolve equippedItems refs against the items catalog
+  const resolvedItems = Array.isArray(character.equippedItems)
+    ? character.equippedItems
+        .map(ei => {
+          const full = items?.find(i => i.id === ei.itemId);
+          return full ? { ...full, ...ei } : (ei.name ? ei : null);
+        })
+        .filter(Boolean)
+    : [];
+
+  const equipped   = resolvedItems.filter(i => i.equipped !== false && !i.consumable);
+  const carried    = resolvedItems.filter(i => i.equipped === false && !i.consumable);
+  const consumable = resolvedItems.filter(i => i.consumable);
 
   const ItemCard = ({ item }) => (
     <div className="lrp-card" style={{ padding: '11px 13px', marginBottom: 8 }}>
@@ -94,7 +102,7 @@ export default function InventoryTab({ character }) {
         </div>
       )}
 
-      {equippedItems.length === 0 && !inventoryText && !gold && (
+      {resolvedItems.length === 0 && !inventoryText && !gold && (
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', padding: '40px 0', fontSize: 13 }}>
           No inventory recorded.
         </div>
