@@ -393,7 +393,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const handleWeaponAttack = async (weapon) => {
     const traitName = (weapon.systemData?.trait || '').toLowerCase();
     const traitMod = traits[traitName] ?? 0;
-    const baseMod = traitMod + proficiency;
+    const baseMod = traitMod;
     const baseLabel = `Attack: ${weapon.name}`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`atk-${weapon.id}`);
@@ -754,7 +754,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           const tier = getTierForLevel(level);
           const traitName = (sd.trait || '').toLowerCase();
           const traitMod = traits[traitName] ?? 0;
-          const atkModTotal = traitMod + proficiency;
+          const atkModTotal = traitMod;
           return (
             <div key={weapon.id} className="dh-weapon-card">
               <div className="dh-weapon-card-header">
@@ -795,7 +795,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                   <button
                     className={`dh-weapon-roll-btn dh-weapon-roll-atk ${rollingKey === `atk-${weapon.id}` ? 'dh-roll-flash' : ''}`}
                     onClick={() => handleWeaponAttack(weapon)}
-                    title={`Attack roll: ${sd.trait || '?'} ${formatTraitValue(atkModTotal)} (${formatTraitValue(traitMod)} + Prof +${proficiency})`}
+                    title={`Attack roll: ${sd.trait || '?'} ${formatTraitValue(atkModTotal)}`}
                   >
                     <Dices size={12} /> Attack
                   </button>
@@ -1003,7 +1003,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             const tier = getTierForLevel(level);
             const traitName = (sd.trait || '').toLowerCase();
             const traitMod = traits[traitName] ?? 0;
-            const atkModTotal = traitMod + proficiency;
+            const atkModTotal = traitMod;
             return (
               <div key={weapon.id} className="dh-equipped-item">
                 <Sword size={14} className="dh-equipped-item-icon" />
