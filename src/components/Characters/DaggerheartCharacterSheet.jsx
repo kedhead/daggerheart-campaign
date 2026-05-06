@@ -26,6 +26,19 @@ const parseDamageString = (dmgStr) => {
   };
 };
 
+// Extract the first dice expression embedded in free-form card description text.
+// Matches patterns like d8, 1d8, 2d8+3, d20+2 anywhere in the string.
+const extractCardDice = (text) => {
+  if (!text) return null;
+  const match = text.match(/(\d+)?d(\d+)(?:\+(\d+))?/);
+  if (!match) return null;
+  return {
+    quantity: parseInt(match[1] || '1', 10),
+    dieType: parseInt(match[2], 10),
+    modifier: parseInt(match[3] || '0', 10),
+  };
+};
+
 const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 };
 const DEFAULT_HP = [true, true, true, true, true, true];
 const DEFAULT_STRESS = [false, false, false, false, false, false];
@@ -414,6 +427,21 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (!parsed) return;
     const label = `Damage: ${weapon.name}`;
     flashRoll(`dmg-${weapon.id}`);
+    const result = await rollDamage({ label, ...parsed });
+    if (result) showRollResult(label, 'generic', result);
+  };
+
+  const handleSpellcastRoll = async (card) => {
+    const baseLabel = `Spellcast: ${card.name}`;
+    const { label, modifier: mod } = applyRollBonus(baseLabel, 0);
+    flashRoll(`spell-${card.name}`);
+    const result = await roll({ label, modifier: mod });
+    if (result) showRollResult(label, 'daggerheart', result);
+  };
+
+  const handleAbilityDiceRoll = async (card, parsed) => {
+    const label = `${card.name}`;
+    flashRoll(`card-${card.name}`);
     const result = await rollDamage({ label, ...parsed });
     if (result) showRollResult(label, 'generic', result);
   };
@@ -972,15 +1000,51 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               <div key={domain} className="dh-domain-cards-group">
                 <div className="dh-domain-cards-group-label">{domain}</div>
                 <div className="dh-domain-cards-grid">
-                  {cards.map(card => (
-                    <div key={card.name} className="dh-domain-card">
-                      <div className="dh-domain-card-header">
-                        <span className="dh-domain-card-name">{card.name}</span>
-                        <span className="dh-domain-card-level">Lv {card.level}</span>
+                  {cards.map(card => {
+                    const isSpell = card.type === 'Spell';
+                    const diceParsed = extractCardDice(card.description);
+                    const diceLabel = diceParsed
+                      ? `${diceParsed.quantity}d${diceParsed.dieType}${diceParsed.modifier > 0 ? `+${diceParsed.modifier}` : ''}`
+                      : null;
+                    return (
+                      <div key={card.name} className="dh-domain-card">
+                        <div className="dh-domain-card-header">
+                          <span className="dh-domain-card-name">{card.name}</span>
+                          <div className="dh-domain-card-badges">
+                            {card.type && (
+                              <span className={`dh-domain-card-type dh-card-type-${card.type.toLowerCase()}`}>
+                                {card.type}
+                              </span>
+                            )}
+                            <span className="dh-domain-card-level">Lv {card.level}</span>
+                          </div>
+                        </div>
+                        <div className="dh-domain-card-desc">{card.description}</div>
+                        {campaign?.id && (isSpell || diceLabel) && (
+                          <div className="dh-weapon-roll-row" style={{ marginTop: '0.5rem' }}>
+                            {isSpell && (
+                              <button
+                                className={`dh-weapon-roll-btn dh-ability-roll-cast ${rollingKey === `spell-${card.name}` ? 'dh-roll-flash' : ''}`}
+                                onClick={() => handleSpellcastRoll(card)}
+                                title="Spellcast Roll (2d12 — add your Spellcast trait)"
+                              >
+                                <Sparkles size={12} /> Cast
+                              </button>
+                            )}
+                            {diceLabel && (
+                              <button
+                                className={`dh-weapon-roll-btn dh-ability-roll-dice ${rollingKey === `card-${card.name}` ? 'dh-roll-flash' : ''}`}
+                                onClick={() => handleAbilityDiceRoll(card, diceParsed)}
+                                title={`Roll ${diceLabel}`}
+                              >
+                                <Dices size={12} /> {diceLabel}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div className="dh-domain-card-desc">{card.description}</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}
