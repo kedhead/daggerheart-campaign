@@ -1,7 +1,6 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { TRAIT_ABBREV, formatTraitValue } from '../../../utils/daggerheartRollUtils';
 import { getBaseProficiency } from '../../../data/systems/daggerheart';
-import { RollResultBanner } from '../../../dice';
 
 const BONUS_OPTS = [
   { key: null,        label: 'Normal',      color: '#eab308' },
@@ -21,8 +20,6 @@ const TRAIT_ORDER = ['agility', 'strength', 'finesse', 'instinct', 'presence', '
 
 export default function StatsTab({ character, rollBonus, setRollBonus, roll, campaignId }) {
   const [rollingKey, setRollingKey] = useState(null);
-  const [lastRoll, setLastRoll] = useState(null);
-  const timerRef = useRef(null);
 
   const traits = character.traits || {};
   const level = character.level || 1;
@@ -30,38 +27,25 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
   const evasion = character.evasion ?? 10;
   const thresholds = character.thresholds;
 
-  const showResult = (doc) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setLastRoll(doc);
-    timerRef.current = setTimeout(() => setLastRoll(null), 6000);
-  };
-
   const handleTraitRoll = async (traitName) => {
     if (!campaignId) return;
     const mod = traits[traitName] ?? 0;
     const bonus = rollBonus;
     if (rollBonus) setRollBonus(null);
     setRollingKey(traitName);
-    const doc = await roll({
+    await roll({
       label: traitName.charAt(0).toUpperCase() + traitName.slice(1),
       modifier: mod,
       advantage: bonus === 'advantage',
       disadvantage: bonus === 'hindrance',
     });
     setRollingKey(null);
-    if (doc) showResult(doc);
   };
 
   const experiences = character.experiences || [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {lastRoll && (
-        <div className="lrp-roll-overlay">
-          <RollResultBanner roll={lastRoll} />
-        </div>
-      )}
-
       {/* Roll modifier */}
       <div>
         <div className="lrp-section-label">Roll Modifier</div>

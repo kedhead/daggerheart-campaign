@@ -1,5 +1,4 @@
-import { useRef, useState } from 'react';
-import { RollResultBanner } from '../../../dice';
+import { useState } from 'react';
 import { TRAIT_ABBREV, getWeaponDamage, parseDamageString } from '../../../utils/daggerheartRollUtils';
 import { getFeatureName, getFeatureDescription } from '../../../utils/itemFeatures';
 import { getBaseProficiency } from '../../../data/systems/daggerheart';
@@ -25,8 +24,6 @@ function RollPill({ label, formula, onClick, kind, isRolling }) {
 
 export default function ActionsTab({ character, rollBonus, setRollBonus, roll, rollDamage, campaignId, items }) {
   const [rollingKey, setRollingKey] = useState(null);
-  const [lastRoll, setLastRoll] = useState(null);
-  const timerRef = useRef(null);
 
   const traits = character.traits || {};
   const level = character.level || 1;
@@ -42,12 +39,6 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
         .filter(item => item && item.type === 'weapon' && item.equipped !== false)
     : [];
 
-  const showResult = (doc) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setLastRoll(doc);
-    timerRef.current = setTimeout(() => setLastRoll(null), 6000);
-  };
-
   const handleWeaponAttack = async (weapon) => {
     if (!campaignId) return;
     const traitKey = (weapon.systemData?.trait || 'agility').toLowerCase();
@@ -62,7 +53,6 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
       disadvantage: bonus === 'hindrance',
     });
     setRollingKey(null);
-    if (doc) showResult(doc);
   };
 
   const handleWeaponDamage = async (weapon) => {
@@ -71,19 +61,12 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
     const parsed = dmgStr ? parseDamageString(dmgStr) : null;
     if (!parsed) return;
     setRollingKey(`dmg-${weapon.id}`);
-    const doc = await rollDamage({ label: `${weapon.name} Damage`, ...parsed });
+    await rollDamage({ label: `${weapon.name} Damage`, ...parsed });
     setRollingKey(null);
-    if (doc) showResult(doc);
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {lastRoll && (
-        <div className="lrp-roll-overlay">
-          <RollResultBanner roll={lastRoll} />
-        </div>
-      )}
-
       {/* Roll modifier */}
       <div>
         <div className="lrp-section-label">Roll Modifier</div>

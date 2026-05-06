@@ -1,7 +1,6 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { getCardByName } from '../../../data/daggerheartDomainCards';
 import { extractCardDice } from '../../../utils/daggerheartRollUtils';
-import { RollResultBanner } from '../../../dice';
 
 function parseGrimoireEntries(description) {
   // Grimoire descriptions have the form: "SpellName: text. SpellName: text."
@@ -40,8 +39,6 @@ function RollPill({ label, formula, onClick, kind }) {
 
 export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
   const [openCard, setOpenCard] = useState(null);
-  const [lastRoll, setLastRoll] = useState(null);
-  const timerRef = useRef(null);
 
   const cardNames = character.domainCards || [];
   const cards = cardNames.map(n => getCardByName(n)).filter(Boolean);
@@ -52,34 +49,20 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
 
   const domains = [character.primaryDomain, character.secondaryDomain].filter(Boolean);
 
-  const showResult = (doc) => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setLastRoll(doc);
-    timerRef.current = setTimeout(() => setLastRoll(null), 6000);
-  };
-
   const handleSpellRoll = async (card) => {
     if (!campaignId) return;
     const traits = character.traits || {};
     const best = Object.entries(traits).reduce((a, b) => b[1] > a[1] ? b : a, ['knowledge', 0]);
-    const doc = await roll({ label: `${card.name} (Spellcast)`, modifier: best[1] });
-    if (doc) showResult(doc);
+    await roll({ label: `${card.name} (Spellcast)`, modifier: best[1] });
   };
 
   const handleDiceRoll = async (card, parsed) => {
     if (!campaignId || !parsed) return;
-    const doc = await rollDamage({ label: card.name, ...parsed });
-    if (doc) showResult(doc);
+    await rollDamage({ label: card.name, ...parsed });
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {lastRoll && (
-        <div className="lrp-roll-overlay">
-          <RollResultBanner roll={lastRoll} />
-        </div>
-      )}
-
       {/* Domain chips */}
       <div>
         <div className="lrp-section-label">Domains</div>

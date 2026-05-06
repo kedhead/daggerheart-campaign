@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft } from 'lucide-react';
-import { useDice } from '../../dice';
+import { useDice, DiceTray } from '../../dice';
 import PortalSlotTracker from './PortalSlotTracker';
 import ActionsTab from './tabs/ActionsTab';
 import SpellsTab from './tabs/SpellsTab';
@@ -187,6 +187,7 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
 
         </div>
       </div>
+      <DiceTray campaignId={campaignId} />
     </div>
   );
 }
