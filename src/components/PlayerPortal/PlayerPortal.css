@@ -1,0 +1,601 @@
+/* ── Player Portal ── full-screen focused character mode ─────────────────── */
+
+.lrp-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--bg, #0c0e16);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-body, sans-serif);
+}
+
+/* Scrollable content region — leaves room for fixed header + nav */
+.lrp-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+}
+
+.lrp-content-inner {
+  padding: 16px;
+}
+
+@media (min-width: 901px) {
+  .lrp-content-inner {
+    max-width: 520px;
+    margin: 0 auto;
+  }
+}
+
+/* ── Header bar ──────────────────────────────────────────────────────────── */
+.lrp-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 8px 16px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  background: rgba(12, 14, 22, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+}
+
+.lrp-header-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #e2e8f0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+}
+
+.lrp-header-subtitle {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lrp-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line, rgba(255,255,255,0.08));
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.lrp-icon-btn:active {
+  background: var(--surface-hi, rgba(255,255,255,0.08));
+  color: var(--text, #e2e8f0);
+}
+
+/* ── Bottom portal nav ───────────────────────────────────────────────────── */
+.lrp-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  background: rgba(12, 14, 22, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.lrp-nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 4px 10px;
+  min-height: 56px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body, sans-serif);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ── Slot tracker ────────────────────────────────────────────────────────── */
+.lrp-slots-section {
+  margin-bottom: 20px;
+}
+
+.lrp-slots-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.lrp-slots-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+}
+
+.lrp-slots-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, #94a3b8);
+}
+
+.lrp-slots-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lrp-slot {
+  width: 48px;
+  height: 48px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lrp-slot:active {
+  transform: scale(0.9);
+}
+
+/* When a slot is "used" (marked) — show an X */
+.lrp-slot.lrp-slot-marked::after {
+  content: '×';
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+/* ── Trait roll buttons ───────────────────────────────────────────────────── */
+.lrp-traits-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 360px) {
+  .lrp-traits-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.lrp-trait-btn {
+  min-height: 64px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  border: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+  background: var(--surface, rgba(255,255,255,0.04));
+  color: var(--text, #e2e8f0);
+  padding: 8px 4px;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  font-family: var(--font-body, sans-serif);
+}
+
+.lrp-trait-btn:active,
+.lrp-trait-btn.lrp-rolling {
+  background: var(--primary-soft, rgba(99, 102, 241, 0.2));
+  border-color: var(--primary, #6366f1);
+  transform: scale(0.96);
+}
+
+.lrp-trait-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+}
+
+.lrp-trait-mod {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--text, #e2e8f0);
+}
+
+/* ── Roll result overlay ─────────────────────────────────────────────────── */
+.lrp-roll-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+  background: rgba(12, 14, 22, 0.97);
+  border-bottom: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: lrp-slide-in 0.2s ease;
+}
+
+@keyframes lrp-slide-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+/* ── Domain card accordion ───────────────────────────────────────────────── */
+.lrp-card-item {
+  border: 1px solid var(--line, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  background: var(--surface, rgba(255,255,255,0.03));
+}
+
+.lrp-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  min-height: 52px;
+}
+
+.lrp-card-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #e2e8f0);
+}
+
+.lrp-card-tag {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 99px;
+  border: 1px solid currentColor;
+}
+
+.lrp-card-body {
+  padding: 0 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lrp-card-desc {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted, #94a3b8);
+}
+
+.lrp-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Primary action button ───────────────────────────────────────────────── */
+.lrp-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  min-height: 40px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-body, sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.lrp-action-btn:active { transform: scale(0.96); }
+
+.lrp-action-btn-primary {
+  background: var(--primary, #6366f1);
+  color: #fff;
+}
+
+.lrp-action-btn-secondary {
+  background: var(--surface-hi, rgba(255,255,255,0.08));
+  color: var(--text, #e2e8f0);
+  border: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+}
+
+/* ── Weapon card ─────────────────────────────────────────────────────────── */
+.lrp-weapon-card {
+  border: 1px solid var(--line, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  background: var(--surface, rgba(255,255,255,0.03));
+}
+
+.lrp-weapon-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #e2e8f0);
+  margin-bottom: 6px;
+}
+
+.lrp-weapon-meta {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lrp-weapon-meta span {
+  background: var(--surface-hi, rgba(255,255,255,0.06));
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* ── Character select screen ─────────────────────────────────────────────── */
+.lrp-select-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line, rgba(255,255,255,0.08));
+  border-radius: 14px;
+  background: var(--surface, rgba(255,255,255,0.03));
+  cursor: pointer;
+  transition: all 0.18s ease;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  margin-bottom: 12px;
+  width: 100%;
+  text-align: left;
+}
+
+.lrp-select-card:active {
+  transform: scale(0.98);
+  border-color: var(--primary, #6366f1);
+  background: var(--primary-soft, rgba(99,102,241,0.08));
+}
+
+.lrp-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface-hi, rgba(255,255,255,0.08));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary, #6366f1);
+}
+
+.lrp-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── Stat chips ──────────────────────────────────────────────────────────── */
+.lrp-stat-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.lrp-stat-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line, rgba(255,255,255,0.08));
+  background: var(--surface, rgba(255,255,255,0.03));
+  min-width: 56px;
+}
+
+.lrp-stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text, #e2e8f0);
+  line-height: 1;
+}
+
+.lrp-stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  margin-top: 2px;
+}
+
+/* ── Inventory ────────────────────────────────────────────────────────────── */
+.lrp-inventory-section {
+  margin-bottom: 20px;
+}
+
+.lrp-section-heading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line, rgba(255,255,255,0.06));
+}
+
+.lrp-equipped-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line, rgba(255,255,255,0.05));
+  font-size: 13px;
+  color: var(--text, #e2e8f0);
+}
+
+.lrp-inventory-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted, #94a3b8);
+  white-space: pre-wrap;
+  padding: 10px;
+  background: var(--surface, rgba(255,255,255,0.02));
+  border-radius: 8px;
+  border: 1px solid var(--line, rgba(255,255,255,0.06));
+}
+
+.lrp-gold-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #eab308;
+  padding: 10px 0;
+}
+
+.lrp-notes-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted, #94a3b8);
+  white-space: pre-wrap;
+}
+
+/* ── Slayer dice counter ─────────────────────────────────────────────────── */
+.lrp-slayer-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  background: var(--surface, rgba(255,255,255,0.03));
+  border: 1px solid var(--line, rgba(255,255,255,0.08));
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.lrp-slayer-label {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+}
+
+.lrp-slayer-count {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text, #e2e8f0);
+  min-width: 32px;
+  text-align: center;
+}
+
+.lrp-stepper-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+  background: var(--surface-hi, rgba(255,255,255,0.06));
+  color: var(--text, #e2e8f0);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: all 0.15s;
+}
+
+.lrp-stepper-btn:active { transform: scale(0.9); }
+
+/* ── Bonus toggle ────────────────────────────────────────────────────────── */
+.lrp-bonus-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.lrp-bonus-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong, rgba(255,255,255,0.12));
+  background: var(--surface, rgba(255,255,255,0.03));
+  color: var(--text-muted, #94a3b8);
+  font-family: var(--font-body, sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lrp-bonus-btn.active-advantage {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: #34d399;
+  color: #34d399;
+}
+
+.lrp-bonus-btn.active-hindrance {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: #f87171;
+  color: #f87171;
+}

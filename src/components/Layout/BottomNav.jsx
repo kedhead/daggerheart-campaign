@@ -1,13 +1,20 @@
-import { Home, User, BookOpen, MoreHorizontal } from 'lucide-react';
+import { Home, User, BookOpen, MoreHorizontal, Compass } from 'lucide-react';
 
-const TABS = [
-  { id: 'dashboard', label: 'Home', icon: Home, action: 'view' },
-  { id: 'my-sheet', label: 'Sheet', icon: User, action: 'view' },
-  { id: 'lore', label: 'Lore', icon: BookOpen, action: 'view' },
-  { id: 'more', label: 'More', icon: MoreHorizontal, action: 'more' },
+const BASE_TABS = [
+  { id: 'dashboard', label: 'Home',  icon: Home,          action: 'view' },
+  { id: 'my-sheet',  label: 'Sheet', icon: User,          action: 'view' },
+  { id: 'lore',      label: 'Lore',  icon: BookOpen,      action: 'view' },
 ];
 
-export default function BottomNav({ currentView, setCurrentView, onMore }) {
+const MORE_TAB    = { id: 'more',   label: 'More',   icon: MoreHorizontal, action: 'more'   };
+const PORTAL_TAB  = { id: 'portal', label: 'Portal', icon: Compass,        action: 'portal' };
+
+export default function BottomNav({ currentView, setCurrentView, onMore, isDM, isDaggerheart, onEnterPortal }) {
+  const tabs = [
+    ...BASE_TABS,
+    (!isDM && isDaggerheart) ? PORTAL_TAB : MORE_TAB,
+  ];
+
   return (
     <nav
       className="lr-mobile-only lr-bottom-nav"
@@ -29,12 +36,13 @@ export default function BottomNav({ currentView, setCurrentView, onMore }) {
         fontFamily: 'var(--font-body)',
       }}
     >
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = tab.action === 'view' && currentView === tab.id;
         const handleClick = () => {
-          if (tab.action === 'view') setCurrentView?.(tab.id);
-          else if (tab.action === 'more') onMore?.();
+          if (tab.action === 'view')   setCurrentView?.(tab.id);
+          else if (tab.action === 'more')   onMore?.();
+          else if (tab.action === 'portal') onEnterPortal?.();
         };
         return (
           <button
