@@ -49,6 +49,7 @@ import { usePresence } from './hooks/usePresence';
 import { getGameSystem } from './data/systems/index.js';
 import TopBar from './components/Layout/TopBar';
 import BottomNav from './components/Layout/BottomNav';
+import PlayerPortalView from './components/PlayerPortal/PlayerPortalView';
 import './App.css';
 
 function CampaignApp() {
@@ -62,6 +63,17 @@ function CampaignApp() {
     localStorage.getItem('lastCampaignId') || null
   );
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [playerPortalMode, setPlayerPortalMode] = useState(
+    () => localStorage.getItem('lrPlayerPortalMode') === 'true'
+  );
+
+  const handleTogglePortal = () => {
+    setPlayerPortalMode(prev => {
+      const next = !prev;
+      localStorage.setItem('lrPlayerPortalMode', next ? 'true' : 'false');
+      return next;
+    });
+  };
 
   const {
     campaign,
@@ -247,6 +259,22 @@ function CampaignApp() {
     campaign?.createdBy === currentUser?.uid ||
     campaignRole === 'dm' ||
     (campaign && !campaign.dmId); // If no dmId at all, assume DM for backwards compatibility
+
+  const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
+
+  // Render Player Portal when active (replaces full layout)
+  if (playerPortalMode && !isDM && isDaggerheart && !loading) {
+    return (
+      <PlayerPortalView
+        characters={characters}
+        currentUserId={currentUser.uid}
+        campaign={campaign}
+        updateCharacter={updateCharacter}
+        items={items}
+        onExit={handleTogglePortal}
+      />
+    );
+  }
 
   const renderView = () => {
     if (loading) {
@@ -696,8 +724,6 @@ function CampaignApp() {
   };
 
   // Check if current campaign supports the rules chat widget
-  // Default to daggerheart if gameSystem is missing (legacy support)
-  const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
   const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
   const hasChatBot = isDaggerheart || isStarWarsD6;
 
@@ -741,6 +767,9 @@ function CampaignApp() {
         currentView={currentView}
         setCurrentView={setCurrentView}
         onMore={() => window.dispatchEvent(new CustomEvent('lr-open-sidebar'))}
+        isDM={isDM}
+        isDaggerheart={isDaggerheart}
+        onEnterPortal={handleTogglePortal}
       />
 
       {hasChatBot && (

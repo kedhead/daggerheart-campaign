@@ -93,7 +93,10 @@
       "Bash(python)",
       "Bash(pip install *)",
       "Bash(python scripts/generate-rune-atlas.py)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "Bash(cp \"/root/.claude/projects/-home-user-daggerheart-campaign/2e8314c8-5bdd-4794-a235-5454a9584707/tool-results/webfetch-1778091312320-7e75mn.bin\" /tmp/lorelich_design.gz)",
+      "Bash(gunzip -f /tmp/lorelich_design.gz)",
+      "Read(//tmp/**)"
     ],
     "deny": [],
     "ask": []
