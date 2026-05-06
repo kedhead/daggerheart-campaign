@@ -661,6 +661,25 @@
   font-style: italic;
 }
 
+.dh-item-custom-features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.3rem;
+  padding-left: 1.5rem;
+}
+
+.dh-item-custom-feature {
+  font-size: 0.65rem;
+  color: rgba(167, 139, 250, 0.85);
+  line-height: 1.4;
+}
+
+.dh-item-custom-feature-name {
+  font-weight: 700;
+  color: #a78bfa;
+}
+
 /* ===== Slot Buttons ===== */
 .dh-slot {
   width: 28px;

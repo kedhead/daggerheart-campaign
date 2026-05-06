@@ -393,7 +393,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const handleWeaponAttack = async (weapon) => {
     const traitName = (weapon.systemData?.trait || '').toLowerCase();
     const traitMod = traits[traitName] ?? 0;
-    const baseMod = traitMod + proficiency;
+    const baseMod = traitMod;
     const baseLabel = `Attack: ${weapon.name}`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`atk-${weapon.id}`);
@@ -754,7 +754,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           const tier = getTierForLevel(level);
           const traitName = (sd.trait || '').toLowerCase();
           const traitMod = traits[traitName] ?? 0;
-          const atkModTotal = traitMod + proficiency;
+          const atkModTotal = traitMod;
           return (
             <div key={weapon.id} className="dh-weapon-card">
               <div className="dh-weapon-card-header">
@@ -773,18 +773,23 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                 <div className="dh-weapon-features">
                   {sd.features.map((f, i) => {
                     const fname = getFeatureName(f);
-                    const fdesc = getFeatureDescription(f);
                     if (!fname) return null;
                     return (
-                      <span
-                        key={i}
-                        className="dh-weapon-feature-badge"
-                        title={fdesc || undefined}
-                      >
+                      <span key={i} className="dh-weapon-feature-badge">
                         {fname}
                       </span>
                     );
                   })}
+                </div>
+              )}
+              {sd.features?.some(f => getFeatureDescription(f)) && (
+                <div className="dh-item-custom-features">
+                  {sd.features.filter(f => getFeatureDescription(f)).map((f, i) => (
+                    <div key={i} className="dh-item-custom-feature">
+                      <span className="dh-item-custom-feature-name">{getFeatureName(f)}:</span>
+                      {' '}{getFeatureDescription(f)}
+                    </div>
+                  ))}
                 </div>
               )}
               {weapon.description && (
@@ -795,7 +800,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                   <button
                     className={`dh-weapon-roll-btn dh-weapon-roll-atk ${rollingKey === `atk-${weapon.id}` ? 'dh-roll-flash' : ''}`}
                     onClick={() => handleWeaponAttack(weapon)}
-                    title={`Attack roll: ${sd.trait || '?'} ${formatTraitValue(atkModTotal)} (${formatTraitValue(traitMod)} + Prof +${proficiency})`}
+                    title={`Attack roll: ${sd.trait || '?'} ${formatTraitValue(atkModTotal)}`}
                   >
                     <Dices size={12} /> Attack
                   </button>
@@ -1003,7 +1008,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             const tier = getTierForLevel(level);
             const traitName = (sd.trait || '').toLowerCase();
             const traitMod = traits[traitName] ?? 0;
-            const atkModTotal = traitMod + proficiency;
+            const atkModTotal = traitMod;
             return (
               <div key={weapon.id} className="dh-equipped-item">
                 <Sword size={14} className="dh-equipped-item-icon" />
@@ -1017,7 +1022,30 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                     {sd.range && <span>{sd.range}</span>}
                     {dmg && <span>{dmg}</span>}
                     {sd.damageType && <span>{sd.damageType}</span>}
+                    {sd.burden && <span>{sd.burden}</span>}
                   </div>
+                  {sd.features?.length > 0 && (
+                    <div className="dh-weapon-features">
+                      {sd.features.map((f, i) => {
+                        const fname = getFeatureName(f);
+                        if (!fname) return null;
+                        return <span key={i} className="dh-weapon-feature-badge">{fname}</span>;
+                      })}
+                    </div>
+                  )}
+                  {sd.features?.some(f => getFeatureDescription(f)) && (
+                    <div className="dh-item-custom-features">
+                      {sd.features.filter(f => getFeatureDescription(f)).map((f, i) => (
+                        <div key={i} className="dh-item-custom-feature">
+                          <span className="dh-item-custom-feature-name">{getFeatureName(f)}:</span>
+                          {' '}{getFeatureDescription(f)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {weapon.description && (
+                    <div className="dh-weapon-description">{weapon.description}</div>
+                  )}
                   {campaign?.id && (
                     <div className="dh-weapon-roll-row" style={{ marginTop: '0.4rem' }}>
                       <button
@@ -1062,8 +1090,29 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                   <div className="dh-equipped-item-stats">
                     {sd.armorScore != null && <span>Score {sd.armorScore}</span>}
                     {sd.armorSlots != null && <span>{sd.armorSlots} slots</span>}
-                    {sd.features?.length > 0 && <span>{featureNameList(sd.features).join(', ')}</span>}
                   </div>
+                  {sd.features?.length > 0 && (
+                    <div className="dh-weapon-features">
+                      {sd.features.map((f, i) => {
+                        const fname = getFeatureName(f);
+                        if (!fname) return null;
+                        return <span key={i} className="dh-weapon-feature-badge">{fname}</span>;
+                      })}
+                    </div>
+                  )}
+                  {sd.features?.some(f => getFeatureDescription(f)) && (
+                    <div className="dh-item-custom-features">
+                      {sd.features.filter(f => getFeatureDescription(f)).map((f, i) => (
+                        <div key={i} className="dh-item-custom-feature">
+                          <span className="dh-item-custom-feature-name">{getFeatureName(f)}:</span>
+                          {' '}{getFeatureDescription(f)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {armor.description && (
+                    <div className="dh-weapon-description">{armor.description}</div>
+                  )}
                 </div>
               </div>
             );
@@ -1080,9 +1129,31 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             return (
               <div key={eq.id} className="dh-equipped-item">
                 <Star size={14} className="dh-equipped-item-icon" />
-                <div>
+                <div style={{ flex: 1 }}>
                   <div className="dh-equipped-item-name">{eq.name}</div>
                   {sd.mechanicalEffect && <div className="dh-equipped-item-stats">{sd.mechanicalEffect}</div>}
+                  {sd.features?.length > 0 && (
+                    <div className="dh-weapon-features">
+                      {sd.features.map((f, i) => {
+                        const fname = getFeatureName(f);
+                        if (!fname) return null;
+                        return <span key={i} className="dh-weapon-feature-badge">{fname}</span>;
+                      })}
+                    </div>
+                  )}
+                  {sd.features?.some(f => getFeatureDescription(f)) && (
+                    <div className="dh-item-custom-features">
+                      {sd.features.filter(f => getFeatureDescription(f)).map((f, i) => (
+                        <div key={i} className="dh-item-custom-feature">
+                          <span className="dh-item-custom-feature-name">{getFeatureName(f)}:</span>
+                          {' '}{getFeatureDescription(f)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {eq.description && (
+                    <div className="dh-weapon-description">{eq.description}</div>
+                  )}
                 </div>
               </div>
             );
