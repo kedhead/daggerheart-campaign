@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { TRAIT_ABBREV, formatTraitValue } from '../../../utils/daggerheartRollUtils';
-import { getBaseProficiency } from '../../../data/systems/daggerheart';
+import { TRAIT_ABBREV } from '../../../utils/daggerheartRollUtils';
+import { DAGGERHEART_ARMOR } from '../../../data/daggerheartItems';
 
 const BONUS_OPTS = [
   { key: null,        label: 'Normal',      color: '#eab308' },
@@ -18,14 +18,48 @@ const TRAIT_FLAVOR = {
 };
 const TRAIT_ORDER = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'];
 
-export default function StatsTab({ character, rollBonus, setRollBonus, roll, campaignId }) {
+// Resolve armor base thresholds from item systemData or name-match fallback
+function resolveArmorBases(armorItem) {
+  if (!armorItem) return null;
+  const t = armorItem.systemData?.thresholds;
+  if (t && (t.minor > 0 || t.major > 0)) return { major: t.minor || 0, severe: t.major || 0 };
+  if (armorItem.name) {
+    const match = DAGGERHEART_ARMOR.find(a => a.name.toLowerCase() === armorItem.name.toLowerCase());
+    if (match?.systemData?.thresholds) {
+      return { major: match.systemData.thresholds.minor || 0, severe: match.systemData.thresholds.major || 0 };
+    }
+  }
+  return null;
+}
+
+export default function StatsTab({ character, rollBonus, setRollBonus, roll, campaignId, items }) {
   const [rollingKey, setRollingKey] = useState(null);
 
   const traits = character.traits || {};
   const level = character.level || 1;
-  const proficiency = character.proficiency || getBaseProficiency(level);
   const evasion = character.evasion ?? 10;
-  const thresholds = character.thresholds;
+
+  // Calculate damage thresholds using same fallback chain as main sheet
+  const equippedArmor = Array.isArray(character.equippedItems)
+    ? character.equippedItems
+        .map(ei => items?.find(i => i.id === ei.itemId) ? { ...items.find(i => i.id === ei.itemId), ...ei } : null)
+        .find(item => item?.type === 'armor' && item?.equipped !== false)
+    : null;
+
+  const manual = character.hpThresholds || {};
+  const armorBases = resolveArmorBases(equippedArmor);
+  let majorThreshold, severeThreshold;
+  if (armorBases && (armorBases.major > 0 || armorBases.severe > 0)) {
+    majorThreshold = armorBases.major > 0 ? armorBases.major + level : 0;
+    severeThreshold = armorBases.severe > 0 ? armorBases.severe + level : 0;
+  } else if (manual.major > 0 || manual.severe > 0) {
+    majorThreshold = manual.major || 0;
+    severeThreshold = manual.severe || 0;
+  } else {
+    // Gambeson (tier 1) baseline — always show something
+    majorThreshold = 5 + level;
+    severeThreshold = 11 + level;
+  }
 
   const handleTraitRoll = async (traitName) => {
     if (!campaignId) return;
@@ -86,49 +120,41 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
         </div>
       </div>
 
-      {/* Evasion + Proficiency */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <div className="lrp-card">
+      {/* Evasion (solo — proficiency removed, it's folded into attack rolls) */}
+      <div>
+        <div className="lrp-card" style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 110 }}>
           <div style={{ fontSize: 10, color: '#60a5fa', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 800 }}>Evasion</div>
           <div className="lrp-cinzel" style={{ fontSize: 36, fontWeight: 900, color: '#fdf6dc', lineHeight: 1, marginTop: 6 }}>
             {evasion}
           </div>
         </div>
-        <div className="lrp-card">
-          <div style={{ fontSize: 10, color: '#60a5fa', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 800 }}>Proficiency</div>
-          <div className="lrp-cinzel" style={{ fontSize: 36, fontWeight: 900, color: '#fdf6dc', lineHeight: 1, marginTop: 6 }}>
-            +{proficiency}
+      </div>
+
+      {/* Damage thresholds — always shown */}
+      <div>
+        <div className="lrp-section-label">Damage Thresholds</div>
+        <div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ textAlign: 'center', minWidth: 50 }}>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700 }}>Minor</div>
+              <div className="lrp-cinzel" style={{ fontSize: 18, color: '#fdf6dc', fontWeight: 800, marginTop: 2 }}>1 HP</div>
+            </div>
+            <div style={{ flex: 1, height: 2, background: 'linear-gradient(90deg, #22c55e, #eab308)', margin: '0 8px', borderRadius: 1 }} />
+            <div style={{ textAlign: 'center', minWidth: 50 }}>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700 }}>Major</div>
+              <div className="lrp-cinzel" style={{ fontSize: 22, color: '#fdf6dc', fontWeight: 800, marginTop: 2 }}>{majorThreshold}</div>
+            </div>
+            <div style={{ flex: 1, height: 2, background: 'linear-gradient(90deg, #eab308, #ef4444)', margin: '0 8px', borderRadius: 1 }} />
+            <div style={{ textAlign: 'center', minWidth: 50 }}>
+              <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700 }}>Severe</div>
+              <div className="lrp-cinzel" style={{ fontSize: 22, color: '#fdf6dc', fontWeight: 800, marginTop: 2 }}>{severeThreshold}</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 12, lineHeight: 1.45 }}>
+            Damage at or above each threshold marks <span style={{ color: '#f5c543' }}>1 / 2 / 3</span> HP.
           </div>
         </div>
       </div>
-
-      {/* Damage thresholds */}
-      {thresholds && (
-        <div>
-          <div className="lrp-section-label">Damage Thresholds</div>
-          <div style={{ padding: '14px 16px', borderRadius: 14, background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ textAlign: 'center', minWidth: 50 }}>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700 }}>Minor</div>
-                <div className="lrp-cinzel" style={{ fontSize: 18, color: '#fdf6dc', fontWeight: 800, marginTop: 2 }}>1 HP</div>
-              </div>
-              <div style={{ flex: 1, height: 2, background: 'linear-gradient(90deg, #22c55e, #eab308)', margin: '0 8px', borderRadius: 1 }} />
-              <div style={{ textAlign: 'center', minWidth: 50 }}>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700 }}>Major</div>
-                <div className="lrp-cinzel" style={{ fontSize: 22, color: '#fdf6dc', fontWeight: 800, marginTop: 2 }}>{thresholds.major}</div>
-              </div>
-              <div style={{ flex: 1, height: 2, background: 'linear-gradient(90deg, #eab308, #ef4444)', margin: '0 8px', borderRadius: 1 }} />
-              <div style={{ textAlign: 'center', minWidth: 50 }}>
-                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700 }}>Severe</div>
-                <div className="lrp-cinzel" style={{ fontSize: 22, color: '#fdf6dc', fontWeight: 800, marginTop: 2 }}>{thresholds.severe}</div>
-              </div>
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 12, lineHeight: 1.45 }}>
-              Damage at or above each threshold marks <span style={{ color: '#f5c543' }}>1 / 2 / 3</span> HP.
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Experiences */}
       {experiences.length > 0 && (
