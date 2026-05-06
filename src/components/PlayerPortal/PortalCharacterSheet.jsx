@@ -55,7 +55,7 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
 
   const armorName = character.armorName || (character.armorItems?.[0]?.name) || '';
 
-  const tabProps = { character, roll, rollDamage, campaignId, rollBonus, setRollBonus, items };
+  const tabProps = { character, roll, rollDamage, campaignId, rollBonus, setRollBonus, items, updateCharacter };
 
   return (
     <div className="lrp-portal">
