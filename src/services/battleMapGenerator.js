@@ -20,7 +20,7 @@ export async function generateBattleMap(options) {
   const {
     prompt,
     type = 'battle-map',
-    model = 'dall-e-3',  // Default to DALL-E 3 (direct OpenAI, faster than 1min.ai)
+    model = 'gpt-image-1',  // Default to gpt-image-1 (direct OpenAI, faster than 1min.ai)
     size = '1792x1024',  // Default to widescreen landscape for all maps
     style = 'vivid',
     animated = false

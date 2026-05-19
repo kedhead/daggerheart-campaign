@@ -43,8 +43,7 @@ export default function GenerateChapterModal({
   const [styleKey, setStyleKey] = useState(defaultStyle);
   const [styleCustom, setStyleCustom] = useState(defaultCustom);
   // Default to nano-banana-2 (Gemini 2.5 Flash Image v2) since it accepts the
-  // original character portraits as references and preserves likeness far
-  // better than DALL-E 3's describe-then-redraw.
+  // original character portraits as references and preserves likeness.
   const [imageModel, setImageModel] = useState('nano-banana-2');
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(null);
@@ -188,7 +187,6 @@ export default function GenerateChapterModal({
                 <option value="gpt-image-2">OpenAI gpt-image-2 — uses portraits as references</option>
                 <option value="gpt-image-1">OpenAI gpt-image-1 — uses portraits as references</option>
                 <option value="flux-pro">Flux 1.1 Pro — fast, stylised</option>
-                <option value="">DALL-E 3 — describe-then-redraw (fallback)</option>
               </select>
               <p className="text-[11px] text-white/40">
                 {imageModel === 'nano-banana-2'
@@ -201,7 +199,7 @@ export default function GenerateChapterModal({
                   ? 'Original OpenAI gpt-image-1 with portrait references. Requires a verified OpenAI organisation.'
                   : imageModel === 'flux-pro'
                   ? 'Flux 1.1 Pro via Replicate — stylised but text-only (no reference images).'
-                  : 'DALL-E 3 with describe-then-redraw — preserves likeness via a vision description, not the original portrait.'}
+                  : ''}
               </p>
             </div>
           )}

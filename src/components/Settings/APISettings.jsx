@@ -311,7 +311,7 @@ export default function APISettings({ userId, userRole, onChangeUserRole }) {
           <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
             <strong>Available:</strong>
             {sharedConfig?.hasAnthropicKey && <span style={{ marginLeft: '0.5rem' }}>Anthropic (Claude)</span>}
-            {sharedConfig?.hasOpenaiKey && <span style={{ marginLeft: '0.5rem' }}>OpenAI (GPT-4 + DALL-E)</span>}
+            {sharedConfig?.hasOpenaiKey && <span style={{ marginLeft: '0.5rem' }}>OpenAI (GPT-4 + gpt-image-1)</span>}
           </div>
 
           <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>

@@ -255,7 +255,6 @@ export default function ChapterEditor({
               <option value="gpt-image-2">OpenAI gpt-image-2 — references portraits</option>
               <option value="gpt-image-1">OpenAI gpt-image-1 — references portraits</option>
               <option value="flux-pro">Flux 1.1 Pro — stylised, no references</option>
-              <option value="">DALL-E 3 — describe-then-redraw</option>
             </select>
           </div>
 

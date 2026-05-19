@@ -1,6 +1,6 @@
 /**
  * Map Generator Service
- * Generates maps using AI - descriptions with Claude/GPT, images with DALL-E
+ * Generates maps using AI - descriptions with Claude/GPT, images with gpt-image-1
  */
 
 import { aiService } from './aiService';
@@ -17,7 +17,7 @@ import { aiService } from './aiService';
  * @param {string} gameSystem - The game system ID
  * @param {string} mapType - Type of map (world, regional, local, dungeon)
  * @param {string} customStyle - Optional custom style keywords to add
- * @returns {object} Style instructions and DALL-E prompt
+ * @returns {object} Style instructions and image prompt
  */
 function getMapStyle(gameSystem, mapType, customStyle = null) {
   if (gameSystem === 'starwarsd6') {
@@ -54,7 +54,7 @@ function getMapStyle(gameSystem, mapType, customStyle = null) {
     };
   }
 
-  // Legibility rules appended to all DALL-E prompts
+  // Legibility rules appended to all image prompts
   const legibility = '. CRITICAL: all location names and labels must be rendered in LARGE, BOLD, clearly legible text. Use high contrast dark text on light areas or white text on dark areas. Every place name must be easy to read at a glance. Minimal decorative text - prioritize readability over ornamentation.';
 
   // Default Tolkien aesthetic used when no custom style is selected
@@ -314,8 +314,8 @@ async function downloadImageAsDataUrl(imageUrl) {
 }
 
 /**
- * Generate a map image using DALL-E
- * @param {string} prompt - DALL-E prompt
+ * Generate a map image using gpt-image-1
+ * @param {string} prompt - Image prompt
  * @param {string} apiKey - OpenAI API key
  * @returns {Promise<string>} Image data URL (base64)
  */
@@ -341,6 +341,9 @@ async function generateMapImage(prompt, apiKey) {
   const imageUrl = data.imageUrl;
   if (!imageUrl) throw new Error('No image URL returned from map generation');
 
+  // gpt-image-1 returns base64 as a data URL — skip the download round-trip
+  if (imageUrl.startsWith('data:')) return imageUrl;
+
   // Download and convert to data URL so it doesn't expire
   console.log('Downloading map image to convert to data URL...');
   const dataUrl = await downloadImageAsDataUrl(imageUrl);
@@ -354,8 +357,8 @@ async function generateMapImage(prompt, apiKey) {
  * @param {object} context - Map context
  * @param {string} apiKey - API key for description
  * @param {string} provider - Provider for description (anthropic/openai)
- * @param {string} openaiKey - Optional OpenAI key for DALL-E
- * @param {boolean} generateImage - Whether to generate image with DALL-E
+ * @param {string} openaiKey - Optional OpenAI key for image generation
+ * @param {boolean} generateImage - Whether to generate image with gpt-image-1
  * @returns {Promise<object>} Complete map data
  */
 export async function generateMap(context, apiKey, provider, openaiKey = null, generateImage = false) {
@@ -385,9 +388,9 @@ export async function generateMap(context, apiKey, provider, openaiKey = null, g
 
     // Generate image if requested (backend uses server key if no client key provided)
     if (generateImage && mapDescription.dallePrompt) {
-      console.log('Generating map image with DALL-E...');
+      console.log('Generating map image with gpt-image-1...');
       try {
-        // Enrich DALL-E prompt with campaign-specific location names for legibility
+        // Enrich image prompt with campaign-specific location names for legibility
         let enrichedPrompt = mapDescription.dallePrompt;
         const placements = mapDescription.locationPlacements || [];
         if (placements.length > 0) {

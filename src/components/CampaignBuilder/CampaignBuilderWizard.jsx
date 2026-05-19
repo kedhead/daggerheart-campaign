@@ -121,7 +121,7 @@ export default function CampaignBuilderWizard({
         return;
       }
 
-      // Get OpenAI key for portrait generation (DALL-E)
+      // Get OpenAI key for portrait generation (gpt-image-1)
       const openaiEffective = getEffectiveKey('openai');
       const openaiKey = openaiEffective.key;
 

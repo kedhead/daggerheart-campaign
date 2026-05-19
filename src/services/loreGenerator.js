@@ -1,6 +1,6 @@
 /**
  * Lore Generator Service
- * Generates thematic visuals for lore entries using DALL-E
+ * Generates thematic visuals for lore entries using gpt-image-1
  */
 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -31,7 +31,7 @@ async function downloadImageAsDataUrl(imageUrl) {
 }
 
 /**
- * Generate a lore visual using DALL-E via backend proxy
+ * Generate a lore visual using gpt-image-1 via backend proxy
  */
 async function generateLoreVisual(prompt, apiKey) {
     const response = await fetch('/api/generate-image', {
@@ -48,13 +48,16 @@ async function generateLoreVisual(prompt, apiKey) {
     const data = await response.json();
     const imageUrl = data.imageUrl;
 
-    console.log('Downloading DALL-E lore visual to convert to data URL...');
+    // gpt-image-1 returns base64 as a data URL — skip the download round-trip
+    if (imageUrl && imageUrl.startsWith('data:')) return imageUrl;
+
+    console.log('Downloading lore visual to convert to data URL...');
     const dataUrl = await downloadImageAsDataUrl(imageUrl);
     return dataUrl;
 }
 
 /**
- * Build a DALL-E prompt for a Lore entry
+ * Build an image prompt for a Lore entry
  */
 function buildLorePrompt(lore, gameSystem = 'daggerheart') {
     const { title, content, type } = lore;

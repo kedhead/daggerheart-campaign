@@ -1,6 +1,6 @@
 /**
  * Portrait Generator Service
- * Generates character portraits using DALL-E
+ * Generates character portraits using OpenAI gpt-image-1
  */
 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -9,7 +9,7 @@ import { ANCESTRIES } from '../data/systems/daggerheart';
 
 /**
  * Visual appearance hints for Daggerheart ancestries.
- * Used to enrich DALL-E prompts so the AI knows what each fantasy race looks like.
+ * Used to enrich image prompts so the AI knows what each fantasy race looks like.
  */
 export const ANCESTRY_VISUAL_HINTS = {
   'Clank': 'a mechanical automaton made of gears, brass, and enchanted metal plates, with glowing eyes and articulated joints. NOT organic, NOT human-skinned',
@@ -64,8 +64,8 @@ async function downloadImageAsDataUrl(imageUrl) {
 }
 
 /**
- * Generate a portrait image using DALL-E via the backend proxy
- * @param {string} prompt - DALL-E prompt
+ * Generate a portrait image using gpt-image-1 via the backend proxy
+ * @param {string} prompt - Image prompt
  * @param {string} [apiKey] - Optional OpenAI API key; server uses OPENAI_API_KEY env var if omitted
  * @returns {Promise<string>} Image data URL (base64)
  */
@@ -84,8 +84,11 @@ async function generatePortraitImage(prompt, apiKey) {
   const data = await response.json();
   const imageUrl = data.imageUrl;
 
+  // gpt-image-1 returns base64 as a data URL — skip the download round-trip
+  if (imageUrl && imageUrl.startsWith('data:')) return imageUrl;
+
   // Download and convert to data URL so it doesn't expire
-  console.log('Downloading DALL-E portrait to convert to data URL...');
+  console.log('Downloading portrait to convert to data URL...');
   const dataUrl = await downloadImageAsDataUrl(imageUrl);
   console.log('Portrait converted to data URL');
 
@@ -93,7 +96,7 @@ async function generatePortraitImage(prompt, apiKey) {
 }
 
 /**
- * Sanitize text to remove potential DALL-E safety triggers
+ * Sanitize text to remove potential image model safety triggers
  * @param {string} text - Input text
  * @returns {string} Sanitized text
  */
@@ -113,10 +116,10 @@ function sanitizePortraitText(text) {
 }
 
 /**
- * Build a DALL-E prompt for a player character portrait
+ * Build an image prompt for a player character portrait
  * @param {object} character - Character data with name, class, ancestry, appearanceDescription, etc.
  * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
- * @returns {string} DALL-E prompt
+ * @returns {string} Image prompt
  */
 function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
   const { name, class: charClass, ancestry, appearanceDescription, backstory } = character;
@@ -147,7 +150,7 @@ function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
     characterContext += `, a ${charClass}`;
   }
 
-  // Enrich ancestry with visual description so DALL-E knows what the race looks like
+  // Enrich ancestry with visual description so the image model knows what the race looks like
   let ancestryDesc = '';
   if (ancestry) {
     const visualHint = ANCESTRY_VISUAL_HINTS[ancestry];
@@ -165,7 +168,7 @@ function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
     }
   }
 
-  // Construct the full prompt — ancestry goes first so DALL-E prioritises it
+  // Construct the full prompt — ancestry goes first so the model prioritises it
   const ancestryPrefix = ancestryDesc ? `${ancestryDesc} ` : '';
   const prompt = `${ancestryPrefix}${styleBase}. Portrait of ${characterContext}. ${appearance}. Heroic and determined expression. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
 
@@ -173,10 +176,10 @@ function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
 }
 
 /**
- * Build a DALL-E prompt for an NPC portrait
+ * Build an image prompt for an NPC portrait
  * @param {object} npc - NPC data with name, description, occupation, etc.
  * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
- * @returns {string} DALL-E prompt
+ * @returns {string} Image prompt
  */
 function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
   const { name, description, occupation, relationship, ancestry } = npc;
@@ -189,8 +192,8 @@ function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
     styleBase = 'Fantasy RPG character portrait, detailed fantasy art style, dramatic lighting, painterly quality';
   }
 
-  // Enrich ancestry with visual description so DALL-E renders the correct race
-  // Ancestry hint goes FIRST so DALL-E prioritises it over generic human defaults
+  // Enrich ancestry with visual description so the model renders the correct race
+  // Ancestry hint goes FIRST so the model prioritises it over generic human defaults
   let ancestryDesc = '';
   if (ancestry && gameSystem === 'daggerheart') {
     const visualHint = ANCESTRY_VISUAL_HINTS[ancestry];
@@ -213,7 +216,7 @@ function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
     expression = 'menacing or intense expression';
   }
 
-  // Ancestry hint leads the prompt so DALL-E doesn't default to human/elf
+  // Ancestry hint leads the prompt so the model doesn't default to human/elf
   const ancestryPrefix = ancestryDesc ? `${ancestryDesc} ` : '';
   const prompt = `${ancestryPrefix}${styleBase}. Portrait of ${name || 'a character'}${occupationContext}. ${characterDesc}. ${expression}. Head and shoulders portrait, detailed face, high quality, no text or labels.`;
 
@@ -253,14 +256,14 @@ function isCreatureAdversary(adversary) {
 }
 
 /**
- * Build a DALL-E prompt for an adversary image.
+ * Build an image prompt for an adversary image.
  * Unlike buildNPCPortraitPrompt, this detects whether the adversary is a humanoid
  * or a creature/monster and adjusts the prompt accordingly.
  * Creatures get full-body illustrations; humanoids get standard portraits.
  *
  * @param {object} adversary - Adversary data with name, description, role, tier, etc.
  * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
- * @returns {string} DALL-E prompt
+ * @returns {string} Image prompt
  */
 function buildAdversaryPortraitPrompt(adversary, gameSystem = 'daggerheart') {
   const { name, description, role, tier } = adversary;
@@ -271,10 +274,10 @@ function buildAdversaryPortraitPrompt(adversary, gameSystem = 'daggerheart') {
 
   if (isCreature) {
     // --- Non-humanoid creature prompt ---
-    // IMPORTANT: DALL-E 3 rewrites prompts and has a strong human bias.
+    // IMPORTANT: gpt-image-1 may rewrite prompts and has a strong human bias.
     // We must: (1) Lead with the creature description, (2) Never mention "human",
     // "person", "figure", "portrait", "face" etc — even negatively, (3) Describe
-    // the creature positively with specific visual details so DALL-E can't default
+    // the creature positively with specific visual details so the model can't default
     // to a humanoid interpretation.
     let styleBase = '';
     if (gameSystem === 'starwarsd6') {
@@ -317,7 +320,7 @@ function buildAdversaryPortraitPrompt(adversary, gameSystem = 'daggerheart') {
 export async function generateAdversaryPortrait(adversary, openaiKey, gameSystem = 'daggerheart', campaignId = null) {
   console.log('Building portrait prompt for adversary:', adversary.name);
   const prompt = buildAdversaryPortraitPrompt(adversary, gameSystem);
-  console.log('DALL-E prompt:', prompt);
+  console.log('Image prompt:', prompt);
 
   let dataUrl;
   try {
@@ -327,7 +330,7 @@ export async function generateAdversaryPortrait(adversary, openaiKey, gameSystem
       console.warn(`Portrait generation for ${adversary.name} blocked by safety system. Retrying with simplified prompt...`);
       const safeAdversary = { ...adversary, description: '' };
       const safePrompt = buildAdversaryPortraitPrompt(safeAdversary, gameSystem);
-      console.log('Safe DALL-E prompt:', safePrompt);
+      console.log('Safe image prompt:', safePrompt);
       dataUrl = await generatePortraitImage(safePrompt, openaiKey);
     } else {
       throw error;
@@ -366,7 +369,7 @@ async function uploadPortraitToStorage(dataUrl, campaignId, npcName) {
 /**
  * Generate an NPC portrait
  * @param {object} npc - NPC data
- * @param {string} openaiKey - OpenAI API key for DALL-E
+ * @param {string} openaiKey - Optional OpenAI API key
  * @param {string} gameSystem - Game system for style
  * @param {string} campaignId - Campaign ID for storage (optional, will use data URL if not provided)
  * @returns {Promise<string>} Portrait URL (Firebase Storage URL if campaignId provided, otherwise data URL)
@@ -376,7 +379,7 @@ export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerhe
 
   console.log('Building portrait prompt for NPC:', npc.name);
   const prompt = buildNPCPortraitPrompt(npc, gameSystem);
-  console.log('DALL-E prompt:', prompt);
+  console.log('Image prompt:', prompt);
 
   let dataUrl;
   try {
@@ -388,7 +391,7 @@ export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerhe
       // Retry with description removed to be safe
       const safeNpc = { ...npc, description: '' };
       const safePrompt = buildNPCPortraitPrompt(safeNpc, gameSystem);
-      console.log('Safe DALL-E prompt:', safePrompt);
+      console.log('Safe image prompt:', safePrompt);
       dataUrl = await generatePortraitImage(safePrompt, openaiKey);
     } else {
       throw error;
@@ -407,7 +410,7 @@ export async function generateNPCPortrait(npc, openaiKey, gameSystem = 'daggerhe
 /**
  * Generate a player character portrait
  * @param {object} character - Character data
- * @param {string} openaiKey - OpenAI API key for DALL-E
+ * @param {string} openaiKey - Optional OpenAI API key
  * @param {string} gameSystem - Game system for style
  * @param {string} campaignId - Campaign ID for storage (optional, will use data URL if not provided)
  * @returns {Promise<string>} Portrait URL (Firebase Storage URL if campaignId provided, otherwise data URL)
@@ -417,7 +420,7 @@ export async function generateCharacterPortrait(character, openaiKey, gameSystem
 
   console.log('Building portrait prompt for character:', character.name);
   const prompt = buildCharacterPortraitPrompt(character, gameSystem);
-  console.log('DALL-E prompt:', prompt);
+  console.log('Image prompt:', prompt);
 
   let dataUrl;
   try {
@@ -429,7 +432,7 @@ export async function generateCharacterPortrait(character, openaiKey, gameSystem
       // Retry with appearance/backstory removed to be safe
       const safeCharacter = { ...character, appearanceDescription: '', backstory: '' };
       const safePrompt = buildCharacterPortraitPrompt(safeCharacter, gameSystem);
-      console.log('Safe DALL-E prompt:', safePrompt);
+      console.log('Safe image prompt:', safePrompt);
       dataUrl = await generatePortraitImage(safePrompt, openaiKey);
     } else {
       throw error;
@@ -458,10 +461,10 @@ export const portraitGeneratorService = {
 };
 
 /**
- * Build a DALL-E prompt for a location portrait
+ * Build an image prompt for a location portrait
  * @param {object} location - Location data with name, type, description, region, etc.
  * @param {string} gameSystem - The game system (daggerheart, starwarsd6, etc.)
- * @returns {string} DALL-E prompt
+ * @returns {string} Image prompt
  */
 export function buildLocationPortraitPrompt(location, gameSystem = 'daggerheart') {
   const { name, type, description, region } = location;
@@ -507,7 +510,7 @@ export function buildLocationPortraitPrompt(location, gameSystem = 'daggerheart'
 /**
  * Generate a location portrait
  * @param {object} location - Location data
- * @param {string} openaiKey - OpenAI API key for DALL-E
+ * @param {string} openaiKey - Optional OpenAI API key
  * @param {string} gameSystem - Game system for style
  * @param {string} campaignId - Campaign ID for storage
  * @returns {Promise<string>} Portrait URL
@@ -517,7 +520,7 @@ export async function generateLocationPortrait(location, openaiKey, gameSystem =
 
   console.log('Building portrait prompt for location:', location.name);
   const prompt = buildLocationPortraitPrompt(location, gameSystem);
-  console.log('DALL-E prompt:', prompt);
+  console.log('Image prompt:', prompt);
 
   let dataUrl;
   try {
@@ -529,7 +532,7 @@ export async function generateLocationPortrait(location, openaiKey, gameSystem =
       // Retry with description removed to be safe
       const safeLocation = { ...location, description: '' };
       const safePrompt = buildLocationPortraitPrompt(safeLocation, gameSystem);
-      console.log('Safe DALL-E prompt:', safePrompt);
+      console.log('Safe image prompt:', safePrompt);
       dataUrl = await generatePortraitImage(safePrompt, openaiKey);
     } else {
       throw error;

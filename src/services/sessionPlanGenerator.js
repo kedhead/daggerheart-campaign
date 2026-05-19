@@ -370,7 +370,7 @@ export async function buildPreviewFromPlan({
  * Compose Markdown DM notes from the plan.
  */
 /**
- * Build a DALL-E prompt for a puzzle encounter handout.
+ * Build an image prompt for a puzzle encounter handout.
  *
  * The image must be a FUNCTIONAL puzzle diagram — specific labelled elements,
  * cryptic-but-real visual clues the players can actually interact with.
@@ -384,7 +384,7 @@ function buildPuzzleHandoutPrompt(enc) {
   const premise = spec.premise || '';
 
   // Build a hyper-specific diagram description tailored for Gemini 2.5 Flash Image
-  // which is much better at rendering exact text and technical structures than DALL-E 3.
+  // which is better at rendering exact text and technical structures.
   return [
     'Technical schematic drawing of a fantasy TTRPG puzzle, drawn on aged parchment.',
     'This is a functional puzzle diagram for players to solve at the table. Do not draw generic fantasy art or characters.',

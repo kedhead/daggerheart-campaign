@@ -140,7 +140,7 @@ export default function SharedAPIKeyManager() {
 
           {/* OpenAI Key */}
           <div className="form-group" style={{ margin: 0 }}>
-            <label>OpenAI API Key (for DALL-E map images)</label>
+            <label>OpenAI API Key (for image generation)</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <input
                 type={showOpenaiKey ? 'text' : 'password'}

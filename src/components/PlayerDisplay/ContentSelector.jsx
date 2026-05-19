@@ -266,7 +266,7 @@ export default function ContentSelector({
     setGenerateError(null);
 
     try {
-      // Build the DALL-E prompt based on game system
+      // Build the image prompt based on game system
       const gameSystem = campaign?.gameSystem || 'daggerheart';
       let stylePrefix = '';
       if (gameSystem === 'starwarsd6') {
@@ -279,7 +279,7 @@ export default function ContentSelector({
 
       console.log('Generating display image with prompt:', fullPrompt);
 
-      // Call DALL-E via server proxy — backend uses server-side OPENAI_API_KEY if no client key
+      // Call image generation via server proxy — backend uses server-side OPENAI_API_KEY if no client key
       const response = await fetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

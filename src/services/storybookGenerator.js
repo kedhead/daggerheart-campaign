@@ -8,14 +8,12 @@
  *     selected storybook style. If missing or stale, describe the source
  *     portrait via /api/generate-storybook (action:'describe'), then redraw it
  *     via /api/generate-image and cache the result on the entity doc.
- *  3. Compose each scene's final DALL-E prompt with the cached entity
+ *  3. Compose each scene's final image prompt with the cached entity
  *     descriptions baked in so characters appear consistently.
  *  4. Upload all generated images to Firebase Storage.
  *
- * DALL-E 3 doesn't accept image inputs, so the only way to preserve likeness
- * while changing art style is this describe-then-redraw pipeline. A future
- * upgrade can swap the describe+redraw into a single gpt-image-1 call without
- * changing this module's public surface.
+ * For reference-capable models (gpt-image-1, nano-banana) the describe-then-redraw
+ * pipeline is skipped — the original portraits are passed directly as references.
  */
 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -196,7 +194,7 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
     const canUseRefImage = usesReferenceImages(imageModel) && !!sourcePortraitUrl;
     let description = fallbackDescription;
 
-    // For text-only models (DALL-E 3, Flux), use GPT-4o-mini vision to describe
+    // For text-only models (Flux), use GPT-4o-mini vision to describe
     // the portrait so the redraw prompt preserves likeness. Reference-capable
     // models (nano-banana, gpt-image-1) get the portrait itself — no describe
     // step needed, and likeness survives the style change much more faithfully.

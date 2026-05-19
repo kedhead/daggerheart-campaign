@@ -1,6 +1,6 @@
 /**
  * Vercel Serverless Function - Image Download Proxy
- * Proxies image downloads from DALL-E to avoid CORS issues
+ * Proxies image downloads to avoid CORS issues
  */
 
 export default async function handler(req, res) {

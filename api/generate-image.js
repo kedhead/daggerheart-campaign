@@ -1,7 +1,7 @@
 /**
  * Vercel Serverless Function - AI Image Generation
  * Uses 1min.ai API for battle map generation
- * Supports: dall-e-3, flux-dev, stable-diffusion-3, magic-art_7_0
+ * Supports: gpt-image-1, flux-dev, stable-diffusion-3, magic-art_7_0
  */
 
 // Extend timeout - 300s on Pro plan, 60s on Hobby
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       animated = false,
       styleKey,               // optional: for storybook-* types
       gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
-      imageModel,             // optional: 'nano-banana' | 'gpt-image-1' | 'flux-pro' | '' (dall-e-3)
+      imageModel,             // optional: 'nano-banana' | 'gpt-image-1' | 'flux-pro' | '' (gpt-image-1 fallback)
       referenceImages,        // optional: array of image URLs to use as likeness reference
       apiKey: clientApiKey   // optional client-provided key (used by portrait callers)
     } = req.body;
@@ -258,7 +258,7 @@ export default async function handler(req, res) {
           if (!createRes.ok) {
             const err = await createRes.json().catch(() => ({ detail: createRes.statusText }));
             console.error('Replicate API error:', err);
-            // Fall through to DALL-E
+            // Fall through to gpt-image-1
           } else {
             let prediction = await createRes.json();
 
@@ -281,14 +281,14 @@ export default async function handler(req, res) {
                 return res.status(200).json({ imageUrl: fluxUrl, prompt: fullPrompt, model: 'flux-1.1-pro' });
               }
             }
-            console.warn('Flux prediction failed or timed out, falling back to DALL-E:', prediction.status, prediction.error);
+            console.warn('Flux prediction failed or timed out, falling back to gpt-image-1:', prediction.status, prediction.error);
           }
         } catch (fluxErr) {
-          console.error('Replicate Flux error, falling back to DALL-E:', fluxErr.message);
+          console.error('Replicate Flux error, falling back to gpt-image-1:', fluxErr.message);
         }
       }
 
-      // --- DALL-E 3 path (default) ---
+      // --- gpt-image-1 fallback (default for storybook) ---
       const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
       if (!effectiveKey) {
         return res.status(500).json({
@@ -296,22 +296,28 @@ export default async function handler(req, res) {
         });
       }
 
+      const sizeForGpt = imageSize === '1792x1024' ? '1536x1024'
+        : imageSize === '1024x1792' ? '1024x1536'
+        : '1024x1024';
+
       const sbResponse = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
-        body: JSON.stringify({ model: 'dall-e-3', prompt: fullPrompt, n: 1, size: imageSize, quality: 'hd', style: 'natural' })
+        body: JSON.stringify({ model: 'gpt-image-1', prompt: fullPrompt, n: 1, size: sizeForGpt })
       });
       if (!sbResponse.ok) {
         const err = await sbResponse.json().catch(() => ({ error: { message: sbResponse.statusText } }));
-        return res.status(sbResponse.status).json({ error: `DALL-E API error: ${err.error?.message || sbResponse.statusText}` });
+        return res.status(sbResponse.status).json({ error: `gpt-image-1 API error: ${err.error?.message || sbResponse.statusText}` });
       }
       const sbData = await sbResponse.json();
+      const sbB64 = sbData.data?.[0]?.b64_json;
       const sbUrl = sbData.data?.[0]?.url;
-      if (!sbUrl) return res.status(500).json({ error: 'No image URL returned from DALL-E' });
-      return res.status(200).json({ imageUrl: sbUrl, prompt: fullPrompt, model: 'dall-e-3' });
+      if (sbB64) return res.status(200).json({ imageUrl: `data:image/png;base64,${sbB64}`, prompt: fullPrompt, model: 'gpt-image-1' });
+      if (sbUrl) return res.status(200).json({ imageUrl: sbUrl, prompt: fullPrompt, model: 'gpt-image-1' });
+      return res.status(500).json({ error: 'No image data returned from gpt-image-1' });
     }
 
-    // --- Portrait mode: DALL-E 3 direct, same as old generate-portrait.js ---
+    // --- Portrait mode: gpt-image-1 direct ---
     if (type === 'portrait') {
       const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
       if (!effectiveKey) {
@@ -319,21 +325,27 @@ export default async function handler(req, res) {
           error: 'No OpenAI API key available. Add OPENAI_API_KEY to environment variables or configure one in Settings.'
         });
       }
-      const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
-      const imageSize = validSizes.includes(size) ? size : '1024x1024';
+      const validSizes = ['1024x1024', '1024x1536', '1536x1024', '1024x1792', '1792x1024'];
+      const rawSize = validSizes.includes(size) ? size : '1024x1024';
+      // Map legacy DALL-E sizes to gpt-image-1 equivalents
+      const imageSize = rawSize === '1792x1024' ? '1536x1024'
+        : rawSize === '1024x1792' ? '1024x1536'
+        : rawSize;
       const portraitResponse = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
-        body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: imageSize, quality: 'standard', style: 'vivid' })
+        body: JSON.stringify({ model: 'gpt-image-1', prompt, n: 1, size: imageSize })
       });
       if (!portraitResponse.ok) {
         const err = await portraitResponse.json().catch(() => ({ error: { message: portraitResponse.statusText } }));
-        return res.status(portraitResponse.status).json({ error: `DALL-E API error: ${err.error?.message || portraitResponse.statusText}` });
+        return res.status(portraitResponse.status).json({ error: `gpt-image-1 API error: ${err.error?.message || portraitResponse.statusText}` });
       }
       const portraitData = await portraitResponse.json();
-      const portraitUrl = portraitData.data[0]?.url;
-      if (!portraitUrl) return res.status(500).json({ error: 'No image URL returned from DALL-E' });
-      return res.status(200).json({ imageUrl: portraitUrl });
+      const portraitB64 = portraitData.data?.[0]?.b64_json;
+      const portraitUrl = portraitData.data?.[0]?.url;
+      if (portraitB64) return res.status(200).json({ imageUrl: `data:image/png;base64,${portraitB64}` });
+      if (portraitUrl) return res.status(200).json({ imageUrl: portraitUrl });
+      return res.status(500).json({ error: 'No image data returned from gpt-image-1' });
     }
 
     // Build the enhanced prompt based on type - emphasizing overhead/orthographic D&D battle map style
@@ -389,7 +401,7 @@ export default async function handler(req, res) {
               const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
               if (url) return res.status(200).json({ imageUrl: url, prompt: enhancedPrompt, model: 'nano-banana' });
             }
-            console.warn('nano-banana handout failed, falling back to DALL-E 3:', prediction.status, prediction.error);
+            console.warn('nano-banana handout failed, falling back to gpt-image-1:', prediction.status, prediction.error);
           } else {
             const errText = await createRes.text().catch(() => createRes.statusText);
             console.error('Replicate nano-banana error:', errText);
@@ -400,15 +412,20 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- DALL-E 3 Direct: bypass 1min.ai entirely for speed & reliability ---
-    const selectedModel = model || 'dall-e-3';
-    if (selectedModel === 'dall-e-3') {
+    // --- gpt-image-1 Direct: bypass 1min.ai entirely for speed & reliability ---
+    const selectedModel = model || 'gpt-image-1';
+    if (selectedModel === 'gpt-image-1' || selectedModel === 'dall-e-3') {
       const openaiKey = process.env.OPENAI_API_KEY;
       if (!openaiKey) {
         // Fall through to 1min.ai if no OpenAI key
-        console.log('No OPENAI_API_KEY, falling back to 1min.ai for DALL-E 3');
+        console.log('No OPENAI_API_KEY, falling back to 1min.ai for gpt-image-1');
       } else {
-        console.log('Using OpenAI directly for DALL-E 3 battle map');
+        console.log('Using OpenAI directly for gpt-image-1 battle map');
+
+        const gptSize = ['1024x1024', '1024x1536', '1536x1024'].includes(size) ? size
+          : size === '1792x1024' ? '1536x1024'
+          : size === '1024x1792' ? '1024x1536'
+          : '1024x1024';
 
         const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
@@ -417,39 +434,45 @@ export default async function handler(req, res) {
             'Authorization': `Bearer ${openaiKey}`
           },
           body: JSON.stringify({
-            model: 'dall-e-3',
+            model: 'gpt-image-1',
             prompt: enhancedPrompt,
             n: 1,
-            size: ['1024x1024', '1024x1792', '1792x1024'].includes(size) ? size : '1024x1024',
-            quality: 'hd',
-            style: 'vivid'
+            size: gptSize
           })
         });
 
         if (!openaiResponse.ok) {
           const err = await openaiResponse.json().catch(() => ({ error: { message: openaiResponse.statusText } }));
           return res.status(openaiResponse.status).json({
-            error: `DALL-E API error: ${err.error?.message || openaiResponse.statusText}`
+            error: `gpt-image-1 API error: ${err.error?.message || openaiResponse.statusText}`
           });
         }
 
         const openaiData = await openaiResponse.json();
+        const b64 = openaiData.data?.[0]?.b64_json;
         const directUrl = openaiData.data?.[0]?.url;
 
-        if (!directUrl) {
-          return res.status(500).json({ error: 'No image URL returned from DALL-E' });
+        if (b64) {
+          return res.status(200).json({
+            imageUrl: `data:image/png;base64,${b64}`,
+            prompt: enhancedPrompt,
+            model: 'gpt-image-1',
+            animated: false
+          });
         }
-
-        return res.status(200).json({
-          imageUrl: directUrl,
-          prompt: enhancedPrompt,
-          model: 'dall-e-3',
-          animated: false
-        });
+        if (directUrl) {
+          return res.status(200).json({
+            imageUrl: directUrl,
+            prompt: enhancedPrompt,
+            model: 'gpt-image-1',
+            animated: false
+          });
+        }
+        return res.status(500).json({ error: 'No image data returned from gpt-image-1' });
       }
     }
 
-    // --- 1min.ai path for non-DALL-E models ---
+    // --- 1min.ai path for other models ---
     // Get API key from environment - try multiple variable names
     const apiKey = process.env.min_api || process.env.MIN_API_KEY || process.env.MIN_API || process.env.ONEMIN_API_KEY;
 
@@ -512,7 +535,7 @@ export default async function handler(req, res) {
         }
       };
     } else {
-      // DALL-E 3 (default) and Stable Diffusion
+      // Stable Diffusion and other models
       requestBody = {
         type: 'IMAGE_GENERATOR',
         model: selectedModel,
@@ -546,8 +569,8 @@ export default async function handler(req, res) {
       clearTimeout(timeoutId);
       if (fetchError.name === 'AbortError') {
         return res.status(504).json({
-          error: 'Image generation timed out. Try using DALL-E 3 model which is faster, or try again.',
-          hint: 'Switch to DALL-E 3 in Advanced Options for more reliable generation'
+          error: 'Image generation timed out. Try using gpt-image-1 model which is faster, or try again.',
+          hint: 'Switch to gpt-image-1 in Advanced Options for more reliable generation'
         });
       }
       throw fetchError;
