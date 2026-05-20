@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Zap, Shield, Swords } from 'lucide-react';
 import { BEASTFORMS, getBeastformsByTier, getBeastformByName } from '../../data/daggerheartBeastforms';
 import { getTierForLevel } from '../../data/systems/daggerheart';
@@ -91,8 +92,8 @@ export default function BeastformPanel({ character, canEdit, updateCharacter }) 
         <div className="bf-inactive">Not currently transformed.</div>
       )}
 
-      {/* Picker modal */}
-      {showPicker && (
+      {/* Picker modal — rendered via portal so it escapes any ancestor stacking context */}
+      {showPicker && createPortal(
         <div className="bf-picker-overlay" onClick={() => setShowPicker(false)}>
           <div className="bf-picker" onClick={e => e.stopPropagation()}>
             <div className="bf-picker-header">
@@ -124,7 +125,8 @@ export default function BeastformPanel({ character, canEdit, updateCharacter }) 
               ))}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
