@@ -239,7 +239,7 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
             storagePath,
             styleKey: styleSignature,
             description: enrichedDescription,
-            sourcePortraitUrl: sourcePortraitUrl || null,
+            sourcePortraitUrl: safeUrlForFirestore(sourcePortraitUrl),
             updatedAt: new Date().toISOString()
           }
         });
@@ -252,7 +252,9 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
     return { url, description: enrichedDescription };
   } catch (err) {
     console.error('[storybook] ensureStyledPortrait failed for', entity?.name, err);
-    return { url: sourcePortraitUrl || null, description: fallbackDescription };
+    // Don't return a base64 data URL as fallback — it can be hundreds of KB and
+    // would push the chapter Firestore document over the 1 MB limit.
+    return { url: safeUrlForFirestore(sourcePortraitUrl), description: fallbackDescription };
   }
 }
 
@@ -424,7 +426,7 @@ export async function generateChapter({
           entityId: s.entityId,
           entityType: s.entityType,
           name: entity?.name || '',
-          portraitUrl: entity?.storybookPortrait?.url || entity?.[portraitField] || null,
+          portraitUrl: safeUrlForFirestore(entity?.storybookPortrait?.url || entity?.[portraitField] || null),
           moment: trimForFirestore(s.moment, 400)
         };
       }),
@@ -536,7 +538,7 @@ export async function generateChapter({
       entityId: s.entityId,
       entityType: s.entityType,
       name: entity?.name || '',
-      portraitUrl: entityStyledPortraits[s.entityId] || entity?.storybookPortrait?.url || entity?.[portraitField] || null,
+      portraitUrl: safeUrlForFirestore(entityStyledPortraits[s.entityId] || entity?.storybookPortrait?.url || entity?.[portraitField] || null),
       moment: s.moment
     };
   }).filter(s => s.name);
@@ -573,6 +575,14 @@ function trimForFirestore(str, maxChars) {
   if (typeof str !== 'string') return str;
   if (str.length <= maxChars) return str;
   return str.slice(0, maxChars - 1) + '…';
+}
+
+// Returns null for base64 data URLs so they're never written into Firestore
+// documents (they can be hundreds of KB each and blow past the 1 MB doc limit).
+function safeUrlForFirestore(url) {
+  if (typeof url !== 'string') return null;
+  if (url.startsWith('data:')) return null;
+  return url;
 }
 
 /**
