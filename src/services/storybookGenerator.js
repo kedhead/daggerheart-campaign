@@ -592,6 +592,32 @@ function safeUrlForFirestore(url) {
   return url;
 }
 
+// Defensive last line of defence before any chapter is written to Firestore.
+// Recursively walks the payload and nulls out any string that is a base64
+// `data:` URL — these are the only values large enough to breach Firestore's
+// 1 MB document limit. Every legitimate image is an HTTPS Storage URL, so this
+// only ever strips a leak, never real data. Returns a cleaned deep copy.
+export function sanitizeChapterForFirestore(value) {
+  if (typeof value === 'string') {
+    return value.startsWith('data:') ? null : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(sanitizeChapterForFirestore);
+  }
+  if (value && typeof value === 'object') {
+    // Preserve non-plain objects (e.g. Firestore serverTimestamp sentinels,
+    // Date instances) untouched — only recurse into plain object literals.
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) return value;
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = sanitizeChapterForFirestore(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 // Uploads a base64 data URL to Firebase Storage and returns the HTTPS URL.
 // When a character's avatarUrl is stored as base64 and portrait generation
 // fails, this ensures the original portrait can still be displayed while
@@ -749,7 +775,7 @@ export async function autoDraftChapterFromSession({
     });
 
     const docRef = await addDoc(collection(db, `campaigns/${campaignId}/storybook`), {
-      ...chapter,
+      ...sanitizeChapterForFirestore(chapter),
       chapterNumber,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()

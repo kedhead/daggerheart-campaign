@@ -14,6 +14,7 @@ import {
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { sanitizeChapterForFirestore } from '../services/storybookGenerator';
 
 /**
  * useStorybook — real-time hook for the "Story So Far" chapter collection.
@@ -64,12 +65,15 @@ export function useStorybook(campaignId, isDM = false) {
 
   const addChapter = useCallback(async (chapter) => {
     if (!basePath) return null;
+    // Strip any leaked base64 data: URLs so the write can't breach Firestore's
+    // 1 MB document limit. Images live in Storage; only their URLs belong here.
+    const safeChapter = sanitizeChapterForFirestore(chapter);
     const docData = {
-      ...chapter,
-      chapterNumber: chapter.chapterNumber ?? nextChapterNumber(),
-      media: chapter.media || [],
-      scenes: chapter.scenes || [],
-      spotlights: chapter.spotlights || [],
+      ...safeChapter,
+      chapterNumber: safeChapter.chapterNumber ?? nextChapterNumber(),
+      media: safeChapter.media || [],
+      scenes: safeChapter.scenes || [],
+      spotlights: safeChapter.spotlights || [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
