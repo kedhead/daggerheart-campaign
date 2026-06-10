@@ -252,9 +252,11 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
     return { url, description: enrichedDescription };
   } catch (err) {
     console.error('[storybook] ensureStyledPortrait failed for', entity?.name, err);
-    // Don't return a base64 data URL as fallback — it can be hundreds of KB and
-    // would push the chapter Firestore document over the 1 MB limit.
-    return { url: safeUrlForFirestore(sourcePortraitUrl), description: fallbackDescription };
+    // If the source portrait is base64, upload it to Storage so the fallback
+    // URL is safe for Firestore and the portrait still displays.
+    const safeUrl = await uploadPortraitToStorage(sourcePortraitUrl, campaignId, entity?.id)
+      ?? safeUrlForFirestore(sourcePortraitUrl);
+    return { url: safeUrl, description: fallbackDescription };
   }
 }
 
@@ -415,21 +417,26 @@ export async function generateChapter({
   // Stop here if illustrations are disabled
   if (!includeIllustrations) {
     onProgress({ stage: 'done', current: 1, total: 1, message: 'Draft ready' });
+    const textOnlySpotlights = await Promise.all((chapterText.spotlights || []).map(async s => {
+      const { entity } = findEntityInRosters({ entityId: s.entityId, rosters: { characters, npcs, adversaries } });
+      const portraitField = ENTITY_PORTRAIT_FIELD[s.entityType];
+      const rawUrl = entity?.storybookPortrait?.url || entity?.[portraitField] || null;
+      const portraitUrl = rawUrl?.startsWith('data:')
+        ? await uploadPortraitToStorage(rawUrl, campaignId, entity?.id)
+        : safeUrlForFirestore(rawUrl);
+      return {
+        entityId: s.entityId,
+        entityType: s.entityType,
+        name: entity?.name || '',
+        portraitUrl,
+        moment: trimForFirestore(s.moment, 400)
+      };
+    }));
     return {
       title: trimForFirestore(chapterText.title, 300),
       prose: trimForFirestore(chapterText.prose, 80_000),
       scenes: [],
-      spotlights: (chapterText.spotlights || []).map(s => {
-        const { entity } = findEntityInRosters({ entityId: s.entityId, rosters: { characters, npcs, adversaries } });
-        const portraitField = ENTITY_PORTRAIT_FIELD[s.entityType];
-        return {
-          entityId: s.entityId,
-          entityType: s.entityType,
-          name: entity?.name || '',
-          portraitUrl: safeUrlForFirestore(entity?.storybookPortrait?.url || entity?.[portraitField] || null),
-          moment: trimForFirestore(s.moment, 400)
-        };
-      }),
+      spotlights: textOnlySpotlights,
       sessionId: session.id,
       sessionNumber: session.sessionNumber || session.number || null,
       status: generatedBy === 'auto' ? 'pending_review' : 'draft',
@@ -583,6 +590,23 @@ function safeUrlForFirestore(url) {
   if (typeof url !== 'string') return null;
   if (url.startsWith('data:')) return null;
   return url;
+}
+
+// Uploads a base64 data URL to Firebase Storage and returns the HTTPS URL.
+// When a character's avatarUrl is stored as base64 and portrait generation
+// fails, this ensures the original portrait can still be displayed while
+// keeping the Firestore document safely under the 1 MB limit.
+async function uploadPortraitToStorage(dataUrl, campaignId, entityId) {
+  if (!dataUrl?.startsWith('data:')) return dataUrl || null;
+  if (!campaignId || !entityId) return null;
+  try {
+    const storagePath = `campaigns/${campaignId}/portraits/${entityId}_${Date.now()}.png`;
+    const { url } = await uploadDataUrl(dataUrl, storagePath);
+    return url;
+  } catch (err) {
+    console.warn('[storybook] Could not upload base64 portrait to Storage, portrait will be hidden:', err);
+    return null;
+  }
 }
 
 /**
