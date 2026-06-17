@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Users, LayoutGrid, FileText, Upload } from 'lucide-react';
+import { Plus, Search, Users, LayoutGrid, FileText, Upload, Skull } from 'lucide-react';
 import DemiplaneImportModal from './DemiplaneImportModal';
 import CharacterCardSimple from './CharacterCardSimple';
 import CharacterFormSimple from './CharacterFormSimple';
@@ -32,7 +32,7 @@ const CARD_COMPONENTS = {
   'generic': GenericCard
 };
 
-export default function CharactersView({ campaign, characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId, items, partyInventory, addToCharacterInventory, removeFromCharacterInventory, toggleEquipped, transferToParty }) {
+export default function CharactersView({ campaign, characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId, items, partyInventory, addToCharacterInventory, removeFromCharacterInventory, toggleEquipped, transferToParty, onGoToGraveyard }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,6 +40,8 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
   const [showCreationWizard, setShowCreationWizard] = useState(false);
   const [showDemiplaneImport, setShowDemiplaneImport] = useState(false);
   const [demiplaneTarget, setDemiplaneTarget] = useState(null);
+  const [markFallenTarget, setMarkFallenTarget] = useState(null);
+  const [deathDetails, setDeathDetails] = useState({ causeOfDeath: '', epitaph: '' });
 
   // Get the right form/card components for this campaign's game system
   const gameSystem = campaign?.gameSystem || 'daggerheart';
@@ -87,12 +89,26 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
     return isDM || getCharacterOwnerId(character) === currentUserId;
   };
 
-  const filteredCharacters = characters.filter(char =>
+  const livingCharacters = characters.filter(c => !c.deceased);
+  const fallenCount = characters.filter(c => c.deceased).length;
+
+  const filteredCharacters = livingCharacters.filter(char =>
     char.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (char.class && char.class.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (char.ancestry && char.ancestry.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (char.playerName && char.playerName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const handleMarkFallen = () => {
+    updateCharacter(markFallenTarget.id, {
+      deceased: true,
+      deathDate: new Date().toISOString(),
+      causeOfDeath: deathDetails.causeOfDeath.trim(),
+      epitaph: deathDetails.epitaph.trim(),
+    });
+    setMarkFallenTarget(null);
+    setDeathDetails({ causeOfDeath: '', epitaph: '' });
+  };
 
   return (
     <div className="min-h-screen bg-transparent p-6 space-y-8 lr-fade-in" style={{ fontFamily: 'var(--font-body)' }}>
@@ -132,9 +148,27 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
                 className="text-[10px] font-bold uppercase"
                 style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
               >
-                {characters.length} {characters.length === 1 ? 'Adventurer' : 'Adventurers'}
+                {livingCharacters.length} {livingCharacters.length === 1 ? 'Adventurer' : 'Adventurers'}
               </span>
             </div>
+            {fallenCount > 0 && onGoToGraveyard && (
+              <button
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md shrink-0 transition-all"
+                style={{
+                  background: 'rgba(80,20,20,0.3)',
+                  border: '1px solid rgba(150,40,40,0.3)',
+                }}
+                onClick={onGoToGraveyard}
+              >
+                <Skull size={11} style={{ color: 'rgba(200,80,80,0.7)' }} />
+                <span
+                  className="text-[10px] font-bold uppercase"
+                  style={{ color: 'rgba(200,80,80,0.7)', letterSpacing: '0.18em' }}
+                >
+                  {fallenCount} Fallen
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -298,7 +332,31 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
                 onDemiplaneUpdate={isDaggerheart && canEditCharacter(character) ? () => setDemiplaneTarget(character) : undefined}
               />
               {isDM && (
-                <div className="flex justify-end px-1">
+                <div className="flex items-center justify-between px-1">
+                  <button
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all"
+                    style={{
+                      background: 'rgba(80,20,20,0.3)',
+                      border: '1px solid rgba(150,40,40,0.25)',
+                      color: 'rgba(200,80,80,0.6)',
+                      letterSpacing: '0.14em',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(120,30,30,0.5)';
+                      e.currentTarget.style.color = 'rgba(220,100,100,0.9)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(80,20,20,0.3)';
+                      e.currentTarget.style.color = 'rgba(200,80,80,0.6)';
+                    }}
+                    onClick={() => {
+                      setMarkFallenTarget(character);
+                      setDeathDetails({ causeOfDeath: '', epitaph: '' });
+                    }}
+                  >
+                    <Skull size={11} />
+                    Mark as Fallen
+                  </button>
                   <AssignPlayerControl
                     character={character}
                     campaign={campaign}
@@ -356,6 +414,86 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
         character={demiplaneTarget}
         updateCharacter={updateCharacter}
       />
+
+      {/* Mark as Fallen modal */}
+      <Modal
+        isOpen={!!markFallenTarget}
+        onClose={() => setMarkFallenTarget(null)}
+        title="Mark as Fallen"
+        size="small"
+      >
+        <div className="space-y-5 p-2">
+          <p style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            Send{' '}
+            <strong style={{ color: 'var(--text)' }}>{markFallenTarget?.name}</strong>{' '}
+            to the graveyard. They can be resurrected later from the Graveyard view.
+          </p>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}>
+              Cause of Death
+            </label>
+            <input
+              type="text"
+              placeholder="How did they fall?"
+              value={deathDetails.causeOfDeath}
+              onChange={(e) => setDeathDetails(d => ({ ...d, causeOfDeath: e.target.value }))}
+              className="w-full rounded-xl py-2.5 px-4 text-sm focus:outline-none transition-all"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                color: 'var(--text)',
+                fontFamily: 'var(--font-body)',
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}>
+              Epitaph <span style={{ color: 'var(--text-dim)' }}>(optional)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="A final word in their memory…"
+              value={deathDetails.epitaph}
+              onChange={(e) => setDeathDetails(d => ({ ...d, epitaph: e.target.value }))}
+              className="w-full rounded-xl py-2.5 px-4 text-sm focus:outline-none transition-all"
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--line)',
+                color: 'var(--text)',
+                fontFamily: 'var(--font-body)',
+              }}
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              className="flex-1 px-4 py-2.5 rounded-xl font-bold text-[11px] uppercase transition-all"
+              style={{
+                background: 'var(--surface)',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--line)',
+                letterSpacing: '0.14em',
+              }}
+              onClick={() => setMarkFallenTarget(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="flex-1 px-4 py-2.5 rounded-xl font-bold text-[11px] uppercase transition-all"
+              style={{
+                background: 'rgba(150,40,40,0.8)',
+                color: '#fff',
+                letterSpacing: '0.14em',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.filter = 'brightness(1)'; }}
+              onClick={handleMarkFallen}
+            >
+              <Skull size={12} style={{ display: 'inline', marginRight: 6 }} />
+              Mark Fallen
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

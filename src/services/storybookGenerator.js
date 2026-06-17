@@ -239,7 +239,7 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
             storagePath,
             styleKey: styleSignature,
             description: enrichedDescription,
-            sourcePortraitUrl: sourcePortraitUrl || null,
+            sourcePortraitUrl: safeUrlForFirestore(sourcePortraitUrl),
             updatedAt: new Date().toISOString()
           }
         });
@@ -252,7 +252,11 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
     return { url, description: enrichedDescription };
   } catch (err) {
     console.error('[storybook] ensureStyledPortrait failed for', entity?.name, err);
-    return { url: sourcePortraitUrl || null, description: fallbackDescription };
+    // If the source portrait is base64, upload it to Storage so the fallback
+    // URL is safe for Firestore and the portrait still displays.
+    const safeUrl = await uploadPortraitToStorage(sourcePortraitUrl, campaignId, entity?.id)
+      ?? safeUrlForFirestore(sourcePortraitUrl);
+    return { url: safeUrl, description: fallbackDescription };
   }
 }
 
@@ -413,21 +417,26 @@ export async function generateChapter({
   // Stop here if illustrations are disabled
   if (!includeIllustrations) {
     onProgress({ stage: 'done', current: 1, total: 1, message: 'Draft ready' });
+    const textOnlySpotlights = await Promise.all((chapterText.spotlights || []).map(async s => {
+      const { entity } = findEntityInRosters({ entityId: s.entityId, rosters: { characters, npcs, adversaries } });
+      const portraitField = ENTITY_PORTRAIT_FIELD[s.entityType];
+      const rawUrl = entity?.storybookPortrait?.url || entity?.[portraitField] || null;
+      const portraitUrl = rawUrl?.startsWith('data:')
+        ? await uploadPortraitToStorage(rawUrl, campaignId, entity?.id)
+        : safeUrlForFirestore(rawUrl);
+      return {
+        entityId: s.entityId,
+        entityType: s.entityType,
+        name: entity?.name || '',
+        portraitUrl,
+        moment: trimForFirestore(s.moment, 400)
+      };
+    }));
     return {
       title: trimForFirestore(chapterText.title, 300),
       prose: trimForFirestore(chapterText.prose, 80_000),
       scenes: [],
-      spotlights: (chapterText.spotlights || []).map(s => {
-        const { entity } = findEntityInRosters({ entityId: s.entityId, rosters: { characters, npcs, adversaries } });
-        const portraitField = ENTITY_PORTRAIT_FIELD[s.entityType];
-        return {
-          entityId: s.entityId,
-          entityType: s.entityType,
-          name: entity?.name || '',
-          portraitUrl: entity?.storybookPortrait?.url || entity?.[portraitField] || null,
-          moment: trimForFirestore(s.moment, 400)
-        };
-      }),
+      spotlights: textOnlySpotlights,
       sessionId: session.id,
       sessionNumber: session.sessionNumber || session.number || null,
       status: generatedBy === 'auto' ? 'pending_review' : 'draft',
@@ -536,7 +545,7 @@ export async function generateChapter({
       entityId: s.entityId,
       entityType: s.entityType,
       name: entity?.name || '',
-      portraitUrl: entityStyledPortraits[s.entityId] || entity?.storybookPortrait?.url || entity?.[portraitField] || null,
+      portraitUrl: safeUrlForFirestore(entityStyledPortraits[s.entityId] || entity?.storybookPortrait?.url || entity?.[portraitField] || null),
       moment: s.moment
     };
   }).filter(s => s.name);
@@ -573,6 +582,57 @@ function trimForFirestore(str, maxChars) {
   if (typeof str !== 'string') return str;
   if (str.length <= maxChars) return str;
   return str.slice(0, maxChars - 1) + '…';
+}
+
+// Returns null for base64 data URLs so they're never written into Firestore
+// documents (they can be hundreds of KB each and blow past the 1 MB doc limit).
+function safeUrlForFirestore(url) {
+  if (typeof url !== 'string') return null;
+  if (url.startsWith('data:')) return null;
+  return url;
+}
+
+// Defensive last line of defence before any chapter is written to Firestore.
+// Recursively walks the payload and nulls out any string that is a base64
+// `data:` URL — these are the only values large enough to breach Firestore's
+// 1 MB document limit. Every legitimate image is an HTTPS Storage URL, so this
+// only ever strips a leak, never real data. Returns a cleaned deep copy.
+export function sanitizeChapterForFirestore(value) {
+  if (typeof value === 'string') {
+    return value.startsWith('data:') ? null : value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(sanitizeChapterForFirestore);
+  }
+  if (value && typeof value === 'object') {
+    // Preserve non-plain objects (e.g. Firestore serverTimestamp sentinels,
+    // Date instances) untouched — only recurse into plain object literals.
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) return value;
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = sanitizeChapterForFirestore(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+// Uploads a base64 data URL to Firebase Storage and returns the HTTPS URL.
+// When a character's avatarUrl is stored as base64 and portrait generation
+// fails, this ensures the original portrait can still be displayed while
+// keeping the Firestore document safely under the 1 MB limit.
+async function uploadPortraitToStorage(dataUrl, campaignId, entityId) {
+  if (!dataUrl?.startsWith('data:')) return dataUrl || null;
+  if (!campaignId || !entityId) return null;
+  try {
+    const storagePath = `campaigns/${campaignId}/portraits/${entityId}_${Date.now()}.png`;
+    const { url } = await uploadDataUrl(dataUrl, storagePath);
+    return url;
+  } catch (err) {
+    console.warn('[storybook] Could not upload base64 portrait to Storage, portrait will be hidden:', err);
+    return null;
+  }
 }
 
 /**
@@ -715,7 +775,7 @@ export async function autoDraftChapterFromSession({
     });
 
     const docRef = await addDoc(collection(db, `campaigns/${campaignId}/storybook`), {
-      ...chapter,
+      ...sanitizeChapterForFirestore(chapter),
       chapterNumber,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()

@@ -76,6 +76,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
       icon: Users,
       items: [
         { id: 'characters', label: 'Characters', icon: Users },
+        { id: 'graveyard', label: 'Graveyard', icon: Skull },
         { id: 'partyInventory', label: 'Party Stash', icon: Backpack },
         { id: 'notes', label: 'My Notes', icon: StickyNote },
         { id: 'messaging', label: 'Messages', icon: MessageSquare }
