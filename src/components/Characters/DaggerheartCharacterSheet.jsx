@@ -52,14 +52,16 @@ const TRAIT_ABBREV = {
 
 // getTierForLevel imported from daggerheart.js
 
-const getWeaponDamage = (weapon, level) => {
+const getWeaponDamage = (weapon, level, proficiency) => {
   const sd = weapon.systemData;
   if (!sd) return null;
   const tier = getTierForLevel(level);
   const dice = sd[`damageTier${tier}Dice`];
   const mod = sd[`damageTier${tier}Modifier`];
   if (!dice) return null;
-  return mod ? `${dice}+${mod}` : dice;
+  const qty = proficiency || 1;
+  const diceStr = `${qty}${dice}`;
+  return mod ? `${diceStr}+${mod}` : diceStr;
 };
 
 export default function DaggerheartCharacterSheet({ character, onEdit, onDelete, isDM, canEdit, campaign, updateCharacter, items }) {
@@ -422,7 +424,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   };
 
   const handleWeaponDamage = async (weapon) => {
-    const dmgStr = getWeaponDamage(weapon, level);
+    const dmgStr = getWeaponDamage(weapon, level, proficiency);
     const parsed = parseDamageString(dmgStr);
     if (!parsed) return;
     const label = `Damage: ${weapon.name}`;
@@ -778,7 +780,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
       <div className="dh-weapons-grid">
         {equippedWeapons.map(weapon => {
           const sd = weapon.systemData || {};
-          const dmg = getWeaponDamage(weapon, level);
+          const dmg = getWeaponDamage(weapon, level, proficiency);
           const tier = getTierForLevel(level);
           const traitName = (sd.trait || '').toLowerCase();
           const traitMod = traits[traitName] ?? 0;
@@ -1068,7 +1070,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <div className="dh-section-label">Weapons</div>
           {equippedWeapons.map(weapon => {
             const sd = weapon.systemData || {};
-            const dmg = getWeaponDamage(weapon, level);
+            const dmg = getWeaponDamage(weapon, level, proficiency);
             const tier = getTierForLevel(level);
             const traitName = (sd.trait || '').toLowerCase();
             const traitMod = traits[traitName] ?? 0;

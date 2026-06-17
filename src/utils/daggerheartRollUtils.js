@@ -29,14 +29,16 @@ export function extractCardDice(text) {
   };
 }
 
-export function getWeaponDamage(weapon, level) {
+export function getWeaponDamage(weapon, level, proficiency) {
   const sd = weapon.systemData;
   if (!sd) return null;
   const tier = getTierForLevel(level);
   const dice = sd[`damageTier${tier}Dice`];
   const mod = sd[`damageTier${tier}Modifier`];
   if (!dice) return null;
-  return mod ? `${dice}+${mod}` : dice;
+  const qty = proficiency || 1;
+  const diceStr = `${qty}${dice}`;
+  return mod ? `${diceStr}+${mod}` : diceStr;
 }
 
 export function formatTraitValue(val) {

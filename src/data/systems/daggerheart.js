@@ -411,7 +411,10 @@ const ANCESTRIES = {
   },
   'Ribbet': {
     description: 'Amphibious frog-folk who leap between land and water with ease.',
-    features: [{ name: 'Amphibious', description: 'You can breathe underwater and have a swim speed equal to your movement speed. You can jump twice the normal distance.' }]
+    features: [
+      { name: 'Amphibious', description: 'You can breathe underwater and have a swim speed equal to your movement speed. You can jump twice the normal distance.' },
+      { name: 'Long Tongue', description: 'You can use your long tongue to grab onto things within Close range. Mark a Stress to use your tongue as a Finesse Close weapon that deals d12 physical damage using your Proficiency.' }
+    ]
   },
   'Simiah': {
     description: 'Ape-like beings of strength, community, and primal wisdom.',

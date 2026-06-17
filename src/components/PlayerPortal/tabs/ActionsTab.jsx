@@ -27,7 +27,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
 
   const traits = character.traits || {};
   const level = character.level || 1;
-  const proficiency = getBaseProficiency(level);
+  const proficiency = character.proficiency || getBaseProficiency(level);
 
   // Resolve equippedItems refs against the catalog, filter to weapons only
   const weapons = Array.isArray(character.equippedItems)
@@ -57,7 +57,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
 
   const handleWeaponDamage = async (weapon) => {
     if (!campaignId) return;
-    const dmgStr = getWeaponDamage(weapon, level) || weapon.systemData?.damage || weapon.damage;
+    const dmgStr = getWeaponDamage(weapon, level, proficiency) || weapon.systemData?.damage || weapon.damage;
     const parsed = dmgStr ? parseDamageString(dmgStr) : null;
     if (!parsed) return;
     setRollingKey(`dmg-${weapon.id}`);
