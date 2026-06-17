@@ -37,7 +37,7 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
 
   const traits = character.traits || {};
   const level = character.level || 1;
-  const evasion = character.evasion ?? 10;
+  const evasion = (character.evasion ?? 10) + (character.baseEvasionBonus || 0);
 
   // Calculate damage thresholds using same fallback chain as main sheet
   const equippedArmor = Array.isArray(character.equippedItems)
