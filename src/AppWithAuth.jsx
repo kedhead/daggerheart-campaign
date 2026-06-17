@@ -37,6 +37,7 @@ import PlayerDisplay from './components/PlayerDisplay/PlayerDisplay';
 import DMDisplayControl from './components/PlayerDisplay/DMDisplayControl';
 import BattleMapStudio from './components/BattleMapStudio/BattleMapStudio';
 import StorybookView from './components/Storybook/StorybookView';
+import GraveyardView from './components/Graveyard/GraveyardView';
 import PublicChronicleView from './components/Storybook/PublicChronicleView';
 import BattleMapDisplayWindow from './components/BattleMapDisplay/BattleMapDisplayWindow';
 import { DiceRoller, DiceTray } from './dice';
@@ -334,6 +335,15 @@ function CampaignApp() {
             removeFromCharacterInventory={removeFromCharacterInventory}
             toggleEquipped={toggleEquipped}
             transferToParty={transferToParty}
+            onGoToGraveyard={() => setCurrentView('graveyard')}
+          />
+        );
+      case 'graveyard':
+        return (
+          <GraveyardView
+            characters={characters}
+            updateCharacter={updateCharacter}
+            isDM={isDM}
           />
         );
       case 'my-sheet':
