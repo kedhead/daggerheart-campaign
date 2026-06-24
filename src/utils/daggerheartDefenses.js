@@ -1,0 +1,143 @@
+// Single source of truth for a Daggerheart character's derived defenses:
+// Armor Score, Evasion, and damage thresholds (Major / Severe / Massive).
+//
+// Both the full character sheet and the Player Portal stats tab call this so
+// the numbers can never drift apart. All rules references are to the
+// Daggerheart core rulebook.
+
+import { CLASSES, getBaseProficiency, getTierForLevel } from '../data/systems/daggerheart';
+import { computeAbilityDelta } from '../data/daggerheartAbilityEffects';
+import { getCardByName } from '../data/daggerheartDomainCards';
+import { DAGGERHEART_ARMOR } from '../data/daggerheartItems';
+import { getFeatureName } from './itemFeatures';
+
+// Armor prints two base numbers (Major base / Severe base), stored on items as
+// `thresholds.minor` and `thresholds.major` for historical reasons — the values
+// are correct, only the field names are legacy. Resolve from the equipped item's
+// own systemData, falling back to a name-match against the built-in catalog
+// (catches Demiplane imports / legacy custom armor missing the thresholds field).
+function resolveArmorBases(armor) {
+  if (!armor) return null;
+  const t = armor.systemData?.thresholds;
+  if (t && (t.minor > 0 || t.major > 0)) return { major: t.minor || 0, severe: t.major || 0 };
+  if (armor.name) {
+    const match = DAGGERHEART_ARMOR.find(a => a.name.toLowerCase() === armor.name.toLowerCase());
+    if (match?.systemData?.thresholds) {
+      return { major: match.systemData.thresholds.minor || 0, severe: match.systemData.thresholds.major || 0 };
+    }
+  }
+  return null;
+}
+
+/**
+ * Compute a character's derived defenses.
+ *
+ * @param {object} character - the character record
+ * @param {Array}  equippedItems - resolved, currently-equipped item objects
+ *                 (full item shape with `systemData`), weapons and armor alike.
+ * @returns {{armorScore:number, evasion:number, majorThreshold:number,
+ *            severeThreshold:number, massiveThreshold:number}}
+ */
+export function computeDefenses(character, equippedItems = []) {
+  const charClass = character?.class;
+  const level = character?.level || 1;
+  const traits = character?.traits || {};
+  const proficiency = character?.proficiency || getBaseProficiency(level);
+
+  // Domain cards are stored as plain names; enrich them to full card objects
+  // (with `name` + `domain`) so passive ability effects can be matched.
+  const domainCards = (character?.domainCards || [])
+    .map(c => (typeof c === 'string' ? getCardByName(c) : (c?.name && c?.domain ? c : getCardByName(c?.name))))
+    .filter(Boolean);
+
+  const equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
+  const baseArmorScore = character?.armor ?? 0;
+
+  // Base Armor Score from the equipped armor item (or the character's stored value).
+  const baseEffectiveArmorScore = equippedArmorItems.length === 0
+    ? baseArmorScore
+    : Math.max(Math.max(...equippedArmorItems.map(a => a.systemData?.armorScore ?? 0)), baseArmorScore);
+
+  // Armor-score / evasion bonuses from item features. Protective and Barrier are
+  // secondary-weapon / shield features, so scan ALL equipped items, not just armor.
+  // Protective: +1/+2/+3/+4 Armor Score by the item's tier.
+  // Barrier:    +2/+3/+4/+5 Armor Score (tier + 1) and -1 Evasion.
+  // Double Duty: +1 Armor Score.
+  let armorScoreFeatureBonus = 0;
+  let barrierEvasionPenalty = 0;
+  equippedItems.forEach(item => {
+    const tier = item.systemData?.tier || 1;
+    (item.systemData?.features || []).forEach(f => {
+      const fl = getFeatureName(f).toLowerCase();
+      if (fl === 'protective') armorScoreFeatureBonus += tier;
+      else if (fl === 'barrier') { armorScoreFeatureBonus += tier + 1; barrierEvasionPenalty += 1; }
+      else if (fl === 'double duty' || fl === 'double-duty') armorScoreFeatureBonus += 1;
+    });
+  });
+
+  // Base evasion: class base (or stored value), plus level-up evasion advancements.
+  const baseEvasion = ((charClass && CLASSES[charClass]?.baseEvasion) || character?.evasion || 10)
+    + (character?.baseEvasionBonus || 0);
+
+  // Armor evasion features.
+  let baseEffectiveEvasion = baseEvasion;
+  equippedArmorItems.forEach(armor => {
+    (armor.systemData?.features || []).forEach(f => {
+      const fl = getFeatureName(f).toLowerCase();
+      if (fl === 'flexible') baseEffectiveEvasion += 1;
+      else if (fl === 'heavy') baseEffectiveEvasion -= 1;
+      else if (fl === 'very-heavy' || fl === 'very heavy') baseEffectiveEvasion -= 2;
+    });
+  });
+  baseEffectiveEvasion -= barrierEvasionPenalty;
+
+  // Passive domain-card ability effects (Bare Bones, Vitality, Untouchable, ...).
+  const domainCardCounts = domainCards.reduce((acc, c) => {
+    acc[c.domain] = (acc[c.domain] || 0) + 1;
+    return acc;
+  }, {});
+  const abilityDelta = computeAbilityDelta(domainCards, {
+    hasEquippedArmor: equippedArmorItems.length > 0,
+    tier: getTierForLevel(level),
+    proficiency,
+    traits,
+    domainCardCounts,
+  });
+
+  // Damage thresholds. Final threshold = base + character level. Fallback chain:
+  //   1. Ability-set base (e.g. Bare Bones) + level — overrides armor entirely
+  //   2. Equipped armor base + level
+  //   3. Character manual override (hpThresholds) — already final, no level added
+  //   4. Gambeson (tier 1) baseline 5/11 + level
+  const armorBases = resolveArmorBases(equippedArmorItems[0]);
+  const manualThresholds = character?.hpThresholds || {};
+  let majorThreshold = 0;
+  let severeThreshold = 0;
+  if (abilityDelta.majorBaseSet != null || abilityDelta.severeBaseSet != null) {
+    majorThreshold = (abilityDelta.majorBaseSet ?? 0) + level;
+    severeThreshold = (abilityDelta.severeBaseSet ?? 0) + level;
+  } else if (armorBases && (armorBases.major > 0 || armorBases.severe > 0)) {
+    majorThreshold = armorBases.major > 0 ? armorBases.major + level : 0;
+    severeThreshold = armorBases.severe > 0 ? armorBases.severe + level : 0;
+  } else if (manualThresholds.major > 0 || manualThresholds.severe > 0) {
+    majorThreshold = manualThresholds.major || 0;
+    severeThreshold = manualThresholds.severe || 0;
+  } else {
+    majorThreshold = 5 + level;
+    severeThreshold = 11 + level;
+  }
+  majorThreshold += abilityDelta.majorBonus;
+  severeThreshold += abilityDelta.severeBonus;
+  const massiveThreshold = severeThreshold > 0 ? severeThreshold * 2 : 0;
+
+  // Final Armor Score: base (or ability-set base) + feature bonuses + ability
+  // bonuses, capped at 12 (rulebook: Armor Score can never exceed 12).
+  const armorScoreBase = abilityDelta.armorScoreSet != null
+    ? abilityDelta.armorScoreSet
+    : baseEffectiveArmorScore;
+  const armorScore = Math.min(12, armorScoreBase + armorScoreFeatureBonus + abilityDelta.armorScoreBonus);
+
+  const evasion = baseEffectiveEvasion + abilityDelta.evasionBonus;
+
+  return { armorScore, evasion, majorThreshold, severeThreshold, massiveThreshold };
+}

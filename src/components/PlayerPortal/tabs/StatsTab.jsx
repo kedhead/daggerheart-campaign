@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TRAIT_ABBREV } from '../../../utils/daggerheartRollUtils';
-import { DAGGERHEART_ARMOR } from '../../../data/daggerheartItems';
+import { computeDefenses } from '../../../utils/daggerheartDefenses';
 
 const BONUS_OPTS = [
   { key: null,        label: 'Normal',      color: '#eab308' },
@@ -18,48 +18,26 @@ const TRAIT_FLAVOR = {
 };
 const TRAIT_ORDER = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'];
 
-// Resolve armor base thresholds from item systemData or name-match fallback
-function resolveArmorBases(armorItem) {
-  if (!armorItem) return null;
-  const t = armorItem.systemData?.thresholds;
-  if (t && (t.minor > 0 || t.major > 0)) return { major: t.minor || 0, severe: t.major || 0 };
-  if (armorItem.name) {
-    const match = DAGGERHEART_ARMOR.find(a => a.name.toLowerCase() === armorItem.name.toLowerCase());
-    if (match?.systemData?.thresholds) {
-      return { major: match.systemData.thresholds.minor || 0, severe: match.systemData.thresholds.major || 0 };
-    }
-  }
-  return null;
-}
-
 export default function StatsTab({ character, rollBonus, setRollBonus, roll, campaignId, items }) {
   const [rollingKey, setRollingKey] = useState(null);
 
   const traits = character.traits || {};
   const level = character.level || 1;
-  const evasion = (character.evasion ?? 10) + (character.baseEvasionBonus || 0);
 
-  // Calculate damage thresholds using same fallback chain as main sheet
-  const equippedArmor = Array.isArray(character.equippedItems)
+  // Derived defenses come from the same shared calculator the full character
+  // sheet uses, so Evasion / Armor Score / thresholds always match what the GM
+  // sees — including armor features and passive domain-card abilities.
+  const equippedItems = Array.isArray(character.equippedItems)
     ? character.equippedItems
-        .map(ei => items?.find(i => i.id === ei.itemId) ? { ...items.find(i => i.id === ei.itemId), ...ei } : null)
-        .find(item => item?.type === 'armor' && item?.equipped !== false)
-    : null;
+        .filter(ei => ei.equipped !== false)
+        .map(ei => {
+          const item = items?.find(i => i.id === ei.itemId);
+          return item ? { ...item, ...ei } : null;
+        })
+        .filter(Boolean)
+    : [];
 
-  const manual = character.hpThresholds || {};
-  const armorBases = resolveArmorBases(equippedArmor);
-  let majorThreshold, severeThreshold;
-  if (armorBases && (armorBases.major > 0 || armorBases.severe > 0)) {
-    majorThreshold = armorBases.major > 0 ? armorBases.major + level : 0;
-    severeThreshold = armorBases.severe > 0 ? armorBases.severe + level : 0;
-  } else if (manual.major > 0 || manual.severe > 0) {
-    majorThreshold = manual.major || 0;
-    severeThreshold = manual.severe || 0;
-  } else {
-    // Gambeson (tier 1) baseline — always show something
-    majorThreshold = 5 + level;
-    severeThreshold = 11 + level;
-  }
+  const { evasion, majorThreshold, severeThreshold } = computeDefenses(character, equippedItems);
 
   const handleTraitRoll = async (traitName) => {
     if (!campaignId) return;

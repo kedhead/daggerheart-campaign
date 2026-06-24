@@ -3,9 +3,8 @@ import { createPortal } from 'react-dom';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
-import { computeAbilityDelta } from '../../data/daggerheartAbilityEffects';
-import { DAGGERHEART_ARMOR } from '../../data/daggerheartItems';
 import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
+import { computeDefenses } from '../../utils/daggerheartDefenses';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useDice } from '../../dice';
@@ -165,8 +164,6 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const isBeastbound = charClass === 'Ranger' && subclass === 'Beastbound';
   const subclassLevel = character.subclassLevel || 'foundation';
   const classData = charClass ? CLASSES[charClass] : null;
-  const baseEvasion = ((charClass && CLASSES[charClass]?.baseEvasion) || character.evasion || 10) + (character.baseEvasionBonus || 0);
-  const baseArmorScore = character.armor ?? 0;
   const gold = character.gold ?? 0;
   const inventoryText = typeof character.inventory === 'string' ? character.inventory : '';
   const experiences = character.experiences || [];
@@ -234,100 +231,17 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   })();
   const armorSlots = Array.from({ length: equippedArmorSlotCount }, (_, i) => rawArmorSlots[i] ?? false);
 
-  const baseEffectiveArmorScore = useMemo(() => {
-    if (equippedArmorItems.length === 0) return baseArmorScore;
-    const maxFromEquipped = Math.max(...equippedArmorItems.map(a => a.systemData?.armorScore ?? 0));
-    return Math.max(maxFromEquipped, baseArmorScore);
-  }, [equippedArmorItems, baseArmorScore]);
-
-  const baseEffectiveEvasion = useMemo(() => {
-    let ev = baseEvasion;
-    equippedArmorItems.forEach(armor => {
-      const features = armor.systemData?.features || [];
-      features.forEach(f => {
-        const fl = getFeatureName(f).toLowerCase();
-        if (fl === 'flexible') ev += 1;
-        else if (fl === 'heavy') ev -= 1;
-        else if (fl === 'very-heavy' || fl === 'very heavy') ev -= 2;
-      });
-    });
-    return ev;
-  }, [equippedArmorItems, baseEvasion]);
-
-  // Damage thresholds per Daggerheart core rules (Ch. 2, p. 91 & 114):
-  // - Armor prints two base numbers: Major base / Severe base (stored here as
-  //   `thresholds.minor` and `thresholds.major` for historical reasons — the
-  //   values are correct, only the field names are legacy).
-  // - Final threshold = base + character level.
-  // - Three damage tiers (Minor / Major / Severe) but only two threshold
-  //   numbers act as "gates" between them, matching Demiplane's layout.
-  // - Characters should always display thresholds. Fallback chain:
-  //     1. Equipped armor item's systemData.thresholds + level
-  //     2. Name-match against the predefined DAGGERHEART_ARMOR list + level
-  //        (catches Demiplane imports and legacy custom armor missing the
-  //        thresholds field)
-  //     3. Character-level manual override (character.hpThresholds) — final
-  //     4. Gambeson baseline (5 / 11) + level as a last-resort default
-  const primaryArmor = equippedArmorItems[0];
-  const manualThresholds = character.hpThresholds || {};
-  const resolveArmorBases = (armor) => {
-    if (!armor) return null;
-    const t = armor.systemData?.thresholds;
-    if (t && (t.minor > 0 || t.major > 0)) return { major: t.minor || 0, severe: t.major || 0 };
-    if (armor.name) {
-      const match = DAGGERHEART_ARMOR.find(a => a.name.toLowerCase() === armor.name.toLowerCase());
-      if (match?.systemData?.thresholds) {
-        return { major: match.systemData.thresholds.minor || 0, severe: match.systemData.thresholds.major || 0 };
-      }
-    }
-    return null;
-  };
-  const armorBases = resolveArmorBases(primaryArmor);
-
-  // Passive ability effects (Bare Bones, Vitality, Untouchable, ...) computed
-  // before thresholds so abilities that REPLACE the base (Bare Bones) take
-  // precedence over the armor/fallback baseline.
-  const abilityDelta = useMemo(() => {
-    const domainCardCounts = domainCards.reduce((acc, c) => {
-      acc[c.domain] = (acc[c.domain] || 0) + 1;
-      return acc;
-    }, {});
-    return computeAbilityDelta(domainCards, {
-      hasEquippedArmor: equippedArmorItems.length > 0,
-      tier: getTierForLevel(level),
-      proficiency,
-      traits,
-      domainCardCounts,
-    });
-  }, [domainCards, equippedArmorItems, level, proficiency, traits]);
-
-  let majorThreshold = 0;
-  let severeThreshold = 0;
-  if (abilityDelta.majorBaseSet != null || abilityDelta.severeBaseSet != null) {
-    // Ability-set bases (e.g. Bare Bones) override armor / fallback entirely.
-    majorThreshold = (abilityDelta.majorBaseSet ?? 0) + level;
-    severeThreshold = (abilityDelta.severeBaseSet ?? 0) + level;
-  } else if (armorBases && (armorBases.major > 0 || armorBases.severe > 0)) {
-    majorThreshold = armorBases.major > 0 ? armorBases.major + level : 0;
-    severeThreshold = armorBases.severe > 0 ? armorBases.severe + level : 0;
-  } else if (manualThresholds.major > 0 || manualThresholds.severe > 0) {
-    majorThreshold = manualThresholds.major || 0;
-    severeThreshold = manualThresholds.severe || 0;
-  } else {
-    // Gambeson (tier 1) baseline so the sheet always shows usable numbers.
-    majorThreshold = 5 + level;
-    severeThreshold = 11 + level;
-  }
-  majorThreshold += abilityDelta.majorBonus;
-  severeThreshold += abilityDelta.severeBonus;
-  const massiveThreshold = severeThreshold > 0 ? severeThreshold * 2 : 0;
-
-  // Armor-score and evasion with ability bonuses applied on top of the
-  // armor/feature-derived baseline.
-  const effectiveArmorScore = abilityDelta.armorScoreSet != null
-    ? abilityDelta.armorScoreSet + abilityDelta.armorScoreBonus
-    : baseEffectiveArmorScore + abilityDelta.armorScoreBonus;
-  const effectiveEvasion = baseEffectiveEvasion + abilityDelta.evasionBonus;
+  // Derived defenses (Armor Score, Evasion, damage thresholds) come from one
+  // shared calculator so the full sheet and the Player Portal never disagree.
+  // It applies armor features (Protective/Barrier/Double Duty, Heavy/Flexible)
+  // and passive domain-card abilities (Bare Bones, Untouchable, ...).
+  const {
+    armorScore: effectiveArmorScore,
+    evasion: effectiveEvasion,
+    majorThreshold,
+    severeThreshold,
+    massiveThreshold,
+  } = useMemo(() => computeDefenses(character, equippedItems), [character, equippedItems]);
 
   const hpFilledCount = hpSlots.filter(Boolean).length;
   const stressFilledCount = stressSlots.filter(Boolean).length;
