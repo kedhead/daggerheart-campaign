@@ -506,14 +506,17 @@ const WEAPON_FEATURES = [
   'Versatile',     // Can be used one or two-handed
   'Reach',         // Extended melee range
   'Thrown',        // Can be thrown
-  'Ammunition'     // Requires ammunition
+  'Ammunition',    // Requires ammunition
+  // Secondary-weapon / shield defensive features
+  'Protective',    // +Proficiency to Armor Score while wielding
+  'Barrier',       // +Proficiency+1 to Armor Score, -1 Evasion while wielding
+  'Double Duty',   // +1 Armor Score (armor-replacement secondary)
 ];
 
 // Armor features from Daggerheart SRD
 const ARMOR_FEATURES = [
   'Deflecting',    // Mark armor slot for Evasion bonus
   'Sheltering',    // Armor reduces damage for nearby allies too
-  'Barrier',       // +5 Armor Score, -1 Evasion
   'Resilient',     // Chance to avoid marking last armor slot
   'Fortified'      // Extra armor slots
 ];
