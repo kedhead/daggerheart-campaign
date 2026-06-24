@@ -84,17 +84,16 @@ export function computeDefenses(character, equippedItems = []) {
 
   // Armor-score / evasion bonuses from item features. Protective and Barrier are
   // secondary-weapon / shield features, so scan ALL equipped items, not just armor.
-  // Protective: +1/+2/+3/+4 Armor Score by the item's tier.
-  // Barrier:    +2/+3/+4/+5 Armor Score (tier + 1) and -1 Evasion.
-  // Double Duty: +1 Armor Score.
+  // Protective: +Proficiency Armor Score (per rules — scales with level).
+  // Barrier:    +Proficiency+1 Armor Score and -1 Evasion.
+  // Double Duty: +1 Armor Score (flat).
   let armorScoreFeatureBonus = 0;
   let barrierEvasionPenalty = 0;
   equippedItems.forEach(item => {
-    const tier = item.systemData?.tier || 1;
     (item.systemData?.features || []).forEach(f => {
       const fl = getFeatureName(f).toLowerCase();
-      if (fl === 'protective') armorScoreFeatureBonus += tier;
-      else if (fl === 'barrier') { armorScoreFeatureBonus += tier + 1; barrierEvasionPenalty += 1; }
+      if (fl === 'protective') armorScoreFeatureBonus += proficiency;
+      else if (fl === 'barrier') { armorScoreFeatureBonus += proficiency + 1; barrierEvasionPenalty += 1; }
       else if (fl === 'double duty' || fl === 'double-duty') armorScoreFeatureBonus += 1;
     });
   });
