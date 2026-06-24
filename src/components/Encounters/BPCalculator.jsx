@@ -12,8 +12,12 @@ export const BP_COSTS = {
   standard: 2,
   bruiser: 2,
   skulk: 2,
+  ranged: 2,
+  support: 2,
+  social: 1,
   leader: 3,
-  solo: 5
+  solo: 5,
+  boss: 8
 };
 
 export function calculateBPBudget(partySize) {

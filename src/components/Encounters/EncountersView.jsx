@@ -94,6 +94,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
       <LiveEncounterTracker
         campaignId={campaign?.id}
         isDM={isDM}
+        adversaries={adversaries}
         onClose={() => setShowTracker(false)}
       />
     );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Minus, Trash2, Search, Skull, X } from 'lucide-react';
+import { Plus, Minus, Trash2, Search, Skull, X, Crown } from 'lucide-react';
 import { BP_COSTS } from './BPCalculator';
 
 export default function AdversaryPicker({
@@ -73,6 +73,8 @@ export default function AdversaryPicker({
         return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'solo':
         return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'boss':
+        return 'bg-amber-500/30 text-amber-300 border-amber-500/60';
       default:
         return 'bg-white/10 text-white/60 border-white/20';
     }
@@ -115,6 +117,7 @@ export default function AdversaryPicker({
                   <div className={`w-2 h-10 rounded-full ${getRoleColorClass(adv.role).replace('text-', 'bg-').split(' ')[0].replace('/20', '')}`} />
                   <div>
                     <div className="flex items-center gap-2">
+                      {adv.isBoss && <Crown size={12} className="text-amber-400 shrink-0" />}
                       <span className="font-bold text-white">{adv.name}</span>
                       <span className="text-xs font-mono text-white/40 px-1.5 py-0.5 bg-white/5 rounded border border-white/5">T{adv.tier}</span>
                     </div>
@@ -215,7 +218,10 @@ export default function AdversaryPicker({
                               <div className="flex items-center gap-3">
                                 <span className={`w-1.5 h-8 rounded-full ${getRoleColorClass(adv.role).replace('text-', 'bg-').split(' ')[0].replace('/20', '')}`} />
                                 <div>
-                                  <div className="font-bold text-white text-sm">{adv.name}</div>
+                                  <div className="flex items-center gap-1.5 font-bold text-white text-sm">
+                                    {adv.isBoss && <Crown size={11} className="text-amber-400 shrink-0" />}
+                                    {adv.name}
+                                  </div>
                                   <div className="text-xs text-white/50">{adv.role} • {cost} BP</div>
                                 </div>
                               </div>

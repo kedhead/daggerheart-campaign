@@ -104,6 +104,169 @@ Return ONLY a raw JSON object. No markdown code blocks, no explanation, no comme
 }`;
 }
 
+function buildBossPrompt(concept, tier, campaignContext) {
+  return `You are an expert Daggerheart TTRPG game master creating a mechanically accurate BOSS statblock with multiple phases.
+
+CONCEPT: ${concept}
+TIER: ${tier} (1=novice threats, 2=seasoned, 3=formidable, 4=legendary/world-shaking)
+ROLE: boss — The climactic threat of a session or arc. Very high HP. Multiple powerful features. Defines the encounter.
+
+${campaignContext ? `=== CAMPAIGN CONTEXT ===\n${campaignContext}\n=== END CAMPAIGN CONTEXT ===\n` : ''}
+
+=== DAGGERHEART BOSS RULES ===
+
+STATS:
+- difficulty: T1=14, T2=16, T3=18, T4=20
+- hp: Boss HP = tier × 8-12. (T1:10-14, T2:16-22, T3:26-34, T4:36-48)
+- stress: 4-6 stress slots
+- attack: Hits hard — T1:+2-3, T2:+3-5, T3:+5-7, T4:+6-9. Damage: 2dX+modifier.
+- thresholds.minor: ≈ HP × 1.3; thresholds.major: ≈ HP × 2.5
+
+ATTACK DAMAGE FORMAT: "XdY+Z type" — e.g. "2d8+5 phy", "2d10+7 fire"
+
+FEATURES: 4–5 base features. MUST include Relentless(3+) or Relentless(4).
+Feature types: passive, action, reaction. Use Daggerheart mechanical terms.
+
+PHASES: Generate exactly 2 phases, triggered at 66% and 33% HP remaining (descending order).
+Each phase:
+- Thematic name + one-sentence dramatic description
+- 1–2 new abilities (same feature schema as base features)
+- May override attackDamage in later phases for escalation (null = keep current)
+- Do NOT include summons (GM will add those manually)
+- replaceFeatures: false for phase 2, may be true for final phase if thematically appropriate
+- healPercent: 0 unless the concept strongly implies it (e.g. a regenerator)
+
+=== OUTPUT FORMAT ===
+Return ONLY a raw JSON object. No markdown, no explanation.
+
+{
+  "name": "Boss Name",
+  "tier": ${tier},
+  "role": "boss",
+  "description": "One vivid sentence describing appearance and feel.",
+  "motives": "Action verb phrase, action verb phrase, action verb phrase",
+  "difficulty": <number>,
+  "hp": <number>,
+  "stress": <number>,
+  "attack": <number>,
+  "attackName": "Attack name",
+  "attackRange": "Melee",
+  "attackDamage": "2d8+4 phy",
+  "experience": "Optional Skill +X",
+  "thresholds": { "minor": <number>, "major": <number> },
+  "features": [
+    { "name": "Relentless(3)", "type": "passive", "description": "Can be spotlighted up to 3 times per GM turn. Spend Fear as usual." },
+    { "name": "Feature Name", "type": "action", "description": "..." }
+  ],
+  "phases": [
+    {
+      "id": "phase-2",
+      "name": "Phase 2 Name",
+      "description": "One-sentence dramatic flavor shown on transition.",
+      "triggerPercent": 66,
+      "attackName": null,
+      "attackDamage": null,
+      "attack": null,
+      "newFeatures": [
+        { "name": "New Ability", "type": "action", "description": "..." }
+      ],
+      "replaceFeatures": false,
+      "summons": [],
+      "healPercent": 0
+    },
+    {
+      "id": "phase-3",
+      "name": "Final Form Name",
+      "description": "One-sentence dramatic flavor shown on transition.",
+      "triggerPercent": 33,
+      "attackName": null,
+      "attackDamage": "2d10+6 phy",
+      "attack": null,
+      "newFeatures": [
+        { "name": "Desperate Strike", "type": "action", "description": "..." }
+      ],
+      "replaceFeatures": false,
+      "summons": [],
+      "healPercent": 0
+    }
+  ]
+}`;
+}
+
+export async function generateBossStatblock({
+  concept,
+  tier,
+  apiKey,
+  provider = 'anthropic',
+  campaignContext = ''
+}) {
+  if (!concept?.trim()) throw new Error('Please describe the boss concept.');
+
+  const raw = await aiService.generate(
+    buildBossPrompt(concept, tier, campaignContext),
+    apiKey,
+    provider
+  );
+
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('AI returned an unexpected format. Please try again.');
+
+  const parsed = JSON.parse(jsonMatch[0]);
+  const hp = Number(parsed.hp) || (tier * 10);
+
+  const cleanPhases = Array.isArray(parsed.phases)
+    ? parsed.phases.map((ph, i) => ({
+        id: ph.id || `phase-${i + 2}`,
+        name: ph.name || `Phase ${i + 2}`,
+        description: ph.description || '',
+        triggerPercent: Number(ph.triggerPercent) || (i === 0 ? 66 : 33),
+        attackName: ph.attackName || '',
+        attackDamage: ph.attackDamage || '',
+        attack: ph.attack ?? null,
+        newFeatures: Array.isArray(ph.newFeatures)
+          ? ph.newFeatures.map(f => ({
+              name: f.name || '',
+              type: ['passive', 'action', 'reaction'].includes(f.type) ? f.type : 'passive',
+              description: f.description || ''
+            }))
+          : [],
+        replaceFeatures: !!ph.replaceFeatures,
+        summons: [],
+        healPercent: Number(ph.healPercent) || 0
+      }))
+    : [];
+
+  return {
+    name: parsed.name || 'Unnamed Boss',
+    tier: Number(parsed.tier) || tier,
+    role: 'boss',
+    isBoss: true,
+    description: parsed.description || '',
+    motives: parsed.motives || '',
+    difficulty: Number(parsed.difficulty) || 14,
+    hp,
+    stress: Number(parsed.stress) || 4,
+    attack: Number(parsed.attack) || 2,
+    attackName: parsed.attackName || '',
+    attackRange: parsed.attackRange || 'Melee',
+    attackDamage: parsed.attackDamage || `2d${tier <= 1 ? 8 : tier === 2 ? 10 : 12}+${tier + 3} phy`,
+    experience: parsed.experience || '',
+    thresholds: {
+      minor: Number(parsed.thresholds?.minor) || Math.ceil(hp * 1.3),
+      major: Number(parsed.thresholds?.major) || Math.ceil(hp * 2.5)
+    },
+    features: Array.isArray(parsed.features)
+      ? parsed.features.map(f => ({
+          name: f.name || '',
+          type: ['passive', 'action', 'reaction'].includes(f.type) ? f.type : 'passive',
+          description: f.description || ''
+        }))
+      : [],
+    phases: cleanPhases,
+    hidden: false
+  };
+}
+
 export async function generateAdversaryStatblock({
   concept,
   tier,

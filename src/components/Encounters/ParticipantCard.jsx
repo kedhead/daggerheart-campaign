@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Heart, Zap, Skull, ChevronDown, ChevronRight, Shield, Swords, Target, X, Check } from 'lucide-react';
+import { Heart, Zap, Skull, ChevronDown, ChevronRight, Shield, Swords, Target, X, Check, Crown } from 'lucide-react';
 import { DAGGERHEART_CONDITIONS } from '../../hooks/useActiveEncounter';
 import { parseDamageNotation } from '../../dice';
 
@@ -38,7 +38,11 @@ export default function ParticipantCard({
     attackName,
     attackRange,
     motives,
-    features
+    features,
+    isBoss,
+    bossPhases,
+    triggeredPhaseIds,
+    currentPhaseName
   } = participant;
 
   // Calculate HP percentage
@@ -69,10 +73,17 @@ export default function ParticipantCard({
         return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'solo':
         return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'boss':
+        return 'bg-amber-500/30 text-amber-300 border-amber-500/60';
       default:
         return 'bg-white/10 text-white/60 border-white/20';
     }
   };
+
+  // Boss phase dots: sorted highest % first (last to trigger)
+  const sortedPhases = isBoss && bossPhases
+    ? [...bossPhases].sort((a, b) => b.triggerPercent - a.triggerPercent)
+    : [];
 
   const handleQuickDamage = (amount) => {
     if (isDM && onApplyDamage) {
@@ -126,7 +137,9 @@ export default function ParticipantCard({
         bg-[var(--bg-secondary)] border rounded-xl overflow-hidden transition-all duration-200
         ${isDefeated
           ? 'border-white/5 opacity-60'
-          : 'border-white/10 hover:border-white/20 hover:shadow-lg'}
+          : isBoss
+            ? 'border-amber-500/60 hover:border-amber-400/80 hover:shadow-lg hover:shadow-amber-500/10'
+            : 'border-white/10 hover:border-white/20 hover:shadow-lg'}
         ${isExpanded ? 'ring-1 ring-[rgb(var(--color-primary))]' : ''}
       `}
     >
@@ -138,6 +151,7 @@ export default function ParticipantCard({
         {/* Name & Role */}
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
+            {isBoss && <Crown size={16} className="text-amber-400 shrink-0" />}
             {isDefeated && <Skull size={16} className="text-white/40" />}
             <span className={`font-bold text-lg ${isDefeated ? 'text-white/40 line-through' : 'text-white'}`}>
               {name}
@@ -148,6 +162,11 @@ export default function ParticipantCard({
             <span className="bg-white/10 text-white/60 px-1.5 py-0.5 rounded text-xs font-mono border border-white/10">
               T{tier}
             </span>
+            {currentPhaseName && (
+              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded text-xs border border-amber-500/40 font-medium">
+                {currentPhaseName}
+              </span>
+            )}
           </div>
 
           {/* Stats Bars */}
@@ -175,6 +194,17 @@ export default function ParticipantCard({
                     />
                   </>
                 )}
+                {/* Boss phase threshold markers */}
+                {isBoss && sortedPhases.map(ph => (
+                  <div
+                    key={ph.id}
+                    className={`absolute top-0 bottom-0 w-0.5 z-10 ${
+                      (triggeredPhaseIds || []).includes(ph.id) ? 'bg-amber-400/40' : 'bg-amber-400/80'
+                    }`}
+                    style={{ left: `${ph.triggerPercent}%` }}
+                    title={`${ph.name} (${ph.triggerPercent}%)`}
+                  />
+                ))}
               </div>
               <span className="text-xs font-mono text-white/60 min-w-[3ch] text-right">{currentHP}</span>
             </div>
@@ -191,6 +221,24 @@ export default function ParticipantCard({
               <span className="text-xs font-mono text-white/60 min-w-[3ch] text-right">{currentStress}</span>
             </div>
           </div>
+
+          {/* Boss phase progress dots */}
+          {isBoss && sortedPhases.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <Crown size={10} className="text-amber-400/60 shrink-0" />
+              {sortedPhases.map(ph => (
+                <div
+                  key={ph.id}
+                  className={`w-2.5 h-2.5 rounded-full border transition-colors ${
+                    (triggeredPhaseIds || []).includes(ph.id)
+                      ? 'bg-amber-400 border-amber-300'
+                      : 'bg-transparent border-amber-500/60'
+                  }`}
+                  title={`${ph.name} — ${ph.triggerPercent}%${(triggeredPhaseIds || []).includes(ph.id) ? ' (triggered)' : ''}`}
+                />
+              ))}
+            </div>
+          )}
 
           {/* Conditions */}
           {conditions.length > 0 && (

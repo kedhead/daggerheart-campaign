@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Wand2, Loader2, Plus, Trash2, Pencil, Copy, Sparkles, BookOpen } from 'lucide-react';
 import Modal from '../Modal';
-import { generateAdversaryStatblock } from '../../services/adversaryGenerator';
+import { generateAdversaryStatblock, generateBossStatblock } from '../../services/adversaryGenerator';
+import BossPhaseEditor from '../Encounters/BossPhaseEditor';
 import { DAGGERHEART_ADVERSARIES } from '../../data/daggerheartAdversaries';
 import { useAPIKey } from '../../hooks/useAPIKey';
 
-const ROLES = ['minion', 'horde', 'standard', 'bruiser', 'skulk', 'ranged', 'support', 'social', 'leader', 'solo'];
+const ROLES = ['minion', 'horde', 'standard', 'bruiser', 'skulk', 'ranged', 'support', 'social', 'leader', 'solo', 'boss'];
 const ATTACK_RANGES = ['Melee', 'Very Close', 'Close', 'Far', 'Very Far'];
 const FEATURE_TYPES = ['passive', 'action', 'reaction'];
 
@@ -19,7 +20,8 @@ const ROLE_HINTS = {
   support:  'Buffs allies and debuffs enemies',
   social:   'Narrative/dialogue focus — low combat stats',
   leader:   'Commands other adversaries — buffs allies',
-  solo:     'Fights an entire party alone — very powerful'
+  solo:     'Fights an entire party alone — very powerful',
+  boss:     'Multi-phase climactic encounter — gains new abilities as HP drops (8 BP)'
 };
 
 const EMPTY_FORM = {
@@ -38,6 +40,7 @@ const EMPTY_FORM = {
   experience: '',
   thresholds: { minor: 6, major: 12 },
   features: [],
+  phases: [],
   hidden: false
 };
 
@@ -58,6 +61,13 @@ function fromAdversary(adv) {
     experience: adv.experience || '',
     thresholds: { minor: adv.thresholds?.minor || 6, major: adv.thresholds?.major || 12 },
     features: adv.features ? adv.features.map(f => ({ ...f })) : [],
+    phases: adv.phases
+      ? adv.phases.map(p => ({
+          ...p,
+          newFeatures: p.newFeatures ? p.newFeatures.map(f => ({ ...f })) : [],
+          summons: p.summons ? p.summons.map(s => ({ ...s })) : []
+        }))
+      : [],
     hidden: adv.hidden || false
   };
 }
@@ -127,16 +137,24 @@ export default function AdversaryForm({
     setAiGenerating(true);
     setAiError('');
     try {
-      const result = await generateAdversaryStatblock({
-        concept: aiConcept,
-        tier: form.tier,
-        role: form.role,
-        apiKey: aiKey,
-        provider: aiProvider,
-        campaignContext
-      });
+      const result = form.role === 'boss'
+        ? await generateBossStatblock({
+            concept: aiConcept,
+            tier: form.tier,
+            apiKey: aiKey,
+            provider: aiProvider,
+            campaignContext
+          })
+        : await generateAdversaryStatblock({
+            concept: aiConcept,
+            tier: form.tier,
+            role: form.role,
+            apiKey: aiKey,
+            provider: aiProvider,
+            campaignContext
+          });
       setForm(prev => ({ ...result, hidden: prev.hidden }));
-      setMode('manual'); // switch to form view to review/edit
+      setMode('manual');
     } catch (e) {
       setAiError(e.message || 'Generation failed. Please try again.');
     } finally {
@@ -157,7 +175,11 @@ export default function AdversaryForm({
     if (!form.name.trim()) { alert('Name is required.'); return; }
     setSaving(true);
     try {
-      await onSave(form);
+      await onSave({
+        ...form,
+        isBoss: form.role === 'boss',
+        phases: form.role === 'boss' ? (form.phases || []) : []
+      });
       onClose();
     } catch (e) {
       alert('Failed to save: ' + e.message);
@@ -557,6 +579,15 @@ export default function AdversaryForm({
               ))}
             </div>
           </div>
+
+          {/* Boss phase editor (only shown when role is boss) */}
+          {form.role === 'boss' && (
+            <BossPhaseEditor
+              phases={form.phases || []}
+              onChange={phases => setForm(prev => ({ ...prev, phases }))}
+              campaignAdversaries={campaignAdversaries}
+            />
+          )}
         </div>
 
         {/* ── Footer ── */}

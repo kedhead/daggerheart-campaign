@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Play, Pause, StopCircle, RotateCcw, Skull, Heart, Users, ChevronLeft, AlertTriangle } from 'lucide-react';
 import ParticipantCard from './ParticipantCard';
 import EnvironmentEffectsPanel from './EnvironmentEffectsPanel';
+import PhaseTransitionModal from './PhaseTransitionModal';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
 import { useDice } from '../../dice';
 
 export default function LiveEncounterTracker({
   campaignId,
   isDM,
+  adversaries = [],
   onClose
 }) {
   const {
@@ -22,7 +24,8 @@ export default function LiveEncounterTracker({
     toggleEnvironmentEffect,
     pauseEncounter,
     resumeEncounter,
-    endEncounter
+    endEncounter,
+    confirmPhaseTransition
   } = useActiveEncounter(campaignId);
 
   const { rollDamage } = useDice(campaignId);
@@ -66,7 +69,8 @@ export default function LiveEncounterTracker({
     participants,
     environment,
     activeEnvironmentEffects,
-    partySize
+    partySize,
+    pendingPhaseTransition
   } = activeEncounter;
 
   // Separate active and defeated participants
@@ -261,6 +265,21 @@ export default function LiveEncounterTracker({
           )}
         </div>
       </div>
+
+      {/* Boss Phase Transition Modal */}
+      {isDM && pendingPhaseTransition && (
+        <PhaseTransitionModal
+          bossName={participants.find(p => p.id === pendingPhaseTransition.participantId)?.name || 'Boss'}
+          phase={pendingPhaseTransition.phase}
+          allAdversaries={adversaries}
+          onConfirm={() => confirmPhaseTransition(
+            pendingPhaseTransition.participantId,
+            pendingPhaseTransition.phase,
+            adversaries
+          )}
+          isDM={isDM}
+        />
+      )}
 
       {/* End Confirmation Modal */}
       {showEndConfirm && (
