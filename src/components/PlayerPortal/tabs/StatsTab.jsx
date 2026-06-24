@@ -37,7 +37,7 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
         .filter(Boolean)
     : [];
 
-  const { evasion, majorThreshold, severeThreshold } = computeDefenses(character, equippedItems);
+  const { armorScore, evasion, majorThreshold, severeThreshold } = computeDefenses(character, equippedItems);
 
   const handleTraitRoll = async (traitName) => {
     if (!campaignId) return;
@@ -98,14 +98,22 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
         </div>
       </div>
 
-      {/* Evasion (solo — proficiency removed, it's folded into attack rolls) */}
-      <div>
+      {/* Evasion + Armor Score */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <div className="lrp-card" style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 110 }}>
           <div style={{ fontSize: 10, color: '#60a5fa', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 800 }}>Evasion</div>
           <div className="lrp-cinzel" style={{ fontSize: 36, fontWeight: 900, color: '#fdf6dc', lineHeight: 1, marginTop: 6 }}>
             {evasion}
           </div>
         </div>
+        {armorScore > 0 && (
+          <div className="lrp-card" style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 110 }}>
+            <div style={{ fontSize: 10, color: '#d97706', letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 800 }}>Armor Score</div>
+            <div className="lrp-cinzel" style={{ fontSize: 36, fontWeight: 900, color: '#fdf6dc', lineHeight: 1, marginTop: 6 }}>
+              {armorScore}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Damage thresholds — always shown */}

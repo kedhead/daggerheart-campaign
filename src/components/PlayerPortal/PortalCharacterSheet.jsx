@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { X, ChevronLeft } from 'lucide-react';
 import { useDice, DiceTray } from '../../dice';
 import PortalSlotTracker from './PortalSlotTracker';
@@ -7,6 +7,7 @@ import SpellsTab from './tabs/SpellsTab';
 import StatsTab from './tabs/StatsTab';
 import InventoryTab from './tabs/InventoryTab';
 import FeaturesTab from './tabs/FeaturesTab';
+import { computeDefenses } from '../../utils/daggerheartDefenses';
 
 const TABS = [
   { key: 'actions',   label: 'Actions'   },
@@ -33,15 +34,32 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
   const [hp,     setHp]     = useState(() => toTrack(character.hpSlots,     6));
   const [stress, setStress] = useState(() => toTrack(character.stressSlots, 6));
   const [hope,   setHope]   = useState(() => toTrack(character.hopeSlots,   6));
-  const [armor,  setArmor]  = useState(() => toTrack(character.armorSlots,  character.armor || 0));
+
+  // Resolve equipped items and compute the true armor score (applying Protective /
+  // Barrier / Double Duty feature bonuses) BEFORE the armor useState so the lazy
+  // initializer and the useEffect reset both use the same computed value.
+  const equippedItems = useMemo(() => {
+    if (!items || !Array.isArray(character.equippedItems)) return [];
+    return character.equippedItems
+      .filter(ei => ei.equipped !== false)
+      .map(ei => { const item = items?.find(i => i.id === ei.itemId); return item ? { ...item, ...ei } : null; })
+      .filter(Boolean);
+  }, [items, character.equippedItems]);
+
+  const { armorScore: computedArmorScore } = useMemo(
+    () => computeDefenses(character, equippedItems),
+    [character, equippedItems]
+  );
+
+  const [armor,  setArmor]  = useState(() => toTrack(character.armorSlots,  computedArmorScore || 0));
 
   // Reset local state when server data changes
   useEffect(() => {
     setHp(toTrack(character.hpSlots, 6));
     setStress(toTrack(character.stressSlots, 6));
     setHope(toTrack(character.hopeSlots, 6));
-    setArmor(toTrack(character.armorSlots, character.armor || 0));
-  }, [character.hpSlots, character.stressSlots, character.hopeSlots, character.armorSlots]);
+    setArmor(toTrack(character.armorSlots, computedArmorScore || 0));
+  }, [character.hpSlots, character.stressSlots, character.hopeSlots, character.armorSlots, computedArmorScore]);
 
   const campaignId = campaign?.id;
   const { roll, rollDamage } = useDice(campaignId);
@@ -152,9 +170,9 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
                 onToggle={handleVitalToggle('stressSlots', stress, setStress)} />
               <PortalSlotTracker
                 label={armorName ? `Armor · ${armorName}` : 'Armor'}
-                {...armor} color="armor"
-                right={`${armor.filled}/${armor.max}${character.armor ? `  (${character.armor})` : ''}`}
-                onToggle={handleVitalToggle('armorSlots', armor, setArmor)} />
+                {...armor} max={computedArmorScore || armor.max} color="armor"
+                right={`${armor.filled}/${computedArmorScore || armor.max}${computedArmorScore ? `  (${computedArmorScore})` : ''}`}
+                onToggle={handleVitalToggle('armorSlots', { ...armor, max: computedArmorScore || armor.max }, setArmor)} />
             </div>
           </div>
 
