@@ -8,8 +8,31 @@
 import { CLASSES, getBaseProficiency, getTierForLevel } from '../data/systems/daggerheart';
 import { computeAbilityDelta } from '../data/daggerheartAbilityEffects';
 import { getCardByName } from '../data/daggerheartDomainCards';
-import { DAGGERHEART_ARMOR } from '../data/daggerheartItems';
+import { DAGGERHEART_ARMOR, ALL_DAGGERHEART_ITEMS } from '../data/daggerheartItems';
 import { getFeatureName } from './itemFeatures';
+
+// Fill in missing systemData fields from the official catalog (matched by name).
+// Handles items imported before systemData was fully established, or items with
+// empty features arrays that should have Protective / Barrier / Heavy / etc.
+function enrichFromCatalog(item) {
+  if (!item?.name) return item;
+  const sd = item.systemData || {};
+  const needsFeatures = !sd.features || sd.features.length === 0;
+  const needsArmorScore = item.type === 'armor' && sd.armorScore == null;
+  const needsTier = sd.tier == null;
+  if (!needsFeatures && !needsArmorScore && !needsTier) return item;
+  const match = ALL_DAGGERHEART_ITEMS.find(c => c.name.toLowerCase() === item.name.toLowerCase());
+  if (!match?.systemData) return item;
+  return {
+    ...item,
+    systemData: {
+      ...sd,
+      ...(needsFeatures && { features: match.systemData.features || [] }),
+      ...(needsArmorScore && { armorScore: match.systemData.armorScore }),
+      ...(needsTier && { tier: match.systemData.tier || 1 }),
+    },
+  };
+}
 
 // Armor prints two base numbers (Major base / Severe base), stored on items as
 // `thresholds.minor` and `thresholds.major` for historical reasons — the values
@@ -39,6 +62,7 @@ function resolveArmorBases(armor) {
  *            severeThreshold:number, massiveThreshold:number}}
  */
 export function computeDefenses(character, equippedItems = []) {
+  equippedItems = equippedItems.map(enrichFromCatalog);
   const charClass = character?.class;
   const level = character?.level || 1;
   const traits = character?.traits || {};

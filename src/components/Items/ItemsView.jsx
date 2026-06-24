@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Search, Package, Sword, Shield, Backpack, Wand2, Download, Check, Sparkles } from 'lucide-react';
+import { Plus, Search, Package, Sword, Shield, Backpack, Wand2, Download, Check, Sparkles, RefreshCw } from 'lucide-react';
 import ItemCard from './ItemCard';
 import ItemForm from './ItemForm';
 import ItemAIModal from './ItemAIModal';
@@ -40,6 +40,7 @@ export default function ItemsView({
   const [isImporting, setIsImporting] = useState(false);
   const [catalogTier, setCatalogTier] = useState('all');
   const [showAIModal, setShowAIModal] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const { getEffectiveKey } = useAPIKey(userId);
   const anthropicInfo = getEffectiveKey?.('anthropic');
@@ -165,6 +166,22 @@ export default function ItemsView({
     setSelectedImports(new Set());
   };
 
+  const handleSyncToCatalog = async () => {
+    if (!confirm('Update all campaign items that match the official catalog? This will overwrite their systemData with the latest official values (name, description, and custom changes are preserved).')) return;
+    setIsSyncing(true);
+    let updated = 0;
+    for (const item of items) {
+      const catalogMatch = ALL_DAGGERHEART_ITEMS.find(
+        c => c.name.toLowerCase() === item.name.toLowerCase()
+      );
+      if (!catalogMatch) continue;
+      await updateItem(item.id, { ...item, systemData: catalogMatch.systemData });
+      updated++;
+    }
+    setIsSyncing(false);
+    alert(`Synced ${updated} item${updated !== 1 ? 's' : ''} to official catalog data.`);
+  };
+
   const handleImportItems = async () => {
     if (selectedImports.size === 0) return;
 
@@ -228,6 +245,12 @@ export default function ItemsView({
               <button className="btn btn-secondary" onClick={() => setShowImportModal(true)}>
                 <Download size={20} />
                 Import Official
+              </button>
+            )}
+            {(!campaign?.gameSystem || campaign.gameSystem === 'daggerheart') && (
+              <button className="btn btn-secondary" onClick={handleSyncToCatalog} disabled={isSyncing} title="Update existing items' stats to match the official catalog">
+                <RefreshCw size={20} className={isSyncing ? 'animate-spin' : ''} />
+                {isSyncing ? 'Syncing…' : 'Sync to Catalog'}
               </button>
             )}
             {/* AI generation currently supports Daggerheart only */}
