@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   collection,
   doc,
@@ -6,10 +6,12 @@ import {
   updateDoc,
   setDoc,
   deleteDoc,
+  getDoc,
   onSnapshot,
   query,
   orderBy,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,55 +40,23 @@ export function useFirestoreCampaign(campaignId) {
   // Base path for shared campaign
   const basePath = campaignId ? `campaigns/${campaignId}` : null;
 
-  // Subscribe to campaign info
+  // Track whether migration has been attempted for this campaign session
+  const migrationRan = useRef(false);
+
+  // Subscribe to campaign info (pure read — no writes in listener)
   useEffect(() => {
     if (!basePath) {
       setLoading(false);
       return;
     }
 
+    migrationRan.current = false; // reset when campaign changes
+
     const unsubscribe = onSnapshot(
       doc(db, basePath),
-      async (docSnapshot) => {
+      (docSnapshot) => {
         if (docSnapshot.exists()) {
-          const campaignData = { id: docSnapshot.id, ...docSnapshot.data() };
-
-          // Collect migration updates
-          const updates = {};
-
-          // Migrate legacy campaigns without dmId or members
-          if (!campaignData.dmId || !campaignData.members) {
-            updates.dmId = currentUser.uid;
-            updates.members = {
-              [currentUser.uid]: {
-                role: 'dm',
-                email: currentUser.email,
-                displayName: currentUser.displayName || 'DM',
-                joinedAt: serverTimestamp()
-              }
-            };
-          }
-
-          // Migrate legacy campaigns without gameSystem
-          if (!campaignData.gameSystem) {
-            updates.gameSystem = 'daggerheart';
-          }
-
-          // Apply migrations if needed
-          if (Object.keys(updates).length > 0) {
-            try {
-              await updateDoc(docSnapshot.ref, updates);
-              console.log('Migrated legacy campaign:', Object.keys(updates).join(', '));
-
-              // Update local state with migrated data
-              setCampaign({ ...campaignData, ...updates });
-            } catch (error) {
-              console.error('Error migrating campaign:', error);
-              setCampaign(campaignData);
-            }
-          } else {
-            setCampaign(campaignData);
-          }
+          setCampaign({ id: docSnapshot.id, ...docSnapshot.data() });
         }
         setLoading(false);
       },
@@ -97,7 +67,38 @@ export function useFirestoreCampaign(campaignId) {
     );
 
     return unsubscribe;
-  }, [basePath, currentUser]);
+  }, [basePath]);
+
+  // One-shot migration effect — runs once per campaign load, never inside listener
+  useEffect(() => {
+    if (!basePath || !campaign || migrationRan.current) return;
+
+    const updates = {};
+
+    if (!campaign.dmId || !campaign.members) {
+      updates.dmId = currentUser.uid;
+      updates.members = {
+        [currentUser.uid]: {
+          role: 'dm',
+          email: currentUser.email,
+          displayName: currentUser.displayName || 'DM',
+          joinedAt: serverTimestamp()
+        }
+      };
+    }
+
+    if (!campaign.gameSystem) {
+      updates.gameSystem = 'daggerheart';
+    }
+
+    migrationRan.current = true;
+
+    if (Object.keys(updates).length === 0) return;
+
+    updateDoc(doc(db, basePath), updates)
+      .then(() => console.log('Migrated legacy campaign:', Object.keys(updates).join(', ')))
+      .catch(err => console.error('Error migrating campaign:', err));
+  }, [basePath, campaign]);
 
   // Subscribe to characters
   useEffect(() => {
