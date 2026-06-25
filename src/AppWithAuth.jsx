@@ -49,6 +49,7 @@ import PresenceIndicator from './components/PresenceIndicator/PresenceIndicator'
 import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import { usePresence } from './hooks/usePresence';
 import { getGameSystem } from './data/systems/index.js';
+import { useCampaignAuth } from './hooks/useCampaignAuth';
 import TopBar from './components/Layout/TopBar';
 import BottomNav from './components/Layout/BottomNav';
 import PlayerPortalView from './components/PlayerPortal/PlayerPortalView';
@@ -209,6 +210,9 @@ function CampaignApp() {
   // Presence tracking
   const { presenceList } = usePresence(currentCampaignId, currentView);
 
+  // DM / role detection — single source of truth
+  const { isDM, campaignRole } = useCampaignAuth(campaign, currentUser);
+
   // Show notification when user joins campaigns
   useEffect(() => {
     if (joinedCampaigns.length > 0) {
@@ -250,17 +254,6 @@ function CampaignApp() {
       </div>
     );
   }
-
-  // Determine if current user is DM based on campaign data
-  // Check multiple sources: dmId, createdBy, member role, super admin
-  const SUPER_ADMIN_IDS = ['DnZPlvutotbHwsalwMsBG7kEWCu1', 'PdOFs3FvC7WXl1QfB9i2EijyaxI2'];
-  const isSuperAdmin = SUPER_ADMIN_IDS.includes(currentUser?.uid);
-  const campaignRole = campaign?.members?.[currentUser?.uid]?.role || 'dm'; // Default to dm for legacy campaigns
-  const isDM = isSuperAdmin ||
-    campaign?.dmId === currentUser?.uid ||
-    campaign?.createdBy === currentUser?.uid ||
-    campaignRole === 'dm' ||
-    (campaign && !campaign.dmId); // If no dmId at all, assume DM for backwards compatibility
 
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
 
