@@ -48,8 +48,8 @@ import CommandPalette from './components/CommandPalette/CommandPalette';
 import PresenceIndicator from './components/PresenceIndicator/PresenceIndicator';
 import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import { usePresence } from './hooks/usePresence';
-import { getGameSystem } from './data/systems/index.js';
 import { useCampaignAuth } from './hooks/useCampaignAuth';
+import { ThemeProvider } from './contexts/ThemeContext';
 import TopBar from './components/Layout/TopBar';
 import BottomNav from './components/Layout/BottomNav';
 import PlayerPortalView from './components/PlayerPortal/PlayerPortalView';
@@ -166,41 +166,6 @@ function CampaignApp() {
     loading
   } = useFirestoreCampaign(currentCampaignId);
 
-  // Apply theme based on campaign's game system
-  useEffect(() => {
-    if (campaign?.gameSystem) {
-      const gameSystem = getGameSystem(campaign.gameSystem);
-      if (gameSystem?.theme) {
-        // Apply CSS variables for theming - map to the actual CSS variables used in the app
-        document.documentElement.style.setProperty('--fear-color', gameSystem.theme.primary);
-        document.documentElement.style.setProperty('--fear-secondary', gameSystem.theme.primary);
-
-        if (gameSystem.theme.secondary) {
-          document.documentElement.style.setProperty('--hope-color', gameSystem.theme.secondary);
-          document.documentElement.style.setProperty('--hope-secondary', gameSystem.theme.secondary);
-        }
-
-        // For non-Daggerheart systems, also update background colors for fuller theme
-        if (gameSystem.id !== 'daggerheart') {
-          // Shift backgrounds to be more neutral/grey
-          document.documentElement.style.setProperty('--bg-primary', '#1a1a1a');
-          document.documentElement.style.setProperty('--bg-secondary', '#2d2d2d');
-          document.documentElement.style.setProperty('--bg-tertiary', '#3a3a3a');
-        }
-      }
-    }
-
-    // Cleanup: reset to default Daggerheart theme when unmounting
-    return () => {
-      document.documentElement.style.setProperty('--fear-color', '#8b5cf6');
-      document.documentElement.style.setProperty('--fear-secondary', '#a78bfa');
-      document.documentElement.style.setProperty('--hope-color', '#eab308');
-      document.documentElement.style.setProperty('--hope-secondary', '#f59e0b');
-      document.documentElement.style.setProperty('--bg-primary', '#0f0f1a');
-      document.documentElement.style.setProperty('--bg-secondary', '#1a1a2e');
-      document.documentElement.style.setProperty('--bg-tertiary', '#16213e');
-    };
-  }, [campaign?.gameSystem]);
 
   // Ctrl+/ or Cmd+/ to open command palette (Ctrl+K conflicts with Chrome)
   useKeyboardShortcut('/', () => setIsCommandPaletteOpen(true), { ctrl: true });
@@ -759,6 +724,7 @@ function CampaignApp() {
 
   // Inside CampaignApp return...
   return (
+    <ThemeProvider gameSystem={campaign?.gameSystem}>
     <div className={`app min-h-screen flex bg-arcane-navy selection:bg-indigo-500/30 font-sans relative overflow-hidden ${isDM ? 'dm-mode' : 'player-mode'}`}>
       {/* Global Background Visuals */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -837,6 +803,7 @@ function CampaignApp() {
         isDM={isDM}
       />
     </div>
+    </ThemeProvider>
   );
 }
 
