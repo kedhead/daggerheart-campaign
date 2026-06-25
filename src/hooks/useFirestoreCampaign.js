@@ -15,30 +15,36 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useCollection } from './useCollection';
 
 export function useFirestoreCampaign(campaignId) {
   const { currentUser } = useAuth();
   const [campaign, setCampaign] = useState(null);
-  const [characters, setCharacters] = useState([]);
-  const [lore, setLore] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [npcs, setNpcs] = useState([]);
-  const [timelineEvents, setTimelineEvents] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [encounters, setEncounters] = useState([]);
-  const [notes, setNotes] = useState([]);
   const [campaignFrame, setCampaignFrame] = useState(null);
   const [campaignFrameDraft, setCampaignFrameDraft] = useState(null);
-  const [items, setItems] = useState([]);
-  const [partyInventory, setPartyInventory] = useState([]);
   const [initiative, setInitiative] = useState(null);
-  const [quests, setQuests] = useState([]);
-  const [adversaries, setAdversaries] = useState([]);
-  const [environments, setEnvironments] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Base path for shared campaign
   const basePath = campaignId ? `campaigns/${campaignId}` : null;
+
+  // Collection subscriptions — each is a live-updating array via useCollection
+  const characters    = useCollection(basePath, 'characters');
+  const lore          = useCollection(basePath, 'lore');
+  const sessions      = useCollection(basePath, 'sessions', {
+    queryFn: (ref) => query(ref, orderBy('number', 'desc'))
+  });
+  const npcs          = useCollection(basePath, 'npcs');
+  const timelineEvents = useCollection(basePath, 'timelineEvents');
+  const locations     = useCollection(basePath, 'locations');
+  const encounters    = useCollection(basePath, 'encounters');
+  const notes         = useCollection(basePath, 'notes');
+  // Items and partyInventory wait for campaign to load so membership is verified
+  const items         = useCollection(basePath, 'items',         { waitFor: !!campaign });
+  const partyInventory = useCollection(basePath, 'partyInventory', { waitFor: !!campaign });
+  const quests        = useCollection(basePath, 'quests');
+  const adversaries   = useCollection(basePath, 'adversaries');
+  const environments  = useCollection(basePath, 'environments');
 
   // Track whether migration has been attempted for this campaign session
   const migrationRan = useRef(false);
@@ -100,186 +106,6 @@ export function useFirestoreCampaign(campaignId) {
       .catch(err => console.error('Error migrating campaign:', err));
   }, [basePath, campaign]);
 
-  // Subscribe to characters
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/characters`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setCharacters(data);
-      },
-      (error) => {
-        console.warn('Characters subscription error (may be due to pending permissions):', error.code);
-        setCharacters([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to lore
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/lore`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setLore(data);
-      },
-      (error) => {
-        console.warn('Lore subscription error (may be due to pending permissions):', error.code);
-        setLore([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to sessions
-  useEffect(() => {
-    if (!basePath) return;
-
-    const q = query(
-      collection(db, `${basePath}/sessions`),
-      orderBy('number', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setSessions(data);
-      },
-      (error) => {
-        console.warn('Sessions subscription error (may be due to pending permissions):', error.code);
-        setSessions([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to NPCs
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/npcs`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setNpcs(data);
-      },
-      (error) => {
-        console.warn('NPCs subscription error (may be due to pending permissions):', error.code);
-        setNpcs([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to Timeline Events
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/timelineEvents`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setTimelineEvents(data);
-      },
-      (error) => {
-        console.warn('Timeline subscription error (may be due to pending permissions):', error.code);
-        setTimelineEvents([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to Locations
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/locations`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setLocations(data);
-      },
-      (error) => {
-        console.warn('Locations subscription error (may be due to pending permissions):', error.code);
-        setLocations([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to Encounters
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/encounters`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setEncounters(data);
-      },
-      (error) => {
-        console.warn('Encounters subscription error (may be due to pending permissions):', error.code);
-        setEncounters([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to Notes
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/notes`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setNotes(data);
-      },
-      (error) => {
-        console.warn('Notes subscription error (may be due to pending permissions):', error.code);
-        setNotes([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
 
   // Subscribe to Campaign Frame
   useEffect(() => {
@@ -325,95 +151,6 @@ export function useFirestoreCampaign(campaignId) {
     return unsubscribe;
   }, [basePath]);
 
-  // Subscribe to Items - wait for campaign to be loaded first (ensures membership is verified)
-  useEffect(() => {
-    if (!basePath || !campaign) return;
-
-    let retryTimeout;
-    let unsubscribe;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
-
-    const subscribe = () => {
-      unsubscribe = onSnapshot(
-        collection(db, `${basePath}/items`),
-        (snapshot) => {
-          retryCount = 0; // Reset on success
-          const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setItems(data);
-        },
-        (error) => {
-          console.warn('Items subscription error:', error.code);
-          // Only clear items on permanent errors, retry on permission errors
-          if (error.code === 'permission-denied' && retryCount < MAX_RETRIES) {
-            retryCount++;
-            // Retry after a short delay - membership may still be propagating
-            retryTimeout = setTimeout(() => {
-              console.log(`Retrying items subscription (attempt ${retryCount}/${MAX_RETRIES})...`);
-              if (unsubscribe) unsubscribe();
-              subscribe();
-            }, 1000);
-          } else {
-            setItems([]);
-          }
-        }
-      );
-    };
-
-    subscribe();
-
-    return () => {
-      if (retryTimeout) clearTimeout(retryTimeout);
-      if (unsubscribe) unsubscribe();
-    };
-  }, [basePath, campaign]);
-
-  // Subscribe to Party Inventory - wait for campaign to be loaded first
-  useEffect(() => {
-    if (!basePath || !campaign) return;
-
-    let retryTimeout;
-    let unsubscribe;
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
-
-    const subscribe = () => {
-      unsubscribe = onSnapshot(
-        collection(db, `${basePath}/partyInventory`),
-        (snapshot) => {
-          retryCount = 0; // Reset on success
-          const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setPartyInventory(data);
-        },
-        (error) => {
-          console.warn('Party Inventory subscription error:', error.code);
-          if (error.code === 'permission-denied' && retryCount < MAX_RETRIES) {
-            retryCount++;
-            retryTimeout = setTimeout(() => {
-              console.log(`Retrying party inventory subscription (attempt ${retryCount}/${MAX_RETRIES})...`);
-              if (unsubscribe) unsubscribe();
-              subscribe();
-            }, 1000);
-          } else {
-            setPartyInventory([]);
-          }
-        }
-      );
-    };
-
-    subscribe();
-
-    return () => {
-      if (retryTimeout) clearTimeout(retryTimeout);
-      if (unsubscribe) unsubscribe();
-    };
-  }, [basePath, campaign]);
 
   // Subscribe to Initiative
   useEffect(() => {
@@ -437,71 +174,6 @@ export function useFirestoreCampaign(campaignId) {
     return unsubscribe;
   }, [basePath]);
 
-  // Subscribe to Quests
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/quests`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setQuests(data);
-      },
-      (error) => {
-        console.warn('Quests subscription error (may be due to pending permissions):', error.code);
-        setQuests([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to Adversaries
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/adversaries`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setAdversaries(data);
-      },
-      (error) => {
-        console.warn('Adversaries subscription error:', error.code);
-        setAdversaries([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
-
-  // Subscribe to Environments
-  useEffect(() => {
-    if (!basePath) return;
-
-    const unsubscribe = onSnapshot(
-      collection(db, `${basePath}/environments`),
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setEnvironments(data);
-      },
-      (error) => {
-        console.warn('Environments subscription error:', error.code);
-        setEnvironments([]);
-      }
-    );
-
-    return unsubscribe;
-  }, [basePath]);
 
   // Campaign methods
   const updateCampaign = async (updates) => {
