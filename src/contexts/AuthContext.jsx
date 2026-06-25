@@ -33,9 +33,9 @@ export function AuthProvider({ children }) {
     return userCredential;
   }
 
-  // Sign in with email and password
+  // Sign in with email and password — normalize email to match signup behavior
   function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+    return signInWithEmailAndPassword(auth, (email || '').trim().toLowerCase(), password);
   }
 
   // Sign in with Google
@@ -86,7 +86,10 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading
+        ? <div className="loading-view"><div className="loading-spinner" /><p>Loading...</p></div>
+        : children
+      }
     </AuthContext.Provider>
   );
 }
