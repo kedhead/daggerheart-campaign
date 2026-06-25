@@ -85,7 +85,7 @@ export const useBattleMapStore = create((set, get) => ({
   addDrawing: (drawing) => set((state) => ({
     drawings: [...state.drawings, {
       ...drawing,
-      id: drawing.id || `draw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      id: drawing.id || crypto.randomUUID()
     }],
     isDirty: true
   })),
@@ -109,7 +109,7 @@ export const useBattleMapStore = create((set, get) => ({
   // Token actions
   addToken: (token) => set((state) => ({
     tokens: [...state.tokens, {
-      id: `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: crypto.randomUUID(),
       layer: 'tokens',
       rotation: 0,
       width: state.gridSize,
@@ -241,7 +241,6 @@ export const useBattleMapStore = create((set, get) => ({
       gridSize: state.gridSize,
       gridColor: state.gridColor,
       gridVisible: state.gridVisible,
-      snapToGrid: state.snapToGrid,
       snapToGrid: state.snapToGrid,
       tokens: state.tokens,
       drawings: state.drawings,

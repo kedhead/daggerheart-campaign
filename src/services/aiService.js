@@ -100,25 +100,6 @@ export const aiService = {
   },
 
   /**
-   * Simple client-side rate limiting
-   * Prevents too many requests in quick succession
-   * @private
-   */
-  _checkRateLimit() {
-    const now = Date.now();
-    const lastRequest = localStorage.getItem('dh_last_ai_request');
-
-    if (lastRequest) {
-      const timeSinceLastRequest = now - parseInt(lastRequest);
-      if (timeSinceLastRequest < 2000) { // 2 second minimum between requests
-        throw new Error('Please wait a moment before making another request.');
-      }
-    }
-
-    localStorage.setItem('dh_last_ai_request', now.toString());
-  },
-
-  /**
    * Format error messages to be user-friendly
    * @private
    */
