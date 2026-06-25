@@ -858,12 +858,6 @@ function AppContent() {
   const joinCampaignId = urlParams.get('join');
   const publicChronicleId = urlParams.get('chronicle');
 
-  // ── Public chronicle share link — no auth required ─────────────────────
-  // This must run BEFORE the auth gate so anonymous visitors can read.
-  if (publicChronicleId) {
-    return <PublicChronicleView campaignId={publicChronicleId} />;
-  }
-
   useEffect(() => {
     if (currentUser) {
       // Check if user has accepted terms
@@ -871,6 +865,13 @@ function AppContent() {
       setTermsAccepted(accepted === 'true');
     }
   }, [currentUser]);
+
+  // ── Public chronicle share link — no auth required ─────────────────────
+  // This must run BEFORE the auth gate so anonymous visitors can read.
+  // Placed AFTER all hooks to satisfy Rules of Hooks.
+  if (publicChronicleId) {
+    return <PublicChronicleView campaignId={publicChronicleId} />;
+  }
 
   const handleAcceptTerms = () => {
     if (currentUser) {
