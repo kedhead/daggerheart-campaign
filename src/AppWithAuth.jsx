@@ -1,74 +1,77 @@
 import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
+import { CampaignDataProvider, useCampaignData } from './contexts/CampaignDataContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import AuthPage from './components/Auth/AuthPage';
 import TermsOfService from './components/Auth/TermsOfService';
 import CampaignSelector from './components/Campaigns/CampaignSelector';
-import CampaignMembers from './components/Campaigns/CampaignMembers';
 import JoinCampaignPage from './components/Campaigns/JoinCampaignPage';
 import RoleSelection from './components/RoleSelection/RoleSelection';
 import SidebarWithAuth from './components/SidebarWithAuth';
-import DashboardView from './components/Dashboard/DashboardView';
-import CharactersView from './components/Characters/CharactersView';
-import MySheetView from './components/Characters/MySheetView';
-import LoreView from './components/Lore/LoreView';
-import SessionsView from './components/Sessions/SessionsView';
-import FilesView from './components/Files/FilesView';
-import ToolsView from './components/Tools/ToolsView';
-import HelpView from './components/Help/HelpView';
-import GMCheatsheetView from './components/GMCheatsheet/GMCheatsheetView';
-import GMScreenView from './components/GMScreen/GMScreenView';
-import NPCsView from './components/NPCs/NPCsView';
-import TimelineView from './components/Timeline/TimelineView';
-import LocationsView from './components/Locations/LocationsView';
-import EncountersView from './components/Encounters/EncountersView';
-import NotesView from './components/Notes/NotesView';
-import MessagingView from './components/Messaging/MessagingView';
-import CampaignBuilderView from './components/CampaignBuilder/CampaignBuilderView';
-import SuperAdminView from './components/SuperAdmin/SuperAdminView';
-import APISettings from './components/Settings/APISettings';
-import ItemsView from './components/Items/ItemsView';
-import AdversariesView from './components/Adversaries/AdversariesView';
-import EnvironmentsView from './components/Environments/EnvironmentsView';
-import PartyInventoryView from './components/Inventory/PartyInventoryView';
-import InitiativeTracker from './components/Initiative/InitiativeTracker';
-import QuestsView from './components/Quests/QuestsView';
+import AppRouter from './components/AppRouter';
 import PlayerDisplay from './components/PlayerDisplay/PlayerDisplay';
-import DMDisplayControl from './components/PlayerDisplay/DMDisplayControl';
-import BattleMapStudio from './components/BattleMapStudio/BattleMapStudio';
-import StorybookView from './components/Storybook/StorybookView';
-import GraveyardView from './components/Graveyard/GraveyardView';
 import PublicChronicleView from './components/Storybook/PublicChronicleView';
 import BattleMapDisplayWindow from './components/BattleMapDisplay/BattleMapDisplayWindow';
+import PlayerPortalView from './components/PlayerPortal/PlayerPortalView';
 import { DiceRoller, DiceTray } from './dice';
-import { useFirestoreCampaign } from './hooks/useFirestoreCampaign';
 import { usePendingInvites } from './hooks/usePendingInvites';
 import ChatWidget from './components/DaggerheartChat/ChatWidget';
 import CommandPalette from './components/CommandPalette/CommandPalette';
-import PresenceIndicator from './components/PresenceIndicator/PresenceIndicator';
 import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import { usePresence } from './hooks/usePresence';
 import { useCampaignAuth } from './hooks/useCampaignAuth';
-import { ThemeProvider } from './contexts/ThemeContext';
 import TopBar from './components/Layout/TopBar';
 import BottomNav from './components/Layout/BottomNav';
-import PlayerPortalView from './components/PlayerPortal/PlayerPortalView';
 import './App.css';
 
-function CampaignApp() {
-  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
+/**
+ * Inner shell — consumes CampaignDataContext, renders the full app layout.
+ * Must be mounted inside CampaignDataProvider.
+ */
+function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, onChangeUserRole }) {
   const { currentUser } = useAuth();
-  const { checking, joinedCampaigns } = usePendingInvites();
   const { success } = useToast();
-  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || null);
+  const { joinedCampaigns } = usePendingInvites();
+
+  const {
+    campaign,
+    characters,
+    npcs,
+    locations,
+    adversaries,
+    quests,
+    lore,
+    sessions,
+    encounters,
+    campaignFrame,
+    initiative,
+    items,
+    updateCharacter,
+  } = useCampaignData();
+
   const [currentView, setCurrentView] = useState('dashboard');
-  const [currentCampaignId, setCurrentCampaignId] = useState(
-    localStorage.getItem('lastCampaignId') || null
-  );
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [playerPortalMode, setPlayerPortalMode] = useState(
     () => localStorage.getItem('lrPlayerPortalMode') === 'true'
   );
+
+  const { isDM, campaignRole } = useCampaignAuth(campaign, currentUser);
+  const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
+  const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
+  const hasChatBot = isDaggerheart || isStarWarsD6;
+
+  useKeyboardShortcut('/', () => setIsCommandPaletteOpen(true), { ctrl: true });
+  useKeyboardShortcut('k', () => setIsCommandPaletteOpen(true), { ctrl: true });
+
+  const { presenceList } = usePresence(currentCampaignId, currentView);
+
+  useEffect(() => {
+    if (joinedCampaigns.length > 0) {
+      const names = joinedCampaigns.map(c => c.name).join(', ');
+      success(`Welcome! You've been added to: ${names}`);
+    }
+  }, [joinedCampaigns, success]);
 
   const handleTogglePortal = () => {
     setPlayerPortalMode(prev => {
@@ -78,152 +81,7 @@ function CampaignApp() {
     });
   };
 
-  const {
-    campaign,
-    updateCampaign,
-    characters,
-    addCharacter,
-    updateCharacter,
-    deleteCharacter,
-    lore,
-    addLore,
-    updateLore,
-    deleteLore,
-    sessions,
-    addSession,
-    updateSession,
-    deleteSession,
-    npcs,
-    addNPC,
-    updateNPC,
-    deleteNPC,
-    timelineEvents,
-    addTimelineEvent,
-    updateTimelineEvent,
-    deleteTimelineEvent,
-    locations,
-    addLocation,
-    updateLocation,
-    deleteLocation,
-    encounters,
-    addEncounter,
-    updateEncounter,
-    deleteEncounter,
-    notes,
-    addNote,
-    updateNote,
-    deleteNote,
-    campaignFrame,
-    campaignFrameDraft,
-    saveCampaignFrameDraft,
-    completeCampaignFrame,
-    deleteCampaignFrameDraft,
-    // Items
-    items,
-    addItem,
-    updateItem,
-    deleteItem,
-    // Adversaries
-    adversaries,
-    addAdversary,
-    updateAdversary,
-    deleteAdversary,
-    // Environments
-    environments,
-    addEnvironment,
-    updateEnvironment,
-    deleteEnvironment,
-    // Character Inventory
-    addToCharacterInventory,
-    removeFromCharacterInventory,
-    updateCharacterInventoryItem,
-    toggleEquipped,
-    // Party Inventory
-    partyInventory,
-    addToPartyInventory,
-    removeFromPartyInventory,
-    updatePartyInventoryItem,
-    // Transfers
-    transferToParty,
-    transferToCharacter,
-    // Initiative
-    initiative,
-    startInitiative,
-    updateInitiative,
-    nextTurn,
-    previousTurn,
-    addParticipant,
-    removeParticipant,
-    updateParticipant,
-    reorderParticipants,
-    endInitiative,
-    // Quests
-    quests,
-    addQuest,
-    updateQuest,
-    deleteQuest,
-    toggleQuestObjective,
-    loading
-  } = useFirestoreCampaign(currentCampaignId);
-
-
-  // Ctrl+/ or Cmd+/ to open command palette (Ctrl+K conflicts with Chrome)
-  useKeyboardShortcut('/', () => setIsCommandPaletteOpen(true), { ctrl: true });
-  // Lorelich parity: Cmd/Ctrl+K also opens the palette (matches the TopBar hint)
-  useKeyboardShortcut('k', () => setIsCommandPaletteOpen(true), { ctrl: true });
-
-  // Presence tracking
-  const { presenceList } = usePresence(currentCampaignId, currentView);
-
-  // DM / role detection — single source of truth
-  const { isDM, campaignRole } = useCampaignAuth(campaign, currentUser);
-
-  // Show notification when user joins campaigns
-  useEffect(() => {
-    if (joinedCampaigns.length > 0) {
-      const names = joinedCampaigns.map(c => c.name).join(', ');
-      success(`Welcome! You've been added to: ${names}`);
-    }
-  }, [joinedCampaigns, success]);
-
-  // Handler functions
-  const handleRoleSelection = (role) => {
-    localStorage.setItem('userRole', role);
-    setUserRole(role);
-  };
-
-  const handleSelectCampaign = (campaignId) => {
-    setCurrentCampaignId(campaignId);
-    localStorage.setItem('lastCampaignId', campaignId);
-  };
-
-  const handleCommandNavigate = (view, options = {}) => {
-    setCurrentView(view);
-  };
-
-  // CONDITIONAL RETURNS - these must come AFTER all hooks
-  // Show role selection if user hasn't chosen yet
-  if (!userRole) {
-    return <RoleSelection onSelectRole={handleRoleSelection} />;
-  }
-
-  // Show campaign selector if no campaign selected
-  if (!currentCampaignId || !campaign) {
-    return (
-      <div className="app">
-        <CampaignSelector
-          currentCampaignId={currentCampaignId}
-          onSelectCampaign={handleSelectCampaign}
-          userRole={userRole}
-        />
-      </div>
-    );
-  }
-
-  const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
-
-  // Render Player Portal when active (replaces full layout)
-  if (playerPortalMode && !isDM && isDaggerheart && !loading) {
+  if (playerPortalMode && !isDM && isDaggerheart) {
     return (
       <PlayerPortalView
         characters={characters}
@@ -236,574 +94,147 @@ function CampaignApp() {
     );
   }
 
-  const renderView = () => {
-    if (loading) {
-      return (
-        <div className="min-h-screen bg-arcane-navy flex flex-col items-center justify-center p-6 space-y-6 relative overflow-hidden">
-          {/* Background Flair for Loading State */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 blur-[150px] rounded-full animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-emerald-500/5 blur-[120px] rounded-full animate-pulse delay-700" />
-
-          <div className="relative group">
-            <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000" />
-            <div className="relative w-20 h-20 border-t-2 border-r-2 border-indigo-500 rounded-full animate-spin shadow-[0_0_20px_rgba(79,70,229,0.5)]" />
-          </div>
-
-          <div className="text-center space-y-2 relative">
-            <h2 className="font-serif text-2xl font-black text-white/90 italic lowercase tracking-tighter">Loading...</h2>
-            <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Gathering your campaign data</p>
-          </div>
-        </div>
-      );
-    }
-
-    switch (currentView) {
-      case 'superadmin':
-        return <SuperAdminView />;
-      case 'dashboard':
-        return (
-          <DashboardView
-            campaign={campaign}
-            updateCampaign={updateCampaign}
-            characters={characters}
-            lore={lore}
-            sessions={sessions}
-            isDM={isDM}
-            npcs={npcs}
-            locations={locations}
-            timelineEvents={timelineEvents}
-            encounters={encounters}
-            notes={notes}
-            currentUserId={currentUser.uid}
-          />
-        );
-      case 'characters':
-        return (
-          <CharactersView
-            campaign={campaign}
-            characters={characters}
-            addCharacter={addCharacter}
-            updateCharacter={updateCharacter}
-            deleteCharacter={deleteCharacter}
-            isDM={isDM}
-            currentUserId={currentUser.uid}
-            items={items}
-            partyInventory={partyInventory}
-            addToCharacterInventory={addToCharacterInventory}
-            removeFromCharacterInventory={removeFromCharacterInventory}
-            toggleEquipped={toggleEquipped}
-            transferToParty={transferToParty}
-            onGoToGraveyard={() => setCurrentView('graveyard')}
-          />
-        );
-      case 'graveyard':
-        return (
-          <GraveyardView
-            characters={characters}
-            updateCharacter={updateCharacter}
-            isDM={isDM}
-          />
-        );
-      case 'my-sheet':
-        // Non-Daggerheart systems: no full sheet component exists, fall back to roster
-        if ((campaign?.gameSystem || 'daggerheart') !== 'daggerheart') {
-          return (
-            <CharactersView
-              campaign={campaign}
-              characters={characters}
-              addCharacter={addCharacter}
-              updateCharacter={updateCharacter}
-              deleteCharacter={deleteCharacter}
-              isDM={isDM}
-              currentUserId={currentUser.uid}
-              items={items}
-              partyInventory={partyInventory}
-              addToCharacterInventory={addToCharacterInventory}
-              removeFromCharacterInventory={removeFromCharacterInventory}
-              toggleEquipped={toggleEquipped}
-              transferToParty={transferToParty}
-            />
-          );
-        }
-        return (
-          <MySheetView
-            characters={characters}
-            currentUserId={currentUser.uid}
-            campaign={campaign}
-            addCharacter={addCharacter}
-            updateCharacter={updateCharacter}
-            deleteCharacter={deleteCharacter}
-            isDM={isDM}
-            items={items}
-            addToCharacterInventory={addToCharacterInventory}
-            removeFromCharacterInventory={removeFromCharacterInventory}
-            toggleEquipped={toggleEquipped}
-            onGoToRoster={() => setCurrentView('characters')}
-          />
-        );
-      case 'lore':
-        return (
-          <LoreView
-            lore={lore}
-            addLore={addLore}
-            updateLore={updateLore}
-            deleteLore={deleteLore}
-            isDM={isDM}
-            campaign={campaign}
-            campaignFrame={campaignFrame}
-            npcs={npcs}
-            locations={locations}
-            sessions={sessions}
-            timelineEvents={timelineEvents}
-            encounters={encounters}
-            notes={notes}
-          />
-        );
-      case 'sessions':
-        return (
-          <SessionsView
-            sessions={sessions}
-            addSession={addSession}
-            updateSession={updateSession}
-            deleteSession={deleteSession}
-            isDM={isDM}
-            campaign={campaign}
-            characters={characters}
-            npcs={npcs}
-            adversaries={adversaries}
-            locations={locations}
-            lore={lore}
-            timelineEvents={timelineEvents}
-            encounters={encounters}
-            notes={notes}
-            campaignFrame={campaignFrame}
-            currentUserId={currentUser.uid}
-            addEncounter={addEncounter}
-            addAdversary={addAdversary}
-            addNPC={addNPC}
-            addLocation={addLocation}
-            addLore={addLore}
-            onEncounterClick={(id) => setCurrentView('encounters')}
-          />
-        );
-      case 'files':
-        return (
-          <FilesView
-            campaign={campaign}
-            isDM={isDM}
-            userId={currentUser.uid}
-            locations={locations}
-            updateCampaign={updateCampaign}
-          />
-        );
-      case 'tools':
-        return <ToolsView campaign={campaign} />;
-      case 'help':
-        return <HelpView campaign={campaign} />;
-      case 'gm-screen':
-        return (
-          <GMScreenView
-            campaign={campaign}
-            characters={characters}
-            npcs={npcs}
-            encounters={encounters}
-            addEncounter={addEncounter}
-            updateEncounter={updateEncounter}
-            deleteEncounter={deleteEncounter}
-            initiative={initiative}
-            startInitiative={startInitiative}
-            updateInitiative={updateInitiative}
-            nextTurn={nextTurn}
-            previousTurn={previousTurn}
-            addParticipant={addParticipant}
-            removeParticipant={removeParticipant}
-            updateParticipant={updateParticipant}
-            reorderParticipants={reorderParticipants}
-            endInitiative={endInitiative}
-            sessions={sessions}
-            isDM={isDM}
-            adversaries={adversaries}
-            setCurrentView={setCurrentView}
-          />
-        );
-      case 'gm-cheatsheet':
-        return <GMCheatsheetView />;
-      case 'members':
-        return <CampaignMembers campaign={campaign} currentUserId={currentUser.uid} />;
-      case 'npcs':
-        return (
-          <NPCsView
-            campaign={campaign}
-            campaignFrame={campaignFrame}
-            npcs={npcs}
-            addNPC={addNPC}
-            updateNPC={updateNPC}
-            deleteNPC={deleteNPC}
-            isDM={isDM}
-            locations={locations}
-            lore={lore}
-            sessions={sessions}
-            timelineEvents={timelineEvents}
-            encounters={encounters}
-            notes={notes}
-          />
-        );
-      case 'timeline':
-        return (
-          <TimelineView
-            campaign={campaign}
-            events={timelineEvents}
-            addEvent={addTimelineEvent}
-            updateEvent={updateTimelineEvent}
-            deleteEvent={deleteTimelineEvent}
-            isDM={isDM}
-            npcs={npcs}
-            locations={locations}
-            lore={lore}
-            sessions={sessions}
-            encounters={encounters}
-            notes={notes}
-          />
-        );
-      case 'locations':
-        return (
-          <LocationsView
-            campaign={campaign}
-            campaignFrame={campaignFrame}
-            locations={locations}
-            updateCampaign={updateCampaign}
-            addLocation={addLocation}
-            updateLocation={updateLocation}
-            deleteLocation={deleteLocation}
-            isDM={isDM}
-            userId={currentUser.uid}
-            npcs={npcs}
-            lore={lore}
-            sessions={sessions}
-            timelineEvents={timelineEvents}
-            encounters={encounters}
-            notes={notes}
-          />
-        );
-      case 'encounters':
-        return (
-          <EncountersView
-            campaign={campaign}
-            encounters={encounters}
-            addEncounter={addEncounter}
-            updateEncounter={updateEncounter}
-            deleteEncounter={deleteEncounter}
-            addAdversary={addAdversary}
-            isDM={isDM}
-            npcs={npcs}
-            locations={locations}
-            lore={lore}
-            sessions={sessions}
-            timelineEvents={timelineEvents}
-            notes={notes}
-            adversaries={adversaries}
-            environments={environments}
-            characters={characters}
-          />
-        );
-      case 'notes':
-        return (
-          <NotesView
-            campaign={campaign}
-            addNote={addNote}
-            updateNote={updateNote}
-            deleteNote={deleteNote}
-            currentUserId={currentUser.uid}
-            isDM={isDM}
-            npcs={npcs}
-            locations={locations}
-            lore={lore}
-            sessions={sessions}
-            timelineEvents={timelineEvents}
-            encounters={encounters}
-            notes={notes}
-          />
-        );
-      case 'messaging':
-        return (
-          <MessagingView
-            campaign={campaign}
-            currentUserId={currentUser.uid}
-            isDM={isDM}
-          />
-        );
-      case 'campaignBuilder':
-        return (
-          <CampaignBuilderView
-            userId={currentUser.uid}
-            campaign={campaign}
-            campaignFrame={campaignFrame}
-            campaignFrameDraft={campaignFrameDraft}
-            saveCampaignFrameDraft={saveCampaignFrameDraft}
-            completeCampaignFrame={completeCampaignFrame}
-            deleteCampaignFrameDraft={deleteCampaignFrameDraft}
-            updateCampaign={updateCampaign}
-            onBack={() => setCurrentView('dashboard')}
-            addNPC={addNPC}
-            addLocation={addLocation}
-            addLore={addLore}
-            addEncounter={addEncounter}
-            addTimelineEvent={addTimelineEvent}
-            addQuest={addQuest}
-            addAdversary={addAdversary}
-            addEnvironment={addEnvironment}
-          />
-        );
-      case 'apiSettings':
-        return (
-          <APISettings
-            userId={currentUser.uid}
-            userRole={userRole}
-            onChangeUserRole={handleRoleSelection}
-          />
-        );
-      case 'items':
-        return (
-          <ItemsView
-            campaign={campaign}
-            items={items}
-            addItem={addItem}
-            updateItem={updateItem}
-            deleteItem={deleteItem}
-            isDM={isDM}
-            userId={currentUser.uid}
-            campaignFrame={campaignFrame}
-            npcs={npcs}
-            locations={locations}
-            lore={lore}
-            sessions={sessions}
-            characters={characters}
-            adversaries={adversaries}
-            timelineEvents={timelineEvents}
-            encounters={encounters}
-            notes={notes}
-          />
-        );
-      case 'adversaries':
-        return (
-          <AdversariesView
-            campaign={campaign}
-            adversaries={adversaries}
-            addAdversary={addAdversary}
-            updateAdversary={updateAdversary}
-            deleteAdversary={deleteAdversary}
-            isDM={isDM}
-            userId={currentUser.uid}
-            campaignFrame={campaignFrame}
-            npcs={npcs}
-            locations={locations}
-            lore={lore}
-            sessions={sessions}
-            characters={characters}
-            encounters={encounters}
-          />
-        );
-      case 'environments':
-        return (
-          <EnvironmentsView
-            campaign={campaign}
-            environments={environments}
-            addEnvironment={addEnvironment}
-            updateEnvironment={updateEnvironment}
-            deleteEnvironment={deleteEnvironment}
-            isDM={isDM}
-          />
-        );
-      case 'partyInventory':
-        return (
-          <PartyInventoryView
-            campaign={campaign}
-            items={items}
-            partyInventory={partyInventory}
-            addToPartyInventory={addToPartyInventory}
-            removeFromPartyInventory={removeFromPartyInventory}
-            updatePartyInventoryItem={updatePartyInventoryItem}
-            transferToCharacter={transferToCharacter}
-            characters={characters}
-            isDM={isDM}
-            currentUserId={currentUser.uid}
-          />
-        );
-      case 'initiative':
-        return (
-          <InitiativeTracker
-            campaign={campaign}
-            initiative={initiative}
-            startInitiative={startInitiative}
-            updateInitiative={updateInitiative}
-            nextTurn={nextTurn}
-            previousTurn={previousTurn}
-            addParticipant={addParticipant}
-            removeParticipant={removeParticipant}
-            updateParticipant={updateParticipant}
-            reorderParticipants={reorderParticipants}
-            endInitiative={endInitiative}
-            characters={characters}
-            npcs={npcs}
-            isDM={isDM}
-          />
-        );
-      case 'quests':
-        return (
-          <QuestsView
-            campaign={campaign}
-            quests={quests}
-            addQuest={addQuest}
-            updateQuest={updateQuest}
-            deleteQuest={deleteQuest}
-            toggleQuestObjective={toggleQuestObjective}
-            isDM={isDM}
-            npcs={npcs}
-            locations={locations}
-            items={items}
-            lore={lore}
-            encounters={encounters}
-            sessions={sessions}
-            timelineEvents={timelineEvents}
-            notes={notes}
-          />
-        );
-      case 'playerDisplay':
-        return (
-          <DMDisplayControl
-            campaign={campaign}
-            characters={characters}
-            npcs={npcs}
-            locations={locations}
-            adversaries={adversaries}
-            initiative={initiative}
-          />
-        );
-      case 'battleMapStudio':
-        return (
-          <BattleMapStudio
-            campaign={campaign}
-            isDM={isDM}
-          />
-        );
-      case 'storybook':
-        return (
-          <StorybookView
-            campaign={campaign}
-            campaignId={currentCampaignId}
-            sessions={sessions}
-            characters={characters}
-            npcs={npcs}
-            adversaries={adversaries}
-            locations={locations}
-            lore={lore}
-            encounters={encounters}
-            campaignFrame={campaignFrame}
-            updateCampaign={updateCampaign}
-            isDM={isDM}
-            currentUserId={currentUser.uid}
-          />
-        );
-      default:
-        return (
-          <DashboardView
-            campaign={campaign}
-            updateCampaign={updateCampaign}
-            characters={characters}
-            lore={lore}
-            sessions={sessions}
-            isDM={isDM}
-          />
-        );
-    }
-  };
-
-  // Check if current campaign supports the rules chat widget
-  const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
-  const hasChatBot = isDaggerheart || isStarWarsD6;
-
-  // Inside CampaignApp return...
   return (
     <ThemeProvider gameSystem={campaign?.gameSystem}>
-    <div className={`app min-h-screen flex bg-arcane-navy selection:bg-indigo-500/30 font-sans relative overflow-hidden ${isDM ? 'dm-mode' : 'player-mode'}`}>
-      {/* Global Background Visuals */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-emerald-500/5 blur-[100px] rounded-full animate-pulse delay-1000" />
-        <div className="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-blue-500/5 blur-[80px] rounded-full animate-pulse delay-500" />
-      </div>
+      <div className={`app min-h-screen flex bg-arcane-navy selection:bg-indigo-500/30 font-sans relative overflow-hidden ${isDM ? 'dm-mode' : 'player-mode'}`}>
+        {/* Global Background Visuals */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full animate-pulse" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-emerald-500/5 blur-[100px] rounded-full animate-pulse delay-1000" />
+          <div className="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-blue-500/5 blur-[80px] rounded-full animate-pulse delay-500" />
+        </div>
 
-      <div className="relative z-10 flex flex-1">
-        <SidebarWithAuth
+        <div className="relative z-10 flex flex-1">
+          <SidebarWithAuth
+            currentView={currentView}
+            setCurrentView={setCurrentView}
+            isDM={isDM}
+            userRole={campaignRole}
+            currentCampaign={campaign}
+            onSwitchCampaign={() => setCurrentCampaignId(null)}
+          />
+          <div className="flex-1 flex flex-col min-w-0 min-h-screen relative">
+            <TopBar
+              currentView={currentView}
+              presenceList={presenceList}
+              currentCampaignId={currentCampaignId}
+              campaign={campaign}
+              isDM={isDM}
+              setCurrentView={setCurrentView}
+              onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            />
+            <main className="flex-1 overflow-y-auto custom-scrollbar relative lr-fade-in" style={{ paddingBottom: 'var(--lr-main-pad, 0)' }}>
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
+              <AppRouter
+                currentView={currentView}
+                setCurrentView={setCurrentView}
+                isDM={isDM}
+                currentUserId={currentUser.uid}
+                currentCampaignId={currentCampaignId}
+                userRole={userRole}
+                onChangeUserRole={onChangeUserRole}
+              />
+            </main>
+          </div>
+        </div>
+
+        <BottomNav
           currentView={currentView}
           setCurrentView={setCurrentView}
+          onMore={() => window.dispatchEvent(new CustomEvent('lr-open-sidebar'))}
           isDM={isDM}
-          userRole={campaignRole}
-          currentCampaign={campaign}
-          onSwitchCampaign={() => setCurrentCampaignId(null)}
+          isDaggerheart={isDaggerheart}
+          onEnterPortal={handleTogglePortal}
         />
-        <div className="flex-1 flex flex-col min-w-0 min-h-screen relative">
-          <TopBar
-            currentView={currentView}
-            presenceList={presenceList}
-            currentCampaignId={currentCampaignId}
+
+        {hasChatBot && (
+          <ChatWidget
+            userId={currentUser?.uid}
+            gameSystem={campaign?.gameSystem || 'daggerheart'}
             campaign={campaign}
-            isDM={isDM}
-            setCurrentView={setCurrentView}
-            onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+            campaignFrame={campaignFrame}
+            characters={characters}
+            npcs={npcs}
+            adversaries={adversaries}
+            locations={locations}
+            lore={lore}
+            sessions={sessions}
+            encounters={encounters}
           />
-          <main className="flex-1 overflow-y-auto custom-scrollbar relative lr-fade-in" style={{ paddingBottom: 'var(--lr-main-pad, 0)' }}>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20 pointer-events-none" />
-            {renderView()}
-          </main>
-        </div>
-      </div>
+        )}
 
-      <BottomNav
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-        onMore={() => window.dispatchEvent(new CustomEvent('lr-open-sidebar'))}
-        isDM={isDM}
-        isDaggerheart={isDaggerheart}
-        onEnterPortal={handleTogglePortal}
-      />
-
-      {hasChatBot && (
-        <ChatWidget
-          userId={currentUser?.uid}
+        <DiceTray campaignId={currentCampaignId} />
+        <DiceRoller
+          campaignId={currentCampaignId}
           gameSystem={campaign?.gameSystem || 'daggerheart'}
-          campaign={campaign}
-          campaignFrame={campaignFrame}
-          characters={characters}
-          npcs={npcs}
-          adversaries={adversaries}
-          locations={locations}
-          lore={lore}
-          sessions={sessions}
-          encounters={encounters}
+          isDM={isDM}
+          variant="fab"
         />
-      )}
 
-      <DiceTray campaignId={currentCampaignId} />
-      <DiceRoller
-        campaignId={currentCampaignId}
-        gameSystem={campaign?.gameSystem || 'daggerheart'}
-        isDM={isDM}
-        variant="fab"
-      />
-
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
-        onNavigate={handleCommandNavigate}
-        npcs={npcs}
-        characters={characters}
-        locations={locations}
-        quests={quests}
-        isDM={isDM}
-      />
-    </div>
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onNavigate={(view) => setCurrentView(view)}
+          npcs={npcs}
+          characters={characters}
+          locations={locations}
+          quests={quests}
+          isDM={isDM}
+        />
+      </div>
     </ThemeProvider>
+  );
+}
+
+/**
+ * Outer campaign wrapper — manages pre-campaign gates (role, campaign selection)
+ * and provides CampaignDataContext to the shell.
+ */
+function CampaignApp() {
+  const { currentUser } = useAuth();
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || null);
+  const [currentCampaignId, setCurrentCampaignId] = useState(
+    localStorage.getItem('lastCampaignId') || null
+  );
+
+  const handleRoleSelection = (role) => {
+    localStorage.setItem('userRole', role);
+    setUserRole(role);
+  };
+
+  const handleSelectCampaign = (campaignId) => {
+    setCurrentCampaignId(campaignId);
+    localStorage.setItem('lastCampaignId', campaignId);
+  };
+
+  if (!userRole) {
+    return <RoleSelection onSelectRole={handleRoleSelection} />;
+  }
+
+  if (!currentCampaignId) {
+    return (
+      <div className="app">
+        <CampaignSelector
+          currentCampaignId={currentCampaignId}
+          onSelectCampaign={handleSelectCampaign}
+          userRole={userRole}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <CampaignDataProvider campaignId={currentCampaignId}>
+      <CampaignAppShell
+        currentCampaignId={currentCampaignId}
+        setCurrentCampaignId={(id) => {
+          setCurrentCampaignId(id);
+          if (!id) localStorage.removeItem('lastCampaignId');
+        }}
+        userRole={userRole}
+        onChangeUserRole={handleRoleSelection}
+      />
+    </CampaignDataProvider>
   );
 }
 
@@ -811,7 +242,6 @@ function AppContent() {
   const { currentUser, logout } = useAuth();
   const [termsAccepted, setTermsAccepted] = useState(null);
 
-  // Check for player display URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   const viewParam = urlParams.get('view');
   const campaignIdParam = urlParams.get('campaign');
@@ -820,15 +250,12 @@ function AppContent() {
 
   useEffect(() => {
     if (currentUser) {
-      // Check if user has accepted terms
       const accepted = localStorage.getItem(`terms_accepted_${currentUser.uid}`);
       setTermsAccepted(accepted === 'true');
     }
   }, [currentUser]);
 
-  // ── Public chronicle share link — no auth required ─────────────────────
-  // This must run BEFORE the auth gate so anonymous visitors can read.
-  // Placed AFTER all hooks to satisfy Rules of Hooks.
+  // Public chronicle — no auth required. Placed AFTER all hooks (Rules of Hooks).
   if (publicChronicleId) {
     return <PublicChronicleView campaignId={publicChronicleId} />;
   }
@@ -842,7 +269,6 @@ function AppContent() {
   };
 
   const handleDeclineTerms = async () => {
-    // If user declines, log them out
     await logout();
   };
 
@@ -850,34 +276,27 @@ function AppContent() {
     return <AuthPage />;
   }
 
-  // Handle player display window (skip terms check for dedicated display window)
   if (viewParam === 'playerDisplay' && campaignIdParam) {
     return <PlayerDisplay campaignId={campaignIdParam} />;
   }
 
-  // Handle battle map display window (separate screen for battle maps)
   if (viewParam === 'battleMapDisplay' && campaignIdParam) {
     return <BattleMapDisplayWindow campaignId={campaignIdParam} />;
   }
 
-  // Handle join campaign link (?join=campaignId)
   if (joinCampaignId) {
     const handleJoinSuccess = (campaignId) => {
-      // Clear URL params and go to main app with the campaign
       window.history.replaceState({}, '', window.location.origin);
       localStorage.setItem('lastCampaignId', campaignId);
       window.location.reload();
     };
-
     return <JoinCampaignPage campaignId={joinCampaignId} onJoinSuccess={handleJoinSuccess} />;
   }
 
-  // Show terms if user hasn't accepted yet
   if (termsAccepted === false) {
     return <TermsOfService onAccept={handleAcceptTerms} onDecline={handleDeclineTerms} />;
   }
 
-  // Show loading while checking terms acceptance
   if (termsAccepted === null) {
     return (
       <div className="loading-view">
