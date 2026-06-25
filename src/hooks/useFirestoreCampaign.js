@@ -829,13 +829,17 @@ export function useFirestoreCampaign(campaignId) {
     await deleteDoc(doc(db, `${basePath}/environments`, id));
   };
 
-  // Character Inventory methods (updates character document)
+  // Character Inventory methods — always read fresh from Firestore to avoid stale-state overwrites
+  const _getCharacterInventory = async (characterId) => {
+    const snap = await getDoc(doc(db, `${basePath}/characters`, characterId));
+    return snap.exists() ? (snap.data().inventory || []) : null;
+  };
+
   const addToCharacterInventory = async (characterId, itemId, quantity = 1, notes = '') => {
     if (!basePath) return;
-    const character = characters.find(c => c.id === characterId);
-    if (!character) return;
+    const inventory = await _getCharacterInventory(characterId);
+    if (inventory === null) return;
 
-    const inventory = character.inventory || [];
     const newEntry = {
       itemId,
       quantity,
@@ -853,47 +857,47 @@ export function useFirestoreCampaign(campaignId) {
 
   const removeFromCharacterInventory = async (characterId, inventoryIndex) => {
     if (!basePath) return;
-    const character = characters.find(c => c.id === characterId);
-    if (!character || !character.inventory) return;
+    const inventory = await _getCharacterInventory(characterId);
+    if (inventory === null) return;
 
-    const inventory = [...character.inventory];
-    inventory.splice(inventoryIndex, 1);
+    const updated = [...inventory];
+    updated.splice(inventoryIndex, 1);
 
     await updateDoc(doc(db, `${basePath}/characters`, characterId), {
-      inventory,
+      inventory: updated,
       updatedAt: serverTimestamp()
     });
   };
 
   const updateCharacterInventoryItem = async (characterId, inventoryIndex, updates) => {
     if (!basePath) return;
-    const character = characters.find(c => c.id === characterId);
-    if (!character || !character.inventory) return;
+    const inventory = await _getCharacterInventory(characterId);
+    if (inventory === null) return;
 
-    const inventory = [...character.inventory];
-    inventory[inventoryIndex] = { ...inventory[inventoryIndex], ...updates };
+    const updated = [...inventory];
+    updated[inventoryIndex] = { ...updated[inventoryIndex], ...updates };
 
     await updateDoc(doc(db, `${basePath}/characters`, characterId), {
-      inventory,
+      inventory: updated,
       updatedAt: serverTimestamp()
     });
   };
 
   const toggleEquipped = async (characterId, inventoryIndex, slot = null) => {
     if (!basePath) return;
-    const character = characters.find(c => c.id === characterId);
-    if (!character || !character.inventory) return;
+    const inventory = await _getCharacterInventory(characterId);
+    if (inventory === null) return;
 
-    const inventory = [...character.inventory];
-    const item = inventory[inventoryIndex];
-    inventory[inventoryIndex] = {
+    const updated = [...inventory];
+    const item = updated[inventoryIndex];
+    updated[inventoryIndex] = {
       ...item,
       equipped: !item.equipped,
       slot: !item.equipped ? slot : null
     };
 
     await updateDoc(doc(db, `${basePath}/characters`, characterId), {
-      inventory,
+      inventory: updated,
       updatedAt: serverTimestamp()
     });
   };
@@ -925,28 +929,43 @@ export function useFirestoreCampaign(campaignId) {
     });
   };
 
-  // Transfer methods
+  // Transfer methods — use writeBatch so both sides commit atomically
   const transferToParty = async (characterId, inventoryIndex, quantity = null) => {
     if (!basePath) return;
-    const character = characters.find(c => c.id === characterId);
-    if (!character || !character.inventory) return;
 
-    const inventoryItem = character.inventory[inventoryIndex];
+    // Fresh read to avoid stale-state race conditions
+    const charRef = doc(db, `${basePath}/characters`, characterId);
+    const charSnap = await getDoc(charRef);
+    if (!charSnap.exists()) return;
+
+    const inventory = [...(charSnap.data().inventory || [])];
+    const inventoryItem = inventory[inventoryIndex];
     if (!inventoryItem) return;
 
-    const transferQuantity = quantity || inventoryItem.quantity;
+    const transferQuantity = quantity ?? inventoryItem.quantity;
+
+    const batch = writeBatch(db);
 
     // Add to party inventory
-    await addToPartyInventory(inventoryItem.itemId, transferQuantity, inventoryItem.notes);
+    const partyRef = doc(collection(db, `${basePath}/partyInventory`));
+    batch.set(partyRef, {
+      itemId: inventoryItem.itemId,
+      quantity: transferQuantity,
+      notes: inventoryItem.notes || '',
+      addedBy: currentUser.uid,
+      addedByName: currentUser.displayName || currentUser.email,
+      addedAt: serverTimestamp()
+    });
 
     // Remove from or reduce character inventory
     if (transferQuantity >= inventoryItem.quantity) {
-      await removeFromCharacterInventory(characterId, inventoryIndex);
+      inventory.splice(inventoryIndex, 1);
     } else {
-      await updateCharacterInventoryItem(characterId, inventoryIndex, {
-        quantity: inventoryItem.quantity - transferQuantity
-      });
+      inventory[inventoryIndex] = { ...inventoryItem, quantity: inventoryItem.quantity - transferQuantity };
     }
+    batch.update(charRef, { inventory, updatedAt: serverTimestamp() });
+
+    await batch.commit();
   };
 
   const transferToCharacter = async (partyEntryId, characterId, quantity = null) => {
@@ -954,19 +973,43 @@ export function useFirestoreCampaign(campaignId) {
     const partyItem = partyInventory.find(p => p.id === partyEntryId);
     if (!partyItem) return;
 
-    const transferQuantity = quantity || partyItem.quantity;
+    const transferQuantity = quantity ?? partyItem.quantity;
+
+    // Fresh read of character inventory
+    const charRef = doc(db, `${basePath}/characters`, characterId);
+    const charSnap = await getDoc(charRef);
+    if (!charSnap.exists()) return;
+
+    const inventory = [...(charSnap.data().inventory || [])];
+    const newEntry = {
+      itemId: partyItem.itemId,
+      quantity: transferQuantity,
+      equipped: false,
+      slot: null,
+      notes: partyItem.notes || '',
+      acquiredAt: new Date().toISOString()
+    };
+
+    const batch = writeBatch(db);
 
     // Add to character inventory
-    await addToCharacterInventory(characterId, partyItem.itemId, transferQuantity, partyItem.notes);
+    batch.update(charRef, {
+      inventory: [...inventory, newEntry],
+      updatedAt: serverTimestamp()
+    });
 
     // Remove from or reduce party inventory
+    const partyRef = doc(db, `${basePath}/partyInventory`, partyEntryId);
     if (transferQuantity >= partyItem.quantity) {
-      await removeFromPartyInventory(partyEntryId);
+      batch.delete(partyRef);
     } else {
-      await updatePartyInventoryItem(partyEntryId, {
-        quantity: partyItem.quantity - transferQuantity
+      batch.update(partyRef, {
+        quantity: partyItem.quantity - transferQuantity,
+        updatedAt: serverTimestamp()
       });
     }
+
+    await batch.commit();
   };
 
   // Initiative methods
