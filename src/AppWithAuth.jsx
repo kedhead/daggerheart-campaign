@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { CampaignDataProvider, useCampaignData } from './contexts/CampaignDataContext';
@@ -10,11 +10,6 @@ import JoinCampaignPage from './components/Campaigns/JoinCampaignPage';
 import RoleSelection from './components/RoleSelection/RoleSelection';
 import SidebarWithAuth from './components/SidebarWithAuth';
 import AppRouter from './components/AppRouter';
-import PlayerDisplay from './components/PlayerDisplay/PlayerDisplay';
-import PublicChronicleView from './components/Storybook/PublicChronicleView';
-import BattleMapDisplayWindow from './components/BattleMapDisplay/BattleMapDisplayWindow';
-import PlayerPortalView from './components/PlayerPortal/PlayerPortalView';
-import { DiceRoller, DiceTray } from './dice';
 import { usePendingInvites } from './hooks/usePendingInvites';
 import ChatWidget from './components/DaggerheartChat/ChatWidget';
 import CommandPalette from './components/CommandPalette/CommandPalette';
@@ -24,6 +19,24 @@ import { useCampaignAuth } from './hooks/useCampaignAuth';
 import TopBar from './components/Layout/TopBar';
 import BottomNav from './components/Layout/BottomNav';
 import './App.css';
+
+// Lazy-loaded: only needed off the critical login path, or pull in heavy
+// libraries (three.js, @3d-dice/dice-box) that shouldn't block initial load.
+const PlayerDisplay = lazy(() => import('./components/PlayerDisplay/PlayerDisplay'));
+const PublicChronicleView = lazy(() => import('./components/Storybook/PublicChronicleView'));
+const BattleMapDisplayWindow = lazy(() => import('./components/BattleMapDisplay/BattleMapDisplayWindow'));
+const PlayerPortalView = lazy(() => import('./components/PlayerPortal/PlayerPortalView'));
+const DiceRoller = lazy(() => import('./dice').then(m => ({ default: m.DiceRoller })));
+const DiceTray = lazy(() => import('./dice').then(m => ({ default: m.DiceTray })));
+
+function FullScreenFallback() {
+  return (
+    <div className="loading-view">
+      <div className="loading-spinner" />
+      <p>Loading...</p>
+    </div>
+  );
+}
 
 /**
  * Inner shell — consumes CampaignDataContext, renders the full app layout.
@@ -83,6 +96,7 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
 
   if (playerPortalMode && !isDM && isDaggerheart) {
     return (
+      <Suspense fallback={<FullScreenFallback />}>
       <PlayerPortalView
         characters={characters}
         currentUserId={currentUser.uid}
@@ -91,6 +105,7 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
         items={items}
         onExit={handleTogglePortal}
       />
+      </Suspense>
     );
   }
 
@@ -163,13 +178,15 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
           />
         )}
 
-        <DiceTray campaignId={currentCampaignId} />
-        <DiceRoller
-          campaignId={currentCampaignId}
-          gameSystem={campaign?.gameSystem || 'daggerheart'}
-          isDM={isDM}
-          variant="fab"
-        />
+        <Suspense fallback={null}>
+          <DiceTray campaignId={currentCampaignId} />
+          <DiceRoller
+            campaignId={currentCampaignId}
+            gameSystem={campaign?.gameSystem || 'daggerheart'}
+            isDM={isDM}
+            variant="fab"
+          />
+        </Suspense>
 
         <CommandPalette
           isOpen={isCommandPaletteOpen}
@@ -257,7 +274,11 @@ function AppContent() {
 
   // Public chronicle — no auth required. Placed AFTER all hooks (Rules of Hooks).
   if (publicChronicleId) {
-    return <PublicChronicleView campaignId={publicChronicleId} />;
+    return (
+      <Suspense fallback={<FullScreenFallback />}>
+        <PublicChronicleView campaignId={publicChronicleId} />
+      </Suspense>
+    );
   }
 
   const handleAcceptTerms = () => {
@@ -277,11 +298,19 @@ function AppContent() {
   }
 
   if (viewParam === 'playerDisplay' && campaignIdParam) {
-    return <PlayerDisplay campaignId={campaignIdParam} />;
+    return (
+      <Suspense fallback={<FullScreenFallback />}>
+        <PlayerDisplay campaignId={campaignIdParam} />
+      </Suspense>
+    );
   }
 
   if (viewParam === 'battleMapDisplay' && campaignIdParam) {
-    return <BattleMapDisplayWindow campaignId={campaignIdParam} />;
+    return (
+      <Suspense fallback={<FullScreenFallback />}>
+        <BattleMapDisplayWindow campaignId={campaignIdParam} />
+      </Suspense>
+    );
   }
 
   if (joinCampaignId) {
