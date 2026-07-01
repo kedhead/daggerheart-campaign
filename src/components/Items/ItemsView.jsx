@@ -27,7 +27,10 @@ export default function ItemsView({
   adversaries = [],
   timelineEvents = [],
   encounters = [],
-  notes = []
+  notes = [],
+  maps = [],
+  battleMaps = [],
+  storybookChapters = []
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -50,12 +53,19 @@ export default function ItemsView({
   // fall back to whichever server env var is configured on Vercel.
   const aiProvider = openaiInfo?.key && !anthropicInfo?.key ? 'openai' : 'anthropic';
 
+  const mergedMaps = useMemo(() => [
+    ...maps.map(m => ({ ...m, tag: 'map' })),
+    ...battleMaps.map(m => ({ ...m, tag: 'battle-map' }))
+  ], [maps, battleMaps]);
+
   const campaignContext = useMemo(
     () => buildCampaignContext(campaign, {
-      campaignFrame, adversaries, npcs, locations, lore, sessions, characters, encounters
+      campaignFrame, adversaries, npcs, locations, lore, sessions, characters, encounters,
+      items, maps: mergedMaps, storybookChapters
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [campaign?.id, adversaries.length, npcs.length, locations.length, lore.length]
+    [campaign?.id, adversaries.length, npcs.length, locations.length, lore.length,
+     items.length, mergedMaps.length, storybookChapters.length]
   );
 
   const handleAdd = () => {

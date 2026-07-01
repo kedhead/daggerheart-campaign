@@ -25,6 +25,9 @@
  * @param {Array}  opts.sessions   - Session notes
  * @param {Array}  opts.encounters - Encounters
  * @param {object} opts.campaignFrame - Campaign frame (pitch, themes, tone…)
+ * @param {Array}  opts.items      - Item catalog (weapons/armor/equipment)
+ * @param {Array}  opts.maps       - Merged maps + battle maps (name/tag/description only, no images)
+ * @param {Array}  opts.storybookChapters - Published "Story So Far" chapters
  * @returns {string} Markdown-formatted context block
  */
 export function buildCampaignContext(campaign, {
@@ -35,7 +38,10 @@ export function buildCampaignContext(campaign, {
   lore        = [],
   sessions    = [],
   encounters  = [],
-  campaignFrame = null
+  campaignFrame = null,
+  items       = [],
+  maps        = [],
+  storybookChapters = []
 } = {}) {
   if (!campaign) return '';
 
@@ -112,6 +118,36 @@ export function buildCampaignContext(campaign, {
     if (visibleAdversaries.length > 20) lines.push(`  *(…and ${visibleAdversaries.length - 20} more)*`);
   }
 
+  // ── Items ──────────────────────────────────────────────────────────────────
+  const visibleItems = items.filter(i => i.name);
+  if (visibleItems.length > 0) {
+    lines.push(`\n### Items (${visibleItems.length})`);
+    visibleItems.slice(0, 20).forEach(i => {
+      let line = `- **${i.name}** (${i.type || 'item'}`;
+      if (i.systemData?.rarity) line += `, ${i.systemData.rarity}`;
+      if (i.systemData?.tier)   line += `, T${i.systemData.tier}`;
+      line += ')';
+      if (i.description) line += `: ${_truncate(i.description, 80)}`;
+      lines.push(line);
+    });
+    if (visibleItems.length > 20) lines.push(`  *(…and ${visibleItems.length - 20} more)*`);
+  }
+
+  // ── Maps & Handouts (names/tags only — never images/URLs) ────────────────────
+  const visibleMaps = maps.filter(m => m.name);
+  if (visibleMaps.length > 0) {
+    lines.push(`\n### Maps & Handouts (${visibleMaps.length})`);
+    visibleMaps.slice(0, 15).forEach(m => {
+      let line = `- **${m.name}**`;
+      const tag = m.mapType || m.tag || m.type;
+      if (tag) line += ` (${tag})`;
+      const desc = m.mapDescription || m.description;
+      if (desc) line += `: ${_truncate(desc, 80)}`;
+      lines.push(line);
+    });
+    if (visibleMaps.length > 15) lines.push(`  *(…and ${visibleMaps.length - 15} more)*`);
+  }
+
   // ── Lore ───────────────────────────────────────────────────────────────────
   const visibleLore = lore.filter(l => l.title || l.name);
   if (visibleLore.length > 0) {
@@ -149,6 +185,19 @@ export function buildCampaignContext(campaign, {
       if (e.difficulty) line += ` (${e.difficulty})`;
       if (e.description) line += `: ${_truncate(e.description, 80)}`;
       lines.push(line);
+    });
+  }
+
+  // ── Story So Far (published Storybook chapters) ───────────────────────────────
+  const publishedChapters = storybookChapters.filter(c => c.status === 'published' && c.title);
+  if (publishedChapters.length > 0) {
+    const recent = [...publishedChapters]
+      .sort((a, b) => (b.chapterNumber || 0) - (a.chapterNumber || 0))
+      .slice(0, 5)
+      .reverse();
+    lines.push(`\n### Story So Far (${publishedChapters.length} chapters)`);
+    recent.forEach(c => {
+      lines.push(`- **Ch. ${c.chapterNumber || '?'}: ${c.title}** — ${_truncate(c.prose, 220)}`);
     });
   }
 

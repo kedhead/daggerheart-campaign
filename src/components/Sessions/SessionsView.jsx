@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Plus, BookOpen, ScrollText, Sparkles } from 'lucide-react';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
@@ -6,6 +6,7 @@ import SessionLive from './SessionLive';
 import GMAssistantPanel from './GMAssistantPanel';
 import Modal from '../Modal';
 import { autoDraftChapterFromSession } from '../../services/storybookGenerator';
+import { buildCampaignContext } from '../../services/campaignContext';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useToast } from '../../contexts/ToastContext';
 import './SessionsView.css';
@@ -27,6 +28,10 @@ export default function SessionsView({
   notes = [],
   campaignFrame = null,
   currentUserId,
+  items = [],
+  maps = [],
+  battleMaps = [],
+  storybookChapters = [],
   // GM Assistant write handlers (optional — feature is gracefully disabled if missing)
   addEncounter,
   addAdversary,
@@ -39,6 +44,22 @@ export default function SessionsView({
   const { info, success, error: toastError } = useToast();
   const openaiKey = keys?.openai || null;
 
+  const mergedMaps = useMemo(() => [
+    ...maps.map(m => ({ ...m, tag: 'map' })),
+    ...battleMaps.map(m => ({ ...m, tag: 'battle-map' }))
+  ], [maps, battleMaps]);
+
+  const campaignContext = useMemo(
+    () => buildCampaignContext(campaign, {
+      campaignFrame, characters, npcs, adversaries, locations, lore, sessions, encounters,
+      items, maps: mergedMaps, storybookChapters
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaign?.id, characters.length, npcs.length, adversaries.length, locations.length,
+     lore.length, sessions.length, encounters.length, items.length, mergedMaps.length,
+     storybookChapters.length]
+  );
+
   const triggerAutoDraft = useCallback((session) => {
     if (!isDM || !campaign?.id) return;
     info(`Drafting Story So Far chapter for "${session.title}"…`);
@@ -46,7 +67,7 @@ export default function SessionsView({
     autoDraftChapterFromSession({
       campaign,
       session,
-      entities: { characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame },
+      entities: { characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame, items, maps: mergedMaps },
       campaignId: campaign.id,
       apiKey: openaiKey,
       gameSystem: campaign.gameSystem || 'daggerheart',
@@ -57,7 +78,7 @@ export default function SessionsView({
     }).catch(err => {
       console.error('[SessionsView] auto-draft threw:', err);
     });
-  }, [isDM, openaiKey, campaign, characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame, info, success, toastError]);
+  }, [isDM, openaiKey, campaign, characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame, items, mergedMaps, info, success, toastError]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
@@ -133,6 +154,8 @@ export default function SessionsView({
         session={currentSession}
         campaign={campaign}
         campaignId={campaign?.id}
+        campaignFrame={campaignFrame}
+        campaignContext={campaignContext}
         isDM={isDM}
         currentUserId={currentUserId}
         entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
@@ -189,6 +212,10 @@ export default function SessionsView({
           lore={lore}
           sessions={sessions}
           encounters={encounters}
+          items={items}
+          maps={maps}
+          battleMaps={battleMaps}
+          storybookChapters={storybookChapters}
           isDM={isDM}
           currentUserId={currentUserId}
           handlers={gmAssistantHandlers}
@@ -248,6 +275,7 @@ export default function SessionsView({
           }}
           isDM={isDM}
           campaign={campaign}
+          campaignContext={campaignContext}
           entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         />
       </Modal>
