@@ -20,9 +20,12 @@ export function useAuth() {
   return context;
 }
 
+const AUTH_TIMEOUT_MS = 10000;
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [timedOut, setTimedOut] = useState(false);
 
   // Sign up with email and password
   async function signup(email, password, displayName) {
@@ -74,6 +77,16 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  // Safety net: if Firebase never resolves the initial auth state (flaky
+  // network, blocked request, etc.), surface a retry option instead of
+  // leaving the user stuck on the spinner forever.
+  useEffect(() => {
+    if (!loading) return;
+
+    const timer = setTimeout(() => setTimedOut(true), AUTH_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
   const value = {
     currentUser,
     signup,
@@ -87,7 +100,18 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={value}>
       {loading
-        ? <div className="loading-view"><div className="loading-spinner" /><p>Loading...</p></div>
+        ? (
+          <div className="loading-view">
+            <div className="loading-spinner" />
+            <p>Loading...</p>
+            {timedOut && (
+              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <p>Taking longer than expected.</p>
+                <button onClick={() => window.location.reload()}>Retry</button>
+              </div>
+            )}
+          </div>
+        )
         : children
       }
     </AuthContext.Provider>

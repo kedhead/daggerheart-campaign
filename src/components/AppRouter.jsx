@@ -1,34 +1,44 @@
+import { lazy, Suspense } from 'react';
 import { useCampaignData } from '../contexts/CampaignDataContext';
-import DashboardView from './Dashboard/DashboardView';
-import CharactersView from './Characters/CharactersView';
-import MySheetView from './Characters/MySheetView';
-import LoreView from './Lore/LoreView';
-import SessionsView from './Sessions/SessionsView';
-import FilesView from './Files/FilesView';
-import ToolsView from './Tools/ToolsView';
-import HelpView from './Help/HelpView';
-import GMCheatsheetView from './GMCheatsheet/GMCheatsheetView';
-import GMScreenView from './GMScreen/GMScreenView';
-import NPCsView from './NPCs/NPCsView';
-import TimelineView from './Timeline/TimelineView';
-import LocationsView from './Locations/LocationsView';
-import EncountersView from './Encounters/EncountersView';
-import NotesView from './Notes/NotesView';
-import MessagingView from './Messaging/MessagingView';
-import CampaignBuilderView from './CampaignBuilder/CampaignBuilderView';
-import SuperAdminView from './SuperAdmin/SuperAdminView';
-import APISettings from './Settings/APISettings';
-import ItemsView from './Items/ItemsView';
-import AdversariesView from './Adversaries/AdversariesView';
-import EnvironmentsView from './Environments/EnvironmentsView';
-import PartyInventoryView from './Inventory/PartyInventoryView';
-import InitiativeTracker from './Initiative/InitiativeTracker';
-import QuestsView from './Quests/QuestsView';
-import DMDisplayControl from './PlayerDisplay/DMDisplayControl';
-import BattleMapStudio from './BattleMapStudio/BattleMapStudio';
-import StorybookView from './Storybook/StorybookView';
-import GraveyardView from './Graveyard/GraveyardView';
-import CampaignMembers from './Campaigns/CampaignMembers';
+
+const DashboardView = lazy(() => import('./Dashboard/DashboardView'));
+const CharactersView = lazy(() => import('./Characters/CharactersView'));
+const MySheetView = lazy(() => import('./Characters/MySheetView'));
+const LoreView = lazy(() => import('./Lore/LoreView'));
+const SessionsView = lazy(() => import('./Sessions/SessionsView'));
+const FilesView = lazy(() => import('./Files/FilesView'));
+const ToolsView = lazy(() => import('./Tools/ToolsView'));
+const HelpView = lazy(() => import('./Help/HelpView'));
+const GMCheatsheetView = lazy(() => import('./GMCheatsheet/GMCheatsheetView'));
+const GMScreenView = lazy(() => import('./GMScreen/GMScreenView'));
+const NPCsView = lazy(() => import('./NPCs/NPCsView'));
+const TimelineView = lazy(() => import('./Timeline/TimelineView'));
+const LocationsView = lazy(() => import('./Locations/LocationsView'));
+const EncountersView = lazy(() => import('./Encounters/EncountersView'));
+const NotesView = lazy(() => import('./Notes/NotesView'));
+const MessagingView = lazy(() => import('./Messaging/MessagingView'));
+const CampaignBuilderView = lazy(() => import('./CampaignBuilder/CampaignBuilderView'));
+const SuperAdminView = lazy(() => import('./SuperAdmin/SuperAdminView'));
+const APISettings = lazy(() => import('./Settings/APISettings'));
+const ItemsView = lazy(() => import('./Items/ItemsView'));
+const AdversariesView = lazy(() => import('./Adversaries/AdversariesView'));
+const EnvironmentsView = lazy(() => import('./Environments/EnvironmentsView'));
+const PartyInventoryView = lazy(() => import('./Inventory/PartyInventoryView'));
+const InitiativeTracker = lazy(() => import('./Initiative/InitiativeTracker'));
+const QuestsView = lazy(() => import('./Quests/QuestsView'));
+const DMDisplayControl = lazy(() => import('./PlayerDisplay/DMDisplayControl'));
+const BattleMapStudio = lazy(() => import('./BattleMapStudio/BattleMapStudio'));
+const StorybookView = lazy(() => import('./Storybook/StorybookView'));
+const GraveyardView = lazy(() => import('./Graveyard/GraveyardView'));
+const CampaignMembers = lazy(() => import('./Campaigns/CampaignMembers'));
+
+function ViewFallback() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center">
+      <div className="w-10 h-10 border-t-2 border-r-2 border-indigo-500 rounded-full animate-spin" />
+    </div>
+  );
+}
 
 /**
  * Renders the active view based on currentView string.
@@ -148,6 +158,13 @@ export default function AppRouter({
     );
   }
 
+  return (
+    <Suspense fallback={<ViewFallback />}>
+      {renderView()}
+    </Suspense>
+  );
+
+  function renderView() {
   switch (currentView) {
     case 'superadmin':
       return <SuperAdminView />;
@@ -630,5 +647,6 @@ export default function AppRouter({
           isDM={isDM}
         />
       );
+  }
   }
 }
