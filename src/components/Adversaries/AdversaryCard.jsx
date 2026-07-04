@@ -104,9 +104,9 @@ export default function AdversaryCard({
           <Zap size={14} />
           <span>{adversary.stress}</span>
         </div>
-        <div className="stat" title="Damage Thresholds (Minor / Major)">
+        <div className="stat" title="Damage Thresholds (Major / Severe)">
           <Swords size={14} />
-          <span>Min {adversary.thresholds?.minor} · Maj {adversary.thresholds?.major}</span>
+          <span>Maj {adversary.thresholds?.minor} · Sev {adversary.thresholds?.major}</span>
         </div>
       </div>
 
@@ -164,12 +164,12 @@ export default function AdversaryCard({
 
           {adversary.thresholds && (
             <div className="detail-section">
+              {/* Legacy field names: `minor` stores the Major threshold, `major` stores Severe */}
               <strong>Damage Thresholds: </strong>
-              Minor <strong>{adversary.thresholds.minor}</strong>
+              Major <strong>{adversary.thresholds.minor}</strong>
               {' · '}
-              Major <strong>{adversary.thresholds.major}</strong>
-              {' · '}
-              Severe <strong>{adversary.thresholds.severe}</strong>
+              Severe <strong>{adversary.thresholds.major}</strong>
+              <span style={{ opacity: 0.6 }}> (below = 1 HP · between = 2 HP · at/above Severe = 3 HP)</span>
             </div>
           )}
 

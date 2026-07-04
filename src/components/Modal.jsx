@@ -33,7 +33,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
 
       {/* Modal Content */}
       <div
-        className={`relative w-full ${sizeClasses[size] || sizeClasses.medium} flex flex-col overflow-hidden rounded-2xl`}
+        className={`relative w-full ${sizeClasses[size] || sizeClasses.medium} flex flex-col overflow-hidden rounded-2xl lr-modal-shell`}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'color-mix(in srgb, var(--surface) 94%, transparent)',
@@ -95,7 +95,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
           </button>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar max-h-[80vh]">
+        <div className="relative flex-1 min-h-0 overflow-y-auto p-6 sm:p-8 custom-scrollbar">
           {children}
         </div>
       </div>

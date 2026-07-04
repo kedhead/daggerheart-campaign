@@ -191,8 +191,8 @@ OUTPUT FORMAT — return ONLY one fenced JSON code block, with no prose before o
 
 DESIGN RULES:
 - Use existing campaign NPCs, locations, and adversaries when they fit. Set "reuseExistingName" to the exact name from the campaign list to avoid spawning duplicates. Only invent new ones when there's no good fit.
-- Daggerheart Battle Points budget per encounter = (3 × partySize) + 2. Costs: minion/horde=1, standard/bruiser/skulk/ranged/support/social=2, leader=3, solo=5. Encounter-by-encounter the bpEstimate must respect this budget.
-- Match encounter difficulty to partyLevel — pick adversary tiers in line with party level (lvl 1–3 → tier 1, lvl 4–6 → tier 2, lvl 7–9 → tier 3, lvl 10+ → tier 4).
+- Daggerheart Battle Points budget per encounter = (3 × partySize) + 2. Costs: 1 BP per group of minions equal to party size; social/support=1 each; horde/ranged/skulk/standard=2 each; leader=3; bruiser=4; solo=5. Encounter-by-encounter the bpEstimate must respect this budget.
+- Match adversary tier to the party's tier of play: level 1 → tier 1, levels 2–4 → tier 2, levels 5–7 → tier 3, levels 8–10 → tier 4. Never pick adversaries more than one tier away from the party's tier.
 - Honor the GM's requested counts and types (e.g., "2 puzzle encounters" → exactly 2 entries with type:"puzzle" and a non-null puzzleSpec).
 - Estimate encounter minutes so the SUM of estimatedMinutes is close to estimatedDurationHours × 60.
 - gmNotes must be a single Markdown string. No code blocks inside it.

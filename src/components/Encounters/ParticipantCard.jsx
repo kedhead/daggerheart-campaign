@@ -49,13 +49,18 @@ export default function ParticipantCard({
   const hpPercent = Math.max(0, Math.min(100, (currentHP / maxHP) * 100));
   const stressPercent = Math.max(0, Math.min(100, (currentStress / maxStress) * 100));
 
-  // Determine HP color based on thresholds
+  // Damage thresholds use legacy field names: `minor` holds the Major
+  // threshold and `major` holds Severe. They gate damage per hit (1/2/3 HP),
+  // so they are not comparable to remaining HP.
+  const majorThreshold = thresholds?.minor;
+  const severeThreshold = thresholds?.major;
+
+  // HP bar color from remaining HP fraction
   const getHPColor = () => {
     if (currentHP <= 0) return 'bg-gray-500';
-    if (thresholds) {
-      if (currentHP <= thresholds.minor) return 'bg-red-500';
-      if (currentHP <= thresholds.major) return 'bg-amber-500';
-    }
+    const frac = maxHP > 0 ? currentHP / maxHP : 0;
+    if (frac <= 0.25) return 'bg-red-500';
+    if (frac <= 0.5) return 'bg-amber-500';
     return 'bg-emerald-500';
   };
 
@@ -179,21 +184,6 @@ export default function ParticipantCard({
                   className={`h-full transition-all duration-300 ${getHPColor()}`}
                   style={{ width: `${hpPercent}%` }}
                 />
-                {/* Threshold markers */}
-                {thresholds && (
-                  <>
-                    <div
-                      className="absolute top-0 bottom-0 w-0.5 bg-white/20 z-10"
-                      style={{ left: `${(thresholds.minor / maxHP) * 100}%` }}
-                      title={`Minor: ${thresholds.minor}`}
-                    />
-                    <div
-                      className="absolute top-0 bottom-0 w-0.5 bg-white/20 z-10"
-                      style={{ left: `${(thresholds.major / maxHP) * 100}%` }}
-                      title={`Major: ${thresholds.major}`}
-                    />
-                  </>
-                )}
                 {/* Boss phase threshold markers */}
                 {isBoss && sortedPhases.map(ph => (
                   <div
@@ -390,24 +380,24 @@ export default function ParticipantCard({
             </div>
           )}
 
-          {/* Damage Thresholds */}
+          {/* Damage Thresholds (per-hit damage → HP marked) */}
           {thresholds && (
             <div className="space-y-1.5">
               <h5 className="text-xs font-bold text-white/40 uppercase tracking-widest pl-1">Damage Thresholds</h5>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
                   <div className="text-white/40 uppercase tracking-wide mb-1">Minor</div>
-                  <div className="font-bold text-white">{thresholds.minor}</div>
+                  <div className="font-bold text-white">&lt; {majorThreshold}</div>
                   <div className="text-white/30 mt-0.5">−1 HP</div>
                 </div>
                 <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
                   <div className="text-white/40 uppercase tracking-wide mb-1">Major</div>
-                  <div className="font-bold text-white">{thresholds.major}</div>
+                  <div className="font-bold text-white">≥ {majorThreshold}</div>
                   <div className="text-white/30 mt-0.5">−2 HP</div>
                 </div>
                 <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
                   <div className="text-white/40 uppercase tracking-wide mb-1">Severe</div>
-                  <div className="font-bold text-white">{thresholds.severe}</div>
+                  <div className="font-bold text-white">≥ {severeThreshold}</div>
                   <div className="text-white/30 mt-0.5">−3 HP</div>
                 </div>
               </div>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Plus, Minus, Trash2, Search, Skull, X, Crown } from 'lucide-react';
-import { BP_COSTS } from './BPCalculator';
+import { BP_COSTS, getSlotBPCost } from './BPCalculator';
 
 export default function AdversaryPicker({
   adversarySlots,
   setAdversarySlots,
-  adversaries
+  adversaries,
+  partySize = 4
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showPicker, setShowPicker] = useState(false);
@@ -108,8 +109,9 @@ export default function AdversaryPicker({
             const adv = getAdversaryDetails(slot.adversaryId);
             if (!adv) return null;
 
+            const isMinion = adv.role?.toLowerCase() === 'minion';
             const cost = BP_COSTS[adv.role?.toLowerCase()] || 2;
-            const totalCost = cost * slot.quantity;
+            const totalCost = getSlotBPCost(adv.role, slot.quantity, partySize);
 
             return (
               <div key={slot.adversaryId} className="flex items-center justify-between p-3 bg-[var(--bg-secondary)] border border-white/5 rounded-lg hover:border-white/10 transition-colors">
@@ -124,7 +126,9 @@ export default function AdversaryPicker({
                     <div className="flex items-center gap-2 text-xs">
                       <span className={`uppercase tracking-wider font-semibold ${getRoleColorClass(adv.role).split(' ')[1]}`}>{adv.role}</span>
                       <span className="text-white/40">•</span>
-                      <span className="text-white/60">{totalCost} BP ({cost} ea)</span>
+                      <span className="text-white/60">
+                        {totalCost} BP {isMinion ? `(1 per group of ${partySize})` : `(${cost} ea)`}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -164,7 +168,11 @@ export default function AdversaryPicker({
       {/* Adversary Picker Modal/Dropdown */}
       {showPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowPicker(false)}>
-          <div className="bg-[var(--bg-secondary)] border border-white/10 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div
+            className="bg-[var(--bg-secondary)] border border-white/10 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl"
+            style={{ maxHeight: 'min(80vh, calc(100dvh - 2rem))' }}
+            onClick={e => e.stopPropagation()}
+          >
             <div className="p-4 border-b border-white/5 flex items-center justify-between gap-4">
               <div className="relative flex-1">
                 <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
@@ -199,7 +207,9 @@ export default function AdversaryPicker({
                       <div className="text-xs font-bold text-white/40 uppercase tracking-widest pl-2">Tier {tier}</div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {advs.map(adv => {
-                          const cost = BP_COSTS[adv.role?.toLowerCase()] || 2;
+                          const advRole = adv.role?.toLowerCase();
+                          const cost = BP_COSTS[advRole] || 2;
+                          const costLabel = advRole === 'minion' ? `1 BP / group of ${partySize}` : `${cost} BP`;
                           const isSelected = adversarySlots.some(s => s.adversaryId === adv.id);
                           const quantity = adversarySlots.find(s => s.adversaryId === adv.id)?.quantity || 0;
 
@@ -222,7 +232,7 @@ export default function AdversaryPicker({
                                     {adv.isBoss && <Crown size={11} className="text-amber-400 shrink-0" />}
                                     {adv.name}
                                   </div>
-                                  <div className="text-xs text-white/50">{adv.role} • {cost} BP</div>
+                                  <div className="text-xs text-white/50">{adv.role} • {costLabel}</div>
                                 </div>
                               </div>
                               {quantity > 0 && (

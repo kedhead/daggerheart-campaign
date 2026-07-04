@@ -29,8 +29,8 @@ STATS:
 - hp: Hit points. minion/horde: tier×1-2 | standard/ranged/skulk: tier×2-3 | bruiser/leader: tier×3-5 | solo: tier×5-8
 - stress: Stress slots the GM spends for special actions (most roles: 2-3, leader/solo: 3-5)
 - attack: The modifier added to attack rolls (T1: +1-2, T2: +2-3, T3: +3-5, T4: +4-6). Bruiser/solo lean higher.
-- thresholds.minor: Minor damage threshold — damage below this does 1 HP. Roughly HP × 1.3 (rounded up).
-- thresholds.major: Major damage threshold — damage above this does 3 HP. Roughly HP × 2.5 (rounded up).
+- thresholds.minor: the MAJOR damage threshold (legacy field name) — damage below this marks 1 HP, at or above marks 2 HP. Roughly HP × 1.3 (rounded up).
+- thresholds.major: the SEVERE damage threshold (legacy field name) — damage at or above this marks 3 HP. Roughly HP × 2.5 (rounded up).
 
 ATTACK DAMAGE FORMAT: "XdY+Z type"
 Examples: "1d8+3 phy", "2d6+4 mag", "1d10+5 fire", "2d8+6 phy"
@@ -120,7 +120,7 @@ STATS:
 - hp: Boss HP = tier × 8-12. (T1:10-14, T2:16-22, T3:26-34, T4:36-48)
 - stress: 4-6 stress slots
 - attack: Hits hard — T1:+2-3, T2:+3-5, T3:+5-7, T4:+6-9. Damage: 2dX+modifier.
-- thresholds.minor: ≈ HP × 1.3; thresholds.major: ≈ HP × 2.5
+- thresholds.minor: the MAJOR threshold ≈ HP × 1.3; thresholds.major: the SEVERE threshold ≈ HP × 2.5 (legacy field names)
 
 ATTACK DAMAGE FORMAT: "XdY+Z type" — e.g. "2d8+5 phy", "2d10+7 fire"
 
