@@ -26,11 +26,21 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   width: 100%;
+  /* dvh tracks the *visible* mobile viewport (URL bar collapsed or not),
+     so the modal never extends past what's on screen. vh is the fallback. */
   max-height: 90vh;
+  max-height: calc(100dvh - 1rem);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s ease;
+}
+
+/* Shell cap for the portal Modal component (Modal.jsx). The scrollable body
+   inside is flex-1 min-h-0, so header and footer always stay on screen. */
+.lr-modal-shell {
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
 }
 
 @keyframes slideUp {

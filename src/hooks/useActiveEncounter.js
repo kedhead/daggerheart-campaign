@@ -74,9 +74,11 @@ export function useActiveEncounter(campaignId) {
           conditions: [],
           isDefeated: false,
           thresholds: {
-            minor: adversary.thresholds?.minor || Math.floor(hp / 3),
-            major: adversary.thresholds?.major || Math.floor(hp * 2 / 3),
-            severe: adversary.thresholds?.severe || hp
+            // Legacy field names: `minor` holds the Major threshold, `major` holds
+            // Severe. Damage below Major marks 1 HP, Major–Severe marks 2 HP,
+            // Severe or higher marks 3 HP.
+            minor: adversary.thresholds?.minor || Math.ceil(hp * 1.3),
+            major: adversary.thresholds?.major || Math.ceil(hp * 2.5)
           },
           features: adversary.features || [],
           role: adversary.role || 'standard',
@@ -377,9 +379,9 @@ export function useActiveEncounter(campaignId) {
             conditions: [],
             isDefeated: false,
             thresholds: {
-              minor: adversary.thresholds?.minor || Math.floor(hp / 3),
-              major: adversary.thresholds?.major || Math.floor(hp * 2 / 3),
-              severe: adversary.thresholds?.severe || hp
+              // Legacy field names: `minor` = Major threshold, `major` = Severe
+              minor: adversary.thresholds?.minor || Math.ceil(hp * 1.3),
+              major: adversary.thresholds?.major || Math.ceil(hp * 2.5)
             },
             features: adversary.features || [],
             role: adversary.role || 'standard',

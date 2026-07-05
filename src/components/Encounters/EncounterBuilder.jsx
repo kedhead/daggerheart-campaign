@@ -33,7 +33,7 @@ export default function EncounterBuilder({
   });
 
   // Calculate BP values
-  const usedBP = calculateUsedBP(formData.adversarySlots, adversaries);
+  const usedBP = calculateUsedBP(formData.adversarySlots, adversaries, formData.partySize);
   const budget = calculateBPBudget(formData.partySize);
 
   const handleChange = (field, value) => {
@@ -162,6 +162,7 @@ export default function EncounterBuilder({
           adversarySlots={formData.adversarySlots}
           setAdversarySlots={(slots) => handleChange('adversarySlots', slots)}
           adversaries={adversaries}
+          partySize={formData.partySize}
         />
       </div>
 

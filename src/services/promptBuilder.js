@@ -359,12 +359,16 @@ Game System: ${gameSystem.name}`;
     }
 
     const bpBudget = (3 * partySize) + 2;
-    const BP_COSTS = { minion: 1, horde: 1, standard: 2, bruiser: 2, skulk: 2, leader: 3, solo: 5 };
+    // SRD Battle Guide costs. Minions cost 1 BP per group equal to party size.
+    const BP_COSTS = { minion: 1, social: 1, support: 1, horde: 2, ranged: 2, skulk: 2, standard: 2, leader: 3, bruiser: 4, solo: 5 };
+    // Daggerheart tiers: level 1 = T1, levels 2-4 = T2, levels 5-7 = T3, levels 8-10 = T4
+    const partyTier = partyLevel <= 1 ? 1 : partyLevel <= 4 ? 2 : partyLevel <= 7 ? 3 : 4;
 
     prompt += `\n\nPARTY INFO:
-Party Level: ${partyLevel}
+Party Level: ${partyLevel} (Tier ${partyTier} of play)
 Party Size: ${partySize} characters
-Battle Points Budget: ${bpBudget} BP  (formula: 3 x party size + 2)`;
+Battle Points Budget: ${bpBudget} BP  (formula: 3 x party size + 2)
+Adversaries should be Tier ${partyTier} to match the party (a lower-tier adversary costs +1 BP).`;
 
     prompt += `\n\nREQUIREMENTS:`;
     prompt += requirements.difficulty ? `\nDifficulty: ${requirements.difficulty}` : '\nDifficulty: Suggest appropriate difficulty (easy, medium, hard, or deadly)';
@@ -420,10 +424,10 @@ ${availableEnvironments.length > 0 ? 'IMPORTANT: For suggestedEnvironment, use a
 ${wantNewAdversaries ? `
 IMPORTANT (newAdversaries): Propose 1–4 FRESH adversary stubs for this encounter — do NOT duplicate entries in suggestedAdversaries. Each stub must include:
   - concept: a vivid one-sentence description the statblock generator can expand (appearance, fighting style, flavor)
-  - tier: integer 1–4 matching the party level (tier 1 = novice threats, 2 = seasoned, 3 = formidable, 4 = legendary)
+  - tier: integer 1–4 — use Tier ${partyTier} to match the party's level of ${partyLevel} (level 1 = tier 1, levels 2–4 = tier 2, levels 5–7 = tier 3, levels 8–10 = tier 4)
   - role: one of "minion", "horde", "standard", "bruiser", "skulk", "ranged", "support", "social", "leader", "solo"
   - quantity: how many of this adversary should appear in the encounter
-Stay within the ${bpBudget} BP budget (minion/horde=1 BP, standard/bruiser/skulk/ranged/support/social=2 BP, leader=3 BP, solo=5 BP). Pick a mix of roles that fits the encounter's tactics.
+Stay within the ${bpBudget} BP budget (1 BP per group of ${partySize} minions; social/support=1 BP each; horde/ranged/skulk/standard=2 BP each; leader=3 BP; bruiser=4 BP; solo=5 BP). Pick a mix of roles that fits the encounter's tactics.
 ` : ''}
 Balance the encounter for the party level and size. Make it thematically appropriate to the campaign.`;
 

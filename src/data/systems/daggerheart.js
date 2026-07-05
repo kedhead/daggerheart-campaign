@@ -271,34 +271,36 @@ const SUBCLASSES = {
   ]
 };
 
-// Advancement options by tier
+// Advancement options by tier. Slot counts per the SRD level-up sheets:
+// traits ×3, HP ×2, Stress ×2, Experiences ×1, domain card ×1, Evasion ×1
+// (+ subclass ×1 and the double-cost Proficiency/Multiclass boxes in tiers 3-4).
 const ADVANCEMENT_OPTIONS = {
   tier2: [
     { id: 'traits', label: '+1 to two unmarked traits (mark them)', slots: 3, cost: 1 },
-    { id: 'hp', label: '+1 Hit Point slot', slots: 3, cost: 1 },
-    { id: 'stress', label: '+1 Stress slot', slots: 3, cost: 1 },
-    { id: 'experiences', label: '+1 to two Experiences', slots: 3, cost: 1 },
-    { id: 'domainCard', label: 'Additional domain card', slots: 3, cost: 1 },
-    { id: 'evasion', label: '+1 Evasion', slots: 3, cost: 1 },
+    { id: 'hp', label: '+1 Hit Point slot', slots: 2, cost: 1 },
+    { id: 'stress', label: '+1 Stress slot', slots: 2, cost: 1 },
+    { id: 'experiences', label: '+1 to two Experiences', slots: 1, cost: 1 },
+    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1 },
+    { id: 'evasion', label: '+1 Evasion', slots: 1, cost: 1 },
   ],
   tier3: [
     { id: 'traits', label: '+1 to two unmarked traits (mark them)', slots: 3, cost: 1 },
-    { id: 'hp', label: '+1 Hit Point slot', slots: 3, cost: 1 },
-    { id: 'stress', label: '+1 Stress slot', slots: 3, cost: 1 },
-    { id: 'experiences', label: '+1 to two Experiences', slots: 3, cost: 1 },
-    { id: 'domainCard', label: 'Additional domain card', slots: 3, cost: 1 },
-    { id: 'evasion', label: '+1 Evasion', slots: 3, cost: 1 },
+    { id: 'hp', label: '+1 Hit Point slot', slots: 2, cost: 1 },
+    { id: 'stress', label: '+1 Stress slot', slots: 2, cost: 1 },
+    { id: 'experiences', label: '+1 to two Experiences', slots: 1, cost: 1 },
+    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1 },
+    { id: 'evasion', label: '+1 Evasion', slots: 1, cost: 1 },
     { id: 'subclassUpgrade', label: 'Upgraded subclass card', slots: 1, cost: 1 },
     { id: 'proficiency', label: '+1 Proficiency', slots: 1, cost: 2 },
     { id: 'multiclass', label: 'Multiclass', slots: 1, cost: 2 },
   ],
   tier4: [
     { id: 'traits', label: '+1 to two unmarked traits (mark them)', slots: 3, cost: 1 },
-    { id: 'hp', label: '+1 Hit Point slot', slots: 3, cost: 1 },
-    { id: 'stress', label: '+1 Stress slot', slots: 3, cost: 1 },
-    { id: 'experiences', label: '+1 to two Experiences', slots: 3, cost: 1 },
-    { id: 'domainCard', label: 'Additional domain card', slots: 3, cost: 1 },
-    { id: 'evasion', label: '+1 Evasion', slots: 3, cost: 1 },
+    { id: 'hp', label: '+1 Hit Point slot', slots: 2, cost: 1 },
+    { id: 'stress', label: '+1 Stress slot', slots: 2, cost: 1 },
+    { id: 'experiences', label: '+1 to two Experiences', slots: 1, cost: 1 },
+    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1 },
+    { id: 'evasion', label: '+1 Evasion', slots: 1, cost: 1 },
     { id: 'subclassUpgrade', label: 'Upgraded subclass card', slots: 1, cost: 1 },
     { id: 'proficiency', label: '+1 Proficiency', slots: 1, cost: 2 },
     { id: 'multiclass', label: 'Multiclass', slots: 1, cost: 2 },

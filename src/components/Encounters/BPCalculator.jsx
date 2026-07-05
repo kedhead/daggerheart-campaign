@@ -1,21 +1,23 @@
 import { Users, AlertTriangle, CheckCircle } from 'lucide-react';
 
 /**
- * Battle Points Calculator
+ * Battle Points Calculator (SRD "Battle Guide")
  * Formula: BP Budget = (3 × number of PCs) + 2
- * Costs: Minion/Horde = 1 BP, Standard = 2 BP, Solo = 5 BP
+ * Spend: 1 BP per group of Minions equal to party size · 1 BP per Social or
+ * Support · 2 BP per Horde/Ranged/Skulk/Standard · 3 BP per Leader ·
+ * 4 BP per Bruiser · 5 BP per Solo. (Boss is a homebrew role, costed at 8.)
  */
 
 export const BP_COSTS = {
-  minion: 1,
-  horde: 1,
-  standard: 2,
-  bruiser: 2,
-  skulk: 2,
-  ranged: 2,
-  support: 2,
+  minion: 1, // per group of minions equal to the party size — see getSlotBPCost
   social: 1,
+  support: 1,
+  horde: 2,
+  ranged: 2,
+  skulk: 2,
+  standard: 2,
   leader: 3,
+  bruiser: 4,
   solo: 5,
   boss: 8
 };
@@ -24,7 +26,19 @@ export function calculateBPBudget(partySize) {
   return (3 * partySize) + 2;
 }
 
-export function calculateUsedBP(adversarySlots, adversaries) {
+/** BP cost for a quantity of one adversary. Minions are bought in groups of
+ *  party size (e.g. 8 minions for a party of 4 = 2 BP). */
+export function getSlotBPCost(role, quantity, partySize) {
+  const r = role?.toLowerCase() || 'standard';
+  const cost = BP_COSTS[r] || 2;
+  const qty = quantity || 1;
+  if (r === 'minion') {
+    return Math.ceil(qty / Math.max(1, partySize || 4)) * cost;
+  }
+  return cost * qty;
+}
+
+export function calculateUsedBP(adversarySlots, adversaries, partySize = 4) {
   let total = 0;
 
   const slots = Array.isArray(adversarySlots) ? adversarySlots : [];
@@ -32,9 +46,7 @@ export function calculateUsedBP(adversarySlots, adversaries) {
   for (const slot of slots) {
     const adversary = adversaries.find(a => a.id === slot.adversaryId);
     if (adversary) {
-      const role = adversary.role?.toLowerCase() || 'standard';
-      const cost = BP_COSTS[role] || 2;
-      total += cost * (slot.quantity || 1);
+      total += getSlotBPCost(adversary.role, slot.quantity, partySize);
     }
   }
 
@@ -131,11 +143,23 @@ export default function BPCalculator({
       <div className="flex flex-wrap gap-3 text-xs text-white/40 pt-2 border-t border-white/5 justify-center">
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          Minion/Horde: 1 BP
+          Minion group ({partySize}): 1 BP
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          Social/Support: 1 BP
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-blue-500" />
-          Standard: 2 BP
+          Horde/Ranged/Skulk/Standard: 2 BP
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          Leader: 3 BP
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-orange-500" />
+          Bruiser: 4 BP
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-red-500" />

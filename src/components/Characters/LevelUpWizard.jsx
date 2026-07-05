@@ -24,19 +24,29 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
   const isBeastbound = charClass === 'Ranger' && subclassName === 'Beastbound';
   const isDruid = charClass === 'Druid';
 
-  // Level history to track how many times each advancement has been picked this tier
+  // Level history tracks how many times each advancement slot has been used.
+  // Slots are tracked per tier pool ("<tier>:<optionId>") because tier 3+
+  // level-ups may also spend unused slots from earlier tiers (SRD: "choose two
+  // options from the list below or any from the previous tier").
   const levelHistory = character.levelHistory || [];
-  const tierHistory = levelHistory.filter(lh => getTierForLevel(lh.level) === newTier);
 
   const usedSlots = useMemo(() => {
     const counts = {};
-    tierHistory.forEach(lh => {
+    levelHistory.forEach(lh => {
       (lh.advancements || []).forEach(adv => {
-        counts[adv.id] = (counts[adv.id] || 0) + 1;
+        const fromTier = adv.fromTier || getTierForLevel(lh.level);
+        const key = `${fromTier}:${adv.id}`;
+        counts[key] = (counts[key] || 0) + 1;
       });
     });
     return counts;
-  }, [tierHistory]);
+  }, [levelHistory]);
+
+  // At levels 5 and 8 all trait marks clear before advancements are chosen,
+  // so the trait picker must treat every trait as unmarked on those levels.
+  const effectiveMarkedTraits = (isTierBoundary && newTier >= 3)
+    ? []
+    : (character.markedTraits || []);
 
   // Subclass progression
   const currentSubclassLevel = character.subclassLevel || 'foundation';
@@ -68,73 +78,26 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
   const achievements = useMemo(() => {
     const list = [];
     if (isTierBoundary) {
-      list.push({ type: 'experience', label: 'Gain a new Experience' });
+      list.push({ type: 'experience', label: 'Gain a new Experience (starts at +2)' });
       list.push({ type: 'proficiency', label: `Proficiency increases to +${getBaseProficiency(newLevel)}` });
       if (newTier >= 3) {
         list.push({ type: 'clearMarks', label: 'Clear all trait marks (allows re-upgrading traits)' });
       }
     }
+    // Happens at every level — thresholds are derived from level, so this is
+    // informational and applied automatically.
+    list.push({ type: 'thresholds', label: 'All damage thresholds increase by +1 (applied automatically)' });
     return list;
   }, [newLevel, newTier, isTierBoundary]);
 
-  // Available advancement options
-  const availableOptions = useMemo(() => {
-    if (!tierKey) return [];
-    const options = ADVANCEMENT_OPTIONS[tierKey] || [];
-    return options.map(opt => {
-      const used = usedSlots[opt.id] || 0;
-      const remaining = opt.slots - used;
-      // Subclass upgrade / multiclass exclusivity
-      let crossedOut = false;
-      if (opt.id === 'subclassUpgrade' && hasMulticlass) crossedOut = true;
-      if (opt.id === 'multiclass' && (currentSubclassLevel !== 'foundation' || hasMulticlass)) crossedOut = true;
-      // Check subclass upgrade availability
-      if (opt.id === 'subclassUpgrade') {
-        const nextLevel = currentSubclassLevel === 'foundation' ? 'specialization' :
-          currentSubclassLevel === 'specialization' ? 'mastery' : null;
-        if (!nextLevel) crossedOut = true;
-      }
-      return { ...opt, used, remaining, crossedOut };
-    });
-  }, [tierKey, usedSlots, hasMulticlass, currentSubclassLevel]);
-
-  // Total slots used by current picks
-  const totalAdvancementCost = advancements.reduce((sum, a) => {
-    const opt = availableOptions.find(o => o.id === a);
-    return sum + (opt?.cost || 1);
-  }, 0);
-
-  const canAddAdvancement = (optId) => {
-    const opt = availableOptions.find(o => o.id === optId);
-    if (!opt || opt.crossedOut || opt.remaining <= 0) return false;
-    const alreadyPicked = advancements.filter(a => a === optId).length;
-    if (alreadyPicked >= opt.remaining) return false;
-    if (totalAdvancementCost + opt.cost > 2) return false;
-    return true;
-  };
-
-  const toggleAdvancement = (optId) => {
-    const idx = advancements.indexOf(optId);
-    if (idx >= 0) {
-      const newAdv = [...advancements];
-      newAdv.splice(idx, 1);
-      setAdvancements(newAdv);
-      const newDetails = { ...advDetails };
-      delete newDetails[optId];
-      setAdvDetails(newDetails);
-    } else if (canAddAdvancement(optId)) {
-      setAdvancements([...advancements, optId]);
-    }
-  };
-
-  // Available domain cards for free pick
+  // Available domain cards for this level-up
   const availableDomainCards = useMemo(() => {
     const primaryDomain = character.primaryDomain || '';
     const secondaryDomain = character.secondaryDomain || '';
     const existing = new Set(character.domainCards || []);
     let cards = getCardsForCharacter(primaryDomain, secondaryDomain, newLevel)
       .filter(c => !existing.has(c.name));
-    // If multiclassed, also include multiclass domain cards
+    // If multiclassed, also include multiclass domain cards (capped at half level)
     if (character.multiclass?.domain) {
       const mcCards = getCardsForMulticlass(character.multiclass.domain, newLevel)
         .filter(c => !existing.has(c.name));
@@ -142,6 +105,72 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
     }
     return cards;
   }, [character, newLevel]);
+
+  // Advancement pools: this tier's list plus unused slots from earlier tiers
+  // (tier 2+). Each option keeps track of which tier pool it draws from, and
+  // is identified by a composite key "<tier>:<id>".
+  const availableOptions = useMemo(() => {
+    if (!tierKey) return [];
+    const opts = [];
+    for (let t = newTier; t >= 2; t--) {
+      const pool = ADVANCEMENT_OPTIONS[`tier${t}`] || [];
+      pool.forEach(opt => {
+        const key = `${t}:${opt.id}`;
+        const used = usedSlots[key] || 0;
+        const remaining = opt.slots - used;
+        let crossedOut = false;
+        if (opt.id === 'multiclass') {
+          // Only one multiclass ever; taking an upgraded subclass card crosses
+          // out the multiclass option for that tier (SRD).
+          const upgradedThisTier = (usedSlots[`${t}:subclassUpgrade`] || 0) > 0;
+          if (hasMulticlass || upgradedThisTier) crossedOut = true;
+        }
+        if (opt.id === 'subclassUpgrade') {
+          // Multiclassing crosses out one subclass upgrade, so mastery becomes
+          // unreachable — but foundation → specialization is still allowed.
+          if (currentSubclassLevel === 'mastery') crossedOut = true;
+          if (currentSubclassLevel === 'specialization' && hasMulticlass) crossedOut = true;
+        }
+        if (opt.id === 'experiences' && (character.experiences || []).length === 0) crossedOut = true;
+        if (opt.id === 'domainCard' && availableDomainCards.length === 0) crossedOut = true;
+        // Hide exhausted or crossed-out options from earlier tiers to reduce noise
+        if (t !== newTier && (remaining <= 0 || crossedOut)) return;
+        opts.push({ ...opt, key, fromTier: t, used, remaining, crossedOut });
+      });
+    }
+    return opts;
+  }, [tierKey, newTier, usedSlots, hasMulticlass, currentSubclassLevel, character.experiences, availableDomainCards]);
+
+  // Total slots used by current picks
+  const totalAdvancementCost = advancements.reduce((sum, key) => {
+    const opt = availableOptions.find(o => o.key === key);
+    return sum + (opt?.cost || 1);
+  }, 0);
+
+  const canAddAdvancement = (key) => {
+    const opt = availableOptions.find(o => o.key === key);
+    if (!opt || opt.crossedOut || opt.remaining <= 0) return false;
+    const alreadyPicked = advancements.filter(a => a === key).length;
+    if (alreadyPicked >= opt.remaining) return false;
+    if (totalAdvancementCost + opt.cost > 2) return false;
+    // Only one multiclass pick ever, across all pools
+    if (opt.id === 'multiclass' && advancements.some(a => a.endsWith(':multiclass'))) return false;
+    return true;
+  };
+
+  const toggleAdvancement = (key) => {
+    const idx = advancements.indexOf(key);
+    if (idx >= 0) {
+      const newAdv = [...advancements];
+      newAdv.splice(idx, 1);
+      setAdvancements(newAdv);
+      const newDetails = { ...advDetails };
+      delete newDetails[key];
+      setAdvDetails(newDetails);
+    } else if (canAddAdvancement(key)) {
+      setAdvancements([...advancements, key]);
+    }
+  };
 
   // Companion upgrades available
   const companionUpgrades = character.companion?.upgrades || [];
@@ -172,6 +201,20 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
   const currentStep = steps[step];
   const isLastStep = step === steps.length - 1;
 
+  // Each selected advancement that needs details must have them filled in
+  const advancementDetailsComplete = advancements.every(key => {
+    const id = key.split(':')[1];
+    const d = advDetails[key] || {};
+    if (id === 'traits') return (d.traits || []).length === 2;
+    if (id === 'experiences') {
+      const needed = Math.min(2, (character.experiences || []).length);
+      return (d.experiences || []).length === needed;
+    }
+    if (id === 'domainCard') return !!d.card;
+    if (id === 'multiclass') return !!(mcClass && mcSubclass && mcDomain);
+    return true;
+  });
+
   // Validation for each step
   const canProceed = () => {
     if (!currentStep) return false;
@@ -179,9 +222,10 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
       case 'achievements':
         return !isTierBoundary || newExperience.trim().length > 0;
       case 'advancements':
-        return totalAdvancementCost === 2;
+        return totalAdvancementCost === 2 && advancementDetailsComplete;
       case 'domainCard':
-        return true; // Free card is optional
+        // Every level-up grants a domain card (SRD) — required when any are available
+        return availableDomainCards.length === 0 || !!freeDomainCard;
       case 'companion':
         return true; // Optional
       case 'summary':
@@ -198,9 +242,10 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
       level: newLevel,
       tier: newTier,
       achievements: achievements.map(a => a.type),
-      advancements: advancements.map(id => ({
-        id,
-        details: advDetails[id] || {}
+      advancements: advancements.map(key => ({
+        id: key.split(':')[1],
+        fromTier: Number(key.split(':')[0]),
+        details: advDetails[key] || {}
       })),
       domainCard: freeDomainCard,
       companionUpgrade: companionUpgrade,
@@ -220,11 +265,13 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
     }
 
     // Apply advancements
-    advancements.forEach(advId => {
-      const details = advDetails[advId] || {};
+    let subclassChain = currentSubclassLevel;
+    advancements.forEach(key => {
+      const advId = key.split(':')[1];
+      const details = advDetails[key] || {};
       switch (advId) {
         case 'traits': {
-          const traits = { ...(character.traits || {}) };
+          const traits = { ...(updates.traits || character.traits || {}) };
           const marked = [...(updates.markedTraits || character.markedTraits || [])];
           (details.traits || []).forEach(t => {
             traits[t] = (traits[t] || 0) + 1;
@@ -235,22 +282,22 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
           break;
         }
         case 'hp': {
-          const current = character.hpSlots || [true, true, true, true, true, true];
+          const current = updates.hpSlots || character.hpSlots || [true, true, true, true, true, true];
           updates.hpSlots = [...current, true];
           break;
         }
         case 'stress': {
-          const current = character.stressSlots || [false, false, false, false, false, false];
+          const current = updates.stressSlots || character.stressSlots || [false, false, false, false, false, false];
           updates.stressSlots = [...current, false];
           break;
         }
         case 'evasion': {
-          updates.baseEvasionBonus = (character.baseEvasionBonus || 0) + 1;
+          updates.baseEvasionBonus = (updates.baseEvasionBonus || character.baseEvasionBonus || 0) + 1;
           break;
         }
         case 'experiences': {
           // +1 to two existing experiences — tracked via experienceBoosts
-          const boosts = { ...(character.experienceBoosts || {}) };
+          const boosts = { ...(updates.experienceBoosts || character.experienceBoosts || {}) };
           (details.experiences || []).forEach(exp => {
             boosts[exp] = (boosts[exp] || 0) + 1;
           });
@@ -258,8 +305,8 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
           break;
         }
         case 'subclassUpgrade': {
-          const next = currentSubclassLevel === 'foundation' ? 'specialization' : 'mastery';
-          updates.subclassLevel = next;
+          subclassChain = subclassChain === 'foundation' ? 'specialization' : 'mastery';
+          updates.subclassLevel = subclassChain;
           break;
         }
         case 'proficiency': {
@@ -284,13 +331,16 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
       updates.domainCards = [...(character.domainCards || []), freeDomainCard];
     }
 
-    // Domain card from advancement
-    if (advancements.includes('domainCard') && advDetails.domainCard?.card) {
+    // Domain card(s) from advancement picks
+    advancements.forEach(key => {
+      if (!key.endsWith(':domainCard')) return;
+      const card = advDetails[key]?.card;
+      if (!card) return;
       const cards = updates.domainCards || [...(character.domainCards || [])];
-      if (!cards.includes(advDetails.domainCard.card)) {
-        updates.domainCards = [...cards, advDetails.domainCard.card];
+      if (!cards.includes(card)) {
+        updates.domainCards = [...cards, card];
       }
-    }
+    });
 
     // Companion upgrade
     if (isBeastbound && companionUpgrade && character.companion) {
@@ -343,29 +393,44 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
   );
 
   const renderAdvancements = () => {
-    const markedTraits = advDetails.traits?.traits || [];
+    // Traits already chosen by any pick this level (marks apply immediately)
+    const traitsPickedThisLevel = advancements.flatMap(k =>
+      k.endsWith(':traits') ? (advDetails[k]?.traits || []) : []
+    );
+    // Domain cards claimed by other picks or the free card
+    const cardsClaimed = new Set([
+      freeDomainCard,
+      ...advancements.map(k => (k.endsWith(':domainCard') ? advDetails[k]?.card : null))
+    ].filter(Boolean));
 
     return (
       <div className="luw-step-content">
         <h3 className="luw-step-title">Choose Advancements ({totalAdvancementCost}/2 slots)</h3>
-        <p className="luw-step-desc">Pick advancements that use a total of 2 slots.</p>
+        <p className="luw-step-desc">
+          Pick advancements that use a total of 2 slots.
+          {newTier > 2 && ' Unused options from earlier tiers are also available.'}
+        </p>
 
         <div className="luw-options-list">
           {availableOptions.map(opt => {
-            const picked = advancements.includes(opt.id);
-            const disabled = opt.crossedOut || (!picked && !canAddAdvancement(opt.id));
+            const picked = advancements.includes(opt.key);
+            const disabled = opt.crossedOut || (!picked && !canAddAdvancement(opt.key));
+            const markedTraits = advDetails[opt.key]?.traits || [];
 
             return (
-              <div key={opt.id} className={`luw-option ${picked ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${opt.crossedOut ? 'crossed-out' : ''}`}>
+              <div key={opt.key} className={`luw-option ${picked ? 'selected' : ''} ${disabled ? 'disabled' : ''} ${opt.crossedOut ? 'crossed-out' : ''}`}>
                 <button
                   className="luw-option-btn"
-                  onClick={() => !opt.crossedOut && toggleAdvancement(opt.id)}
+                  onClick={() => !opt.crossedOut && toggleAdvancement(opt.key)}
                   disabled={disabled && !picked}
                 >
                   <div className="luw-option-header">
-                    <span className="luw-option-label">{opt.label}</span>
+                    <span className="luw-option-label">
+                      {opt.label}
+                      {opt.fromTier !== newTier && <span className="luw-option-tier-badge"> (Tier {opt.fromTier})</span>}
+                    </span>
                     <span className="luw-option-meta">
-                      Cost: {opt.cost} | {opt.remaining - (picked ? 1 : 0)} left
+                      Cost: {opt.cost} | {Math.max(0, opt.remaining - (picked ? 1 : 0))} left
                     </span>
                   </div>
                 </button>
@@ -376,13 +441,15 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
                     <label className="luw-label">Pick 2 unmarked traits to increase by +1:</label>
                     <div className="luw-trait-picks">
                       {TRAIT_NAMES.map(t => {
-                        const isMarked = (character.markedTraits || []).includes(t);
                         const isSelected = markedTraits.includes(t);
+                        const isMarked = !isSelected && (
+                          effectiveMarkedTraits.includes(t) || traitsPickedThisLevel.includes(t)
+                        );
                         return (
                           <button
                             key={t}
                             className={`luw-trait-btn ${isSelected ? 'selected' : ''} ${isMarked ? 'marked' : ''}`}
-                            disabled={isMarked && !isSelected}
+                            disabled={isMarked}
                             onClick={() => {
                               let traits;
                               if (isSelected) {
@@ -392,11 +459,11 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
                               } else {
                                 return;
                               }
-                              setAdvDetails({ ...advDetails, traits: { traits } });
+                              setAdvDetails({ ...advDetails, [opt.key]: { traits } });
                             }}
                           >
                             {t.charAt(0).toUpperCase() + t.slice(1)}
-                            {isMarked && !isSelected && ' (marked)'}
+                            {isMarked && ' (marked)'}
                           </button>
                         );
                       })}
@@ -409,13 +476,13 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
                     <label className="luw-label">Pick 2 experiences to boost by +1:</label>
                     <div className="luw-experience-picks">
                       {(character.experiences || []).map(exp => {
-                        const isSelected = (advDetails.experiences?.experiences || []).includes(exp);
+                        const isSelected = (advDetails[opt.key]?.experiences || []).includes(exp);
                         return (
                           <button
                             key={exp}
                             className={`luw-trait-btn ${isSelected ? 'selected' : ''}`}
                             onClick={() => {
-                              const current = advDetails.experiences?.experiences || [];
+                              const current = advDetails[opt.key]?.experiences || [];
                               let exps;
                               if (isSelected) {
                                 exps = current.filter(x => x !== exp);
@@ -424,7 +491,7 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
                               } else {
                                 return;
                               }
-                              setAdvDetails({ ...advDetails, experiences: { experiences: exps } });
+                              setAdvDetails({ ...advDetails, [opt.key]: { experiences: exps } });
                             }}
                           >
                             {exp}
@@ -440,13 +507,15 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
                     <label className="luw-label">Pick a domain card:</label>
                     <select
                       className="luw-select"
-                      value={advDetails.domainCard?.card || ''}
-                      onChange={(e) => setAdvDetails({ ...advDetails, domainCard: { card: e.target.value } })}
+                      value={advDetails[opt.key]?.card || ''}
+                      onChange={(e) => setAdvDetails({ ...advDetails, [opt.key]: { card: e.target.value } })}
                     >
                       <option value="">Select a card...</option>
-                      {availableDomainCards.map(c => (
-                        <option key={c.name} value={c.name}>{c.name} (Lv {c.level} {c.domain})</option>
-                      ))}
+                      {availableDomainCards
+                        .filter(c => c.name === advDetails[opt.key]?.card || !cardsClaimed.has(c.name))
+                        .map(c => (
+                          <option key={c.name} value={c.name}>{c.name} (Lv {c.level} {c.domain})</option>
+                        ))}
                     </select>
                   </div>
                 )}
@@ -524,12 +593,16 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
     );
   };
 
-  const renderDomainCard = () => (
+  const renderDomainCard = () => {
+    const cardsClaimed = new Set(
+      advancements.map(k => (k.endsWith(':domainCard') ? advDetails[k]?.card : null)).filter(Boolean)
+    );
+    return (
     <div className="luw-step-content">
-      <h3 className="luw-step-title">Free Domain Card</h3>
-      <p className="luw-step-desc">Pick one domain card at level {newLevel} or lower from your accessible domains.</p>
+      <h3 className="luw-step-title">New Domain Card</h3>
+      <p className="luw-step-desc">Every level-up grants a domain card. Pick one at level {newLevel} or lower from your accessible domains.</p>
       <div className="luw-card-grid">
-        {availableDomainCards.map(card => (
+        {availableDomainCards.filter(c => !cardsClaimed.has(c.name)).map(card => (
           <button
             key={card.name}
             className={`luw-card-option ${freeDomainCard === card.name ? 'selected' : ''}`}
@@ -547,7 +620,8 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
         )}
       </div>
     </div>
-  );
+    );
+  };
 
   const renderCompanion = () => (
     <div className="luw-step-content">
@@ -615,9 +689,10 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
             </div>
           )}
 
-          {advancements.map((advId, i) => {
-            const opt = availableOptions.find(o => o.id === advId);
-            const details = advDetails[advId];
+          {advancements.map((key, i) => {
+            const advId = key.split(':')[1];
+            const opt = availableOptions.find(o => o.key === key);
+            const details = advDetails[key];
             let detailText = '';
             if (advId === 'traits' && details?.traits) detailText = `: ${details.traits.join(', ')}`;
             if (advId === 'experiences' && details?.experiences) detailText = `: ${details.experiences.join(', ')}`;
@@ -633,7 +708,7 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
 
           {freeDomainCard && (
             <div className="luw-summary-item">
-              <span className="luw-summary-label">Free Domain Card</span>
+              <span className="luw-summary-label">New Domain Card</span>
               <span className="luw-summary-value">{freeDomainCard}</span>
             </div>
           )}

@@ -446,12 +446,12 @@ export default function AdversaryForm({
             <p className="text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-2">
               Damage Thresholds
               <span className="ml-2 font-normal normal-case text-[var(--text-muted)]">
-                — damage below Minor = 1 HP · above Major = 3 HP
+                — below Major = 1 HP · Major to Severe = 2 HP · at/above Severe = 3 HP
               </span>
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                {label('Minor')}
+                {label('Major')}
                 <input
                   type="number"
                   value={form.thresholds.minor}
@@ -461,7 +461,7 @@ export default function AdversaryForm({
                 />
               </div>
               <div>
-                {label('Major')}
+                {label('Severe')}
                 <input
                   type="number"
                   value={form.thresholds.major}

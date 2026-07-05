@@ -17,7 +17,10 @@
   border-radius: 12px;
   width: 100%;
   max-width: 680px;
+  /* dvh tracks the visible mobile viewport so the footer buttons never end
+     up below the browser chrome. vh is the fallback for older browsers. */
   max-height: 85vh;
+  max-height: min(85vh, calc(100dvh - 2rem));
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
@@ -225,6 +228,12 @@
   color: #8899aa;
 }
 
+.luw-option-tier-badge {
+  font-size: 0.72rem;
+  color: #c8a44e;
+  font-weight: 400;
+}
+
 .luw-option-desc {
   font-size: 0.78rem;
   color: #8899aa;
@@ -421,8 +430,12 @@
 
 /* ─── Responsive ─── */
 @media (max-width: 600px) {
+  .luw-overlay {
+    padding: 0.5rem;
+  }
   .luw-modal {
     max-height: 95vh;
+    max-height: calc(100dvh - 1rem);
     border-radius: 8px;
   }
   .luw-progress {
@@ -443,6 +456,11 @@
   .luw-btn {
     padding: 0.45rem 0.75rem;
     font-size: 0.8rem;
+  }
+  /* 16px stops iOS Safari from auto-zooming the page when an input gains
+     focus, which otherwise leaves the modal half off-screen. */
+  .luw-input, .luw-select {
+    font-size: 16px;
   }
 }
 

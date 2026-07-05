@@ -167,6 +167,7 @@
   width: 100%;
   max-width: 600px;
   max-height: 80vh;
+  max-height: min(80vh, calc(100dvh - 2rem));
   display: flex;
   flex-direction: column;
 }
