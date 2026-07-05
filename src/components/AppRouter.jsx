@@ -341,6 +341,7 @@ export default function AppRouter({
           isDM={isDM}
           adversaries={adversaries}
           setCurrentView={setCurrentView}
+          updateCharacter={updateCharacter}
         />
       );
 

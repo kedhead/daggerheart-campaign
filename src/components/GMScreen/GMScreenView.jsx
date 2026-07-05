@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
   LayoutDashboard, X, Columns2, Columns3,
-  Flame, Swords, Users, BookOpen, ScrollText, Activity, Hourglass,
+  Flame, Swords, Users, BookOpen, ScrollText, Activity, Hourglass, Tent,
 } from 'lucide-react';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearControl from '../PlayerDisplay/FearControl';
 import InitiativeTracker from '../Initiative/InitiativeTracker';
 import CountdownsPanel from './panels/CountdownsPanel';
+import PartyRestPanel from './panels/PartyRestPanel';
 import EncountersPanelMini from './panels/EncountersPanelMini';
 import NPCsPanelMini from './panels/NPCsPanelMini';
 import PartyStatusPanel from './panels/PartyStatusPanel';
@@ -16,6 +17,7 @@ import './GMScreenView.css';
 const ALL_PANELS = [
   { id: 'fear',       label: 'Fear',       icon: Flame,      daggerheartOnly: true },
   { id: 'countdowns', label: 'Countdowns',  icon: Hourglass },
+  { id: 'partyrest',  label: 'Party Rest',  icon: Tent,       daggerheartOnly: true },
   { id: 'initiative', label: 'Initiative',  icon: Swords },
   { id: 'encounters', label: 'Encounters',  icon: Activity },
   { id: 'npcs',       label: 'NPCs',        icon: Users },
@@ -45,6 +47,7 @@ export default function GMScreenView({
   isDM,
   adversaries = [],
   setCurrentView,
+  updateCharacter,
 }) {
   const isDaggerheart = campaign?.gameSystem === 'daggerheart' || !campaign?.gameSystem;
   const storageKey = `gmscreen_${campaign?.id}`;
@@ -72,6 +75,7 @@ export default function GMScreenView({
     showFear,
     incrementFear,
     decrementFear,
+    setFearCount,
     resetFear,
     toggleFear,
   } = usePlayerDisplay(campaign?.id);
@@ -178,6 +182,15 @@ export default function GMScreenView({
 
                   {id === 'countdowns' && (
                     <CountdownsPanel campaign={campaign} />
+                  )}
+
+                  {id === 'partyrest' && (
+                    <PartyRestPanel
+                      characters={characters}
+                      updateCharacter={updateCharacter}
+                      fearCount={fearCount}
+                      setFearCount={setFearCount}
+                    />
                   )}
 
                   {id === 'initiative' && (
