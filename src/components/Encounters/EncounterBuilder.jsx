@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Save, X, TreePine, Play, Info } from 'lucide-react';
-import BPCalculator, { calculateUsedBP, calculateBPBudget } from './BPCalculator';
+import BPCalculator, { calculateUsedBP, calculateBPBudget, calculateBPAdjustments } from './BPCalculator';
 import AdversaryPicker from './AdversaryPicker';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
@@ -26,6 +26,7 @@ export default function EncounterBuilder({
     environmentId: '',
     adversarySlots: [],
     partySize: characterCount || 4,
+    bpAdjustments: { easier: false, harder: false, damageBoost: false, lowerTier: 0 },
     tactics: '',
     rewards: '',
     hidden: false,
@@ -34,7 +35,20 @@ export default function EncounterBuilder({
 
   // Calculate BP values
   const usedBP = calculateUsedBP(formData.adversarySlots, adversaries, formData.partySize);
-  const budget = calculateBPBudget(formData.partySize);
+
+  // Roster-derived Battle Guide adjustments
+  const slotRoles = (formData.adversarySlots || []).map(s => {
+    const adv = adversaries.find(a => a.id === s.adversaryId);
+    return { role: adv?.role?.toLowerCase() || 'standard', quantity: s.quantity || 1 };
+  });
+  const soloCount = slotRoles.filter(r => r.role === 'solo' || r.role === 'boss').reduce((n, r) => n + r.quantity, 0);
+  const hasMajorThreats = slotRoles.some(r => ['bruiser', 'horde', 'leader', 'solo', 'boss'].includes(r.role));
+  const hasSlots = slotRoles.length > 0;
+
+  const { total: adjTotal } = calculateBPAdjustments({
+    adjustments: formData.bpAdjustments, soloCount, hasMajorThreats, hasSlots
+  });
+  const budget = calculateBPBudget(formData.partySize) + adjTotal;
 
   const handleChange = (field, value) => {
     setFormData({
@@ -94,6 +108,11 @@ export default function EncounterBuilder({
           setPartySize={(size) => handleChange('partySize', size)}
           usedBP={usedBP}
           characterCount={characterCount}
+          adjustments={formData.bpAdjustments}
+          onAdjustmentsChange={(adj) => handleChange('bpAdjustments', adj)}
+          soloCount={soloCount}
+          hasMajorThreats={hasMajorThreats}
+          hasSlots={hasSlots}
         />
       </div>
 

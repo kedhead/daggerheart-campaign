@@ -23,15 +23,13 @@ service cloud.firestore {
       return getUserId() == 'DnZPlvutotbHwsalwMsBG7kEWCu1' || getUserId() == 'PdOFs3FvC7WXl1QfB9i2EijyaxI2';
     }
 
-    // App Settings (shared API keys, etc.)
+    // App Settings
+    // - sharedApiConfig: availability flags + limits only (NO keys) — readable by signed-in users
+    // - sharedApiKeys (and everything else): superadmin only. Real keys are served
+    //   from the API routes' environment variables; clients only send a sentinel.
     match /appSettings/{settingId} {
-      // Super admins can read and write
-      allow read: if isAuthenticated() && isSuperAdmin();
+      allow read: if isAuthenticated() && (settingId == 'sharedApiConfig' || isSuperAdmin());
       allow write: if isAuthenticated() && isSuperAdmin();
-
-      // Regular users can read (for shared API key config)
-      // Note: Keys are exposed to authenticated users - use Firebase Functions proxy for production
-      allow read: if isAuthenticated();
     }
 
     // User Usage tracking (for shared API key limits)
@@ -228,6 +226,11 @@ service cloud.firestore {
         allow write: if isAuthenticated() && presenceId == getUserId() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
         // Users can delete their own presence
         allow delete: if isAuthenticated() && presenceId == getUserId();
+      }
+
+      // GM Screen state (countdowns, private GM tools)
+      match /gmScreen/{docId} {
+        allow read, write: if isAuthenticated() && (isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
       }
 
       // Player Display (DM-controlled display for TV/monitor)

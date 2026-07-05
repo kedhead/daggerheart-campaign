@@ -9,6 +9,8 @@ import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useDice } from '../../dice';
 import LevelUpWizard from './LevelUpWizard';
+import RestModal from './RestModal';
+import DeathMoveModal from './DeathMoveModal';
 import BeastformPanel from './BeastformPanel';
 import CompanionSheet from './CompanionSheet';
 import './DaggerheartCharacterSheet.css';
@@ -71,6 +73,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [localSlayerDice, setLocalSlayerDice] = useState(null);
   const [activeTab, setActiveTab] = useState('core');
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [showRest, setShowRest] = useState(false);
+  const [showDeathMove, setShowDeathMove] = useState(false);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
   const [expPickerActive, setExpPickerActive] = useState(null); // name of experience with open trait picker
   const [rollingKey, setRollingKey] = useState(null); // key of item currently rolling (flash feedback)
@@ -245,6 +249,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const hpFilledCount = hpSlots.filter(Boolean).length;
   const stressFilledCount = stressSlots.filter(Boolean).length;
+  const scars = character.scars || 0;
+  const atDeathsDoor = hpFilledCount === 0;
 
   const handleGeneratePortrait = async () => {
     if (generatingPortrait) return;
@@ -408,18 +414,22 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         {/* Hope */}
         <div className="dh-sidebar-vital-group">
           <div className="dh-sidebar-vital-header">
-            <span className="dh-sidebar-vital-label">Hope</span>
-            <span className="dh-sidebar-vital-count">{hopeSlots.filter(Boolean).length}/{hopeSlots.length}</span>
+            <span className="dh-sidebar-vital-label">Hope{scars > 0 ? ` · ${scars} scar${scars > 1 ? 's' : ''}` : ''}</span>
+            <span className="dh-sidebar-vital-count">{hopeSlots.filter(Boolean).length}/{hopeSlots.length - scars}</span>
           </div>
           <div className="dh-sidebar-slots">
-            {hopeSlots.map((filled, i) => (
-              <button
-                key={i}
-                className={`dh-slot dh-slot-hope ${filled ? 'filled' : ''}`}
-                onClick={() => handleSlotToggle('hopeSlots', i)}
-                disabled={!canEdit}
-              />
-            ))}
+            {hopeSlots.map((filled, i) => {
+              const scarred = i >= hopeSlots.length - scars;
+              return (
+                <button
+                  key={i}
+                  className={`dh-slot dh-slot-hope ${filled && !scarred ? 'filled' : ''} ${scarred ? 'scarred' : ''}`}
+                  title={scarred ? 'Scarred — this Hope slot is permanently crossed out' : undefined}
+                  onClick={() => handleSlotToggle('hopeSlots', i)}
+                  disabled={!canEdit || scarred}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -485,9 +495,19 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
       {/* Footer actions */}
       <div className="dh-sidebar-actions">
+        {canEdit && atDeathsDoor && (
+          <button className="dh-btn dh-btn-deathmove" onClick={() => setShowDeathMove(true)}>
+            💀 Death Move
+          </button>
+        )}
         {canEdit && level < 10 && (
           <button className="dh-btn dh-btn-levelup" onClick={() => setShowLevelUp(true)}>
             <ArrowUp size={14} /> Level Up
+          </button>
+        )}
+        {canEdit && (
+          <button className="dh-btn dh-btn-rest" onClick={() => setShowRest(true)}>
+            <Star size={14} /> Rest
           </button>
         )}
         {character.demiplaneLink && (
@@ -1279,6 +1299,24 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           items={items}
           onComplete={handleLevelUp}
           onClose={() => setShowLevelUp(false)}
+        />
+      )}
+
+      {/* Rest / Downtime Modal */}
+      {showRest && (
+        <RestModal
+          character={character}
+          onApply={(updates) => updateCharacter && updateCharacter(character.id, updates)}
+          onClose={() => setShowRest(false)}
+        />
+      )}
+
+      {/* Death Move Modal */}
+      {showDeathMove && (
+        <DeathMoveModal
+          character={character}
+          onApply={(updates) => updateCharacter && updateCharacter(character.id, updates)}
+          onClose={() => setShowDeathMove(false)}
         />
       )}
     </div>

@@ -139,7 +139,8 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter, ch
         hpSlots: Array(hpCount).fill(true),
         stressSlots: Array(6).fill(false),
         armorSlots: Array(6).fill(false),
-        hopeSlots: Array(6).fill(false),
+        // Characters start with 2 Hope (SRD)
+        hopeSlots: [true, true, false, false, false, false],
         evasion: parsed.evasion || classInfo.baseEvasion || 10,
         armor: parsed.armor || 0,
         proficiency: getBaseProficiency(parsed.level || 1),

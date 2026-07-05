@@ -160,7 +160,7 @@ export default function QuestsView({
       {/* Quest Form Modal */}
       {(showForm || editingQuest) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => { setShowForm(false); setEditingQuest(null); }}>
-          <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto" style={{ maxHeight: 'min(90vh, calc(100dvh - 2rem))' }} onClick={e => e.stopPropagation()}>
             <div className="p-6">
               <QuestForm
                 quest={editingQuest}

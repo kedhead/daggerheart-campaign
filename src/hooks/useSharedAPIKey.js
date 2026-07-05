@@ -2,8 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc, setDoc, onSnapshot, increment, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
-const SETTINGS_DOC = 'appSettings/sharedApiKeys';
+const SETTINGS_DOC = 'appSettings/sharedApiKeys';        // full config incl. keys — superadmin only
+const PUBLIC_CONFIG_DOC = 'appSettings/sharedApiConfig'; // availability flags only — readable by users
 const USAGE_COLLECTION = 'userUsage';
+
+// Sentinel sent to the API routes instead of a real key. The serverless
+// functions swap it for the key in their environment variables, so shared
+// keys never reach the browser.
+export const SHARED_KEY_SENTINEL = '__shared__';
 
 /**
  * Hook for managing shared API keys with usage limits
@@ -18,29 +24,23 @@ export function useSharedAPIKey(userId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Load shared config (read-only for regular users)
+  // Load shared availability config. This is a keys-free doc — the actual
+  // keys live in the superadmin-only doc and in the server's env vars.
   useEffect(() => {
-    const configRef = doc(db, SETTINGS_DOC);
+    const configRef = doc(db, PUBLIC_CONFIG_DOC);
 
     const unsubscribe = onSnapshot(
       configRef,
       (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.data();
-          // Don't expose actual keys to client - just availability
           setSharedConfig({
             enabled: data.enabled || false,
-            hasAnthropicKey: !!data.anthropicKey,
-            hasOpenaiKey: !!data.openaiKey,
-            hasOneMinAiKey: !!data.oneMinAiKey,
+            hasAnthropicKey: !!data.hasAnthropicKey,
+            hasOpenaiKey: !!data.hasOpenaiKey,
+            hasOneMinAiKey: !!data.hasOneMinAiKey,
             dailyLimit: data.dailyLimit || 10,
             monthlyLimit: data.monthlyLimit || 100,
-            // Keys are only for server-side use, but we need them for client API calls
-            // In a production app, you'd use Firebase Functions as a proxy
-            // For simplicity, we'll store encrypted and trust authenticated users
-            _anthropicKey: data.anthropicKey || null,
-            _openaiKey: data.openaiKey || null,
-            _oneMinAiKey: data.oneMinAiKey || null
           });
         } else {
           setSharedConfig({ enabled: false });
@@ -48,8 +48,9 @@ export function useSharedAPIKey(userId) {
         setLoading(false);
       },
       (err) => {
-        console.error('Error loading shared API config:', err);
-        setError('Failed to load shared API configuration');
+        // Permission denied just means shared keys aren't set up for this user
+        console.warn('Shared API config unavailable:', err?.code || err);
+        setSharedConfig({ enabled: false });
         setLoading(false);
       }
     );
@@ -166,9 +167,11 @@ export function useSharedAPIKey(userId) {
   }, [userId, userUsage]);
 
   /**
-   * Get the shared API key for a provider (if allowed)
-   * @param {string} provider - 'anthropic' or 'openai'
-   * @returns {string|null} The API key or null
+   * Get the shared API "key" for a provider (if allowed).
+   * Returns a sentinel value, never a real key — the serverless API routes
+   * replace the sentinel with the key from their environment variables.
+   * @param {string} provider - 'anthropic', 'openai', or '1minai'
+   * @returns {string|null} The sentinel or null
    */
   const getSharedKey = useCallback((provider) => {
     if (!sharedConfig?.enabled) return null;
@@ -176,15 +179,9 @@ export function useSharedAPIKey(userId) {
     const limitCheck = checkUsageLimit();
     if (!limitCheck.allowed) return null;
 
-    if (provider === 'anthropic' && sharedConfig._anthropicKey) {
-      return sharedConfig._anthropicKey;
-    }
-    if (provider === 'openai' && sharedConfig._openaiKey) {
-      return sharedConfig._openaiKey;
-    }
-    if (provider === '1minai' && sharedConfig._oneMinAiKey) {
-      return sharedConfig._oneMinAiKey;
-    }
+    if (provider === 'anthropic' && sharedConfig.hasAnthropicKey) return SHARED_KEY_SENTINEL;
+    if (provider === 'openai' && sharedConfig.hasOpenaiKey) return SHARED_KEY_SENTINEL;
+    if (provider === '1minai' && sharedConfig.hasOneMinAiKey) return SHARED_KEY_SENTINEL;
 
     return null;
   }, [sharedConfig, checkUsageLimit]);
@@ -269,16 +266,32 @@ export function useSharedAPIKeyAdmin() {
   }, []);
 
   /**
-   * Save shared API key configuration
+   * Save shared API key configuration.
+   * Writes the full config (with keys) to the superadmin-only doc, and a
+   * keys-free availability doc that regular users read. NOTE: for shared
+   * access to actually work, the same keys must be set as environment
+   * variables on the server (ANTHROPIC_API_KEY / OPENAI_API_KEY) — clients
+   * only ever send a sentinel, never the key.
    * @param {object} newConfig - Configuration to save
    */
   const saveConfig = async (newConfig) => {
     const configRef = doc(db, SETTINGS_DOC);
+    const publicRef = doc(db, PUBLIC_CONFIG_DOC);
     try {
       await setDoc(configRef, {
         ...newConfig,
         updatedAt: serverTimestamp()
       }, { merge: true });
+      const merged = { ...(config || {}), ...newConfig };
+      await setDoc(publicRef, {
+        enabled: merged.enabled || false,
+        hasAnthropicKey: !!merged.anthropicKey,
+        hasOpenaiKey: !!merged.openaiKey,
+        hasOneMinAiKey: !!merged.oneMinAiKey,
+        dailyLimit: merged.dailyLimit || 10,
+        monthlyLimit: merged.monthlyLimit || 100,
+        updatedAt: serverTimestamp()
+      });
       return true;
     } catch (err) {
       console.error('Failed to save config:', err);

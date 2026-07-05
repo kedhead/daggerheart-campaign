@@ -26,6 +26,26 @@ export function calculateBPBudget(partySize) {
   return (3 * partySize) + 2;
 }
 
+/**
+ * SRD Battle Guide budget adjustments.
+ * Manual: easier (−1), harder (+2), damageBoost (−2 for +1d4/+2 adversary
+ * damage), lowerTier (+1 per lower-tier adversary).
+ * Automatic (derived from the current roster): 2+ Solos (−2), no
+ * Bruisers/Hordes/Leaders/Solos (+1).
+ */
+export function calculateBPAdjustments({ adjustments = {}, soloCount = 0, hasMajorThreats = true, hasSlots = false }) {
+  let total = 0;
+  const notes = [];
+  if (adjustments.easier) { total -= 1; notes.push('Easier/shorter fight −1'); }
+  if (adjustments.harder) { total += 2; notes.push('Harder/longer fight +2'); }
+  if (adjustments.damageBoost) { total -= 2; notes.push('All adversaries deal +1d4 (or +2) damage −2'); }
+  if (soloCount >= 2) { total -= 2; notes.push('Using 2+ Solo adversaries −2'); }
+  if (hasSlots && !hasMajorThreats) { total += 1; notes.push('No Bruisers, Hordes, Leaders, or Solos +1'); }
+  const lowerTier = Number(adjustments.lowerTier) || 0;
+  if (lowerTier > 0) { total += lowerTier; notes.push(`${lowerTier} lower-tier adversar${lowerTier > 1 ? 'ies' : 'y'} +${lowerTier}`); }
+  return { total, notes };
+}
+
 /** BP cost for a quantity of one adversary. Minions are bought in groups of
  *  party size (e.g. 8 minions for a party of 4 = 2 BP). */
 export function getSlotBPCost(role, quantity, partySize) {
@@ -57,10 +77,19 @@ export default function BPCalculator({
   partySize,
   setPartySize,
   usedBP,
-  characterCount
+  characterCount,
+  adjustments = {},
+  onAdjustmentsChange,
+  soloCount = 0,
+  hasMajorThreats = true,
+  hasSlots = false
 }) {
-  const budget = calculateBPBudget(partySize);
+  const baseBudget = calculateBPBudget(partySize);
+  const { total: adjTotal, notes: adjNotes } = calculateBPAdjustments({ adjustments, soloCount, hasMajorThreats, hasSlots });
+  const budget = baseBudget + adjTotal;
   const remaining = budget - usedBP;
+
+  const setAdj = (field, value) => onAdjustmentsChange && onAdjustmentsChange({ ...adjustments, [field]: value });
   const isOver = remaining < 0;
   const isBalanced = remaining >= 0 && remaining <= 2;
 
@@ -115,9 +144,51 @@ export default function BPCalculator({
 
         <div className="flex justify-between mt-2 text-sm font-medium">
           <span className={isOver ? 'text-red-400' : 'text-white/60'}>Used: {usedBP} BP</span>
-          <span className="text-white/60">Budget: {budget} BP</span>
+          <span className="text-white/60">
+            Budget: {budget} BP{adjTotal !== 0 ? ` (${baseBudget} ${adjTotal > 0 ? '+' : '−'} ${Math.abs(adjTotal)})` : ''}
+          </span>
         </div>
       </div>
+
+      {/* Battle Guide adjustments */}
+      {onAdjustmentsChange && (
+        <div className="space-y-2 p-3 bg-black/20 rounded-lg border border-white/5">
+          <div className="text-xs font-bold text-white/40 uppercase tracking-widest">Budget Adjustments</div>
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-white/70">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={!!adjustments.easier} onChange={e => setAdj('easier', e.target.checked)} />
+              Easier/shorter fight (−1)
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={!!adjustments.harder} onChange={e => setAdj('harder', e.target.checked)} />
+              Harder/longer fight (+2)
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer" title="Add +1d4 (or a static +2) to all adversaries' damage rolls">
+              <input type="checkbox" checked={!!adjustments.damageBoost} onChange={e => setAdj('damageBoost', e.target.checked)} />
+              +1d4 adversary damage (−2)
+            </label>
+            <label className="flex items-center gap-1.5" title="+1 BP for each adversary from a lower tier than the party">
+              Lower-tier adversaries (+1 each):
+              <input
+                type="number"
+                min={0}
+                max={20}
+                value={adjustments.lowerTier || 0}
+                onChange={e => setAdj('lowerTier', Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-12 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-center text-white focus:outline-none"
+              />
+            </label>
+          </div>
+          {(soloCount >= 2 || (hasSlots && !hasMajorThreats)) && (
+            <div className="text-xs text-white/40">
+              Auto-applied: {[
+                soloCount >= 2 ? '2+ Solos (−2)' : null,
+                hasSlots && !hasMajorThreats ? 'no Bruisers/Hordes/Leaders/Solos (+1)' : null
+              ].filter(Boolean).join(' · ')}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={`flex items-center justify-center p-3 rounded-lg border ${isOver
         ? 'bg-red-500/10 border-red-500/30 text-red-200'

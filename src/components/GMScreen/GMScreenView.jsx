@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import {
   LayoutDashboard, X, Columns2, Columns3,
-  Flame, Swords, Users, BookOpen, ScrollText, Activity,
+  Flame, Swords, Users, BookOpen, ScrollText, Activity, Hourglass,
 } from 'lucide-react';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearControl from '../PlayerDisplay/FearControl';
 import InitiativeTracker from '../Initiative/InitiativeTracker';
+import CountdownsPanel from './panels/CountdownsPanel';
 import EncountersPanelMini from './panels/EncountersPanelMini';
 import NPCsPanelMini from './panels/NPCsPanelMini';
 import PartyStatusPanel from './panels/PartyStatusPanel';
@@ -14,6 +15,7 @@ import './GMScreenView.css';
 
 const ALL_PANELS = [
   { id: 'fear',       label: 'Fear',       icon: Flame,      daggerheartOnly: true },
+  { id: 'countdowns', label: 'Countdowns',  icon: Hourglass },
   { id: 'initiative', label: 'Initiative',  icon: Swords },
   { id: 'encounters', label: 'Encounters',  icon: Activity },
   { id: 'npcs',       label: 'NPCs',        icon: Users },
@@ -172,6 +174,10 @@ export default function GMScreenView({
                       onReset={resetFear}
                       onToggleShow={toggleFear}
                     />
+                  )}
+
+                  {id === 'countdowns' && (
+                    <CountdownsPanel campaign={campaign} />
                   )}
 
                   {id === 'initiative' && (
