@@ -12,6 +12,11 @@ import {
 } from '../../utils/graphCalculations';
 import './RelationshipGraph.css';
 
+// The layout runs in a virtual world sized by node count, NOT the container.
+// On phones the container is tiny; cramming the simulation into it stacked
+// every node against the walls. fitToView() maps the world to the screen.
+const layoutSizeFor = (count) => Math.max(900, Math.ceil(Math.sqrt(Math.max(1, count))) * 170);
+
 export default function RelationshipGraph({ campaign, entities, isDM, currentUserId }) {
   const [allNodes, setAllNodes] = useState([]);
   const [allEdges, setAllEdges] = useState([]);
@@ -43,18 +48,56 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   const draggedNodeRef = useRef(null);
   const zoomRef = useRef(1);
   const panRef = useRef({ x: 0, y: 0 });
-  const isPanningRef = useRef(false);
   const panStartRef = useRef(null);
   const panStartOffsetRef = useRef({ x: 0, y: 0 });
+  // Pointer/touch interaction state
+  const pointersRef = useRef(new Map()); // pointerId → {x, y} in container coords
+  const modeRef = useRef(null); // 'node' | 'pan' | 'pinch' | null
+  const pinchRef = useRef(null);
+  const tapRef = useRef(null);
+  const displayNodesRef = useRef([]);
+  const needsFitRef = useRef(true);
+
+  // The canvas only exists once there are nodes (the empty state renders
+  // instead) — every container listener must (re)attach when this flips.
+  const hasGraph = !!entities && allNodes.length > 0;
+
+  // Re-render on container resize (rotation, keyboard) so the viewBox tracks it
+  const [, setViewportTick] = useState(0);
+  useEffect(() => {
+    if (!hasGraph || !containerRef.current || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setViewportTick(t => t + 1));
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [hasGraph]);
+
+  // Fit the whole constellation (or the given nodes) on screen
+  const fitToView = (nodesArg) => {
+    const list = (nodesArg && nodesArg.length ? nodesArg : displayNodesRef.current) || [];
+    if (!list.length || !containerRef.current) return;
+    const cw = containerRef.current.offsetWidth || 800;
+    const ch = containerRef.current.offsetHeight || 600;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    list.forEach(n => {
+      minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x);
+      minY = Math.min(minY, n.y); maxY = Math.max(maxY, n.y);
+    });
+    const pad = 70;
+    const bw = Math.max(1, maxX - minX + pad * 2);
+    const bh = Math.max(1, maxY - minY + pad * 2);
+    const newZoom = Math.max(0.15, Math.min(2, Math.min(cw / bw, ch / bh)));
+    const newPan = {
+      x: (minX - pad) - (cw / newZoom - bw) / 2,
+      y: (minY - pad) - (ch / newZoom - bh) / 2,
+    };
+    setZoom(newZoom);
+    setPan(newPan);
+    zoomRef.current = newZoom;
+    panRef.current = newPan;
+  };
 
   useEffect(() => {
     if (!entities) return;
-
-    // Get current container dimensions from ref or window
-    // Use optional chaining and fallbacks to ensure we have numbers
-    const width = containerRef.current?.offsetWidth || window.innerWidth || 800;
-    const height = containerRef.current?.offsetHeight || window.innerHeight || 600;
-    const padding = 50;
 
     // Build graph data from entities
     const graphNodes = [];
@@ -133,7 +176,8 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         }
 
         const nodeId = `${entityType}-${entity.id}`;
-        // Recover previous position if available, else random
+        // Recover previous position if available; random positions are
+        // assigned below once the virtual world size is known.
         const savedPos = nodePositionsRef.current.get(nodeId);
 
         const node = {
@@ -141,14 +185,23 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           name: entity.title || entity.name,
           type: entityType,
           data: entity,
-          x: savedPos ? savedPos.x : Math.random() * (width - 100) + 50,
-          y: savedPos ? savedPos.y : Math.random() * (height - 100) + 50,
+          x: savedPos ? savedPos.x : null,
+          y: savedPos ? savedPos.y : null,
           vx: 0,
           vy: 0
         };
         graphNodes.push(node);
         nodeMap.set((entity.title || entity.name).toLowerCase(), node);
       });
+    });
+
+    // Seed unplaced nodes randomly inside the virtual layout world
+    const worldSize = layoutSizeFor(graphNodes.length);
+    graphNodes.forEach(node => {
+      if (node.x == null) {
+        node.x = Math.random() * (worldSize - 160) + 80;
+        node.y = Math.random() * (worldSize - 160) + 80;
+      }
     });
 
     // Create edges based on wiki links
@@ -194,11 +247,11 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
       node.radius = 8 + Math.min(12, importance * 1.5); // 8-20px based on importance
     });
 
-    // Run force simulation once (static layout)
+    // Run force simulation once (static layout) inside the virtual world
     const runSimulation = (iterations = 300, alpha = 1.0) => {
-      const width = containerRef.current?.offsetWidth || window.innerWidth || 800;
-      const height = containerRef.current?.offsetHeight || window.innerHeight || 600;
-      const padding = 50;
+      const width = worldSize;
+      const height = worldSize;
+      const padding = 60;
 
       const repulsionStrength = 8000;
       const attractionStrength = 0.005;
@@ -288,6 +341,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         nodePositionsRef.current.set(node.id, { x: node.x, y: node.y });
       });
       setAllNodes([...currentNodes]);
+      return currentNodes;
     };
 
     // Initial stabilization if needed
@@ -299,6 +353,9 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
       // Just ensuring nodes array is set
       setAllNodes(graphNodes);
     }
+    // Fit the whole constellation on screen once the canvas mounts (the
+    // deferred-fit effect handles it — the container isn't rendered yet here).
+    needsFitRef.current = true;
 
     // Expose spread function to parent/ref if needed, but for now we need a way to trigger it.
     // We can use a ref or a context, but simpler is to pass it down if we lifted state.
@@ -321,6 +378,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
     setDisplayNodes(nodes);
     setDisplayEdges(edges);
+    displayNodesRef.current = nodes;
   }, [allNodes, allEdges, selectedTypes, focusNode]);
 
   // Keep refs in sync with state for use in native event handlers
@@ -329,6 +387,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
   // Scroll wheel zoom (native listener for passive: false)
   useEffect(() => {
+    if (!hasGraph) return;
     const container = containerRef.current;
     if (!container) return;
 
@@ -356,20 +415,17 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
     container.addEventListener('wheel', onWheel, { passive: false });
     return () => container.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [hasGraph]);
 
-  const handleNodeClick = (node) => {
-    // Only select if we weren't dragging
-    if (!isDraggingRef.current) {
-      setSelectedEntity({
-        type: node.type,
-        data: node.data,
-        name: node.name,
-        displayName: node.name,
-        subtitle: node.type
-      });
+  // Deferred fit-to-view: the entities effect lays out nodes while the empty
+  // state is still showing (no container yet), so the actual fit runs here once
+  // the canvas has mounted.
+  useEffect(() => {
+    if (hasGraph && needsFitRef.current && containerRef.current) {
+      needsFitRef.current = false;
+      fitToView(displayNodesRef.current);
     }
-  };
+  }, [hasGraph, displayNodes]);
 
   const handleNodeHover = (node) => {
     if (isDraggingRef.current) return;
@@ -383,69 +439,145 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     setHighlightedEdges([]);
   };
 
-  const handleNodeMouseDown = (e, node) => {
-    e.stopPropagation();
-    setDraggedNode(node);
-    draggedNodeRef.current = node;
-    dragStartPosRef.current = { x: e.clientX, y: e.clientY };
-    isDraggingRef.current = false;
-  };
+  // Unified pointer interaction: works for mouse AND touch.
+  // 1 pointer on a node → drag it (or tap to open) · 1 pointer on space → pan
+  // 2 pointers → pinch-zoom around the midpoint
+  useEffect(() => {
+    if (!hasGraph) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-  const handleMouseMove = (e) => {
-    if (draggedNode && svgRef.current) {
-      // Node dragging
-      if (dragStartPosRef.current) {
-        const dist = Math.hypot(e.clientX - dragStartPosRef.current.x, e.clientY - dragStartPosRef.current.y);
-        if (dist > 5) {
-          isDraggingRef.current = true;
+    const getPos = (e) => {
+      const rect = container.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    };
+
+    const onPointerDown = (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      try { container.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      pointersRef.current.set(e.pointerId, getPos(e));
+
+      if (pointersRef.current.size === 2) {
+        const [p1, p2] = [...pointersRef.current.values()];
+        pinchRef.current = {
+          startDist: Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1,
+          startZoom: zoomRef.current,
+          startPan: { ...panRef.current },
+          startMid: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
+        };
+        modeRef.current = 'pinch';
+        draggedNodeRef.current = null;
+        setDraggedNode(null);
+        tapRef.current = null;
+        return;
+      }
+
+      tapRef.current = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false };
+      const nodeEl = e.target.closest?.('[data-node-id]');
+      if (nodeEl) {
+        const node = displayNodesRef.current.find(n => n.id === nodeEl.getAttribute('data-node-id'));
+        if (node) {
+          modeRef.current = 'node';
+          draggedNodeRef.current = node;
+          setDraggedNode(node);
+          return;
+        }
+      }
+      modeRef.current = 'pan';
+      panStartRef.current = { x: e.clientX, y: e.clientY };
+      panStartOffsetRef.current = { ...panRef.current };
+    };
+
+    const onPointerMove = (e) => {
+      if (!pointersRef.current.has(e.pointerId)) return;
+      pointersRef.current.set(e.pointerId, getPos(e));
+
+      if (modeRef.current === 'pinch' && pointersRef.current.size >= 2) {
+        const [p1, p2] = [...pointersRef.current.values()];
+        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+        const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const { startDist, startZoom, startPan, startMid } = pinchRef.current;
+        const newZoom = Math.max(0.15, Math.min(5, startZoom * (dist / startDist)));
+        // Keep the world point under the initial midpoint pinned under the current one
+        const worldMid = { x: startPan.x + startMid.x / startZoom, y: startPan.y + startMid.y / startZoom };
+        const newPan = { x: worldMid.x - mid.x / newZoom, y: worldMid.y - mid.y / newZoom };
+        setZoom(newZoom);
+        setPan(newPan);
+        zoomRef.current = newZoom;
+        panRef.current = newPan;
+        return;
+      }
+
+      if (tapRef.current && !tapRef.current.moved &&
+          Math.hypot(e.clientX - tapRef.current.x, e.clientY - tapRef.current.y) > 6) {
+        tapRef.current.moved = true;
+        isDraggingRef.current = true;
+      }
+
+      if (modeRef.current === 'node' && draggedNodeRef.current && tapRef.current?.moved) {
+        const pos = getPos(e);
+        const worldX = panRef.current.x + pos.x / zoomRef.current;
+        const worldY = panRef.current.y + pos.y / zoomRef.current;
+        const nodeId = draggedNodeRef.current.id;
+        nodePositionsRef.current.set(nodeId, { x: worldX, y: worldY });
+        setAllNodes(prev => prev.map(n =>
+          n.id === nodeId ? { ...n, x: worldX, y: worldY } : n
+        ));
+      } else if (modeRef.current === 'pan' && panStartRef.current) {
+        const dx = (e.clientX - panStartRef.current.x) / zoomRef.current;
+        const dy = (e.clientY - panStartRef.current.y) / zoomRef.current;
+        const newPan = {
+          x: panStartOffsetRef.current.x - dx,
+          y: panStartOffsetRef.current.y - dy
+        };
+        setPan(newPan);
+        panRef.current = newPan;
+      }
+    };
+
+    const endPointer = (e) => {
+      pointersRef.current.delete(e.pointerId);
+
+      if (modeRef.current === 'pinch') {
+        if (pointersRef.current.size < 2) {
+          modeRef.current = null;
+          pinchRef.current = null;
+        }
+      } else if (modeRef.current === 'node') {
+        const node = draggedNodeRef.current;
+        const tap = tapRef.current;
+        if (node && tap && !tap.moved && Date.now() - tap.t < 600) {
+          setSelectedEntity({
+            type: node.type,
+            data: node.data,
+            name: node.name,
+            displayName: node.name,
+            subtitle: node.type
+          });
         }
       }
 
-      const svg = svgRef.current;
-      const rect = svg.getBoundingClientRect();
+      if (pointersRef.current.size === 0) {
+        modeRef.current = null;
+        draggedNodeRef.current = null;
+        setDraggedNode(null);
+        panStartRef.current = null;
+        tapRef.current = null;
+        setTimeout(() => { isDraggingRef.current = false; }, 50);
+      }
+    };
 
-      // Convert screen coords to world coords using viewBox mapping
-      const screenX = e.clientX - rect.left;
-      const screenY = e.clientY - rect.top;
-      const worldX = panRef.current.x + screenX / zoomRef.current;
-      const worldY = panRef.current.y + screenY / zoomRef.current;
-
-      const newX = Math.max(20, worldX);
-      const newY = Math.max(20, worldY);
-
-      nodePositionsRef.current.set(draggedNode.id, { x: newX, y: newY });
-
-      setAllNodes(prev => prev.map(n =>
-        n.id === draggedNode.id
-          ? { ...n, x: newX, y: newY }
-          : n
-      ));
-    } else if (isPanningRef.current && panStartRef.current) {
-      // Canvas panning
-      const dx = (e.clientX - panStartRef.current.x) / zoomRef.current;
-      const dy = (e.clientY - panStartRef.current.y) / zoomRef.current;
-      const newPan = {
-        x: panStartOffsetRef.current.x - dx,
-        y: panStartOffsetRef.current.y - dy
-      };
-      setPan(newPan);
-      panRef.current = newPan;
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (draggedNode) {
-      setDraggedNode(null);
-      draggedNodeRef.current = null;
-      dragStartPosRef.current = null;
-      // Reset drag flag after a short delay to allow click handler to check it
-      setTimeout(() => {
-        isDraggingRef.current = false;
-      }, 50);
-    }
-    isPanningRef.current = false;
-    panStartRef.current = null;
-  };
+    container.addEventListener('pointerdown', onPointerDown);
+    container.addEventListener('pointermove', onPointerMove);
+    container.addEventListener('pointerup', endPointer);
+    container.addEventListener('pointercancel', endPointer);
+    return () => {
+      container.removeEventListener('pointerdown', onPointerDown);
+      container.removeEventListener('pointermove', onPointerMove);
+      container.removeEventListener('pointerup', endPointer);
+      container.removeEventListener('pointercancel', endPointer);
+    };
+  }, [hasGraph]);
 
   const handleZoomIn = () => {
     const w = containerRef.current?.offsetWidth || 800;
@@ -474,11 +606,9 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     panRef.current = { x: newPanX, y: newPanY };
   };
   const handleReset = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-    zoomRef.current = 1;
-    panRef.current = { x: 0, y: 0 };
     setFocusNode(null);
+    const { nodes } = filterGraphByTypes(allNodes, allEdges, selectedTypes);
+    fitToView(nodes);
   };
 
   const handleExportSVG = () => {
@@ -508,13 +638,13 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     );
   }
 
-  // Manual spread function - balanced force simulation
+  // Manual spread function - balanced force simulation in the virtual world
   const handleSpread = () => {
-    const width = containerRef.current?.offsetWidth || 800;
-    const height = containerRef.current?.offsetHeight || 600;
-    const padding = 60;
     const nodeCount = allNodes.length;
     if (nodeCount === 0) return;
+    const width = layoutSizeFor(nodeCount);
+    const height = width;
+    const padding = 60;
 
     // Clone nodes and reset velocities
     const currentNodes = allNodes.map(n => ({ ...n, vx: 0, vy: 0 }));
@@ -632,10 +762,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     setAllNodes([...currentNodes]);
 
     // Reset view to see all nodes
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-    zoomRef.current = 1;
-    panRef.current = { x: 0, y: 0 };
+    fitToView(currentNodes);
   };
 
   return (
@@ -672,16 +799,6 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           width="100%"
           height="100%"
           viewBox={`${pan.x} ${pan.y} ${(containerRef.current?.offsetWidth || 800) / zoom} ${(containerRef.current?.offsetHeight || 600) / zoom}`}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          onMouseDown={(e) => {
-            if (e.button === 0) {
-              isPanningRef.current = true;
-              panStartRef.current = { x: e.clientX, y: e.clientY };
-              panStartOffsetRef.current = { ...panRef.current };
-            }
-          }}
         >
           <defs>
             {/* Star glow filter - enhanced bloom for nodes */}
@@ -792,8 +909,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                 <g
                   key={node.id}
                   className="node"
-                  onClick={() => handleNodeClick(node)}
-                  onMouseDown={(e) => handleNodeMouseDown(e, node)}
+                  data-node-id={node.id}
                   onMouseEnter={() => handleNodeHover(node)}
                   onMouseLeave={handleNodeLeave}
                   style={{
@@ -801,6 +917,15 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     '--node-color': baseColor
                   }}
                 >
+                  {/* 0. Invisible touch target — keeps taps easy on phones */}
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={Math.max(r * 2, 22)}
+                    fill="transparent"
+                    pointerEvents="all"
+                  />
+
                   {/* 1. Soft halo - large ambient glow */}
                   <circle
                     cx={node.x}
@@ -899,7 +1024,10 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     className="star-sparkle"
                   />
 
-                  {showLabels && (
+                  {/* Labels: at low zoom only important nodes keep a name so the
+                      map doesn't turn into overlapping text; type tags need
+                      more zoom still. */}
+                  {showLabels && (zoom >= 0.7 || (node.importance || 0) >= 3) && (
                     <>
                       <text
                         x={node.x}
@@ -909,14 +1037,16 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                       >
                         {node.name.length > 20 ? node.name.substring(0, 20) + '...' : node.name}
                       </text>
-                      <text
-                        x={node.x}
-                        y={node.y - r - 22}
-                        textAnchor="middle"
-                        className="node-type-label"
-                      >
-                        {getTypeLabel(node.type)}
-                      </text>
+                      {zoom >= 0.7 && (
+                        <text
+                          x={node.x}
+                          y={node.y - r - 22}
+                          textAnchor="middle"
+                          className="node-type-label"
+                        >
+                          {getTypeLabel(node.type)}
+                        </text>
+                      )}
                     </>
                   )}
                 </g>

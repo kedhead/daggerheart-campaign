@@ -230,6 +230,15 @@
   background: transparent;
   cursor: grab;
   overflow: hidden;
+  /* Let the graph own all gestures: no page scroll, no double-tap zoom */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.graph-canvas svg {
+  touch-action: none;
+  display: block;
 }
 
 .graph-canvas:active {
@@ -474,19 +483,57 @@
 @media (max-width: 768px) {
   .relationship-graph-container {
     height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
   }
 
   .graph-top-bar {
-    padding: 0.5rem 1rem;
+    padding: 0.4rem 0.6rem;
     gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* Icon-only buttons on phones */
+  .btn-label {
+    display: none;
+  }
+
+  .graph-bar-actions {
+    flex: 1 1 100%;
+    order: 3;
+    justify-content: space-between;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Bigger touch targets */
+  .btn-icon-bar,
+  .btn-toggle {
+    min-width: 40px;
+    min-height: 40px;
   }
 
   .graph-header-content h2 {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
+    gap: 0.4rem;
+  }
+
+  .graph-header-content {
+    gap: 0.6rem;
   }
 
   .graph-subtitle {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     padding-left: 0.5rem;
+  }
+
+  .graph-filter-popover {
+    width: calc(100vw - 1rem);
+    max-width: none;
+    margin-right: 0.5rem;
+    padding: 1rem;
+  }
+
+  .graph-type-checkbox {
+    min-height: 40px;
   }
 }
