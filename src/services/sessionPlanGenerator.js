@@ -12,7 +12,7 @@
  *         responseParser. Mirrors the existing campaignGenerator.js pattern.
  */
 
-import { generateAdversaryStatblock } from './adversaryGenerator';
+import { generateAdversaryStatblock, fallbackAdversaryStats } from './adversaryGenerator';
 import { fleshOutLocationWithAI } from './campaignGenerator';
 import { aiService } from './aiService';
 import { promptBuilder } from './promptBuilder';
@@ -227,21 +227,22 @@ export async function buildPreviewFromPlan({
       adversaryByConceptKey.set(conceptKey(need), adv);
     } catch (err) {
       console.error('Adversary generation failed:', err);
+      const fb = fallbackAdversaryStats(need.tier, need.role);
       const stub = {
         name: need.concept.split(/[,.]/)[0].slice(0, 60),
         tier: need.tier,
         role: need.role,
         description: need.concept,
         motives: '',
-        difficulty: 12,
-        hp: need.tier * 2,
-        stress: 2,
-        attack: need.tier,
+        difficulty: fb.difficulty,
+        hp: fb.hp,
+        stress: fb.stress,
+        attack: fb.attack,
         attackName: 'Attack',
         attackRange: 'Melee',
-        attackDamage: `1d${need.tier <= 1 ? 6 : need.tier === 2 ? 8 : 10}+${need.tier + 1} phy`,
+        attackDamage: fb.attackDamage,
         experience: '',
-        thresholds: { minor: Math.ceil(need.tier * 2 * 1.3), major: Math.ceil(need.tier * 2 * 2.5) },
+        thresholds: fb.thresholds,
         features: [],
         _planSource: need,
         _generationError: err.message

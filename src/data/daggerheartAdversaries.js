@@ -1,7 +1,7 @@
 /**
  * Official Daggerheart Adversaries from daggerheart-srd
  * Auto-generated from: https://github.com/seansbox/daggerheart-srd/tree/main/adversaries
- * Generated: 2026-02-01T15:56:24.335Z
+ * Standard attacks backfilled from the core rulebook text (dh-rulebook.txt)
  *
  * These can be imported into campaigns as template adversaries
  */
@@ -21,9 +21,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 8,
     "stress": 3,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Claws",
+    "attackRange": "Very Close",
+    "attackDamage": "1d12+2 phy",
     "experience": "Tremor Sense +2",
     "features": [
       {
@@ -155,9 +155,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 4,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Slam",
+    "attackRange": "Very Close",
+    "attackDamage": "1d12+3 phy",
     "experience": "Collateral Damage +2, Throw +4",
     "features": [
       {
@@ -191,9 +191,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 8,
     "stress": 3,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Club",
+    "attackRange": "Very Close",
+    "attackDamage": "1d10+2 phy",
     "experience": "Throw +2",
     "features": [
       {
@@ -232,9 +232,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 9,
     "stress": 4,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Fist Slam",
+    "attackRange": "Melee",
+    "attackDamage": "1d20 phy",
     "experience": "",
     "features": [
       {
@@ -474,9 +474,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 3,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Glass Fangs",
+    "attackRange": "Very Close",
+    "attackDamage": "1d8+2 phy",
     "experience": "",
     "features": [
       {
@@ -510,9 +510,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 2,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Ooze Appendage",
+    "attackRange": "Melee",
+    "attackDamage": "1d6+1 mag",
     "experience": "Camouflage +3",
     "features": [
       {
@@ -871,9 +871,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 3,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Warp Blast",
+    "attackRange": "Close",
+    "attackDamage": "1d12+6 mag",
     "experience": "",
     "features": [
       {
@@ -963,9 +963,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 9,
     "stress": 3,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Elemental Blast",
+    "attackRange": "Far",
+    "attackDamage": "1d10+4 mag",
     "experience": "",
     "features": [
       {
@@ -1009,9 +1009,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 1,
     "attack": -2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Clawed Branch",
+    "attackRange": "Melee",
+    "attackDamage": "4 phy",
     "experience": "",
     "features": [
       {
@@ -1040,9 +1040,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 10,
     "stress": 3,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Too Many Arms",
+    "attackRange": "Very Close",
+    "attackDamage": "1d20 phy",
     "experience": "Intimidation +2, Tear Things Apart +2",
     "features": [
       {
@@ -1189,9 +1189,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 3,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Massive Fists",
+    "attackRange": "Melee",
+    "attackDamage": "2d6 phy",
     "experience": "Sailor +2",
     "features": [
       {
@@ -1220,9 +1220,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 3,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Ooze Appendage",
+    "attackRange": "Melee",
+    "attackDamage": "1d8+3 mag",
     "experience": "Camouflage +3",
     "features": [
       {
@@ -1380,9 +1380,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 1,
     "attack": -1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Bone Claws",
+    "attackRange": "Melee",
+    "attackDamage": "1 phy",
     "experience": "",
     "features": [
       {
@@ -1411,9 +1411,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 2,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Rusty Greatsword",
+    "attackRange": "Melee",
+    "attackDamage": "1d10+2 phy",
     "experience": "",
     "features": [
       {
@@ -1478,9 +1478,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 3,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Empowered Longsword",
+    "attackRange": "Melee",
+    "attackDamage": "1d8+4 phy/mag",
     "experience": "Magical Knowledge +2",
     "features": [
       {
@@ -1658,9 +1658,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 2,
     "stress": 1,
     "attack": -1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Ooze Appendage",
+    "attackRange": "Melee",
+    "attackDamage": "1d4+1 mag",
     "experience": "",
     "features": [
       {
@@ -1684,9 +1684,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 2,
     "stress": 1,
     "attack": -1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Ooze Appendage",
+    "attackRange": "Melee",
+    "attackDamage": "1d4+2 mag",
     "experience": "",
     "features": [
       {
@@ -1710,9 +1710,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 3,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Claymore",
+    "attackRange": "Very Close",
+    "attackDamage": "1d12+2 phy",
     "experience": "",
     "features": [
       {
@@ -1813,9 +1813,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 1,
     "attack": -1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Thrown Dagger",
+    "attackRange": "Very Close",
+    "attackDamage": "4 phy",
     "experience": "Intrusion +2",
     "features": [
       {
@@ -1880,9 +1880,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 4,
     "stress": 4,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Poisoned Throwing Dagger",
+    "attackRange": "Close",
+    "attackDamage": "2d8+1 phy",
     "experience": "Intrusion +2",
     "features": [
       {
@@ -1957,9 +1957,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 4,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Energy Blast",
+    "attackRange": "Close",
+    "attackDamage": "2d8+3 mag",
     "experience": "",
     "features": [
       {
@@ -1998,9 +1998,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 1,
     "attack": 0,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Spears",
+    "attackRange": "Very Close",
+    "attackDamage": "6 phy",
     "experience": "",
     "features": [
       {
@@ -2055,9 +2055,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 4,
     "stress": 6,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Rune-Covered Rod",
+    "attackRange": "Far",
+    "attackDamage": "2d4+3 mag",
     "experience": "Fallen Lore +2, Rituals +2",
     "features": [
       {
@@ -2096,9 +2096,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 4,
     "stress": 4,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Long Knife",
+    "attackRange": "Melee",
+    "attackDamage": "2d8+4 phy",
     "experience": "",
     "features": [
       {
@@ -2127,9 +2127,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 1,
     "attack": 0,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Ritual Dagger",
+    "attackRange": "Melee",
+    "attackDamage": "5 phy",
     "experience": "",
     "features": [
       {
@@ -2158,9 +2158,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 3,
     "attack": 0,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Claws and Fangs",
+    "attackRange": "Melee",
+    "attackDamage": "2d8+2 phy",
     "experience": "Scent Tracking +3",
     "features": [
       {
@@ -2194,9 +2194,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 3,
     "attack": 0,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Shocking Bite",
+    "attackRange": "Melee",
+    "attackDamage": "2d6+4 phy",
     "experience": "",
     "features": [
       {
@@ -2225,9 +2225,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 4,
     "stress": 3,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Spear",
+    "attackRange": "Very Close",
+    "attackDamage": "2d8+4 phy",
     "experience": "",
     "features": [
       {
@@ -2256,9 +2256,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 3,
     "stress": 3,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Bite and Claw",
+    "attackRange": "Melee",
+    "attackDamage": "2d6+5 phy",
     "experience": "Copycat +3",
     "features": [
       {
@@ -2328,9 +2328,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 4,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Warhammer",
+    "attackRange": "Very Close",
+    "attackDamage": "2d12+3 phy",
     "experience": "Intrusion +2",
     "features": [
       {
@@ -2364,9 +2364,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 4,
     "stress": 4,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Claws and Beak",
+    "attackRange": "Very Close",
+    "attackDamage": "2d6+3 phy",
     "experience": "",
     "features": [
       {
@@ -2405,9 +2405,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 2,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Warhammer",
+    "attackRange": "Very Close",
+    "attackDamage": "5 phy",
     "experience": "",
     "features": [
       {
@@ -2436,9 +2436,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 9,
     "stress": 3,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Sunsear Shortbow",
+    "attackRange": "Far",
+    "attackDamage": "2d20+3 mag",
     "experience": "Stealth +3",
     "features": [
       {
@@ -2482,9 +2482,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 10,
     "stress": 5,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Wing Slash",
+    "attackRange": "Very Close",
+    "attackDamage": "2d10+4 phy",
     "experience": "",
     "features": [
       {
@@ -2595,9 +2595,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 5,
     "attack": 5,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Serrated Dagger",
+    "attackRange": "Close",
+    "attackDamage": "2d10+2 phy",
     "experience": "Command +3, Intrusion +3",
     "features": [
       {
@@ -2667,9 +2667,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 5,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Battleaxe",
+    "attackRange": "Very Close",
+    "attackDamage": "2d8+5 phy",
     "experience": "Navigation +2",
     "features": [
       {
@@ -2703,9 +2703,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 4,
     "attack": 5,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Tear at Flesh",
+    "attackRange": "Very Close",
+    "attackDamage": "2d12+1 phy",
     "experience": "Bloodhound +3",
     "features": [
       {
@@ -2780,9 +2780,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 4,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Sigil-laden Staff",
+    "attackRange": "Far",
+    "attackDamage": "2d12 mag",
     "experience": "Coercion +2, Fallen Lore +2",
     "features": [
       {
@@ -2821,9 +2821,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 3,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Toothy Maw",
+    "attackRange": "Very Close",
+    "attackDamage": "2d12+1 phy",
     "experience": "Sense of Smell +3",
     "features": [
       {
@@ -2857,9 +2857,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 3,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Distended Jaw Bite",
+    "attackRange": "Melee",
+    "attackDamage": "2d6+3 phy",
     "experience": "Song Repertoire +3",
     "features": [
       {
@@ -2960,9 +2960,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 4,
     "stress": 3,
     "attack": 1,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Spear",
+    "attackRange": "Very Close",
+    "attackDamage": "2d8+1 phy",
     "experience": "Ancient Knowledge +2",
     "features": [
       {
@@ -3022,9 +3022,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 3,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Bite and Claws",
+    "attackRange": "Melee",
+    "attackDamage": "2d8+6 phy",
     "experience": "Stonesense +3",
     "features": [
       {
@@ -3109,9 +3109,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 12,
     "stress": 6,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Wing Slash",
+    "attackRange": "Very Close",
+    "attackDamage": "3d20 phy",
     "experience": "",
     "features": [
       {
@@ -3165,9 +3165,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 5,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Hungry Maw",
+    "attackRange": "Melee",
+    "attackDamage": "3d6+5 mag",
     "experience": "Manipulation +3",
     "features": [
       {
@@ -3201,9 +3201,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 5,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Miasma Bolt",
+    "attackRange": "Far",
+    "attackDamage": "3d6+1 mag",
     "experience": "Manipulation +3",
     "features": [
       {
@@ -3242,9 +3242,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 5,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Perfect Spear",
+    "attackRange": "Very Close",
+    "attackDamage": "3d10 phy",
     "experience": "Manipulation +2",
     "features": [
       {
@@ -3288,9 +3288,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 6,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Psychic Assault",
+    "attackRange": "Far",
+    "attackDamage": "3d8+3 mag",
     "experience": "Manipulation +3",
     "features": [
       {
@@ -3329,9 +3329,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 5,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Fists",
+    "attackRange": "Very Close",
+    "attackDamage": "3d8+1 mag",
     "experience": "Intimidation +2",
     "features": [
       {
@@ -3370,9 +3370,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 3,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Claws and Teeth",
+    "attackRange": "Melee",
+    "attackDamage": "2d6+7 phy",
     "experience": "Bloodthirsty +3",
     "features": [
       {
@@ -3406,9 +3406,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 8,
     "stress": 5,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Deadfall Shortbow",
+    "attackRange": "Far",
+    "attackDamage": "3d10+1 phy",
     "experience": "Forest Knowledge +4",
     "features": [
       {
@@ -3442,9 +3442,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 1,
     "attack": 0,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Bursts of Fire",
+    "attackRange": "Close",
+    "attackDamage": "5 mag",
     "experience": "",
     "features": [
       {
@@ -3473,9 +3473,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 10,
     "stress": 4,
     "attack": 7,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Boulder Fist",
+    "attackRange": "Very Close",
+    "attackDamage": "3d10+1 phy",
     "experience": "",
     "features": [
       {
@@ -3519,9 +3519,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 5,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Crashing Wave",
+    "attackRange": "Very Close",
+    "attackDamage": "3d4+1 mag",
     "experience": "",
     "features": [
       {
@@ -3601,9 +3601,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 4,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Ooze Appendage",
+    "attackRange": "Melee",
+    "attackDamage": "3d8+1 mag",
     "experience": "Blend In +3",
     "features": [
       {
@@ -3724,9 +3724,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 4,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Branch",
+    "attackRange": "Very Close",
+    "attackDamage": "3d8+2 phy",
     "experience": "Forest Knowledge +3",
     "features": [
       {
@@ -3760,9 +3760,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 5,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Bramble Sword",
+    "attackRange": "Melee",
+    "attackDamage": "3d8+3 phy",
     "experience": "Forest Knowledge +3",
     "features": [
       {
@@ -3858,9 +3858,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 3,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Body Bash",
+    "attackRange": "Very Close",
+    "attackDamage": "3d6+2 phy",
     "experience": "",
     "features": [
       {
@@ -3889,9 +3889,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 3,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Charged Mace",
+    "attackRange": "Very Close",
+    "attackDamage": "2d12+1 phy",
     "experience": "",
     "features": [
       {
@@ -3930,9 +3930,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 5,
     "stress": 4,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Magitech Cannon",
+    "attackRange": "Far",
+    "attackDamage": "3d10+3 mag",
     "experience": "",
     "features": [
       {
@@ -3971,9 +3971,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 10,
     "stress": 6,
     "attack": 7,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Bite and Claws",
+    "attackRange": "Close",
+    "attackDamage": "4d10 phy",
     "experience": "Protect What Is Mine +3",
     "features": [
       {
@@ -4027,9 +4027,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 9,
     "stress": 8,
     "attack": 6,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Necrotic Blast",
+    "attackRange": "Far",
+    "attackDamage": "4d12+8 mag",
     "experience": "Forbidden Knowledge +3, Wisdom of Centuries +3",
     "features": [
       {
@@ -4073,9 +4073,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 1,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Cursed Axe",
+    "attackRange": "Very Close",
+    "attackDamage": "12 phy",
     "experience": "",
     "features": [
       {
@@ -4109,9 +4109,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 5,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Corrupted Staff",
+    "attackRange": "Far",
+    "attackDamage": "4d6+10 mag",
     "experience": "Ancient Knowledge +2",
     "features": [
       {
@@ -4150,9 +4150,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 8,
     "stress": 5,
     "attack": 7,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Barbed Whip",
+    "attackRange": "Close",
+    "attackDamage": "4d8+7 phy",
     "experience": "Conquest +3, History +2, Intimidation +3",
     "features": [
       {
@@ -4201,9 +4201,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 11,
     "stress": 5,
     "attack": 8,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Heart-Shattering Sword",
+    "attackRange": "Very Close",
+    "attackDamage": "4d12+13 phy",
     "experience": "Conquest +3, History +2, Intimidation +3",
     "features": [
       {
@@ -4257,9 +4257,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 3,
     "stress": 2,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Sanctified Longbow",
+    "attackRange": "Far",
+    "attackDamage": "4d8+8 phy",
     "experience": "",
     "features": [
       {
@@ -4288,9 +4288,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 2,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Sword and Shield",
+    "attackRange": "Melee",
+    "attackDamage": "10 phy",
     "experience": "",
     "features": [
       {
@@ -4324,9 +4324,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 5,
     "attack": 8,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Holy Sword",
+    "attackRange": "Very Close",
+    "attackDamage": "4d10+10 phy",
     "experience": "Divine Knowledge +3",
     "features": [
       {
@@ -4416,9 +4416,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 11,
     "stress": 10,
     "attack": 8,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Psychic Attack",
+    "attackRange": "Far",
+    "attackDamage": "4d8+9 mag",
     "experience": "Boundless Knowledge +4",
     "features": [
       {
@@ -4467,9 +4467,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 5,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Massive Pseudopod",
+    "attackRange": "Very Close",
+    "attackDamage": "4d6+13 mag",
     "experience": "",
     "features": [
       {
@@ -4495,26 +4495,6 @@ export const DAGGERHEART_ADVERSARIES = [
     ]
   },
   {
-    "name": "OUTER REALMS CORRUPTER",
-    "tier": 4,
-    "role": "support_",
-    "description": "",
-    "motives": "Confuse, distract, overwhelm",
-    "difficulty": 19,
-    "thresholds": {
-      "minor": 27,
-      "major": 47
-    },
-    "hp": 4,
-    "stress": 3,
-    "attack": 7,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
-    "experience": "",
-    "features": []
-  },
-  {
     "name": "Outer Realms Corruptor",
     "tier": 4,
     "role": "support",
@@ -4528,9 +4508,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 4,
     "stress": 3,
     "attack": 7,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Corroding Pseudopod",
+    "attackRange": "Very Close",
+    "attackDamage": "4d8+5 mag",
     "experience": "",
     "features": [
       {
@@ -4559,9 +4539,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 1,
     "stress": 1,
     "attack": 3,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Claws and Teeth",
+    "attackRange": "Very Close",
+    "attackDamage": "11 phy",
     "experience": "",
     "features": [
       {
@@ -4590,9 +4570,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 9,
     "stress": 4,
     "attack": 4,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Greataxe",
+    "attackRange": "Very Close",
+    "attackDamage": "4d12+15 phy",
     "experience": "",
     "features": [
       {
@@ -4631,9 +4611,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 8,
     "stress": 5,
     "attack": 10,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Claws and Teeth",
+    "attackRange": "Close",
+    "attackDamage": "4d12+15 phy",
     "experience": "Hunt from Above +5",
     "features": [
       {
@@ -4687,9 +4667,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 7,
     "stress": 5,
     "attack": 9,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Lava-Coated Claws",
+    "attackRange": "Close",
+    "attackDamage": "4d12+4 phy",
     "experience": "Hunt from Above +5",
     "features": [
       {
@@ -4743,9 +4723,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 6,
     "stress": 5,
     "attack": 8,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Obsidian Claws",
+    "attackRange": "Close",
+    "attackDamage": "4d10+4 phy",
     "experience": "Hunt from Above +5",
     "features": [
       {
@@ -4794,9 +4774,9 @@ export const DAGGERHEART_ADVERSARIES = [
     "hp": 8,
     "stress": 5,
     "attack": 2,
-    "attackName": "",
-    "attackRange": "",
-    "attackDamage": "",
+    "attackName": "Tentacles",
+    "attackRange": "Close",
+    "attackDamage": "4d6+10 phy",
     "experience": "",
     "features": [
       {
@@ -4834,13 +4814,15 @@ export const ADVERSARIES_BY_TIER = {
 // Group by role
 export const ADVERSARIES_BY_ROLE = {
   bruiser: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'bruiser'),
+  horde: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'horde'),
+  leader: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'leader'),
+  minion: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'minion'),
+  ranged: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'ranged'),
   skulk: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'skulk'),
   social: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'social'),
   solo: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'solo'),
-  leader: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'leader'),
-  support: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'support'),
-  horde: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'horde'),
-  ranged: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'ranged')
+  standard: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'standard'),
+  support: DAGGERHEART_ADVERSARIES.filter(a => a.role === 'support')
 };
 
 export default DAGGERHEART_ADVERSARIES;
