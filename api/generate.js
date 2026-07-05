@@ -30,7 +30,9 @@ export default async function handler(req, res) {
     // Use client-provided key and provider, or fall back to server-side environment variables.
     // IMPORTANT: also switch the effective provider to match whatever key is actually available,
     // so we don't try to use an OpenAI key against the Anthropic API or vice versa.
-    let effectiveKey = apiKey;
+    // '__shared__' is the client sentinel for "use the server's shared key" — real
+    // shared keys are never sent to the browser.
+    let effectiveKey = apiKey === '__shared__' ? null : apiKey;
     let effectiveProvider = provider;
 
     if (!effectiveKey) {

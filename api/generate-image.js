@@ -44,8 +44,11 @@ export default async function handler(req, res) {
       gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
       imageModel,             // optional: 'nano-banana' | 'gpt-image-1' | 'flux-pro' | '' (gpt-image-1 fallback)
       referenceImages,        // optional: array of image URLs to use as likeness reference
-      apiKey: clientApiKey   // optional client-provided key (used by portrait callers)
+      apiKey: rawClientKey   // optional client-provided key (used by portrait callers)
     } = req.body;
+
+    // '__shared__' = client sentinel for "use the server's shared key"
+    const clientApiKey = rawClientKey === '__shared__' ? null : rawClientKey;
 
     if (!prompt) {
       return res.status(400).json({ error: 'Missing required field: prompt' });

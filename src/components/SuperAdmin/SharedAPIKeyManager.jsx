@@ -89,6 +89,15 @@ export default function SharedAPIKeyManager() {
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
           Configure API keys that all users can use with daily/monthly limits. Users without their own keys will use these shared keys.
         </p>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.75rem 1rem', marginBottom: '1.5rem', background: 'rgba(234, 179, 8, 0.08)', border: '1px solid rgba(234, 179, 8, 0.3)', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#eab308' }} />
+          <span>
+            Shared keys are never sent to players' browsers — their requests use the keys from the
+            server's environment variables. Set <code>ANTHROPIC_API_KEY</code> and{' '}
+            <code>OPENAI_API_KEY</code> in your Vercel project settings (matching the keys below),
+            or shared access won't work.
+          </span>
+        </div>
 
         {/* Enable/Disable Toggle */}
         <div style={{ marginBottom: '1.5rem', padding: '1rem', background: formData.enabled ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-tertiary)', borderRadius: '8px', border: formData.enabled ? '1px solid var(--hope-color)' : '1px solid var(--border)' }}>

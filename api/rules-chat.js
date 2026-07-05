@@ -217,12 +217,14 @@ export default async function handler(req, res) {
     const {
       message,
       history = [],
-      apiKey,
+      apiKey: rawApiKey,
       provider = 'anthropic',
       campaignContext = '',
       gameSystem = 'daggerheart',
       mode = 'chat',
     } = req.body;
+    // '__shared__' = client sentinel for "use the server's shared key"
+    const apiKey = rawApiKey === '__shared__' ? null : rawApiKey;
 
     if (!message) return res.status(400).json({ error: 'Missing required field: message' });
 

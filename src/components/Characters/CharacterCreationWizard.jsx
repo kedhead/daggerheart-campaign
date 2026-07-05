@@ -294,7 +294,8 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             hpSlots: Array(hpCount).fill(true),
             stressSlots: [false, false, false, false, false, false],
             armorSlots: [false, false, false, false, false, false],
-            hopeSlots: [false, false, false, false, false, false],
+            // Characters start with 2 Hope (SRD)
+            hopeSlots: [true, true, false, false, false, false],
             evasion,
             armor: 0,
             primaryDomain,
