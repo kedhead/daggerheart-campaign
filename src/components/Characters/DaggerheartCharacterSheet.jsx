@@ -75,6 +75,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showRest, setShowRest] = useState(false);
   const [showDeathMove, setShowDeathMove] = useState(false);
+  const [freeRecall, setFreeRecall] = useState(false); // resting = free vault→loadout swaps
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
   const [expPickerActive, setExpPickerActive] = useState(null); // name of experience with open trait picker
   const [rollingKey, setRollingKey] = useState(null); // key of item currently rolling (flash feedback)
@@ -194,14 +195,26 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     [domainCardNames]
   );
 
+  // Loadout vs Vault (SRD): max 5 active cards; the rest live in the vault.
+  // Recalling a vaulted card mid-session marks Stress equal to its Recall Cost.
+  const vaultCardNames = character.vaultCards || [];
+  const loadoutCards = useMemo(
+    () => domainCards.filter(c => !vaultCardNames.includes(c.name)),
+    [domainCards, vaultCardNames]
+  );
+  const vaultedCards = useMemo(
+    () => domainCards.filter(c => vaultCardNames.includes(c.name)),
+    [domainCards, vaultCardNames]
+  );
+
   const domainCardsGrouped = useMemo(() => {
     const grouped = {};
-    domainCards.forEach(card => {
+    loadoutCards.forEach(card => {
       if (!grouped[card.domain]) grouped[card.domain] = [];
       grouped[card.domain].push(card);
     });
     return grouped;
-  }, [domainCards]);
+  }, [loadoutCards]);
 
   const equippedItems = useMemo(() => {
     if (!items || !Array.isArray(character.equippedItems)) return [];
@@ -271,6 +284,33 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (updateCharacter) {
       updateCharacter(character.id, updates);
     }
+  };
+
+  // ── Loadout / Vault management ──
+  const moveToVault = (cardName) => {
+    if (!updateCharacter) return;
+    const vault = character.vaultCards || [];
+    if (!vault.includes(cardName)) {
+      updateCharacter(character.id, { vaultCards: [...vault, cardName] });
+    }
+  };
+
+  const recallFromVault = (card) => {
+    if (!updateCharacter) return;
+    const vault = (character.vaultCards || []).filter(n => n !== card.name);
+    const updates = { vaultCards: vault };
+    const cost = card.recallCost || 0;
+    if (!freeRecall && cost > 0) {
+      // Mark Stress equal to the card's Recall Cost (SRD)
+      const stress = [...stressSlots];
+      let marked = 0;
+      for (let i = 0; i < stress.length && marked < cost; i++) {
+        if (!stress[i]) { stress[i] = true; marked++; }
+      }
+      if (marked < cost) return; // not enough unmarked Stress
+      updates.stressSlots = stress;
+    }
+    updateCharacter(character.id, updates);
   };
 
   const TABS = useMemo(() => {
@@ -924,13 +964,26 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         </div>
       )}
 
-      {/* Domain Cards */}
+      {/* Domain Cards — Loadout */}
       {domainCards.length > 0 && (
         <div className="dh-ability-section">
-          <div className="dh-section-label">
-            <BookOpen size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle' }} />
-            Domain Cards ({domainCards.length})
+          <div className="dh-section-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <span>
+              <BookOpen size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle' }} />
+              Loadout ({loadoutCards.length}/5)
+            </span>
+            {canEdit && vaultedCards.length > 0 && (
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.68rem', textTransform: 'none', letterSpacing: 0, cursor: 'pointer', opacity: 0.8 }}>
+                <input type="checkbox" checked={freeRecall} onChange={e => setFreeRecall(e.target.checked)} />
+                Resting (free swaps)
+              </label>
+            )}
           </div>
+          {loadoutCards.length > 5 && (
+            <div className="dh-loadout-warning">
+              Loadout over the 5-card limit — move {loadoutCards.length - 5} card{loadoutCards.length - 5 > 1 ? 's' : ''} to your vault.
+            </div>
+          )}
           <div className="dh-domain-cards-content">
             {Object.entries(domainCardsGrouped).map(([domain, cards]) => (
               <div key={domain} className="dh-domain-cards-group">
@@ -953,6 +1006,20 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                               </span>
                             )}
                             <span className="dh-domain-card-level">Lv {card.level}</span>
+                            {card.recallCost != null && (
+                              <span className="dh-domain-card-recall" title={`Recall Cost: mark ${card.recallCost} Stress to bring back from the vault mid-session`}>
+                                ⚡{card.recallCost}
+                              </span>
+                            )}
+                            {canEdit && (
+                              <button
+                                className="dh-card-vault-btn"
+                                title="Move to vault (inactive)"
+                                onClick={() => moveToVault(card.name)}
+                              >
+                                Vault
+                              </button>
+                            )}
                           </div>
                         </div>
                         <div className="dh-domain-card-desc">{card.description}</div>
@@ -984,6 +1051,51 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Domain Cards — Vault */}
+      {vaultedCards.length > 0 && (
+        <div className="dh-ability-section">
+          <div className="dh-section-label">
+            <BookOpen size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle', opacity: 0.6 }} />
+            Vault ({vaultedCards.length})
+          </div>
+          <div className="dh-vault-list">
+            {vaultedCards.map(card => {
+              const cost = card.recallCost || 0;
+              const unmarkedStress = stressSlots.filter(s => !s).length;
+              const loadoutFull = loadoutCards.length >= 5;
+              const cantAfford = !freeRecall && cost > unmarkedStress;
+              const disabled = loadoutFull || cantAfford;
+              const recallTitle = loadoutFull
+                ? 'Loadout is full — vault a card first'
+                : freeRecall || cost === 0
+                  ? 'Move to loadout (free)'
+                  : cantAfford
+                    ? `Not enough unmarked Stress (needs ${cost})`
+                    : `Move to loadout — marks ${cost} Stress`;
+              return (
+                <div key={card.name} className="dh-vault-card">
+                  <div className="dh-vault-card-info">
+                    <span className="dh-domain-card-name">{card.name}</span>
+                    <span className="dh-domain-card-level">Lv {card.level} · {card.domain}</span>
+                    <span className="dh-domain-card-recall" title="Recall Cost">⚡{cost}</span>
+                  </div>
+                  {canEdit && (
+                    <button
+                      className="dh-card-vault-btn dh-card-recall-btn"
+                      title={recallTitle}
+                      disabled={disabled}
+                      onClick={() => recallFromVault(card)}
+                    >
+                      Recall{!freeRecall && cost > 0 ? ` (${cost} Stress)` : ''}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
