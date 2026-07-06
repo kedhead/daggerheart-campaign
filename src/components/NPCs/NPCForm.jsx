@@ -1,26 +1,14 @@
 import { useState } from 'react';
-import { Save, X, Wand2, Loader2 } from 'lucide-react';
+import { Save, X, Wand2, Loader2, Sparkles, Pencil } from 'lucide-react';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateNPCPortrait } from '../../services/portraitGenerator';
+import { generateNPC } from '../../services/npcGenerator';
 import { STARWARS_SPECIES_GROUPS } from '../../data/starwarsd6Species';
 import './NPCsView.css';
 
-export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isDM }) {
-  console.log('[NPCForm] Received props:', {
-    campaign: campaign?.name,
-    entities: entities ? {
-      npcs: entities.npcs?.length || 0,
-      locations: entities.locations?.length || 0,
-      lore: entities.lore?.length || 0,
-      sessions: entities.sessions?.length || 0,
-      timelineEvents: entities.timelineEvents?.length || 0,
-      encounters: entities.encounters?.length || 0,
-      notes: entities.notes?.length || 0
-    } : 'undefined'
-  });
-
+export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isDM, campaignContext = '', initialMode = 'manual' }) {
   const { search, autoLink } = useEntityRegistry(campaign, entities);
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
 
@@ -39,19 +27,51 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
 
   const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
 
+  const [mode, setMode] = useState(initialMode); // 'manual' | 'ai'
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
   const [portraitError, setPortraitError] = useState(null);
+  const [aiConcept, setAiConcept] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   // Check if OpenAI key is available
   const openaiKeyInfo = getEffectiveKey('openai');
   const hasOpenAIKey = !!openaiKeyInfo?.key;
+
+  const anthropicKeyInfo = getEffectiveKey('anthropic');
+  const aiApiKey = anthropicKeyInfo?.key || openaiKeyInfo?.key || '';
+  const aiProvider = anthropicKeyInfo?.key ? 'anthropic' : 'openai';
 
   const handleChange = (field, value) => {
     setFormData({
       ...formData,
       [field]: value
     });
+  };
+
+  const handleGenerateNPC = async () => {
+    if (!aiConcept.trim()) { setAiError('Describe the NPC concept first.'); return; }
+    setAiGenerating(true);
+    setAiError('');
+    try {
+      const result = await generateNPC({
+        concept: aiConcept,
+        campaign,
+        campaignFrame: entities?.campaignFrame || null,
+        existingNPCs: entities?.npcs || [],
+        existingLocations: entities?.locations || [],
+        apiKey: aiApiKey,
+        provider: aiProvider,
+        campaignContext
+      });
+      setFormData(prev => ({ ...prev, ...result, avatarUrl: prev.avatarUrl }));
+      setMode('manual');
+    } catch (e) {
+      setAiError(e.message || 'Generation failed. Please try again.');
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const handleGeneratePortrait = async () => {
@@ -118,6 +138,70 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
 
   return (
     <form className="npc-form" onSubmit={handleSubmit}>
+      {/* Mode selector */}
+      <div className="filter-tabs" style={{ marginBottom: '1rem' }}>
+        <button
+          type="button"
+          className={`filter-tab ${mode === 'manual' ? 'active' : ''}`}
+          onClick={() => setMode('manual')}
+        >
+          <Pencil size={14} />
+          Build Manually
+        </button>
+        <button
+          type="button"
+          className={`filter-tab ${mode === 'ai' ? 'active' : ''}`}
+          onClick={() => setMode('ai')}
+        >
+          <Sparkles size={14} />
+          AI Generate
+        </button>
+      </div>
+
+      {mode === 'ai' && (
+        <div className="ai-generate-panel" style={{
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          padding: '1rem',
+          marginBottom: '1.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem'
+        }}>
+          <p className="form-hint" style={{ margin: 0 }}>
+            Describe the NPC you want and the AI will draft a name, occupation, location, relationship,
+            description, notes, and a first-meeting hook — grounded in your campaign's NPCs, locations,
+            items, and story so far. Review and edit before saving.
+          </p>
+          <textarea
+            value={aiConcept}
+            onChange={(e) => setAiConcept(e.target.value)}
+            placeholder="e.g. A nervous dockworker who's seen something he shouldn't have."
+            rows={3}
+          />
+          {aiError && <small className="form-error">{aiError}</small>}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleGenerateNPC}
+            disabled={aiGenerating}
+          >
+            {aiGenerating ? (
+              <>
+                <Loader2 size={16} className="spinner" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Wand2 size={16} />
+                Generate NPC
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Avatar Section */}
       <div className="avatar-section">
         <div className="avatar-preview">

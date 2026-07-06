@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Radio, Square, Star, Copy, Trash2, ArrowLeft, FileText, CheckCircle } from 'lucide-react';
+import { Radio, Square, Star, Copy, Trash2, ArrowLeft, FileText, CheckCircle, Sparkles, Loader2 } from 'lucide-react';
 import { useSessionLive } from '../../hooks/useSessionLive';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { summarizeSessionNotes } from '../../services/sessionSummaryGenerator';
 import LiveNoteInput from './LiveNoteInput';
 import LiveNoteFeed from './LiveNoteFeed';
 import LiveTranscriptionPanel from './LiveTranscriptionPanel';
@@ -11,6 +13,8 @@ export default function SessionLive({
   session,
   campaign,
   campaignId,
+  campaignFrame,
+  campaignContext = '',
   isDM,
   currentUserId,
   entities,
@@ -34,6 +38,39 @@ export default function SessionLive({
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
   const [compiledSummary, setCompiledSummary] = useState('');
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summarizeError, setSummarizeError] = useState(null);
+
+  const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
+
+  const resolveProvider = () => {
+    for (const provider of ['anthropic', 'openai']) {
+      const { key } = getEffectiveKey(provider);
+      if (key) return { provider, apiKey: key };
+    }
+    // No client key — let the server fall back to its own env vars.
+    return { provider: 'anthropic', apiKey: '' };
+  };
+
+  const handleAISummarize = async () => {
+    setIsSummarizing(true);
+    setSummarizeError(null);
+    try {
+      const { provider, apiKey } = resolveProvider();
+      const polished = await summarizeSessionNotes({
+        rawNotes: compiledSummary,
+        campaignContext,
+        gameSystem: campaign?.gameSystem || 'daggerheart',
+        apiKey,
+        provider
+      });
+      setCompiledSummary(polished);
+    } catch (err) {
+      setSummarizeError(err.message || 'Summarization failed.');
+    } finally {
+      setIsSummarizing(false);
+    }
+  };
 
   const handleAddNote = async (content, isHighlight) => {
     await addLiveNote(content, isHighlight);
@@ -240,7 +277,25 @@ export default function SessionLive({
           </p>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-white/60">Session Summary Preview</label>
+            <div className="flex items-center justify-between gap-3">
+              <label className="text-sm font-semibold text-white/60">Session Summary Preview</label>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm flex items-center gap-2"
+                onClick={handleAISummarize}
+                disabled={isSummarizing || !compiledSummary.trim()}
+                title="Turn these notes into a polished narrative summary — grounded strictly in what's written here"
+              >
+                {isSummarizing ? (
+                  <><Loader2 size={14} className="animate-spin" /> Summarizing…</>
+                ) : (
+                  <><Sparkles size={14} /> Summarize with AI</>
+                )}
+              </button>
+            </div>
+            {summarizeError && (
+              <p className="text-sm text-red-400 m-0">{summarizeError}</p>
+            )}
             <textarea
               value={compiledSummary}
               onChange={(e) => setCompiledSummary(e.target.value)}

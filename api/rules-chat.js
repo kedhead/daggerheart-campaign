@@ -203,6 +203,23 @@ If the GM's prior message already approved a plan and now asks for a refinement,
 `;
 }
 
+// ── Session note summarizer mode ────────────────────────────────────────
+function buildSummarizerSystemPrompt(cfg, campaignSection) {
+  return `${cfg.systemPromptIntro}
+
+You are now operating as a **Session Note Summarizer**. The user (the GM) will provide raw session notes (live notes, highlights, and/or DM notes) taken during actual play. Turn them into a polished, readable narrative summary suitable for a campaign session log.
+
+${campaignSection}
+CRITICAL ANTI-HALLUCINATION RULES:
+1. ONLY use information explicitly present in the provided notes. Do NOT invent, add, or embellish any event, NPC, location, item, or outcome that is not stated or clearly implied by the notes.
+2. You MAY use the campaign context above ONLY to get proper names, spellings, and pronouns right (e.g. if notes say "the blacksmith" and the campaign context identifies exactly one blacksmith NPC, you may name them) — NOT to add new plot content.
+3. If the notes are sparse or fragmentary, write a short summary reflecting that sparseness. Do not pad it out with invented detail to make it feel complete.
+4. Preserve the actual sequence of events as given; do not reorder for dramatic effect if it changes what happened.
+5. Write in past tense, third person, 2-5 paragraphs depending on note volume. No headers, no bullet lists — prose only, ready to paste into a "Session Summary" field.
+
+Return ONLY the summary prose. No commentary, no markdown headers, no code fences.`;
+}
+
 // ── Main handler ──────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', true);
@@ -232,10 +249,11 @@ export default async function handler(req, res) {
 
     // 1. Retrieve relevant rules context.
     //    For GM session-planning, bias retrieval toward encounter/adversary/pacing material.
+    //    Summarize mode skips retrieval entirely — rules lookup is irrelevant to it.
     const retrievalQuery = mode === 'gm-plan'
       ? `${message}\nencounter design adversary tier role battle points pacing puzzle session structure environment`
       : message;
-    const contextText = await retrieveContext(gameSystem, retrievalQuery, apiKey);
+    const contextText = mode === 'summarize' ? '' : await retrieveContext(gameSystem, retrievalQuery, apiKey);
 
     // 2. Build system prompt
     const campaignSection = campaignContext
@@ -244,6 +262,8 @@ export default async function handler(req, res) {
 
     const systemPrompt = mode === 'gm-plan'
       ? buildGMPlannerSystemPrompt(cfg, campaignSection, contextText)
+      : mode === 'summarize'
+      ? buildSummarizerSystemPrompt(cfg, campaignSection)
       : `${cfg.systemPromptIntro}
 ${campaignContext ? cfg.campaignIntro : cfg.noCampaignIntro}
 

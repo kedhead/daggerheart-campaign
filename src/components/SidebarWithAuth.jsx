@@ -129,6 +129,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         { id: 'help', label: 'Features & Help', icon: HelpCircle },
         ...(isDM ? [{ id: 'gm-screen', label: 'GM Screen', icon: LayoutDashboard }] : []),
         ...(isDM ? [{ id: 'gm-cheatsheet', label: 'Rules Cheatsheet', icon: BookMarked }] : []),
+        ...(isDM ? [{ id: 'ai-cogm', label: 'AI Co-GM', icon: Sparkles }] : []),
       ]
     },
     {

@@ -79,10 +79,11 @@ export default function AdversaryForm({
   adversary = null,        // existing adversary for edit mode
   campaignAdversaries = [], // all adversaries in the campaign (for template picker)
   userId,
-  campaignContext = ''     // pre-built campaign brain context string
+  campaignContext = '',    // pre-built campaign brain context string
+  initialMode = 'manual'   // 'manual' | 'ai' | 'template' — lets callers open straight into AI mode
 }) {
   const isEdit = !!adversary;
-  const [mode, setMode] = useState('manual'); // 'manual' | 'ai' | 'template'
+  const [mode, setMode] = useState(initialMode); // 'manual' | 'ai' | 'template'
   const [form, setForm] = useState(() => adversary ? fromAdversary(adversary) : { ...EMPTY_FORM, features: [] });
   const [aiConcept, setAiConcept] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);

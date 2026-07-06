@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { useCampaignData } from '../contexts/CampaignDataContext';
+import { useStorybook } from '../hooks/useStorybook';
 
 const DashboardView = lazy(() => import('./Dashboard/DashboardView'));
 const CharactersView = lazy(() => import('./Characters/CharactersView'));
@@ -32,6 +33,7 @@ const BattleMapStudio = lazy(() => import('./BattleMapStudio/BattleMapStudio'));
 const StorybookView = lazy(() => import('./Storybook/StorybookView'));
 const GraveyardView = lazy(() => import('./Graveyard/GraveyardView'));
 const CampaignMembers = lazy(() => import('./Campaigns/CampaignMembers'));
+const AICoGMHub = lazy(() => import('./AICoGM/AICoGMHub'));
 
 function ViewFallback() {
   return (
@@ -139,8 +141,13 @@ export default function AppRouter({
     updateQuest,
     deleteQuest,
     toggleQuestObjective,
+    maps,
+    battleMaps,
     loading,
   } = useCampaignData();
+
+  const { chapters: storybookChapters } = useStorybook(currentCampaignId);
+  const publishedStorybookChapters = storybookChapters?.filter(c => c.status === 'published') || [];
 
   if (loading) {
     return (
@@ -297,6 +304,10 @@ export default function AppRouter({
           addNPC={addNPC}
           addLocation={addLocation}
           addLore={addLore}
+          items={items}
+          maps={maps}
+          battleMaps={battleMaps}
+          storybookChapters={publishedStorybookChapters}
           onEncounterClick={() => setCurrentView('encounters')}
         />
       );
@@ -321,6 +332,36 @@ export default function AppRouter({
           addLocation={addLocation}
           addSession={addSession}
           addLore={addLore}
+        />
+      );
+
+    case 'ai-cogm':
+      return (
+        <AICoGMHub
+          campaign={campaign}
+          campaignFrame={campaignFrame}
+          characters={characters}
+          npcs={npcs}
+          adversaries={adversaries}
+          locations={locations}
+          lore={lore}
+          sessions={sessions}
+          encounters={encounters}
+          items={items}
+          maps={maps}
+          battleMaps={battleMaps}
+          storybookChapters={publishedStorybookChapters}
+          isDM={isDM}
+          currentUserId={currentUserId}
+          addSession={addSession}
+          addEncounter={addEncounter}
+          addAdversary={addAdversary}
+          addNPC={addNPC}
+          addLocation={addLocation}
+          addLore={addLore}
+          addItem={addItem}
+          updateItem={updateItem}
+          setCurrentView={setCurrentView}
         />
       );
 
@@ -391,6 +432,12 @@ export default function AppRouter({
           timelineEvents={timelineEvents}
           encounters={encounters}
           notes={notes}
+          adversaries={adversaries}
+          characters={characters}
+          items={items}
+          maps={maps}
+          battleMaps={battleMaps}
+          storybookChapters={publishedStorybookChapters}
         />
       );
 
@@ -535,6 +582,9 @@ export default function AppRouter({
           timelineEvents={timelineEvents}
           encounters={encounters}
           notes={notes}
+          maps={maps}
+          battleMaps={battleMaps}
+          storybookChapters={publishedStorybookChapters}
         />
       );
 
@@ -555,6 +605,10 @@ export default function AppRouter({
           sessions={sessions}
           characters={characters}
           encounters={encounters}
+          items={items}
+          maps={maps}
+          battleMaps={battleMaps}
+          storybookChapters={publishedStorybookChapters}
         />
       );
 
