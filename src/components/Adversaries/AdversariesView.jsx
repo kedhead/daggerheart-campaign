@@ -32,6 +32,10 @@ export default function AdversariesView({
   sessions      = [],
   characters    = [],
   encounters    = [],
+  items         = [],
+  maps          = [],
+  battleMaps    = [],
+  storybookChapters = [],
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
@@ -48,12 +52,19 @@ export default function AdversariesView({
   const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
 
+  const mergedMaps = useMemo(() => [
+    ...maps.map(m => ({ ...m, tag: 'map' })),
+    ...battleMaps.map(m => ({ ...m, tag: 'battle-map' }))
+  ], [maps, battleMaps]);
+
   const campaignContext = useMemo(
     () => buildCampaignContext(campaign, {
-      campaignFrame, adversaries, npcs, locations, lore, sessions, characters, encounters
+      campaignFrame, adversaries, npcs, locations, lore, sessions, characters, encounters,
+      items, maps: mergedMaps, storybookChapters
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [campaign?.id, adversaries.length, npcs.length, locations.length, lore.length]
+    [campaign?.id, adversaries.length, npcs.length, locations.length, lore.length,
+     items.length, mergedMaps.length, storybookChapters.length]
   );
 
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);

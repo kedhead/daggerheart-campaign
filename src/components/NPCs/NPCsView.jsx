@@ -1,18 +1,39 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Users, Heart, Skull, Minus, Briefcase, MapPin, Wand2 } from 'lucide-react';
 import NPCCard from './NPCCard';
 import NPCForm from './NPCForm';
 import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useToast } from '../../contexts/ToastContext';
+import { buildCampaignContext } from '../../services/campaignContext';
 
-export default function NPCsView({ npcs, addNPC, updateNPC, deleteNPC, isDM, campaign, campaignFrame, locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
+export default function NPCsView({
+  npcs, addNPC, updateNPC, deleteNPC, isDM, campaign, campaignFrame,
+  locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [],
+  adversaries = [], characters = [], items = [], maps = [], battleMaps = [], storybookChapters = []
+}) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNPC, setEditingNPC] = useState(null);
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [relationshipFilter, setRelationshipFilter] = useState('all');
   const { success, error } = useToast();
+
+  const mergedMaps = useMemo(() => [
+    ...maps.map(m => ({ ...m, tag: 'map' })),
+    ...battleMaps.map(m => ({ ...m, tag: 'battle-map' }))
+  ], [maps, battleMaps]);
+
+  const campaignContext = useMemo(
+    () => buildCampaignContext(campaign, {
+      campaignFrame, npcs, locations, lore, sessions, encounters, adversaries, characters,
+      items, maps: mergedMaps, storybookChapters
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [campaign?.id, npcs.length, locations.length, lore.length, sessions.length,
+     encounters.length, adversaries.length, characters.length, items.length,
+     mergedMaps.length, storybookChapters.length]
+  );
 
   const handleAdd = () => {
     setEditingNPC(null);
@@ -174,7 +195,8 @@ export default function NPCsView({ npcs, addNPC, updateNPC, deleteNPC, isDM, cam
           }}
           isDM={isDM}
           campaign={campaign}
-          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes, campaignFrame }}
+          campaignContext={campaignContext}
         />
       </Modal>
 

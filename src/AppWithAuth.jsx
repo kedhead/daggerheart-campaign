@@ -16,6 +16,7 @@ import CommandPalette from './components/CommandPalette/CommandPalette';
 import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import { usePresence } from './hooks/usePresence';
 import { useCampaignAuth } from './hooks/useCampaignAuth';
+import { useStorybook } from './hooks/useStorybook';
 import TopBar from './components/Layout/TopBar';
 import BottomNav from './components/Layout/BottomNav';
 import './App.css';
@@ -60,8 +61,12 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
     campaignFrame,
     initiative,
     items,
+    maps,
+    battleMaps,
     updateCharacter,
   } = useCampaignData();
+
+  const { chapters: storybookChapters } = useStorybook(currentCampaignId);
 
   const [currentView, setCurrentView] = useState('dashboard');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -175,6 +180,10 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
             lore={lore}
             sessions={sessions}
             encounters={encounters}
+            items={items}
+            maps={maps}
+            battleMaps={battleMaps}
+            storybookChapters={storybookChapters?.filter(c => c.status === 'published')}
           />
         )}
 

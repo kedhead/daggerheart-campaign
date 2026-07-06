@@ -45,6 +45,8 @@ export function useFirestoreCampaign(campaignId) {
   const quests        = useCollection(basePath, 'quests');
   const adversaries   = useCollection(basePath, 'adversaries');
   const environments  = useCollection(basePath, 'environments');
+  const maps          = useCollection(basePath, 'maps',          { waitFor: !!campaign });
+  const battleMaps    = useCollection(basePath, 'battleMaps',    { waitFor: !!campaign });
 
   // Track whether migration has been attempted for this campaign session
   const migrationRan = useRef(false);
@@ -917,6 +919,9 @@ export function useFirestoreCampaign(campaignId) {
     addEnvironment,
     updateEnvironment,
     deleteEnvironment,
+    // Maps (generic map/image records + Battle Map Studio documents)
+    maps,
+    battleMaps,
     // Character Inventory
     addToCharacterInventory,
     removeFromCharacterInventory,

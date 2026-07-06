@@ -36,6 +36,10 @@ export default function GMAssistantPanel({
   lore,
   sessions,
   encounters,
+  items = [],
+  maps = [],
+  battleMaps = [],
+  storybookChapters = [],
   isDM,
   currentUserId,
   handlers, // { addLocation, addNPC, addAdversary, addEncounter, addSession }
@@ -62,13 +66,20 @@ export default function GMAssistantPanel({
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(null);
 
+  const mergedMaps = useMemo(() => [
+    ...maps.map(m => ({ ...m, tag: 'map' })),
+    ...battleMaps.map(m => ({ ...m, tag: 'battle-map' }))
+  ], [maps, battleMaps]);
+
   const campaignContext = useMemo(
     () => buildCampaignContext(campaign, {
-      campaignFrame, characters, npcs, adversaries, locations, lore, sessions, encounters
+      campaignFrame, characters, npcs, adversaries, locations, lore, sessions, encounters,
+      items, maps: mergedMaps, storybookChapters
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [campaign?.id, characters?.length, npcs?.length, adversaries?.length,
-     locations?.length, lore?.length, sessions?.length, encounters?.length]
+     locations?.length, lore?.length, sessions?.length, encounters?.length,
+     items.length, mergedMaps.length, storybookChapters.length]
   );
 
   useEffect(() => {

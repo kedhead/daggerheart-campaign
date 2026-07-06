@@ -3,9 +3,8 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { MessageSquare, Send, X, Bot, User, Minimize2, Loader2, BookOpen, Brain } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import './ChatWidget.css';
-import { useAPIKey } from '../../hooks/useAPIKey';
 import { useEscapeKey } from '../../hooks/useKeyboardShortcut';
-import { buildCampaignContext } from '../../services/campaignContext';
+import { useCampaignChat } from '../../hooks/useCampaignChat';
 
 // Per-system configuration (single API endpoint, system chosen via request body)
 const SYSTEM_CONFIG = {
@@ -53,6 +52,10 @@ export default function ChatWidget({
   lore         = [],
   sessions     = [],
   encounters   = [],
+  items        = [],
+  maps         = [],
+  battleMaps   = [],
+  storybookChapters = [],
 }) {
     const config = SYSTEM_CONFIG[gameSystem] || SYSTEM_CONFIG.daggerheart;
     const [isOpen, setIsOpen] = useState(false);
@@ -61,29 +64,25 @@ export default function ChatWidget({
     // Close on Escape
     useEscapeKey(() => setIsOpen(false), isOpen);
 
-    // Build campaign context string — recomputed whenever any collection changes
-    const campaignContext = useMemo(
-      () => buildCampaignContext(campaign, {
-        campaignFrame, characters, npcs, adversaries, locations, lore, sessions, encounters
-      }),
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      [campaign?.id, characters.length, npcs.length, adversaries.length,
-       locations.length, lore.length, sessions.length, encounters.length]
-    );
+    // Merge the two map collections into one tagged list for the context builder
+    const mergedMaps = useMemo(() => [
+      ...maps.map(m => ({ ...m, tag: 'map' })),
+      ...battleMaps.map(m => ({ ...m, tag: 'battle-map' }))
+    ], [maps, battleMaps]);
 
-    const hasCampaign = !!campaign?.name;
-    const welcomeMessage = hasCampaign
-      ? `Hello! I know everything about **${campaign.name}** — its NPCs, locations, adversaries, lore, and recent sessions. Ask me about the campaign, the rules, or anything else!`
+    const welcomeMessage = campaign?.name
+      ? undefined // let useCampaignChat build the default "I know everything about..." greeting
       : `Hello! I'm your ${config.systemLabel} rules assistant. Ask me anything about the game rules, character creation, or mechanics!`;
 
-    const [input, setInput] = useState('');
-    const [messages, setMessages] = useState([
-        { role: 'assistant', content: welcomeMessage }
-    ]);
-    const [isLoading, setIsLoading] = useState(false);
+    const {
+      messages, input, setInput, isLoading, sendMessage, hasCampaign
+    } = useCampaignChat({
+      userId, gameSystem, campaign, campaignFrame, characters, npcs, adversaries, locations,
+      lore, sessions, encounters, items, maps: mergedMaps, storybookChapters, welcomeMessage
+    });
+
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
-    const { keys, sharedConfig, hasKey } = useAPIKey(userId);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -153,83 +152,9 @@ export default function ChatWidget({
         window.addEventListener('pointerup', onUp);
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = (e) => {
         e.preventDefault();
-        if (!input.trim() || isLoading) return;
-
-        // Check for API key availability
-        const hasAnthropic = hasKey('anthropic') || (sharedConfig && sharedConfig.hasAnthropicKey);
-        const hasOpenAI = hasKey('openai') || (sharedConfig && sharedConfig.hasOpenaiKey);
-        // We now support 1min.ai via server env var, so we always allow the request to proceed if other keys are missing
-        const hasAnyKey = hasAnthropic || hasOpenAI || true;
-
-        if (!input.trim() || isLoading) return;
-
-        if (!hasAnyKey) {
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: 'Please configure an API key in Settings > API Settings to use the chat features, or ask your GM if shared keys are enabled.'
-            }]);
-            return;
-        }
-
-        const userMessage = input.trim();
-        setInput('');
-        setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-        setIsLoading(true);
-
-        try {
-            // Determine provider and key to use
-            let provider = '1min'; // Default to 1min if no other specific key is found
-            let apiKey = '';
-
-            // Prefer Anthropic if available (better for large context), otherwise OpenAI
-            if (hasAnthropic && keys.anthropic) {
-                provider = 'anthropic';
-                apiKey = keys.anthropic;
-            } else if (hasOpenAI && keys.openai) {
-                provider = 'openai';
-                apiKey = keys.openai;
-            } else {
-                // Use 1min or fallback
-                provider = '1min';
-                apiKey = '';
-            }
-
-            const response = await fetch('/api/rules-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: userMessage,
-                    history: messages.slice(-10),
-                    apiKey,
-                    provider,
-                    campaignContext,
-                    gameSystem
-                })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to get response');
-            }
-
-            const data = await response.json();
-
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: data.response
-            }]);
-
-        } catch (error) {
-            console.error('Chat error:', error);
-            setMessages(prev => [...prev, {
-                role: 'assistant',
-                content: `Sorry, I encountered an error: ${error.message}. Please try again.`
-            }]);
-        } finally {
-            setIsLoading(false);
-        }
+        sendMessage();
     };
 
     return (

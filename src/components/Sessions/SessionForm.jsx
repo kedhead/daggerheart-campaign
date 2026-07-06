@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Save, X, Link as LinkIcon, Plus, Minus } from 'lucide-react';
+import { Save, X, Link as LinkIcon, Plus, Minus, Sparkles, Loader2 } from 'lucide-react';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { summarizeSessionNotes } from '../../services/sessionSummaryGenerator';
 import './SessionForm.css';
 
-export default function SessionForm({ session, onSave, onCancel, isDM, campaign, entities }) {
+export default function SessionForm({ session, onSave, onCancel, isDM, campaign, entities, campaignContext = '' }) {
   const { search, autoLink } = useEntityRegistry(campaign, entities);
+  const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
   const [formData, setFormData] = useState(session || {
     title: '',
     date: new Date().toISOString().split('T')[0],
@@ -18,12 +21,39 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
   });
 
   const [highlightInput, setHighlightInput] = useState('');
+  const [isPolishing, setIsPolishing] = useState(false);
+  const [polishError, setPolishError] = useState(null);
 
   const handleChange = (field, value) => {
     setFormData({
       ...formData,
       [field]: value
     });
+  };
+
+  const handlePolishWithAI = async () => {
+    setIsPolishing(true);
+    setPolishError(null);
+    try {
+      let provider = 'anthropic';
+      let apiKey = '';
+      for (const p of ['anthropic', 'openai']) {
+        const { key } = getEffectiveKey(p);
+        if (key) { provider = p; apiKey = key; break; }
+      }
+      const polished = await summarizeSessionNotes({
+        rawNotes: formData.summary,
+        campaignContext,
+        gameSystem: campaign?.gameSystem || 'daggerheart',
+        apiKey,
+        provider
+      });
+      handleChange('summary', polished);
+    } catch (err) {
+      setPolishError(err.message || 'Polishing failed.');
+    } finally {
+      setIsPolishing(false);
+    }
   };
 
   const addHighlight = () => {
@@ -108,9 +138,27 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
       )}
 
       <div className="space-y-1">
-        <label className="block text-sm font-semibold text-white/60">
-          Summary {formData.status === 'planned' ? '' : '*'}
-        </label>
+        <div className="flex items-center justify-between gap-3">
+          <label className="block text-sm font-semibold text-white/60">
+            Summary {formData.status === 'planned' ? '' : '*'}
+          </label>
+          {formData.summary.trim().length > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm flex items-center gap-2"
+              onClick={handlePolishWithAI}
+              disabled={isPolishing}
+              title="Turn this rough summary into polished prose — grounded strictly in what's already written"
+            >
+              {isPolishing ? (
+                <><Loader2 size={14} className="animate-spin" /> Polishing…</>
+              ) : (
+                <><Sparkles size={14} /> Polish with AI</>
+              )}
+            </button>
+          )}
+        </div>
+        {polishError && <p className="text-xs text-red-400 m-0">{polishError}</p>}
         <WikiLinkInput
           value={formData.summary}
           onChange={(e) => handleChange('summary', e.target.value)}

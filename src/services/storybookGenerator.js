@@ -365,13 +365,18 @@ export async function generateChapter({
     lore = [],
     sessions = [],
     encounters = [],
-    campaignFrame = null
+    campaignFrame = null,
+    items = [],
+    maps = []
   } = entities;
 
   onProgress({ stage: 'text', current: 0, total: 1, message: 'Writing chapter…' });
 
+  // Note: storybookChapters intentionally omitted here — a chapter shouldn't
+  // cite itself, and prior chapters are already summarized separately below.
   const campaignContext = buildCampaignContext(campaign, {
-    characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame
+    characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame,
+    items, maps
   });
 
   const entityRoster = {
