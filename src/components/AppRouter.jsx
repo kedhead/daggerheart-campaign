@@ -6,6 +6,7 @@ const CharactersView = lazy(() => import('./Characters/CharactersView'));
 const MySheetView = lazy(() => import('./Characters/MySheetView'));
 const LoreView = lazy(() => import('./Lore/LoreView'));
 const SessionsView = lazy(() => import('./Sessions/SessionsView'));
+const GMAssistantView = lazy(() => import('./Sessions/GMAssistantView'));
 const FilesView = lazy(() => import('./Files/FilesView'));
 const ToolsView = lazy(() => import('./Tools/ToolsView'));
 const HelpView = lazy(() => import('./Help/HelpView'));
@@ -297,6 +298,29 @@ export default function AppRouter({
           addLocation={addLocation}
           addLore={addLore}
           onEncounterClick={() => setCurrentView('encounters')}
+        />
+      );
+
+    case 'gm-assistant':
+      return (
+        <GMAssistantView
+          campaign={campaign}
+          campaignFrame={campaignFrame}
+          characters={characters}
+          npcs={npcs}
+          adversaries={adversaries}
+          locations={locations}
+          lore={lore}
+          sessions={sessions}
+          encounters={encounters}
+          isDM={isDM}
+          currentUserId={currentUserId}
+          addEncounter={addEncounter}
+          addAdversary={addAdversary}
+          addNPC={addNPC}
+          addLocation={addLocation}
+          addSession={addSession}
+          addLore={addLore}
         />
       );
 

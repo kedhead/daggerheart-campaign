@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target, Monitor, Skull, Grid, TreePine, PanelLeftClose, PanelLeft, BookMarked, LayoutDashboard } from 'lucide-react';
+import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target, Monitor, Skull, Grid, TreePine, PanelLeftClose, PanelLeft, BookMarked, LayoutDashboard, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import { applyTheme } from '../config/themes.js';
@@ -110,6 +110,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         { id: 'quests', label: 'Quests', icon: Target },
         { id: 'sessions', label: 'Sessions', icon: ScrollText },
         ...(isDM ? [
+          { id: 'gm-assistant', label: 'GM Assistant', icon: Sparkles },
           { id: 'encounters', label: 'Encounters', icon: Swords },
           { id: 'initiative', label: 'Initiative', icon: Zap }
         ] : [])
