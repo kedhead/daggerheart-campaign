@@ -174,7 +174,7 @@ OUTPUT FORMAT — return ONLY one fenced JSON code block, with no prose before o
       "summary": "2-3 sentences setting the scene and stakes",
       "estimatedMinutes": number,
       "adversariesNeeded": [
-        { "concept": "vivid one-sentence creature concept", "tier": 1|2|3|4, "role": "minion|horde|standard|bruiser|skulk|ranged|support|social|leader|solo", "quantity": number, "reuseExistingName": "exact name from existing campaign adversaries OR null" }
+        { "concept": "vivid one-sentence creature concept", "tier": 1|2|3|4, "role": "minion|horde|standard|bruiser|skulk|ranged|support|social|leader|solo|boss", "quantity": number, "reuseExistingName": "exact name from the campaign's Adversaries list when reusing an existing stat block, otherwise null" }
       ],
       "puzzleSpec": null | { "premise": "string", "mechanism": "what the players must do", "solution": "intended solution + a hint", "failureState": "what happens if they fail" },
       "environment": "string (matches a campaign environment if available)",
@@ -190,8 +190,12 @@ OUTPUT FORMAT — return ONLY one fenced JSON code block, with no prose before o
 \`\`\`
 
 DESIGN RULES:
-- Use existing campaign NPCs, locations, and adversaries when they fit. Set "reuseExistingName" to the exact name from the campaign list to avoid spawning duplicates. Only invent new ones when there's no good fit.
-- Daggerheart Battle Points budget per encounter = (3 × partySize) + 2. Costs: 1 BP per group of minions equal to party size; social/support=1 each; horde/ranged/skulk/standard=2 each; leader=3; bruiser=4; solo=5. Encounter-by-encounter the bpEstimate must respect this budget.
+- NAMED ENEMIES ARE MANDATORY: If the GM names a specific character, NPC, or adversary as the enemy of an encounter (e.g. "a fight against Matu Palu"), you MUST build that encounter around that exact entity — NEVER substitute a random or renamed creature.
+  • If that name appears in the campaign's **Adversaries** list, set "reuseExistingName" to its exact name (copy it verbatim) and keep the same tier/role as the listed adversary.
+  • If that name appears only as an **NPC**, **Character**, or in **Lore** (no matching adversary yet), create ONE new adversary whose "concept" BEGINS with that exact name and portrays that character (e.g. "Matu Palu, the tide-witch who ..."), set "reuseExistingName" to null, and choose role "boss" for a climactic named villain (or "solo"/"leader" if that fits better). Do not rename them.
+- Use existing campaign NPCs, locations, and adversaries when they fit. Set "reuseExistingName" to the exact name from the campaign's Adversaries list to avoid spawning duplicates. Only invent new ones when there's no good fit.
+- Role "boss" is for a single climactic multi-phase antagonist (very high durability, phase transitions). Use it for the centerpiece villain of a session finale; use "solo" for a strong single enemy that doesn't need phases.
+- Daggerheart Battle Points budget per encounter = (3 × partySize) + 2. Costs: 1 BP per group of minions equal to party size; social/support=1 each; horde/ranged/skulk/standard=2 each; leader=3; bruiser=4; solo=5; boss=8. Encounter-by-encounter the bpEstimate must respect this budget (a boss fight is expected to spend most or all of it).
 - Match adversary tier to the party's tier of play: level 1 → tier 1, levels 2–4 → tier 2, levels 5–7 → tier 3, levels 8–10 → tier 4. Never pick adversaries more than one tier away from the party's tier.
 - Honor the GM's requested counts and types (e.g., "2 puzzle encounters" → exactly 2 entries with type:"puzzle" and a non-null puzzleSpec).
 - Estimate encounter minutes so the SUM of estimatedMinutes is close to estimatedDurationHours × 60.

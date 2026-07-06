@@ -420,14 +420,15 @@ Adversaries should be Tier ${partyTier} to match the party (a lower-tier adversa
 \`\`\`
 
 ${availableAdversaries.length > 0 ? 'IMPORTANT: For suggestedAdversaries, use EXACT names from the AVAILABLE ADVERSARIES list above. Pick adversaries that fit thematically and include a quantity for each. Stay within the BP budget.' : ''}
+IMPORTANT (named enemies): If the requested enemy types name a specific character/NPC/adversary (e.g. "a fight against Matu Palu"), that named entity MUST be the enemy — never substitute a random creature. If the name is in the AVAILABLE ADVERSARIES list, put it in suggestedAdversaries. Otherwise add it as a newAdversary whose concept BEGINS with that exact name, using role "boss" for a climactic named villain.
 ${availableEnvironments.length > 0 ? 'IMPORTANT: For suggestedEnvironment, use an EXACT name from the AVAILABLE ENVIRONMENTS list above that fits the encounter.' : ''}
 ${wantNewAdversaries ? `
 IMPORTANT (newAdversaries): Propose 1–4 FRESH adversary stubs for this encounter — do NOT duplicate entries in suggestedAdversaries. Each stub must include:
   - concept: a vivid one-sentence description the statblock generator can expand (appearance, fighting style, flavor)
   - tier: integer 1–4 — use Tier ${partyTier} to match the party's level of ${partyLevel} (level 1 = tier 1, levels 2–4 = tier 2, levels 5–7 = tier 3, levels 8–10 = tier 4)
-  - role: one of "minion", "horde", "standard", "bruiser", "skulk", "ranged", "support", "social", "leader", "solo"
+  - role: one of "minion", "horde", "standard", "bruiser", "skulk", "ranged", "support", "social", "leader", "solo", "boss" ("boss" = a single climactic multi-phase villain)
   - quantity: how many of this adversary should appear in the encounter
-Stay within the ${bpBudget} BP budget (1 BP per group of ${partySize} minions; social/support=1 BP each; horde/ranged/skulk/standard=2 BP each; leader=3 BP; bruiser=4 BP; solo=5 BP). Pick a mix of roles that fits the encounter's tactics.
+Stay within the ${bpBudget} BP budget (1 BP per group of ${partySize} minions; social/support=1 BP each; horde/ranged/skulk/standard=2 BP each; leader=3 BP; bruiser=4 BP; solo=5 BP; boss=8 BP). Pick a mix of roles that fits the encounter's tactics.
 ` : ''}
 Balance the encounter for the party level and size. Make it thematically appropriate to the campaign.`;
 

@@ -322,7 +322,7 @@ export const responseParser = {
 
   _validateSessionPlan(data) {
     const encounters = Array.isArray(data.encounters) ? data.encounters : [];
-    const validRoles = ['minion', 'horde', 'standard', 'bruiser', 'skulk', 'ranged', 'support', 'social', 'leader', 'solo'];
+    const validRoles = ['minion', 'horde', 'standard', 'bruiser', 'skulk', 'ranged', 'support', 'social', 'leader', 'solo', 'boss'];
     const validEncounterTypes = ['combat', 'puzzle', 'social', 'exploration'];
 
     return {
