@@ -18,6 +18,7 @@ import { aiService } from './aiService';
 import { promptBuilder } from './promptBuilder';
 import { responseParser } from './responseParser';
 import { generateBattleMap } from './battleMapGenerator';
+import { fuzzyMatchAdversary } from '../utils/adversaryNameMatch';
 
 /**
  * Ask the AI to produce a SessionPlan JSON.
@@ -101,9 +102,24 @@ export async function buildPreviewFromPlan({
   const conceptKey = (a) => `${a.concept}|${a.tier}|${a.role}`;
   const adversaryConceptsToBuild = new Map(); // key → { concept, tier, role }
 
-  const reuseByName = new Map(
-    (adversaries || []).filter(a => a?.name).map(a => [a.name.toLowerCase(), a])
-  );
+  // Resolve which existing adversary (if any) a `need` should reuse. Fuzzy so a
+  // misspelled or partial name ("matu palu") still matches a saved
+  // "Matu Palu, the Tide-Witch". Memoized per need object.
+  const _reuseCache = new Map();
+  const resolveReuse = (need) => {
+    if (_reuseCache.has(need)) return _reuseCache.get(need);
+    let match = fuzzyMatchAdversary(need.reuseExistingName, adversaries);
+    // Fallback: the prompt makes the concept BEGIN with the enemy's exact name,
+    // so if no explicit reuse name matched, try the concept's leading phrase —
+    // but only against distinctive (multi-word or ≥6-char) adversary names to
+    // avoid reusing on generic words like "troll".
+    if (!match && need.concept) {
+      const lead = String(need.concept).split(/[,.:—–-]/)[0];
+      match = fuzzyMatchAdversary(lead, adversaries, { distinctiveOnly: true });
+    }
+    _reuseCache.set(need, match || null);
+    return match || null;
+  };
 
   const planEncounters = Array.isArray(plan.encounters) ? plan.encounters : [];
   const planNewLocations = Array.isArray(plan.newLocations) ? plan.newLocations : [];
@@ -112,8 +128,8 @@ export async function buildPreviewFromPlan({
 
   for (const enc of planEncounters) {
     for (const need of (enc.adversariesNeeded || [])) {
-      // Skip if mapped to an existing adversary by name
-      if (need.reuseExistingName && reuseByName.has(need.reuseExistingName.toLowerCase())) continue;
+      // Skip generating if this maps to an existing adversary (fuzzy match)
+      if (resolveReuse(need)) continue;
       const k = conceptKey(need);
       if (!adversaryConceptsToBuild.has(k)) adversaryConceptsToBuild.set(k, need);
     }
@@ -270,9 +286,7 @@ export async function buildPreviewFromPlan({
   const previewEncounters = planEncounters.map((enc, idx) => {
     tick(`Building encounter: ${enc.name}`);
     const adversarySlots = enc.adversariesNeeded.map((need) => {
-      const reuse = need.reuseExistingName
-        ? reuseByName.get(need.reuseExistingName.toLowerCase())
-        : null;
+      const reuse = resolveReuse(need);
       return reuse
         ? { _kind: 'existing', adversaryId: reuse.id, quantity: need.quantity }
         : { _kind: 'staged', _stagedAdvKey: conceptKey(need), quantity: need.quantity };

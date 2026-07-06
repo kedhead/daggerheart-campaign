@@ -54,6 +54,10 @@ export default function GMAssistantPanel({
     { role: 'assistant', content: 'Tell me about the session you want to plan. Include the location, party size & level, time budget, and the mix of encounter types you want.' }
   ]);
   const [input, setInput] = useState('');
+  // Optional: GM directly picks an existing adversary/NPC to fight, so the plan
+  // is built around that exact entity instead of relying on the AI to parse a
+  // name from free text. Value: "adversary:<id>" or "npc:<id>".
+  const [featuredEnemyKey, setFeaturedEnemyKey] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [latestPlan, setLatestPlan] = useState(null);
   const [selectedMaps, setSelectedMaps] = useState([]);
@@ -108,10 +112,30 @@ export default function GMAssistantPanel({
     return { provider: 'anthropic', apiKey: '' };
   };
 
+  // Turn the picked enemy into an explicit instruction appended to the brief.
+  const buildFeaturedEnemyDirective = () => {
+    if (!featuredEnemyKey) return '';
+    const [kind, id] = featuredEnemyKey.split(':');
+    if (kind === 'adversary') {
+      const adv = (adversaries || []).find(a => a.id === id);
+      if (!adv) return '';
+      return `\n\n[Featured enemy: build the key combat encounter against "${adv.name}" — an existing adversary in this campaign. Reuse that exact stat block: set reuseExistingName to "${adv.name}" and keep its tier and role.]`;
+    }
+    if (kind === 'npc') {
+      const npc = (npcs || []).find(n => n.id === id);
+      if (!npc) return '';
+      return `\n\n[Featured enemy: build the key combat encounter against "${npc.name}" — a named NPC in this campaign${npc.occupation ? ` (${npc.occupation})` : ''}. Create an adversary that IS this character, keeping the exact name "${npc.name}", and pick an appropriate role — use "boss" for a climactic villain. Set reuseExistingName to null.]`;
+    }
+    return '';
+  };
+
   const sendBrief = async (briefText) => {
-    if (!briefText.trim() || isThinking) return;
+    const base = briefText.trim();
+    if ((!base && !featuredEnemyKey) || isThinking) return;
     setErrorMsg(null);
-    const userMessage = briefText.trim();
+    // Allow sending with only a featured enemy picked — supply a default brief.
+    const briefBody = base || 'Plan a combat-focused session for my party.';
+    const userMessage = (briefBody + buildFeaturedEnemyDirective()).trim();
     const newHistory = [...messages, { role: 'user', content: userMessage }];
     setMessages(newHistory);
     setInput('');
@@ -348,6 +372,35 @@ export default function GMAssistantPanel({
         </div>
       )}
 
+      {((adversaries || []).length > 0 || (npcs || []).length > 0) && (
+        <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+          <label className="text-xs uppercase tracking-wider text-white/40 shrink-0">Fight a specific enemy</label>
+          <select
+            value={featuredEnemyKey}
+            onChange={(e) => setFeaturedEnemyKey(e.target.value)}
+            className="flex-1 min-w-0 p-2 bg-black/30 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-[rgb(var(--color-primary))]"
+          >
+            <option value="">— optional: let me describe it in text —</option>
+            {(adversaries || []).length > 0 && (
+              <optgroup label="Adversaries (reuse stat block)">
+                {adversaries.filter(a => a?.name).map(a => (
+                  <option key={a.id} value={`adversary:${a.id}`}>
+                    {a.name}{a.role ? ` — ${a.role}` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {(npcs || []).length > 0 && (
+              <optgroup label="NPCs (build a stat block from)">
+                {npcs.filter(n => n?.name).map(n => (
+                  <option key={n.id} value={`npc:${n.id}`}>{n.name}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex gap-2 pt-2 border-t border-white/10">
         <textarea
           ref={inputRef}
@@ -366,7 +419,7 @@ export default function GMAssistantPanel({
         />
         <button
           type="submit"
-          disabled={!input.trim() || isThinking || isBuildingPreview || isSaving}
+          disabled={(!input.trim() && !featuredEnemyKey) || isThinking || isBuildingPreview || isSaving}
           className="btn btn-primary self-stretch px-4 flex items-center"
         >
           {isThinking ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
