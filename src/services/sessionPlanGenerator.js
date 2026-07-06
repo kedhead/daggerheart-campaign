@@ -12,7 +12,7 @@
  *         responseParser. Mirrors the existing campaignGenerator.js pattern.
  */
 
-import { generateAdversaryStatblock, fallbackAdversaryStats } from './adversaryGenerator';
+import { generateAdversaryStatblock, generateBossStatblock, fallbackAdversaryStats } from './adversaryGenerator';
 import { fleshOutLocationWithAI } from './campaignGenerator';
 import { aiService } from './aiService';
 import { promptBuilder } from './promptBuilder';
@@ -214,14 +214,24 @@ export async function buildPreviewFromPlan({
   for (const need of adversaryConceptsToBuild.values()) {
     tick(`Statting adversary: ${need.concept}`);
     try {
-      const stats = await generateAdversaryStatblock({
-        concept: need.concept,
-        tier: need.tier,
-        role: need.role,
-        apiKey,
-        provider,
-        campaignContext: ''
-      });
+      // A named/climactic villain flagged role:"boss" gets the full multi-phase
+      // boss generator; everything else uses the standard statblock generator.
+      const stats = need.role === 'boss'
+        ? await generateBossStatblock({
+            concept: need.concept,
+            tier: need.tier,
+            apiKey,
+            provider,
+            campaignContext: ''
+          })
+        : await generateAdversaryStatblock({
+            concept: need.concept,
+            tier: need.tier,
+            role: need.role,
+            apiKey,
+            provider,
+            campaignContext: ''
+          });
       const adv = { ...stats, _planSource: need };
       previewAdversaries.push(adv);
       adversaryByConceptKey.set(conceptKey(need), adv);
@@ -244,6 +254,7 @@ export async function buildPreviewFromPlan({
         experience: '',
         thresholds: fb.thresholds,
         features: [],
+        ...(need.role === 'boss' ? { isBoss: true, phases: [] } : {}),
         _planSource: need,
         _generationError: err.message
       };

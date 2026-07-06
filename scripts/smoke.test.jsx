@@ -12,6 +12,7 @@ import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js
 import { getTierForLevel, getBaseProficiency, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments } from '../src/components/Encounters/BPCalculator.jsx';
 import { fallbackAdversaryStats } from '../src/services/adversaryGenerator.js';
+import { responseParser } from '../src/services/responseParser.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -81,6 +82,25 @@ section('Adversary fallbacks');
   assert(s.hp <= 12 && s.thresholds.major >= 45 && s.attackDamage.startsWith('4d'), 'T4 solo: role-sized HP, tier-scaled thresholds, 4-die damage');
   const t1 = fallbackAdversaryStats(1, 'standard');
   assert(t1.thresholds.minor <= 8 && t1.attackDamage.startsWith('1d'), 'T1 standard calibrated');
+  const boss = fallbackAdversaryStats(4, 'boss');
+  assert(boss.hp >= 10 && boss.hp <= 14, `T4 boss role-sized HP (${boss.hp})`);
+}
+
+// ── Session planner: boss role + named-enemy reuse survive parsing ──
+section('Session plan parsing');
+{
+  const raw = '```json\n' + JSON.stringify({
+    sessionTitle: 'Finale', estimatedDurationHours: 3, partyLevel: 6, partySize: 4,
+    encounters: [{
+      name: 'Duel with Matu Palu', type: 'combat', summary: 'x', estimatedMinutes: 60,
+      adversariesNeeded: [{ concept: 'Matu Palu, the tide-witch', tier: 3, role: 'boss', quantity: 1, reuseExistingName: 'Matu Palu' }],
+      puzzleSpec: null, environment: '', bpEstimate: 8,
+    }],
+  }) + '\n```';
+  const plan = responseParser.parse('session-plan', raw);
+  const need = plan.encounters[0].adversariesNeeded[0];
+  assert(need.role === 'boss', `boss role preserved through parser (got ${need.role})`);
+  assert(need.reuseExistingName === 'Matu Palu', `reuseExistingName preserved (got ${need.reuseExistingName})`);
 }
 
 // ── Modal render checks ──

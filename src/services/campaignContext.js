@@ -81,7 +81,7 @@ export function buildCampaignContext(campaign, {
   const visibleNPCs = npcs.filter(n => n.name);
   if (visibleNPCs.length > 0) {
     lines.push(`\n### NPCs (${visibleNPCs.length})`);
-    visibleNPCs.slice(0, 25).forEach(n => {
+    visibleNPCs.slice(0, 40).forEach(n => {
       let line = `- **${n.name}**`;
       if (n.occupation)    line += `, ${n.occupation}`;
       if (n.relationship)  line += ` (${n.relationship})`;
@@ -89,7 +89,7 @@ export function buildCampaignContext(campaign, {
       if (n.description)   line += `: ${_truncate(n.description, 80)}`;
       lines.push(line);
     });
-    if (visibleNPCs.length > 25) lines.push(`  *(…and ${visibleNPCs.length - 25} more)*`);
+    if (visibleNPCs.length > 40) lines.push(`  *(…and ${visibleNPCs.length - 40} more)*`);
   }
 
   // ── Locations ──────────────────────────────────────────────────────────────
@@ -109,13 +109,13 @@ export function buildCampaignContext(campaign, {
   const visibleAdversaries = adversaries.filter(a => a.name);
   if (visibleAdversaries.length > 0) {
     lines.push(`\n### Adversaries (${visibleAdversaries.length})`);
-    visibleAdversaries.slice(0, 20).forEach(a => {
+    visibleAdversaries.slice(0, 40).forEach(a => {
       let line = `- **${a.name}** — Tier ${a.tier} ${a.role}`;
       if (a.description) line += `: ${_truncate(a.description, 80)}`;
       if (a.hidden)      line += ' *(hidden from players)*';
       lines.push(line);
     });
-    if (visibleAdversaries.length > 20) lines.push(`  *(…and ${visibleAdversaries.length - 20} more)*`);
+    if (visibleAdversaries.length > 40) lines.push(`  *(…and ${visibleAdversaries.length - 40} more)*`);
   }
 
   // ── Items ──────────────────────────────────────────────────────────────────

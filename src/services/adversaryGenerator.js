@@ -25,7 +25,9 @@ export const TIER_BENCHMARKS = {
 
 const ROLE_HP = {
   minion: [1, 1], social: [3, 5], ranged: [3, 5], standard: [3, 6], skulk: [3, 6],
-  support: [3, 6], horde: [4, 8], leader: [6, 9], bruiser: [5, 10], solo: [7, 12]
+  support: [3, 6], horde: [4, 8], leader: [6, 9], bruiser: [5, 10], solo: [7, 12],
+  // Homebrew multi-phase boss — intentionally higher than SRD solos.
+  boss: [10, 14],
 };
 
 const mid = ([a, b]) => Math.round((a + b) / 2);
