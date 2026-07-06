@@ -11,7 +11,7 @@ import { DOMAIN_CARDS } from '../src/data/daggerheartDomainCards.js';
 import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js';
 import { getTierForLevel, getBaseProficiency, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments } from '../src/components/Encounters/BPCalculator.jsx';
-import { fallbackAdversaryStats } from '../src/services/adversaryGenerator.js';
+import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
@@ -85,6 +85,22 @@ section('Adversary fallbacks');
   assert(t1.thresholds.minor <= 8 && t1.attackDamage.startsWith('1d'), 'T1 standard calibrated');
   const boss = fallbackAdversaryStats(4, 'boss');
   assert(boss.hp >= 10 && boss.hp <= 14, `T4 boss role-sized HP (${boss.hp})`);
+}
+
+// ── D&D-ism sanitizer: no invalid traits / saves survive ──
+section('Adversary text sanitizer');
+{
+  const s = sanitizeDaggerheartText;
+  // The exact bug from the report:
+  const fixed = s('must make a Difficulty 18 Spirit save or take 2d10+6 dark damage and become Restrained');
+  assert(fixed.includes('Presence Reaction Roll (18)'), `Spirit save → Presence Reaction Roll (${fixed})`);
+  assert(!/save|Spirit/i.test(fixed), 'no "save" or "Spirit" remains');
+  assert(s('DC 15 Wisdom saving throw').includes('Instinct Reaction Roll (15)'), 'DC-first Wisdom → Instinct');
+  assert(s('a Dexterity saving throw (DC 14)').includes('Agility Reaction Roll (14)'), 'Dexterity (DC) → Agility');
+  assert(s('make a Strength save').includes('Strength Reaction Roll'), 'Strength save → Strength Reaction Roll');
+  // Flavor text left alone:
+  assert(s('a vengeful spirit haunts the hall') === 'a vengeful spirit haunts the hall', 'flavor "spirit" untouched');
+  assert(s('must succeed on an Agility Reaction Roll (16) or fall') === 'must succeed on an Agility Reaction Roll (16) or fall', 'already-correct text unchanged');
 }
 
 // ── Session planner: boss role + named-enemy reuse survive parsing ──
