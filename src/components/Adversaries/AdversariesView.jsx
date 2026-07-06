@@ -14,6 +14,7 @@ import {
 } from '../../data/starwarsd6Adversaries';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateAdversaryPortrait } from '../../services/portraitGenerator';
+import { generateAdversaryStatblock, generateBossStatblock } from '../../services/adversaryGenerator';
 import { buildCampaignContext } from '../../services/campaignContext';
 import './AdversariesView.css';
 
@@ -70,6 +71,17 @@ export default function AdversariesView({
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
   const openaiKeyInfo = getEffectiveKey('openai');
   const hasOpenAIKey = !!openaiKeyInfo?.key;
+  const [regeneratingId, setRegeneratingId] = useState(null);
+
+  // Resolve an AI provider/key for statblock generation. Prefers a client key
+  // (Anthropic, then OpenAI); an empty key tells the server to use its env vars.
+  const resolveTextProvider = () => {
+    for (const provider of ['anthropic', 'openai']) {
+      const info = getEffectiveKey(provider);
+      if (info?.key) return { provider, apiKey: info.key };
+    }
+    return { provider: 'anthropic', apiKey: '' };
+  };
 
   // Get import items based on selected tier / classification
   const getImportItems = () => {
@@ -143,6 +155,44 @@ export default function AdversariesView({
       await updateAdversary(editingAdversary.id, formData);
     } else {
       await addAdversary({ ...formData, createdBy: campaign?.createdBy, createdByName: 'DM' });
+    }
+  };
+
+  // Re-run AI generation for an existing adversary, keeping its identity
+  // (name, portrait, visibility) but replacing stats and features. Useful for
+  // refreshing older stat blocks after generator fixes.
+  const handleRegenerate = async (adversary) => {
+    const isBoss = adversary.isBoss || adversary.role === 'boss';
+    if (!confirm(
+      `Regenerate "${adversary.name}"?\n\nIts name and portrait are kept, but the current stats${isBoss ? ', features, and phases' : ' and features'} will be replaced with a fresh AI generation based on its concept. This can't be undone.`
+    )) return;
+
+    setRegeneratingId(adversary.id);
+    try {
+      const { provider, apiKey } = resolveTextProvider();
+      const tier = adversary.tier || 1;
+      // Build a faithful concept from the existing identity so the regen stays on-theme.
+      const concept = [
+        adversary.name,
+        adversary.description,
+        adversary.motives ? `Motives: ${adversary.motives}` : ''
+      ].filter(Boolean).join('. ') || adversary.name || 'An adversary';
+
+      const result = isBoss
+        ? await generateBossStatblock({ concept, tier, apiKey, provider, campaignContext })
+        : await generateAdversaryStatblock({ concept, tier, role: adversary.role || 'standard', apiKey, provider, campaignContext });
+
+      // Keep the GM's identity/organizational fields; take the freshly generated mechanics.
+      const { name, imageUrl, hidden, isOfficial, createdBy, createdByName, id, ...generated } = result;
+      await updateAdversary(adversary.id, {
+        ...generated,
+        name: adversary.name,       // preserve the chosen name
+      });
+    } catch (err) {
+      console.error('Adversary regeneration failed:', err);
+      alert('Failed to regenerate adversary: ' + (err.message || 'Unknown error'));
+    } finally {
+      setRegeneratingId(null);
     }
   };
 
@@ -324,6 +374,8 @@ export default function AdversariesView({
                 onEdit={isDM ? openEdit : null}
                 onDelete={isDM ? handleDelete : null}
                 onGenerateImage={isDM ? handleGenerateImage : null}
+                onRegenerate={isDM ? handleRegenerate : null}
+                regenerating={regeneratingId === adversary.id}
                 isDM={isDM}
                 campaignId={campaign?.id}
               />
