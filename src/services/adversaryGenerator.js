@@ -32,6 +32,51 @@ const ROLE_HP = {
 
 const mid = ([a, b]) => Math.round((a + b) / 2);
 
+// ── Post-generation sanitizer ────────────────────────────────────────────────
+// Safety net for the AI still slipping in D&D-isms ("Difficulty 18 Spirit save",
+// "DC 15 Wisdom saving throw"). Rewrites them to Daggerheart's Reaction Roll
+// using one of the six real traits. Only touches save/check/DC phrasing so
+// flavor text (e.g. "a vengeful spirit") is left alone.
+const TRAIT_MAP = {
+  strength: 'Strength', dexterity: 'Agility', constitution: 'Strength',
+  intelligence: 'Knowledge', wisdom: 'Instinct', charisma: 'Presence',
+  spirit: 'Presence', wits: 'Knowledge', willpower: 'Presence',
+  agility: 'Agility', finesse: 'Finesse', instinct: 'Instinct',
+  presence: 'Presence', knowledge: 'Knowledge',
+};
+const _STATS = Object.keys(TRAIT_MAP).join('|');
+const _roll = (stat, n) => `${TRAIT_MAP[stat.toLowerCase()]} Reaction Roll${n ? ` (${n})` : ''}`;
+
+export function sanitizeDaggerheartText(text) {
+  if (!text || typeof text !== 'string') return text;
+  let t = text;
+  // "Difficulty 18 Spirit save" / "... saving throw"
+  t = t.replace(new RegExp(`Difficulty\\s+(\\d+)\\s+(${_STATS})\\s+(?:saving throws?|saves?)`, 'gi'),
+    (_m, n, stat) => _roll(stat, n));
+  // "Spirit saving throw (DC 18)" / "Spirit save DC 18"
+  t = t.replace(new RegExp(`(${_STATS})\\s+(?:saving throws?|saves?)\\s*\\(?\\s*DC\\s*(\\d+)\\s*\\)?`, 'gi'),
+    (_m, stat, n) => _roll(stat, n));
+  // "DC 18 Spirit save"
+  t = t.replace(new RegExp(`DC\\s*(\\d+)\\s+(${_STATS})\\s+(?:saving throws?|saves?)`, 'gi'),
+    (_m, n, stat) => _roll(stat, n));
+  // "Spirit save" / "Spirit saving throw" (no difficulty)
+  t = t.replace(new RegExp(`(${_STATS})\\s+(?:saving throws?|saves?)`, 'gi'),
+    (_m, stat) => _roll(stat));
+  // Leftovers with no trait attached
+  t = t.replace(/\bability checks?\b/gi, 'Reaction Roll');
+  t = t.replace(/\bsaving throws?\b/gi, 'Reaction Roll');
+  t = t.replace(/\bmake a save\b/gi, 'make a Reaction Roll');
+  t = t.replace(/\(\s*DC\s*(\d+)\s*\)/gi, '($1)'); // "(DC 15)" → "(15)"
+  return t;
+}
+
+// Apply the sanitizer to a feature's description.
+const _cleanFeature = (f) => ({
+  name: f.name || '',
+  type: ['passive', 'action', 'reaction'].includes(f.type) ? f.type : 'passive',
+  description: sanitizeDaggerheartText(f.description || ''),
+});
+
 /** SRD-calibrated fallback stats when AI output is missing/invalid. */
 export function fallbackAdversaryStats(tier, role) {
   const t = Math.min(4, Math.max(1, Number(tier) || 1));
@@ -113,7 +158,9 @@ DAGGERHEART MECHANICAL TERMS (use these exactly):
 - "Gain a Fear" — the GM gains a Fear token (good for GM)
 - "Give Hope" — a player gains a Hope token
 - Dice damage: "deal 2d8+4 physical damage"
-- Player saves: "must succeed on an Agility Reaction Roll (${tier === 1 ? 12 : tier === 2 ? 14 : tier === 3 ? 16 : 18}) or..."
+- The SIX character traits are ONLY: Agility, Strength, Finesse, Instinct, Presence, Knowledge. There is NO Spirit, Constitution, Dexterity, Wisdom, Charisma, Intelligence, Wits, or Willpower in Daggerheart.
+- Players never make "saves", "saving throws", "ability checks", or roll against a "DC". When a feature forces a player to resist, they make a **Reaction Roll** using ONE of the six traits above, phrased exactly like: "must succeed on a <Trait> Reaction Roll (${tier === 1 ? 12 : tier === 2 ? 14 : tier === 3 ? 16 : 18}) or ...". Pick the trait that fits the effect (dodge → Agility; endure/resist force → Strength; steady nerves/perceive → Instinct; resist fear/charm → Presence; see through illusion/recall → Knowledge; precise movement → Finesse).
+- NEVER invent stats, traits, or dice mechanics that aren't listed here.
 
 OFFICIAL SRD EXAMPLES (for calibration — note how thresholds and damage scale with tier while HP stays role-sized):
 T1: Bear (bruiser): DC 14, HP 7, stress 2, atk +1 "Claws" Melee "1d8+3 phy", thresh 9/17
@@ -178,6 +225,14 @@ STATS:
   T1: 8/15 | T2: 13/25 | T3: 22/40 | T4: 35/70
 
 ATTACK DAMAGE FORMAT: "XdY+Z type" — e.g. "2d8+5 phy", "2d10+7 fire"
+
+DAGGERHEART MECHANICAL TERMS (use these exactly — this is NOT D&D):
+- Ranges: Melee / Very Close / Close / Far / Very Far
+- Conditions: Vulnerable, Restrained, Frightened, Slowed
+- Costs/tokens: "Mark a Stress", "Mark HP", "Gain a Fear", "Give Hope"
+- The SIX character traits are ONLY: Agility, Strength, Finesse, Instinct, Presence, Knowledge. There is NO Spirit, Constitution, Dexterity, Wisdom, Charisma, Intelligence, Wits, or Willpower.
+- Players never make "saves", "saving throws", "ability checks", or roll against a "DC". When a feature forces a player to resist, they make a **Reaction Roll** using ONE of the six traits, phrased exactly: "must succeed on a <Trait> Reaction Roll (${tier === 1 ? 12 : tier === 2 ? 14 : tier === 3 ? 16 : 18}) or ...". Pick the fitting trait (dodge → Agility; endure force → Strength; steady nerves/perceive → Instinct; resist fear/charm → Presence; see through illusion/recall → Knowledge; precise movement → Finesse).
+- NEVER invent stats, traits, or dice mechanics not listed here.
 
 FEATURES: 4–5 base features. MUST include Relentless(3+) or Relentless(4).
 Feature types: passive, action, reaction. Use Daggerheart mechanical terms.
@@ -282,11 +337,7 @@ export async function generateBossStatblock({
         attackDamage: ph.attackDamage || '',
         attack: ph.attack ?? null,
         newFeatures: Array.isArray(ph.newFeatures)
-          ? ph.newFeatures.map(f => ({
-              name: f.name || '',
-              type: ['passive', 'action', 'reaction'].includes(f.type) ? f.type : 'passive',
-              description: f.description || ''
-            }))
+          ? ph.newFeatures.map(_cleanFeature)
           : [],
         replaceFeatures: !!ph.replaceFeatures,
         summons: [],
@@ -314,11 +365,7 @@ export async function generateBossStatblock({
       major: Number(parsed.thresholds?.major) || bossThr[1]
     },
     features: Array.isArray(parsed.features)
-      ? parsed.features.map(f => ({
-          name: f.name || '',
-          type: ['passive', 'action', 'reaction'].includes(f.type) ? f.type : 'passive',
-          description: f.description || ''
-        }))
+      ? parsed.features.map(_cleanFeature)
       : [],
     phases: cleanPhases,
     hidden: false
@@ -393,11 +440,7 @@ export async function generateAdversaryStatblock({
           major: Number(parsed.thresholds?.major) || fb.thresholds.major
         },
     features: Array.isArray(parsed.features)
-      ? parsed.features.map(f => ({
-          name: f.name || '',
-          type: ['passive', 'action', 'reaction'].includes(f.type) ? f.type : 'passive',
-          description: f.description || ''
-        }))
+      ? parsed.features.map(_cleanFeature)
       : []
   };
 }
