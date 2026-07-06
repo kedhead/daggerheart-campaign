@@ -110,7 +110,6 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         { id: 'quests', label: 'Quests', icon: Target },
         { id: 'sessions', label: 'Sessions', icon: ScrollText },
         ...(isDM ? [
-          { id: 'gm-assistant', label: 'GM Assistant', icon: Sparkles },
           { id: 'encounters', label: 'Encounters', icon: Swords },
           { id: 'initiative', label: 'Initiative', icon: Zap }
         ] : [])
