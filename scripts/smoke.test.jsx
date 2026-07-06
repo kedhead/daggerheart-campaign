@@ -13,6 +13,7 @@ import { getTierForLevel, getBaseProficiency, ADVANCEMENT_OPTIONS } from '../src
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments } from '../src/components/Encounters/BPCalculator.jsx';
 import { fallbackAdversaryStats } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
+import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -101,6 +102,25 @@ section('Session plan parsing');
   const need = plan.encounters[0].adversariesNeeded[0];
   assert(need.role === 'boss', `boss role preserved through parser (got ${need.role})`);
   assert(need.reuseExistingName === 'Matu Palu', `reuseExistingName preserved (got ${need.reuseExistingName})`);
+}
+
+// ── Fuzzy adversary-name matching for reuse ──
+section('Fuzzy adversary matching');
+{
+  const advs = [
+    { id: 'a1', name: 'Matu Palu, the Tide-Witch' },
+    { id: 'a2', name: 'Goblin Skirmisher' },
+    { id: 'a3', name: 'Troll' },
+  ];
+  const m = (n, opts) => (fuzzyMatchAdversary(n, advs, opts) || {}).id;
+  assert(m('Matu Palu') === 'a1', 'partial name matches full boss name');
+  assert(m('matu  palu') === 'a1', 'case/space-insensitive match');
+  assert(m('Matu Pallu') === 'a1', 'misspelling (extra letter) still matches');
+  assert(m('Mattu Palu, the Tide Witch') === 'a1', 'misspelling within full name matches');
+  assert(m('Goblin Skirmisher') === 'a2', 'exact match picks the right one');
+  assert(!m('Ancient Red Dragon'), 'unrelated name does not match');
+  // concept-fallback guardrail: generic short names only match in distinctive mode off
+  assert(m('A lumbering troll of the deep', { distinctiveOnly: true }) === undefined, 'generic "troll" not reused in distinctive mode');
 }
 
 // ── Modal render checks ──
