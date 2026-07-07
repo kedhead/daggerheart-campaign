@@ -148,6 +148,36 @@ export function buildCampaignContext(campaign, {
     if (visibleMaps.length > 15) lines.push(`  *(…and ${visibleMaps.length - 15} more)*`);
   }
 
+  // ── Items ──────────────────────────────────────────────────────────────────
+  const visibleItems = items.filter(i => i.name);
+  if (visibleItems.length > 0) {
+    lines.push(`\n### Items (${visibleItems.length})`);
+    visibleItems.slice(0, 20).forEach(i => {
+      let line = `- **${i.name}** (${i.type || 'item'}`;
+      if (i.systemData?.rarity) line += `, ${i.systemData.rarity}`;
+      if (i.systemData?.tier)   line += `, T${i.systemData.tier}`;
+      line += ')';
+      if (i.description) line += `: ${_truncate(i.description, 80)}`;
+      lines.push(line);
+    });
+    if (visibleItems.length > 20) lines.push(`  *(…and ${visibleItems.length - 20} more)*`);
+  }
+
+  // ── Maps & Handouts (names/tags only — never images/URLs) ────────────────────
+  const visibleMaps = maps.filter(m => m.name);
+  if (visibleMaps.length > 0) {
+    lines.push(`\n### Maps & Handouts (${visibleMaps.length})`);
+    visibleMaps.slice(0, 15).forEach(m => {
+      let line = `- **${m.name}**`;
+      const tag = m.mapType || m.tag || m.type;
+      if (tag) line += ` (${tag})`;
+      const desc = m.mapDescription || m.description;
+      if (desc) line += `: ${_truncate(desc, 80)}`;
+      lines.push(line);
+    });
+    if (visibleMaps.length > 15) lines.push(`  *(…and ${visibleMaps.length - 15} more)*`);
+  }
+
   // ── Lore ───────────────────────────────────────────────────────────────────
   const visibleLore = lore.filter(l => l.title || l.name);
   if (visibleLore.length > 0) {
