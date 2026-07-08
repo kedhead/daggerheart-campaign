@@ -8,9 +8,14 @@
  * Chrome/Edge); throws a friendly error otherwise.
  */
 
+import { createFX } from './cinematicFX';
+
 const W = 1280;
 const H = 720;
 const FPS = 30;
+
+// Animated clips carry their own motion — hold them steady instead of panning.
+const STATIC_PAN = { fromScale: 1, toScale: 1, fromX: 0, fromY: 0, toX: 0, toY: 0 };
 
 function pickMimeType() {
   const candidates = [
@@ -33,6 +38,28 @@ function loadImage(url) {
   });
 }
 
+// Preload an animated scene clip as a muted looping <video> we can draw
+// frames from. Resolves null on failure so the exporter falls back to the
+// slide's still image.
+function loadVideo(url) {
+  return new Promise((resolve) => {
+    if (!url) return resolve(null);
+    const v = document.createElement('video');
+    let settled = false;
+    const done = (ok) => { if (!settled) { settled = true; resolve(ok ? v : null); } };
+    v.crossOrigin = 'anonymous';
+    v.muted = true;
+    v.loop = true;
+    v.playsInline = true;
+    v.preload = 'auto';
+    v.oncanplaythrough = () => done(true);
+    v.onerror = () => done(false);
+    setTimeout(() => done(v.readyState >= 2), 8000); // slow network: take what we have
+    v.src = url;
+    v.load();
+  });
+}
+
 async function fetchAudioBuffer(ctx, url) {
   if (!url) return null;
   try {
@@ -44,16 +71,19 @@ async function fetchAudioBuffer(ctx, url) {
   }
 }
 
-// Cover-fit an image into WxH, then apply scale+translate (% of frame) for pan.
+// Cover-fit an image (or video frame) into WxH, then apply scale+translate
+// (% of frame) for pan.
 function drawSlide(ctx, img, pan, t) {
   ctx.fillStyle = '#0a0a12';
   ctx.fillRect(0, 0, W, H);
   if (img) {
+    const iw = img.videoWidth || img.width;
+    const ih = img.videoHeight || img.height;
     const scale = pan.fromScale + (pan.toScale - pan.fromScale) * t;
     const tx = (pan.fromX + (pan.toX - pan.fromX) * t) / 100 * W;
     const ty = (pan.fromY + (pan.toY - pan.fromY) * t) / 100 * H;
     // cover fit
-    const ir = img.width / img.height;
+    const ir = iw / ih;
     const fr = W / H;
     let dw, dh;
     if (ir > fr) { dh = H * scale; dw = dh * ir; } else { dw = W * scale; dh = dw / ir; }
@@ -125,8 +155,9 @@ export async function exportCinematicWebM({ timeline, musicUrl, title, onProgres
   const mimeType = pickMimeType();
   if (!mimeType) throw new Error('This browser cannot record WebM video.');
 
-  // Preload images
+  // Preload stills and any AI-animated clips (clips fall back to the still)
   const images = await Promise.all(timeline.map(s => loadImage(s.imageUrl)));
+  const videos = await Promise.all(timeline.map(s => loadVideo(s.videoUrl)));
 
   const canvas = document.createElement('canvas');
   canvas.width = W;
@@ -198,20 +229,36 @@ export async function exportCinematicWebM({ timeline, musicUrl, title, onProgres
   recorder.start();
   const t0 = performance.now();
   let lastSlide = -1;
+  let lastFrameTime = t0;
+  let fx = null; // ambient particle effect for the current slide
 
   await new Promise((resolve) => {
     function frame() {
-      const elapsed = (performance.now() - t0) / 1000;
+      const now = performance.now();
+      const elapsed = (now - t0) / 1000;
+      const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+      lastFrameTime = now;
       if (elapsed >= totalSec) return resolve();
 
       // Which slide are we in?
       let i = 0;
       while (i < starts.length - 1 && elapsed >= starts[i + 1]) i++;
-      if (i !== lastSlide) { lastSlide = i; onProgress?.(i + 1); }
+      if (i !== lastSlide) {
+        // Slide change: swap the playing clip and rebuild the particle effect.
+        if (lastSlide >= 0 && videos[lastSlide]) videos[lastSlide].pause();
+        if (videos[i]) { videos[i].currentTime = 0; videos[i].play().catch(() => {}); }
+        fx = timeline[i].fx && timeline[i].fx !== 'none' ? createFX(timeline[i].fx, W, H) : null;
+        lastSlide = i;
+        onProgress?.(i + 1);
+      }
 
       const local = (elapsed - starts[i]) / (durations[i] || 1); // 0..1
       const slide = timeline[i];
-      drawSlide(ctx, images[i], slide.pan, Math.min(1, local));
+      const clip = videos[i];
+      if (clip) drawSlide(ctx, clip, STATIC_PAN, 0);
+      else drawSlide(ctx, images[i], slide.pan, Math.min(1, local));
+
+      if (fx) { fx.update(dt); fx.draw(ctx); }
 
       // Text fade-in over first 0.6s of the slide
       const alpha = Math.min(1, local / (0.6 / (durations[i] || 1)));
@@ -224,6 +271,7 @@ export async function exportCinematicWebM({ timeline, musicUrl, title, onProgres
   });
 
   recorder.stop();
+  videos.forEach(v => { try { v?.pause(); } catch { /* ignore */ } });
   await finished;
   try { await audioCtx.close(); } catch { /* ignore */ }
 }

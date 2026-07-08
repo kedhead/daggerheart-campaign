@@ -3,7 +3,7 @@
  * Persists AI-generated audio to Firebase Storage and caches URL mappings in Firestore
  */
 
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { storage, db } from '../config/firebase';
 
@@ -25,6 +25,24 @@ export async function persistAudio(campaignId, dataUrl, filename) {
   console.log('Audio uploaded to Storage:', downloadUrl);
 
   return downloadUrl;
+}
+
+/**
+ * Upload a generated video clip (Blob) to Firebase Storage.
+ * Stored under storybook/media so campaign members can read it (and the
+ * public chronicle can, when sharing is on — same rule as scene images).
+ * @param {string} campaignId
+ * @param {Blob} blob - video/mp4 blob
+ * @param {string} filename - name without extension
+ * @returns {Promise<{url: string, storagePath: string}>}
+ */
+export async function persistVideo(campaignId, blob, filename) {
+  const safeName = (filename || 'clip').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 80);
+  const storagePath = `campaigns/${campaignId}/storybook/media/${safeName}.mp4`;
+  const storageRef = ref(storage, storagePath);
+  await uploadBytes(storageRef, blob, { contentType: blob.type || 'video/mp4' });
+  const url = await getDownloadURL(storageRef);
+  return { url, storagePath };
 }
 
 /**

@@ -1,9 +1,10 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Play, Pause, SkipBack, SkipForward, Music, Volume2, VolumeX, Sparkles, Download, Loader2 } from 'lucide-react';
+import { X, Play, Pause, SkipBack, SkipForward, Music, Volume2, VolumeX, Sparkles, Download, Loader2, Wand2, Film } from 'lucide-react';
 import { buildTimeline, timelineDuration } from './cinematicTimeline';
+import { createFX } from './cinematicFX';
 import { getTrackUrl } from '../../data/musicLibrary';
-import { persistAudio } from '../../services/audioStorage';
+import { persistAudio, persistVideo } from '../../services/audioStorage';
 import { exportCinematicWebM } from './cinematicExporter';
 import './CinematicPlayer.css';
 
@@ -19,12 +20,15 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
   const [playing, setPlaying] = useState(true);
   const [musicOn, setMusicOn] = useState(true);
   const [narrationOn, setNarrationOn] = useState(true);
+  const [fxOn, setFxOn] = useState(true);
   const [generating, setGenerating] = useState(null); // {done,total} while generating narration
   const [exporting, setExporting] = useState(null);    // {done,total} while exporting
+  const [animating, setAnimating] = useState(null);    // {label} while a scene clip generates
   const [error, setError] = useState(null);
 
   const musicRef = useRef(null);
   const narrationRef = useRef(null);
+  const videoRef = useRef(null);
   const timerRef = useRef(null);
 
   const slide = timeline[index];
@@ -75,6 +79,14 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     }
   }, [playing, musicOn, narrationOn, hasNarration]);
 
+  // Animated slides: keep the clip's playback in step with the player.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (playing) v.play().catch(() => {});
+    else v.pause();
+  }, [playing, index]);
+
   useEffect(() => () => { clearTimeout(timerRef.current); }, []);
 
   const restart = useCallback(() => { setIndex(0); setPlaying(true); }, []);
@@ -102,9 +114,12 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
           throw new Error(e.error || `Narration failed (HTTP ${resp.status})`);
         }
         const { audio } = await resp.json();
-        const url = await persistAudio(campaignId, audio, `narration-${chapter.id}-${job.i}`);
+        const fileName = `narration-${chapter.id}-${job.i}`;
+        const url = await persistAudio(campaignId, audio, fileName);
         const duration = await probeDuration(url);
-        narration.push({ index: job.i, url, duration });
+        // Mirror persistAudio's path/sanitisation so deleteChapter can clean up.
+        const safeName = fileName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 80);
+        narration.push({ index: job.i, url, duration, storagePath: `campaigns/${campaignId}/audio/${safeName}.mp3` });
         setGenerating(g => ({ ...g, done: g.done + 1 }));
       }
       await updateChapter(chapter.id, { narration });
@@ -115,6 +130,76 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
       setGenerating(null);
     }
   }, [isDM, updateChapter, timeline, campaignId, chapter, narrationClientKey]);
+
+  // ── DM: animate the current scene's still into a short AI video clip ──
+  // Replicate image→video (server route). The finished mp4 is copied into
+  // Firebase Storage and cached on the chapter, so it generates (and costs)
+  // exactly once, then plays for everyone on every replay.
+  const animateScene = useCallback(async () => {
+    if (!isDM || !updateChapter || !slide?.sceneKey || !slide.imageUrl) return;
+    setError(null);
+    setAnimating({ label: 'Starting…' });
+    const post = (body) => fetch('/api/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    try {
+      const motionPrompt = slide.text
+        ? `Subtle cinematic motion, preserve the art style of the source image. ${slide.text}`.slice(0, 480)
+        : undefined;
+      const createResp = await post({ type: 'scene-video', imageUrl: slide.imageUrl, prompt: motionPrompt });
+      const created = await createResp.json().catch(() => ({}));
+      if (!createResp.ok || !created.predictionId) {
+        throw new Error(created.error || `Could not start animation (HTTP ${createResp.status})`);
+      }
+
+      setAnimating({ label: 'Animating… (~1–3 min)' });
+      const deadline = Date.now() + 8 * 60 * 1000;
+      let videoUrl = null;
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 8000));
+        const st = await post({ type: 'video-status', predictionId: created.predictionId });
+        const data = await st.json().catch(() => ({}));
+        if (!st.ok) throw new Error(data.error || `Status check failed (HTTP ${st.status})`);
+        if (data.status === 'succeeded' && data.videoUrl) { videoUrl = data.videoUrl; break; }
+        if (data.status === 'failed' || data.status === 'canceled') {
+          throw new Error(data.error || 'Video generation failed.');
+        }
+      }
+      if (!videoUrl) throw new Error('Video generation timed out — try again in a minute.');
+
+      setAnimating({ label: 'Saving clip…' });
+      // Fetch the clip: replicate.delivery allows CORS; fall back to the proxy.
+      let blob = null;
+      try {
+        const direct = await fetch(videoUrl);
+        if (direct.ok) blob = await direct.blob();
+      } catch { /* CORS or network — use the proxy below */ }
+      if (!blob) {
+        const pr = await fetch('/api/download-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageUrl: videoUrl })
+        });
+        if (pr.ok) {
+          const { dataUrl } = await pr.json();
+          blob = await (await fetch(dataUrl)).blob();
+        }
+      }
+      if (!blob || blob.size < 1000) throw new Error('Could not download the generated clip.');
+
+      const saved = await persistVideo(campaignId, blob, `scene-${chapter.id}-${slide.sceneKey}`);
+      await updateChapter(chapter.id, {
+        sceneVideos: { ...(chapter.sceneVideos || {}), [slide.sceneKey]: saved }
+      });
+    } catch (err) {
+      console.error('Scene animation failed:', err);
+      setError(err.message || 'Scene animation failed.');
+    } finally {
+      setAnimating(null);
+    }
+  }, [isDM, updateChapter, slide, campaignId, chapter]);
 
   // ── DM: export the recap as a WebM video file ──
   const exportVideo = useCallback(async () => {
@@ -145,12 +230,27 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
   return createPortal(
     <div className="cine-overlay">
       <div className="cine-stage">
-        {slide.imageUrl ? (
+        {slide.videoUrl ? (
+          <video
+            key={`v-${index}`}
+            ref={videoRef}
+            src={slide.videoUrl}
+            className="cine-img cine-video"
+            autoPlay={playing}
+            muted
+            loop
+            playsInline
+            crossOrigin="anonymous"
+          />
+        ) : slide.imageUrl ? (
           <img key={index} src={slide.imageUrl} alt="" className="cine-img" style={panStyle} />
         ) : (
           <div className="cine-img cine-img-empty" />
         )}
         <div className="cine-vignette" />
+        {fxOn && slide.fx && slide.fx !== 'none' && (
+          <FXCanvas effect={slide.fx} playing={playing} />
+        )}
 
         {slide.kind === 'title' ? (
           <div className="cine-title-card">
@@ -199,6 +299,9 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
           <button className={`cine-toggle ${musicOn ? 'on' : ''}`} onClick={() => setMusicOn(v => !v)} title="Background music">
             <Music size={16} />
           </button>
+          <button className={`cine-toggle ${fxOn ? 'on' : ''}`} onClick={() => setFxOn(v => !v)} title="Ambient effects (embers, fog, rain…)">
+            <Wand2 size={16} />
+          </button>
           {hasNarration && (
             <button className={`cine-toggle ${narrationOn ? 'on' : ''}`} onClick={() => setNarrationOn(v => !v)} title="Voice narration">
               {narrationOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -208,6 +311,13 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
 
         {isDM && (
           <div className="cine-dm-row">
+            {slide.kind === 'scene' && slide.sceneKey && slide.imageUrl && !slide.videoUrl && updateChapter && (
+              <button className="cine-dm-btn" onClick={animateScene} disabled={!!animating || !!exporting} title="Generate a short AI video clip from this scene's image (runs once, then saved)">
+                {animating
+                  ? <><Loader2 size={14} className="cine-spin" /> {animating.label}</>
+                  : <><Film size={14} /> Animate this scene</>}
+              </button>
+            )}
             {!hasNarration && (
               <button className="cine-dm-btn" onClick={generateNarration} disabled={!!generating}>
                 {generating
@@ -229,6 +339,42 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     </div>,
     document.body
   );
+}
+
+// Ambient particle overlay (embers / rain / snow / sparkles / fog / dust).
+// Runs its own rAF loop; freezes (but stays visible) while paused. The engine
+// lives in cinematicFX.js and is shared with the WebM exporter.
+function FXCanvas({ effect, playing }) {
+  const canvasRef = useRef(null);
+  const playingRef = useRef(playing);
+  useEffect(() => { playingRef.current = playing; }, [playing]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const parent = canvas.parentElement;
+    const w = (canvas.width = parent?.clientWidth || window.innerWidth);
+    const h = (canvas.height = parent?.clientHeight || window.innerHeight);
+    const ctx = canvas.getContext('2d');
+    const fx = createFX(effect, w, h);
+
+    let raf;
+    let last = performance.now();
+    let alive = true;
+    const frame = (now) => {
+      if (!alive) return;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (playingRef.current) fx.update(dt);
+      ctx.clearRect(0, 0, w, h);
+      fx.draw(ctx);
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => { alive = false; cancelAnimationFrame(raf); };
+  }, [effect]);
+
+  return <canvas ref={canvasRef} className="cine-fx-canvas" aria-hidden="true" />;
 }
 
 // Ken Burns: start at the "from" transform, animate to "to" over slide.duration.

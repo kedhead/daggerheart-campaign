@@ -50,6 +50,65 @@ export default async function handler(req, res) {
     // '__shared__' = client sentinel for "use the server's shared key"
     const clientApiKey = rawClientKey === '__shared__' ? null : rawClientKey;
 
+    // --- Motion Comic: animate a scene still into a short video clip ---
+    // Replicate video predictions run 1–5 minutes — longer than a serverless
+    // invocation may live — so type:'scene-video' returns the prediction id
+    // immediately and the client polls it with type:'video-status'.
+    if (type === 'scene-video' || type === 'video-status') {
+      const replicateKey = process.env.REPLICATE_API_TOKEN;
+      if (!replicateKey) {
+        return res.status(500).json({
+          error: 'REPLICATE_API_TOKEN is not configured on the server, so scene animation cannot run. Set the env var in Vercel.'
+        });
+      }
+
+      if (type === 'video-status') {
+        const { predictionId } = req.body;
+        if (!predictionId || !/^[A-Za-z0-9_-]{5,64}$/.test(predictionId)) {
+          return res.status(400).json({ error: 'Missing or invalid predictionId' });
+        }
+        const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
+          headers: { 'Authorization': `Bearer ${replicateKey}` }
+        });
+        if (!pollRes.ok) {
+          const errText = await pollRes.text().catch(() => pollRes.statusText);
+          return res.status(pollRes.status || 500).json({ error: `Replicate status error: ${truncateErr(errText)}` });
+        }
+        const prediction = await pollRes.json();
+        const out = prediction.output;
+        const videoUrl = typeof out === 'string' ? out : (Array.isArray(out) ? out[0] : null);
+        return res.status(200).json({
+          status: prediction.status,
+          videoUrl: prediction.status === 'succeeded' ? videoUrl : null,
+          error: prediction.error ? truncateErr(prediction.error) : null
+        });
+      }
+
+      // type === 'scene-video' — start the image→video prediction
+      const { imageUrl } = req.body;
+      if (!imageUrl || !/^https:\/\//i.test(imageUrl)) {
+        return res.status(400).json({ error: 'Missing required field: imageUrl (https URL of the scene image)' });
+      }
+      const VIDEO_MODEL = 'wan-video/wan-2.2-i2v-fast';
+      const motionPrompt = (prompt && String(prompt).slice(0, 500))
+        || 'Subtle cinematic motion: gentle camera drift, ambient movement, characters breathe and shift naturally. Preserve the composition and art style of the source image.';
+      const createRes = await fetch(`https://api.replicate.com/v1/models/${VIDEO_MODEL}/predictions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${replicateKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ input: { image: imageUrl, prompt: motionPrompt } })
+      });
+      if (!createRes.ok) {
+        const errText = await createRes.text().catch(() => createRes.statusText);
+        console.error('Replicate scene-video error:', errText);
+        return res.status(createRes.status || 500).json({ error: `Replicate ${VIDEO_MODEL} error: ${truncateErr(errText)}` });
+      }
+      const prediction = await createRes.json();
+      return res.status(200).json({ predictionId: prediction.id, status: prediction.status, model: VIDEO_MODEL });
+    }
+
     if (!prompt) {
       return res.status(400).json({ error: 'Missing required field: prompt' });
     }

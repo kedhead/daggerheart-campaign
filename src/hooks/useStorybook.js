@@ -107,7 +107,9 @@ export function useStorybook(campaignId, isDM = false) {
     if (chapter) {
       const paths = [
         ...(chapter.scenes || []).map(s => s.storagePath).filter(Boolean),
-        ...(chapter.media || []).map(m => m.storagePath).filter(Boolean)
+        ...(chapter.media || []).map(m => m.storagePath).filter(Boolean),
+        ...(chapter.narration || []).map(n => n.storagePath).filter(Boolean),
+        ...Object.values(chapter.sceneVideos || {}).map(v => v.storagePath).filter(Boolean)
       ];
       await Promise.all(paths.map(async p => {
         try { await deleteObject(ref(storage, p)); }
