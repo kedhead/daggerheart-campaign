@@ -3,7 +3,7 @@
  * Persists AI-generated audio to Firebase Storage and caches URL mappings in Firestore
  */
 
-import { ref, uploadString, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { storage, db } from '../config/firebase';
 
@@ -25,6 +25,13 @@ export async function persistAudio(campaignId, dataUrl, filename) {
   console.log('Audio uploaded to Storage:', downloadUrl);
 
   return downloadUrl;
+}
+
+/** Best-effort delete of a stored file (missing files are fine). */
+export async function deleteStoredFile(storagePath) {
+  if (!storagePath) return;
+  try { await deleteObject(ref(storage, storagePath)); }
+  catch { /* already gone */ }
 }
 
 /**

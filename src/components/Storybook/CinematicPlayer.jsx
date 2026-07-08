@@ -4,7 +4,7 @@ import { X, Play, Pause, SkipBack, SkipForward, Music, Volume2, VolumeX, Sparkle
 import { buildTimeline, timelineDuration } from './cinematicTimeline';
 import { createFX } from './cinematicFX';
 import { getTrackUrl } from '../../data/musicLibrary';
-import { persistAudio, persistVideo } from '../../services/audioStorage';
+import { persistAudio, persistVideo, deleteStoredFile } from '../../services/audioStorage';
 import { exportCinematicWebM } from './cinematicExporter';
 import './CinematicPlayer.css';
 
@@ -130,6 +130,11 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
       .filter(s => s.text && s.text.trim().length > 1);
     setGenerating({ done: 0, total: jobs.length });
     const narration = [];
+    // Old clips get deleted after the new set lands; versioned filenames below
+    // guarantee fresh URLs so no browser/CDN cache can serve the old voice.
+    const oldPaths = (chapter.narration || []).map(n => n.storagePath).filter(Boolean);
+    const providers = new Set();
+    const batch = Date.now();
     try {
       for (const job of jobs) {
         const resp = await fetch('/api/generate-narration', {
@@ -146,8 +151,9 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
           const e = await resp.json().catch(() => ({}));
           throw new Error(e.error || `Narration failed (HTTP ${resp.status})`);
         }
-        const { audio } = await resp.json();
-        const fileName = `narration-${chapter.id}-${job.i}`;
+        const { audio, provider } = await resp.json();
+        if (provider) providers.add(provider);
+        const fileName = `narration-${chapter.id}-${job.i}-${batch}`;
         const url = await persistAudio(campaignId, audio, fileName);
         const duration = await probeDuration(url);
         // Mirror persistAudio's path/sanitisation so deleteChapter can clean up.
@@ -156,6 +162,10 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
         setGenerating(g => ({ ...g, done: g.done + 1 }));
       }
       await updateChapter(chapter.id, { narration, narrationVoice: voice.key });
+      await Promise.all(oldPaths.map(deleteStoredFile));
+      if (providers.has('openai')) {
+        setError('Heads up: ElevenLabs was unavailable, so the OpenAI fallback voice was used — narrator presets only change delivery style there, not the voice itself. Check ELEVENLABS_API_KEY / quota to get the full voice change.');
+      }
     } catch (err) {
       console.error('Narration generation failed:', err);
       setError(err.message || 'Narration generation failed.');
@@ -263,20 +273,31 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
   return createPortal(
     <div className="cine-overlay">
       <div className="cine-stage">
+        {/* Blurred cover backdrop fills the letterbox around the contained art,
+            so landscape scenes read fully on portrait phones instead of being
+            cropped to a zoomed center strip. */}
         {slide.videoUrl ? (
-          <video
-            key={`v-${index}`}
-            ref={videoRef}
-            src={slide.videoUrl}
-            className="cine-img cine-video"
-            autoPlay={playing}
-            muted
-            loop
-            playsInline
-            crossOrigin="anonymous"
-          />
+          <>
+            {slide.imageUrl && (
+              <img key={`bg-${index}`} aria-hidden="true" src={slide.imageUrl} alt="" className="cine-backdrop" />
+            )}
+            <video
+              key={`v-${index}`}
+              ref={videoRef}
+              src={slide.videoUrl}
+              className="cine-img cine-video"
+              autoPlay={playing}
+              muted
+              loop
+              playsInline
+              crossOrigin="anonymous"
+            />
+          </>
         ) : slide.imageUrl ? (
-          <img key={index} src={slide.imageUrl} alt="" className="cine-img" style={panStyle} />
+          <>
+            <img key={`bg-${index}`} aria-hidden="true" src={slide.imageUrl} alt="" className="cine-backdrop" />
+            <img key={index} src={slide.imageUrl} alt="" className="cine-img" style={panStyle} />
+          </>
         ) : (
           <div className="cine-img cine-img-empty" />
         )}
