@@ -200,6 +200,22 @@ section('Cinematic recap timeline');
   const afterScene = withVideo.findIndex(s => s.sceneKey === 's1');
   const nextProse = withVideo.slice(afterScene + 1).find(s => s.kind === 'prose');
   if (nextProse) assert(nextProse.videoUrl === 'http://x/clip1.mp4', 'prose after an animated scene keeps the clip');
+
+  // Dramatis Personae → closing credits slide
+  assert(!slides.some(s => s.kind === 'credits'), 'no credits slide without spotlights');
+  const withCast = buildTimeline({
+    ...chapter,
+    spotlights: [
+      { name: 'Emmanita', entityType: 'character', portraitUrl: 'http://x/em.png', moment: 'Communed with the treant' },
+      { name: 'Pippin', entityType: 'character' },
+      { name: 'Mata Palo', entityType: 'adversary' },
+    ],
+  });
+  const credits = withCast[withCast.length - 1];
+  assert(credits.kind === 'credits' && credits.cast.length === 3, 'spotlights append a closing credits slide');
+  assert(credits.cast[0].name === 'Emmanita' && credits.cast[2].entityType === 'adversary', 'credits carry name + role');
+  assert(credits.text === '', 'credits slide is silent (narration generator skips it)');
+  assert(credits.duration >= 6 && credits.duration <= 15, `credits duration scales with cast (${credits.duration}s)`);
 }
 
 // --- Defense calc: custom feature text bonuses (armor score / evasion) ---
