@@ -26,10 +26,23 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* contain (not cover): the whole illustration stays visible; the blurred
+     backdrop below fills the letterbox. Crucial on portrait phones showing
+     landscape art, which cover cropped to an unreadable center strip. */
+  object-fit: contain;
   transform-origin: center;
   animation: cine-fade 0.9s ease both;
   will-change: transform, opacity;
+}
+.cine-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(26px) brightness(0.45) saturate(1.15);
+  transform: scale(1.18);
+  animation: cine-fade 0.9s ease both;
 }
 .cine-img-empty {
   background: radial-gradient(circle at 50% 40%, #1a1f3a, #05060c 75%);

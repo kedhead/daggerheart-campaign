@@ -84,29 +84,50 @@ export default async function handler(req, res) {
         });
       }
 
-      // type === 'scene-video' — start the image→video prediction
+      // type === 'scene-video' — start the image→video prediction.
+      // Image-to-video models on Replicate differ in name and input shape, so
+      // try a chain of known-good official models (env override first) and use
+      // the first one that accepts the job. Auth/billing errors abort early;
+      // not-found/validation errors move on to the next candidate.
       const { imageUrl } = req.body;
       if (!imageUrl || !/^https:\/\//i.test(imageUrl)) {
         return res.status(400).json({ error: 'Missing required field: imageUrl (https URL of the scene image)' });
       }
-      const VIDEO_MODEL = 'wan-video/wan-2.2-i2v-fast';
       const motionPrompt = (prompt && String(prompt).slice(0, 500))
         || 'Subtle cinematic motion: gentle camera drift, ambient movement, characters breathe and shift naturally. Preserve the composition and art style of the source image.';
-      const createRes = await fetch(`https://api.replicate.com/v1/models/${VIDEO_MODEL}/predictions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${replicateKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ input: { image: imageUrl, prompt: motionPrompt } })
-      });
-      if (!createRes.ok) {
+
+      const candidates = [
+        ...(process.env.REPLICATE_VIDEO_MODEL
+          ? [{ path: process.env.REPLICATE_VIDEO_MODEL, input: { image: imageUrl, prompt: motionPrompt } }]
+          : []),
+        { path: 'wan-video/wan-2.2-i2v-fast', input: { image: imageUrl, prompt: motionPrompt } },
+        { path: 'wan-video/wan-2.2-i2v-a14b', input: { image: imageUrl, prompt: motionPrompt } },
+        { path: 'kwaivgi/kling-v2.1', input: { start_image: imageUrl, prompt: motionPrompt, duration: 5 } },
+        { path: 'minimax/video-01-live', input: { first_frame_image: imageUrl, prompt: motionPrompt } },
+      ];
+
+      const attempts = [];
+      for (const candidate of candidates) {
+        const createRes = await fetch(`https://api.replicate.com/v1/models/${candidate.path}/predictions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${replicateKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ input: candidate.input })
+        });
+        if (createRes.ok) {
+          const prediction = await createRes.json();
+          console.log(`scene-video started on ${candidate.path}: ${prediction.id}`);
+          return res.status(200).json({ predictionId: prediction.id, status: prediction.status, model: candidate.path });
+        }
         const errText = await createRes.text().catch(() => createRes.statusText);
-        console.error('Replicate scene-video error:', errText);
-        return res.status(createRes.status || 500).json({ error: `Replicate ${VIDEO_MODEL} error: ${truncateErr(errText)}` });
+        attempts.push(`${candidate.path} → ${createRes.status} ${truncateErr(errText)}`);
+        console.error(`Replicate scene-video ${candidate.path} failed:`, createRes.status, errText.slice(0, 300));
+        // Auth/billing problems will fail for every model — stop and report.
+        if (createRes.status === 401 || createRes.status === 402 || createRes.status === 403) break;
       }
-      const prediction = await createRes.json();
-      return res.status(200).json({ predictionId: prediction.id, status: prediction.status, model: VIDEO_MODEL });
+      return res.status(502).json({ error: `Scene animation could not start. Tried: ${attempts.join(' | ')}` });
     }
 
     if (!prompt) {
