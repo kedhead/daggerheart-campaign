@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react';
 import { useCampaignData } from '../contexts/CampaignDataContext';
-import { useStorybook } from '../hooks/useStorybook';
 
 const DashboardView = lazy(() => import('./Dashboard/DashboardView'));
 const CharactersView = lazy(() => import('./Characters/CharactersView'));
@@ -143,9 +142,9 @@ export default function AppRouter({
     maps,
     battleMaps,
     loading,
+    storybookChapters,
   } = useCampaignData();
 
-  const { chapters: storybookChapters } = useStorybook(currentCampaignId);
   const publishedStorybookChapters = storybookChapters?.filter(c => c.status === 'published') || [];
 
   if (loading) {
