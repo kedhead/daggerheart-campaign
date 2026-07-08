@@ -3,31 +3,35 @@ import { createPortal } from 'react-dom';
 import { X, Play, Pause, SkipBack, SkipForward, Music, Volume2, VolumeX, Sparkles, Download, Loader2, Wand2, Film, Clapperboard } from 'lucide-react';
 import { buildTimeline, timelineDuration } from './cinematicTimeline';
 import { createFX } from './cinematicFX';
-import { getTrackUrl } from '../../data/musicLibrary';
+import { buildScore, segmentAt, musicPlanFor } from './cinematicMusic';
+import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
 import { persistAudio, persistVideo, deleteStoredFile } from '../../services/audioStorage';
 import { exportCinematicWebM } from './cinematicExporter';
 import './CinematicPlayer.css';
 
-// A calm, atmospheric default score for recaps (exists in the curated library).
-const DEFAULT_MUSIC = 'CampfireMemories';
 
-// Curated narrator presets. `id` is an ElevenLabs premade voice; `style` steers
-// the OpenAI fallback (gpt-4o-mini-tts instructions) toward the same delivery.
+// Curated narrator presets. `id` is an ElevenLabs premade voice; `style` +
+// `fallbackVoice` steer the OpenAI fallback (gpt-4o-mini-tts) so the presets
+// still sound distinct when ElevenLabs is unavailable.
 const NARRATOR_VOICES = [
   {
     key: 'wizard', label: '🧙 Wizened Wizard', id: 'N2lVS1w4EtoT3dr4eOWO', // Callum — raspy, weathered
+    fallbackVoice: 'ash',
     style: 'Speak as a wise, ancient wizard telling an epic tale by firelight: unhurried, warm and gravelly, with gentle dramatic pauses and quiet wonder.',
   },
   {
     key: 'elder', label: '📖 Old Storyteller', id: 'pqHfZKP75CvOlQylNhV4', // Bill — aged, warm
+    fallbackVoice: 'fable',
     style: 'Speak as a kindly old storyteller by the hearth: slow, warm, weathered voice with fond amusement.',
   },
   {
     key: 'herald', label: '📯 Deep Herald', id: 'onwK4e9ZLuTAKqWW03F9', // Daniel — deep British
+    fallbackVoice: 'onyx',
     style: 'Speak as a solemn royal herald: deep, formal, resonant delivery with gravity and precision.',
   },
   {
     key: 'bard', label: '🎻 Warm Bard', id: 'JBFqnCBsd6RMkjVDRZzb', // George — warm narrator
+    fallbackVoice: 'ballad',
     style: 'Speak as a warm travelling bard: rich, engaging storytelling voice with easy charm.',
   },
 ];
@@ -36,7 +40,10 @@ const DEFAULT_VOICE_KEY = 'wizard';
 export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapter, narrationClientKey = '', onClose }) {
   const timeline = useMemo(() => buildTimeline(chapter, chapter?.narration), [chapter]);
   const total = useMemo(() => timelineDuration(timeline), [timeline]);
-  const trackUrl = useMemo(() => getTrackUrl(DEFAULT_MUSIC), []);
+  // Mood-matched movements ('auto') or a single DM-chosen track from the library.
+  const score = useMemo(() => buildScore(timeline, chapter?.id || ''), [timeline, chapter]);
+  const [musicChoice, setMusicChoice] = useState(chapter?.musicTrack || 'auto');
+  useEffect(() => { setMusicChoice(chapter?.musicTrack || 'auto'); }, [chapter?.musicTrack]);
 
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -60,6 +67,9 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
 
   const slide = timeline[index];
   const hasNarration = timeline.some(s => s.narrationUrl);
+  const currentMusicUrl = musicChoice === 'auto'
+    ? segmentAt(score, index)?.url || null
+    : getTrackUrl(musicChoice);
 
   // Advance / schedule each slide. Narration (when present & enabled) drives the
   // duration via its `ended` event; otherwise a timer of slide.duration seconds.
@@ -94,17 +104,37 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, playing, narrationOn, timeline]);
 
-  // Music: play/pause with the player, duck while narration is audible.
+  // Music controller: plays/pauses with the player, ducks under narration,
+  // and fades between tracks when the mood-matched score changes movement.
+  const fadeTimer = useRef(null);
   useEffect(() => {
     const m = musicRef.current;
     if (!m) return;
-    if (playing && musicOn) {
-      m.volume = (narrationOn && hasNarration) ? 0.12 : 0.28;
-      m.play().catch(() => {});
+    const targetVol = (narrationOn && hasNarration) ? 0.12 : 0.28;
+    const shouldPlay = playing && musicOn && !!currentMusicUrl;
+
+    clearInterval(fadeTimer.current);
+    if (!shouldPlay) { m.pause(); return; }
+
+    const absolute = new URL(currentMusicUrl, window.location.href).href;
+    if (m.src !== absolute) {
+      // Quick fade down → swap track → fade back up (~1.2s total).
+      let step = 0;
+      const steps = 6;
+      const startVol = m.volume || targetVol;
+      fadeTimer.current = setInterval(() => {
+        step += 1;
+        if (step < steps) { m.volume = Math.max(0, startVol * (1 - step / steps)); return; }
+        if (step === steps) { m.src = absolute; m.volume = 0; m.play().catch(() => {}); return; }
+        m.volume = Math.min(targetVol, targetVol * ((step - steps) / steps));
+        if (step >= steps * 2) clearInterval(fadeTimer.current);
+      }, 100);
     } else {
-      m.pause();
+      m.volume = targetVol;
+      m.play().catch(() => {});
     }
-  }, [playing, musicOn, narrationOn, hasNarration]);
+  }, [playing, musicOn, narrationOn, hasNarration, currentMusicUrl]);
+  useEffect(() => () => clearInterval(fadeTimer.current), []);
 
   // Animated slides: keep the clip's playback in step with the player.
   useEffect(() => {
@@ -134,6 +164,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     // guarantee fresh URLs so no browser/CDN cache can serve the old voice.
     const oldPaths = (chapter.narration || []).map(n => n.storagePath).filter(Boolean);
     const providers = new Set();
+    let fallbackReason = null;
     const batch = Date.now();
     try {
       for (const job of jobs) {
@@ -144,6 +175,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
             text: job.text,
             voiceId: voice.id,
             style: voice.style,
+            fallbackVoice: voice.fallbackVoice,
             apiKey: narrationClientKey || '__shared__'
           })
         });
@@ -151,8 +183,9 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
           const e = await resp.json().catch(() => ({}));
           throw new Error(e.error || `Narration failed (HTTP ${resp.status})`);
         }
-        const { audio, provider } = await resp.json();
+        const { audio, provider, fallbackReason: reason } = await resp.json();
         if (provider) providers.add(provider);
+        if (reason && !fallbackReason) fallbackReason = reason;
         const fileName = `narration-${chapter.id}-${job.i}-${batch}`;
         const url = await persistAudio(campaignId, audio, fileName);
         const duration = await probeDuration(url);
@@ -164,7 +197,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
       await updateChapter(chapter.id, { narration, narrationVoice: voice.key });
       await Promise.all(oldPaths.map(deleteStoredFile));
       if (providers.has('openai')) {
-        setError('Heads up: ElevenLabs was unavailable, so the OpenAI fallback voice was used — narrator presets only change delivery style there, not the voice itself. Check ELEVENLABS_API_KEY / quota to get the full voice change.');
+        setError(`Narrated with the OpenAI fallback (each preset still uses a distinct voice). ElevenLabs said: ${fallbackReason || 'unknown error'}`);
       }
     } catch (err) {
       console.error('Narration generation failed:', err);
@@ -250,9 +283,13 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     setPlaying(false);
     setExporting({ done: 0, total: timeline.length });
     try {
+      const musicPlan = !musicOn ? []
+        : musicChoice === 'auto'
+          ? musicPlanFor(score, timeline)
+          : [{ url: getTrackUrl(musicChoice), startSec: 0, durationSec: total }];
       await exportCinematicWebM({
         timeline,
-        musicUrl: musicOn ? trackUrl : null,
+        musicPlan,
         title: chapter.title || 'recap',
         onProgress: (done) => setExporting({ done, total: timeline.length }),
       });
@@ -262,7 +299,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     } finally {
       setExporting(null);
     }
-  }, [timeline, musicOn, trackUrl, chapter]);
+  }, [timeline, musicOn, musicChoice, score, total, chapter]);
 
   if (!slide) return null;
 
@@ -320,7 +357,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
         )}
       </div>
 
-      <audio ref={musicRef} src={trackUrl} loop preload="auto" crossOrigin="anonymous" />
+      <audio ref={musicRef} loop preload="auto" crossOrigin="anonymous" />
       <audio ref={narrationRef} preload="auto" crossOrigin="anonymous" />
 
       <div className="cine-topbar">
@@ -388,6 +425,26 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
             ) : (
               <div className="cine-tools-note"><Film size={12} /> Step to a scene image to animate it</div>
             )}
+
+            <select
+              className="cine-voice-select cine-music-select cine-tools-row"
+              value={musicChoice}
+              onChange={(e) => {
+                setMusicChoice(e.target.value);
+                updateChapter?.(chapter.id, { musicTrack: e.target.value });
+              }}
+              title="Soundtrack"
+              aria-label="Soundtrack"
+            >
+              <option value="auto">🎼 Soundtrack: Auto (mood-matched)</option>
+              {Object.entries(MUSIC_LIBRARY).map(([theme, tracks]) => (
+                <optgroup key={theme} label={theme.charAt(0).toUpperCase() + theme.slice(1)}>
+                  {tracks.map(t => (
+                    <option key={t} value={t}>{getTrackDisplayName(t)}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
 
             <div className="cine-tools-voice">
               <select
