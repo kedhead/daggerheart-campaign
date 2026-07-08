@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Play, Pause, SkipBack, SkipForward, Music, Volume2, VolumeX, Sparkles, Download, Loader2, Wand2, Film } from 'lucide-react';
+import { X, Play, Pause, SkipBack, SkipForward, Music, Volume2, VolumeX, Sparkles, Download, Loader2, Wand2, Film, Clapperboard } from 'lucide-react';
 import { buildTimeline, timelineDuration } from './cinematicTimeline';
 import { createFX } from './cinematicFX';
 import { getTrackUrl } from '../../data/musicLibrary';
@@ -49,7 +49,9 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
   const [generating, setGenerating] = useState(null); // {done,total} while generating narration
   const [exporting, setExporting] = useState(null);    // {done,total} while exporting
   const [animating, setAnimating] = useState(null);    // {label} while a scene clip generates
+  const [showTools, setShowTools] = useState(false);   // DM studio drawer
   const [error, setError] = useState(null);
+  const busy = !!(animating || generating || exporting);
 
   const musicRef = useRef(null);
   const narrationRef = useRef(null);
@@ -338,35 +340,55 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
               {narrationOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </button>
           )}
+          {isDM && (
+            <button
+              className={`cine-toggle ${showTools || busy ? 'on' : ''}`}
+              onClick={() => setShowTools(v => !v)}
+              title="Studio — animate scenes, narration, export"
+              aria-label="Studio tools"
+            >
+              {busy ? <Loader2 size={16} className="cine-spin" /> : <Clapperboard size={16} />}
+            </button>
+          )}
         </div>
 
-        {isDM && (
-          <div className="cine-dm-row">
-            {slide.kind === 'scene' && slide.sceneKey && slide.imageUrl && !slide.videoUrl && updateChapter && (
-              <button className="cine-dm-btn" onClick={animateScene} disabled={!!animating || !!exporting} title="Generate a short AI video clip from this scene's image (runs once, then saved)">
+        {isDM && showTools && (
+          <div className="cine-tools-sheet">
+            <div className="cine-tools-title"><Clapperboard size={12} /> Studio</div>
+
+            {slide.kind === 'scene' && slide.sceneKey && slide.imageUrl && !slide.videoUrl && updateChapter ? (
+              <button className="cine-dm-btn cine-tools-row" onClick={animateScene} disabled={!!animating || !!exporting} title="Generate a short AI video clip from this scene's image (runs once, then saved)">
                 {animating
                   ? <><Loader2 size={14} className="cine-spin" /> {animating.label}</>
                   : <><Film size={14} /> Animate this scene</>}
               </button>
+            ) : slide.videoUrl ? (
+              <div className="cine-tools-note"><Film size={12} /> This scene is already animated</div>
+            ) : (
+              <div className="cine-tools-note"><Film size={12} /> Step to a scene image to animate it</div>
             )}
-            <select
-              className="cine-voice-select"
-              value={voiceKey}
-              onChange={(e) => setVoiceKey(e.target.value)}
-              disabled={!!generating}
-              title="Narrator voice"
-              aria-label="Narrator voice"
-            >
-              {NARRATOR_VOICES.map(v => (
-                <option key={v.key} value={v.key}>{v.label}</option>
-              ))}
-            </select>
-            <button className="cine-dm-btn" onClick={generateNarration} disabled={!!generating}>
-              {generating
-                ? <><Loader2 size={14} className="cine-spin" /> Narrating {generating.done}/{generating.total}…</>
-                : <><Sparkles size={14} /> {hasNarration ? 'Re-narrate' : 'Add AI narration'}</>}
-            </button>
-            <button className="cine-dm-btn" onClick={exportVideo} disabled={!!exporting}>
+
+            <div className="cine-tools-voice">
+              <select
+                className="cine-voice-select"
+                value={voiceKey}
+                onChange={(e) => setVoiceKey(e.target.value)}
+                disabled={!!generating}
+                title="Narrator voice"
+                aria-label="Narrator voice"
+              >
+                {NARRATOR_VOICES.map(v => (
+                  <option key={v.key} value={v.key}>{v.label}</option>
+                ))}
+              </select>
+              <button className="cine-dm-btn" onClick={generateNarration} disabled={!!generating}>
+                {generating
+                  ? <><Loader2 size={14} className="cine-spin" /> {generating.done}/{generating.total}…</>
+                  : <><Sparkles size={14} /> {hasNarration ? 'Re-narrate' : 'Narrate'}</>}
+              </button>
+            </div>
+
+            <button className="cine-dm-btn cine-tools-row" onClick={exportVideo} disabled={!!exporting}>
               {exporting
                 ? <><Loader2 size={14} className="cine-spin" /> Rendering {exporting.done}/{exporting.total}…</>
                 : <><Download size={14} /> Export video (.webm)</>}

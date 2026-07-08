@@ -1,7 +1,8 @@
 .cine-overlay {
   position: fixed;
   inset: 0;
-  z-index: 3000;
+  /* Above the dice FAB (9000) and chat bubble (7500) — the recap owns the screen. */
+  z-index: 9500;
   background: #05060c;
   display: flex;
   flex-direction: column;
@@ -91,9 +92,10 @@
 .cine-lower {
   position: absolute;
   left: 50%;
-  bottom: clamp(6rem, 16vh, 9rem);
+  /* Clear the (collapsed) control bar + iPhone home indicator */
+  bottom: calc(clamp(6.5rem, 15vh, 9rem) + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
-  width: min(82%, 900px);
+  width: min(86%, 900px);
   padding: 1rem 1.5rem;
   background: rgba(8, 10, 20, 0.66);
   backdrop-filter: blur(6px);
@@ -105,10 +107,20 @@
   text-align: center;
   line-height: 1.5;
   animation: cine-rise 0.7s ease both;
-  max-height: 34vh;
-  overflow: hidden;
+  max-height: 36vh;
+  overflow-y: auto;
 }
 .cine-lower-prose { font-style: normal; }
+
+/* Phones: tighter caption panel so prose stays readable above the controls */
+@media (max-width: 480px) {
+  .cine-lower {
+    font-size: 0.95rem;
+    padding: 0.7rem 0.9rem;
+    width: 92%;
+    max-height: 32vh;
+  }
+}
 
 /* cine-rise keeps the translateX(-50%) that .cine-lower's left:50% anchoring
    needs; the full-bleed title card uses the -center variant without it. */
@@ -210,11 +222,55 @@
 }
 
 /* DM row */
-.cine-dm-row {
+/* Studio drawer — collapsible panel above the control bar so DM tools never
+   stack under the caption or crowd the transport buttons on phones. */
+.cine-tools-sheet {
+  position: absolute;
+  right: 1rem;
+  bottom: calc(100% + 0.25rem);
+  width: min(340px, calc(100vw - 2rem));
+  background: rgba(10, 12, 24, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 0.85rem;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.55rem;
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55);
+}
+.cine-tools-title {
+  display: flex;
   align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+}
+.cine-tools-row {
+  width: 100%;
+  justify-content: center;
+}
+.cine-tools-voice {
+  display: flex;
   gap: 0.5rem;
+}
+.cine-tools-voice .cine-voice-select {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+.cine-tools-voice .cine-dm-btn {
+  flex-shrink: 0;
+  justify-content: center;
+}
+.cine-tools-note {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.45);
 }
 .cine-dm-btn {
   display: inline-flex;
