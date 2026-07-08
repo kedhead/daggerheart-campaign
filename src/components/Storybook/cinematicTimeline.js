@@ -184,3 +184,18 @@ export function buildTimeline(chapter, narration = null) {
 export function timelineDuration(slides) {
   return (slides || []).reduce((sum, s) => sum + (s.duration || 0), 0);
 }
+
+/**
+ * Slides whose text should be voiced by AI narration: the title card and the
+ * story prose. Scene captions are plate labels — displayed under the art but
+ * never read aloud (narrating "Mata Palo stands in the corrupted cavern"
+ * between story paragraphs breaks the tale). Credits are always silent.
+ */
+export function narratableSlides(slides) {
+  return (slides || [])
+    .map((s, i) => ({ i, text: s.text, kind: s.kind }))
+    .filter(s =>
+      s.text && s.text.trim().length > 1 &&
+      s.kind !== 'scene' && s.kind !== 'credits'
+    );
+}

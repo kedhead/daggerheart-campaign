@@ -14,7 +14,7 @@ import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustmen
 import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
-import { buildTimeline, timelineDuration } from '../src/components/Storybook/cinematicTimeline.js';
+import { buildTimeline, timelineDuration, narratableSlides } from '../src/components/Storybook/cinematicTimeline.js';
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
@@ -216,6 +216,14 @@ section('Cinematic recap timeline');
   assert(credits.cast[0].name === 'Emmanita' && credits.cast[2].entityType === 'adversary', 'credits carry name + role');
   assert(credits.text === '', 'credits slide is silent (narration generator skips it)');
   assert(credits.duration >= 6 && credits.duration <= 15, `credits duration scales with cast (${credits.duration}s)`);
+
+  // Narration voices the title and prose — never scene captions or credits
+  const voiced = narratableSlides(withCast);
+  assert(voiced.some(v => v.text === 'The Siege of Korak'), 'title card is narrated');
+  assert(voiced.filter(v => v.kind === 'prose').length === 3, 'all prose paragraphs are narrated');
+  assert(!voiced.some(v => v.kind === 'scene'), 'scene captions are never narrated');
+  assert(!voiced.some(v => v.kind === 'credits'), 'credits stay silent');
+  voiced.forEach(v => assert(withCast[v.i].text === v.text, `narration index ${v.i} maps back to its slide`));
 }
 
 // --- Defense calc: custom feature text bonuses (armor score / evasion) ---
