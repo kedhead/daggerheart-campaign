@@ -35,6 +35,7 @@ export default function ParticipantCard({
     role,
     tier,
     evasion,
+    difficulty,
     attack,
     damage,
     attackName,
@@ -279,13 +280,15 @@ export default function ParticipantCard({
       {isExpanded && (
         <div className="border-t border-white/5 p-4 space-y-4 bg-black/20 animate-in slide-in-from-top-2 duration-200">
 
-          {/* Evasion + Motives row */}
+          {/* Difficulty + Motives row.
+              Adversaries store their evasion-equivalent stat as `difficulty`
+              (the number attackers must beat); PCs would carry `evasion`. */}
           <div className="flex flex-wrap items-center gap-4">
-            {evasion && (
+            {(difficulty ?? evasion) != null && (
               <div className="flex items-center gap-1.5">
                 <Shield size={14} className="text-blue-400" />
-                <span className="text-xs text-white/60 uppercase tracking-wide">Evasion</span>
-                <span className="font-bold text-white">{evasion}</span>
+                <span className="text-xs text-white/60 uppercase tracking-wide">Difficulty</span>
+                <span className="font-bold text-white">{difficulty ?? evasion}</span>
               </div>
             )}
             {motives && (

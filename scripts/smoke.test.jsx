@@ -16,6 +16,7 @@ import { responseParser } from '../src/services/responseParser.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration } from '../src/components/Storybook/cinematicTimeline.js';
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
+import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -199,6 +200,22 @@ section('Cinematic recap timeline');
   assert(marksForDamage(-4, th) === 0, 'negative damage marks nothing');
   assert(marksForDamage(1, { isMinion: true }) === 1, 'any damage defeats a minion');
   assert(marksForDamage(3, { isMinion: true, minionHp: 2 }) === 2, 'minion marks its full HP');
+}
+
+// --- Domain-card feature splitting (Grimoire & multi-ability cards) ---
+{
+  const ava = splitCardFeatures("Power Push: Spellcast vs Melee target, d10+2 magic damage and knocked to Far range. Tava's Armor: Spend Hope for +1 Armor Score on a touched target. Ice Spike: Spellcast Roll (12) to summon an ice spike within Far range, d6 physical damage.");
+  assert(ava.length === 3, `Book of Ava splits into 3 features (got ${ava.length})`);
+  assert(ava[0].name === 'Power Push' && ava[2].name === 'Ice Spike', 'feature names parsed in order');
+  assert(!/\.$/.test(ava[2].text) && ava[2].text.includes('d6 physical damage'), 'trailing period trimmed, text preserved');
+
+  const prose = splitCardFeatures('Mark a Stress to reroll any number of your damage dice on an attack.');
+  assert(prose.length === 1 && prose[0].name === null, 'prose-only card stays a single unnamed block');
+
+  const single = splitCardFeatures('Gifted Tracker: You have advantage on rolls to track a specific creature.');
+  assert(single.length === 1 && single[0].name === 'Gifted Tracker', 'single named feature keeps its header');
+
+  assert(splitCardFeatures('').length === 0 && splitCardFeatures(null).length === 0, 'empty/nullish description → no features');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

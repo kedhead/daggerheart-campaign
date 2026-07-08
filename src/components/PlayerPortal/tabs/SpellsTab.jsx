@@ -1,17 +1,13 @@
 import { useState } from 'react';
 import { getCardByName } from '../../../data/daggerheartDomainCards';
 import { extractCardDice } from '../../../utils/daggerheartRollUtils';
+import { splitCardFeatures } from '../../../utils/domainCardText';
 
 function parseGrimoireEntries(description) {
-  // Grimoire descriptions have the form: "SpellName: text. SpellName: text."
-  // Split on ". " followed by a title-case word and a colon.
-  const parts = description.split(/\.\s+(?=[A-Z][a-zA-Z ']+:)/);
-  if (parts.length < 2) return null;
-  return parts.map(part => {
-    const colon = part.indexOf(':');
-    if (colon === -1) return null;
-    return { name: part.slice(0, colon).trim(), text: part.slice(colon + 1).trim().replace(/\.$/, '') };
-  }).filter(Boolean);
+  // Split "SpellName: text. SpellName: text." into per-spell entries; only
+  // return a list when the card actually holds multiple named abilities.
+  const entries = splitCardFeatures(description).filter(e => e.name);
+  return entries.length >= 2 ? entries : null;
 }
 
 const DOMAIN_COLORS = {
