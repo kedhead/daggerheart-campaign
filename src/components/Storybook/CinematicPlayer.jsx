@@ -47,8 +47,14 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
 
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
-  const [musicOn, setMusicOn] = useState(true);
   const [narrationOn, setNarrationOn] = useState(true);
+  // Mixer levels (0..1), remembered per device. Music sits well under the
+  // narrator by design: effective element volume = musicVol × 0.6 (×0.15
+  // while narration speaks); narration plays at narrVol directly.
+  const [musicVol, setMusicVol] = useState(() => readVol('lrCineVolMusic', 0.45));
+  const [narrVol, setNarrVol] = useState(() => readVol('lrCineVolNarration', 1));
+  const [showMixer, setShowMixer] = useState(false);
+  const musicOn = musicVol > 0.005;
   const [fxOn, setFxOn] = useState(true);
   const [voiceKey, setVoiceKey] = useState(
     () => (NARRATOR_VOICES.some(v => v.key === chapter?.narrationVoice) && chapter.narrationVoice) || DEFAULT_VOICE_KEY
@@ -90,6 +96,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
       const a = narrationRef.current;
       a.src = narrationUrl;
       a.currentTime = 0;
+      a.volume = narrVolRef.current;
       a.play().catch(() => {});
       a.onended = advance;
       timerRef.current = setTimeout(advance, (slide.duration + 3) * 1000); // stall safety
@@ -104,13 +111,24 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, playing, narrationOn, timeline]);
 
+  // Live volume updates: persist choices; retune the narrator mid-sentence.
+  const narrVolRef = useRef(narrVol);
+  useEffect(() => {
+    narrVolRef.current = narrVol;
+    if (narrationRef.current) narrationRef.current.volume = narrVol;
+    try { localStorage.setItem('lrCineVolNarration', String(narrVol)); } catch { /* private mode */ }
+  }, [narrVol]);
+  useEffect(() => {
+    try { localStorage.setItem('lrCineVolMusic', String(musicVol)); } catch { /* private mode */ }
+  }, [musicVol]);
+
   // Music controller: plays/pauses with the player, ducks under narration,
   // and fades between tracks when the mood-matched score changes movement.
   const fadeTimer = useRef(null);
   useEffect(() => {
     const m = musicRef.current;
     if (!m) return;
-    const targetVol = (narrationOn && hasNarration) ? 0.12 : 0.28;
+    const targetVol = musicVol * ((narrationOn && hasNarration) ? 0.15 : 0.6);
     const shouldPlay = playing && musicOn && !!currentMusicUrl;
 
     clearInterval(fadeTimer.current);
@@ -133,7 +151,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
       m.volume = targetVol;
       m.play().catch(() => {});
     }
-  }, [playing, musicOn, narrationOn, hasNarration, currentMusicUrl]);
+  }, [playing, musicOn, musicVol, narrationOn, hasNarration, currentMusicUrl]);
   useEffect(() => () => clearInterval(fadeTimer.current), []);
 
   // Animated slides: keep the clip's playback in step with the player.
@@ -290,6 +308,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
       await exportCinematicWebM({
         timeline,
         musicPlan,
+        mix: { music: musicVol, narration: narrVol },
         title: chapter.title || 'recap',
         onProgress: (done) => setExporting({ done, total: timeline.length }),
       });
@@ -299,7 +318,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     } finally {
       setExporting(null);
     }
-  }, [timeline, musicOn, musicChoice, score, total, chapter]);
+  }, [timeline, musicOn, musicVol, narrVol, musicChoice, score, total, chapter]);
 
   if (!slide) return null;
 
@@ -387,7 +406,12 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
 
           <div className="cine-spacer" />
 
-          <button className={`cine-toggle ${musicOn ? 'on' : ''}`} onClick={() => setMusicOn(v => !v)} title="Background music">
+          <button
+            className={`cine-toggle ${showMixer || musicOn ? 'on' : ''}`}
+            onClick={() => { setShowMixer(v => !v); setShowTools(false); }}
+            title="Volume mixer — music & narrator levels"
+            aria-label="Volume mixer"
+          >
             <Music size={16} />
           </button>
           <button className={`cine-toggle ${fxOn ? 'on' : ''}`} onClick={() => setFxOn(v => !v)} title="Ambient effects (embers, fog, rain…)">
@@ -401,7 +425,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
           {isDM && (
             <button
               className={`cine-toggle ${showTools || busy ? 'on' : ''}`}
-              onClick={() => setShowTools(v => !v)}
+              onClick={() => { setShowTools(v => !v); setShowMixer(false); }}
               title="Studio — animate scenes, narration, export"
               aria-label="Studio tools"
             >
@@ -409,6 +433,33 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
             </button>
           )}
         </div>
+
+        {showMixer && (
+          <div className="cine-tools-sheet cine-mixer">
+            <div className="cine-tools-title"><Music size={12} /> Volume</div>
+            <label className="cine-mixer-row" title="Background music volume">
+              <Music size={14} />
+              <input
+                type="range" min="0" max="100"
+                value={Math.round(musicVol * 100)}
+                onChange={(e) => setMusicVol(Number(e.target.value) / 100)}
+                aria-label="Music volume"
+              />
+              <span className="cine-mixer-val">{Math.round(musicVol * 100)}%</span>
+            </label>
+            <label className="cine-mixer-row" title="Narrator volume">
+              <Volume2 size={14} />
+              <input
+                type="range" min="0" max="100"
+                value={Math.round(narrVol * 100)}
+                onChange={(e) => setNarrVol(Number(e.target.value) / 100)}
+                aria-label="Narrator volume"
+              />
+              <span className="cine-mixer-val">{Math.round(narrVol * 100)}%</span>
+            </label>
+            <div className="cine-tools-note">Music auto-dims further while the narrator speaks.</div>
+          </div>
+        )}
 
         {isDM && showTools && (
           <div className="cine-tools-sheet">
@@ -526,6 +577,16 @@ function kenBurnsStyle(slide, playing) {
     transform: `scale(${playing ? p.toScale : p.fromScale}) translate(${playing ? p.toX : p.fromX}%, ${playing ? p.toY : p.fromY}%)`,
     transition: `transform ${slide.duration}s linear`,
   };
+}
+
+// Read a persisted mixer level (0..1) with a fallback default.
+function readVol(key, fallback) {
+  try {
+    const v = parseFloat(localStorage.getItem(key));
+    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 // Probe an mp3's duration client-side.
