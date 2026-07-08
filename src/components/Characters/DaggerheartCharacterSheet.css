@@ -950,6 +950,32 @@
   line-height: 1.5;
 }
 
+.dh-domain-card-features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.dh-domain-card-feature {
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.dh-domain-card-feature-name {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.dh-domain-card-feature-text {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* Multi-feature cards get a subtle divider between abilities. */
+.dh-domain-card-features .dh-domain-card-feature + .dh-domain-card-feature {
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
 .dh-domain-card-badges {
   display: flex;
   align-items: center;

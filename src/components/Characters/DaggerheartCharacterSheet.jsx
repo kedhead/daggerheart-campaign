@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
+import { splitCardFeatures } from '../../utils/domainCardText';
 import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
@@ -991,6 +992,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                 <div className="dh-domain-cards-grid">
                   {cards.map(card => {
                     const isSpell = card.type === 'Spell';
+                    const features = splitCardFeatures(card.description);
+                    const isMultiFeature = features.length > 1 || (features[0] && features[0].name);
                     const diceParsed = extractCardDice(card.description);
                     const diceLabel = diceParsed
                       ? `${diceParsed.quantity}d${diceParsed.dieType}${diceParsed.modifier > 0 ? `+${diceParsed.modifier}` : ''}`
@@ -1022,7 +1025,18 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                             )}
                           </div>
                         </div>
-                        <div className="dh-domain-card-desc">{card.description}</div>
+                        {isMultiFeature ? (
+                          <div className="dh-domain-card-features">
+                            {features.map((f, fi) => (
+                              <div key={fi} className="dh-domain-card-feature">
+                                {f.name && <span className="dh-domain-card-feature-name">{f.name}: </span>}
+                                <span className="dh-domain-card-feature-text">{f.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="dh-domain-card-desc">{card.description}</div>
+                        )}
                         {campaign?.id && (isSpell || diceLabel) && (
                           <div className="dh-weapon-roll-row" style={{ marginTop: '0.5rem' }}>
                             {isSpell && (
