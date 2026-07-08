@@ -232,6 +232,18 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
   const equippedEquipment = equippedItems.filter(i => i.type === 'equipment');
 
+  // Derived defenses (Armor Score, Evasion, damage thresholds) come from one
+  // shared calculator so the full sheet and the Player Portal never disagree.
+  // It applies armor features (Protective/Barrier/Double Duty, Heavy/Flexible)
+  // and passive domain-card abilities (Bare Bones, Untouchable, ...).
+  const {
+    armorScore: effectiveArmorScore,
+    evasion: effectiveEvasion,
+    majorThreshold,
+    severeThreshold,
+    massiveThreshold,
+  } = useMemo(() => computeDefenses(character, equippedItems), [character, equippedItems]);
+
   // Resize armor slots to match the equipped armor's slot count.
   // If no armor is equipped, fall back to the character's stored slot count.
   // Apply the same legacy-slot correction used in DaggerheartArmorForm: items
@@ -245,21 +257,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (slots === 6 && (sd.armorScore ?? 0) !== 6 && !hasFeatureName(sd.features, 'Fortified')) {
       slots = sd.armorScore || slots;
     }
+    // Armor Score bonuses beyond the armor's own base grant extra slots to
+    // mark (per DH, your Armor Score IS your slot count): shields with
+    // Protective, "+1 armor score" features, passive ability bonuses, etc.
+    const scoreBonus = Math.max(0, effectiveArmorScore - (sd.armorScore ?? slots));
+    slots += scoreBonus;
     return slots > 0 ? slots : rawArmorSlots.length;
   })();
   const armorSlots = Array.from({ length: equippedArmorSlotCount }, (_, i) => rawArmorSlots[i] ?? false);
-
-  // Derived defenses (Armor Score, Evasion, damage thresholds) come from one
-  // shared calculator so the full sheet and the Player Portal never disagree.
-  // It applies armor features (Protective/Barrier/Double Duty, Heavy/Flexible)
-  // and passive domain-card abilities (Bare Bones, Untouchable, ...).
-  const {
-    armorScore: effectiveArmorScore,
-    evasion: effectiveEvasion,
-    majorThreshold,
-    severeThreshold,
-    massiveThreshold,
-  } = useMemo(() => computeDefenses(character, equippedItems), [character, equippedItems]);
 
   const hpFilledCount = hpSlots.filter(Boolean).length;
   const stressFilledCount = stressSlots.filter(Boolean).length;
