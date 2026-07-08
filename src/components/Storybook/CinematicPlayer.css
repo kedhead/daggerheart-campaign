@@ -33,6 +33,21 @@
 .cine-img-empty {
   background: radial-gradient(circle at 50% 40%, #1a1f3a, #05060c 75%);
 }
+/* AI-animated scene clip: same cover-fit as the still, no Ken Burns transform
+   (the clip carries its own motion). */
+.cine-video {
+  transform: none;
+}
+/* Ambient particle overlay — rendered after the vignette and before the text
+   in the DOM, so it sits above the image but under captions. Never intercepts
+   touches. */
+.cine-fx-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
 @keyframes cine-fade { from { opacity: 0; } to { opacity: 1; } }
 
 .cine-vignette {
@@ -52,7 +67,7 @@
   justify-content: center;
   text-align: center;
   padding: 2rem;
-  animation: cine-rise 0.9s ease both;
+  animation: cine-rise-center 0.9s ease both;
 }
 .cine-eyebrow {
   font-size: 0.85rem;
@@ -95,7 +110,10 @@
 }
 .cine-lower-prose { font-style: normal; }
 
+/* cine-rise keeps the translateX(-50%) that .cine-lower's left:50% anchoring
+   needs; the full-bleed title card uses the -center variant without it. */
 @keyframes cine-rise { from { opacity: 0; transform: translate(-50%, 16px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes cine-rise-center { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Top bar */
 .cine-topbar {

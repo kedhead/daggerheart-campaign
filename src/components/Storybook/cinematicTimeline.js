@@ -9,12 +9,17 @@
  * {
  *   kind: 'title' | 'scene' | 'prose',
  *   imageUrl: string|null,   // backdrop (scenes own image; prose reuses last scene)
+ *   videoUrl: string|null,   // AI-animated clip for the backdrop, when generated
+ *   sceneKey: string|null,   // key into chapter.sceneVideos (scene slides only)
  *   text: string,            // caption / paragraph / chapter title
  *   duration: number,        // seconds
  *   pan: { fromScale, toScale, fromX, fromY, toX, toY },  // % offsets for Ken Burns
+ *   fx: string,              // ambient particle effect (see cinematicFX.js)
  *   narrationUrl: string|null
  * }
  */
+
+import { pickEffectForText } from './cinematicFX';
 
 // Also used by ChapterReader to lay out the printed page — kept here so the
 // reader and the recap always agree on scene placement.
@@ -78,38 +83,58 @@ export function buildTimeline(chapter, narration = null) {
   const blocks = interleaveProseAndScenes(paragraphs, scenes);
 
   const slides = [];
-  const firstImage = scenes[0]?.imageUrl || null;
+  const sceneVideos = chapter.sceneVideos || {};
+  // Key a scene into chapter.sceneVideos by its id, falling back to its
+  // position for chapters authored before scenes carried ids.
+  const keyFor = (scene, order) => scene.id || `s${order}`;
+  const firstScene = scenes[0] || null;
+  const firstImage = firstScene?.imageUrl || null;
+  const firstVideo = firstScene ? sceneVideos[keyFor(firstScene, 0)]?.url || null : null;
 
   // Title card
   slides.push({
     kind: 'title',
     imageUrl: firstImage,
+    videoUrl: firstVideo,
+    sceneKey: null,
     text: chapter.title || 'Untitled Chapter',
     duration: 4,
     pan: panFor(0),
+    fx: 'sparkles',
     narrationUrl: null,
   });
 
   let currentImage = firstImage;
+  let currentVideo = firstVideo;
+  let sceneOrder = 0;
   blocks.forEach((blk) => {
     const i = slides.length;
     if (blk.kind === 'scene') {
+      const sceneKey = keyFor(blk.value, sceneOrder);
+      sceneOrder += 1;
       currentImage = blk.value.imageUrl || currentImage;
+      currentVideo = sceneVideos[sceneKey]?.url || null;
       slides.push({
         kind: 'scene',
         imageUrl: blk.value.imageUrl,
+        videoUrl: currentVideo,
+        sceneKey,
         text: blk.value.caption || '',
         duration: defaultSlideDuration(blk.value.caption || 'scene beat here'),
         pan: panFor(i),
+        fx: pickEffectForText(blk.value.caption),
         narrationUrl: null,
       });
     } else {
       slides.push({
         kind: 'prose',
         imageUrl: currentImage,
+        videoUrl: currentVideo,
+        sceneKey: null,
         text: blk.value,
         duration: defaultSlideDuration(blk.value),
         pan: panFor(i),
+        fx: pickEffectForText(blk.value),
         narrationUrl: null,
       });
     }

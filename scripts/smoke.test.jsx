@@ -17,6 +17,7 @@ import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration } from '../src/components/Storybook/cinematicTimeline.js';
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
+import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -186,6 +187,31 @@ section('Cinematic recap timeline');
   const withNarr = buildTimeline(chapter, [{ index: 1, url: 'http://x/n1.mp3', duration: 9 }]);
   assert(withNarr[1].narrationUrl === 'http://x/n1.mp3', 'narration attaches to slide by index');
   assert(withNarr[1].duration >= 9, 'narration duration drives slide length');
+
+  // Ambient FX + AI scene clips
+  assert(slides.every(s => typeof s.fx === 'string'), 'every slide carries an ambient effect');
+  const burning = slides.find(s => s.text === 'The burning gate');
+  assert(burning.fx === 'embers' && burning.sceneKey === 's1', 'fire caption → embers, scene keyed by id');
+  const withVideo = buildTimeline({ ...chapter, sceneVideos: { s1: { url: 'http://x/clip1.mp4' } } });
+  assert(withVideo.find(s => s.sceneKey === 's1').videoUrl === 'http://x/clip1.mp4', 'scene clip attaches by scene id');
+  assert(withVideo[0].videoUrl === 'http://x/clip1.mp4', 'title card reuses the first scene clip');
+  const afterScene = withVideo.findIndex(s => s.sceneKey === 's1');
+  const nextProse = withVideo.slice(afterScene + 1).find(s => s.kind === 'prose');
+  if (nextProse) assert(nextProse.videoUrl === 'http://x/clip1.mp4', 'prose after an animated scene keeps the clip');
+}
+
+// --- Cinematic ambient FX engine ---
+{
+  assert(pickEffectForText('The campfire crackled low') === 'embers', 'fire text → embers');
+  assert(pickEffectForText('Rain lashed the parapets') === 'rain', 'storm text → rain');
+  assert(pickEffectForText('Snow buried the pass') === 'snow', 'winter text → snow');
+  assert(pickEffectForText('She began the ritual, arcane light rising') === 'sparkles', 'magic text → sparkles');
+  assert(pickEffectForText('Mist crept through the crypt') === 'fog', 'mist text → fog');
+  assert(pickEffectForText('They shook hands and parted ways') === 'dust', 'plain text → dust motes');
+  const fx = createFX('embers', 640, 360);
+  fx.update(0.016);
+  assert(typeof fx.draw === 'function' && fx.effect === 'embers', 'createFX returns a live effect instance');
+  assert(createFX('none', 640, 360).effect === 'none', 'none effect is a no-op instance');
 }
 
 // --- Threshold damage → HP marks (Daggerheart adversary damage model) ---
