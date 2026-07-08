@@ -1,6 +1,10 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/api/download-image", "destination": "/api/download-proxy" },
+    { "source": "/api/download-audio", "destination": "/api/download-proxy" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
