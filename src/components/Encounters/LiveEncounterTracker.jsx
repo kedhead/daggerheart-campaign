@@ -193,9 +193,17 @@ export default function LiveEncounterTracker({
               Adversaries <span className="text-white/40 text-base font-normal">({activeParticipants.length} active)</span>
             </h3>
 
-            {activeParticipants.length === 0 ? (
+            {activeParticipants.length === 0 && participants.length > 0 ? (
+              <div className="p-8 text-center bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
+                <p className="text-2xl font-bold text-emerald-300 mb-1">⚔️ Victory!</p>
+                <p className="text-white/60 text-sm mb-4">Every adversary has been defeated.</p>
+                {isDM && (
+                  <button className="btn btn-primary" onClick={() => setShowEndConfirm(true)}>End Encounter</button>
+                )}
+              </div>
+            ) : activeParticipants.length === 0 ? (
               <div className="p-8 text-center bg-[var(--bg-secondary)] border border-white/5 rounded-xl border-dashed">
-                <p className="text-white/40 italic">All adversaries defined.</p>
+                <p className="text-white/40 italic">No adversaries in this encounter yet.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

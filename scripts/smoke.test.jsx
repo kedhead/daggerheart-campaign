@@ -15,6 +15,7 @@ import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services
 import { responseParser } from '../src/services/responseParser.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration } from '../src/components/Storybook/cinematicTimeline.js';
+import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -184,6 +185,20 @@ section('Cinematic recap timeline');
   const withNarr = buildTimeline(chapter, [{ index: 1, url: 'http://x/n1.mp3', duration: 9 }]);
   assert(withNarr[1].narrationUrl === 'http://x/n1.mp3', 'narration attaches to slide by index');
   assert(withNarr[1].duration >= 9, 'narration duration drives slide length');
+}
+
+// --- Threshold damage → HP marks (Daggerheart adversary damage model) ---
+{
+  const th = { major: 9, severe: 17 };
+  assert(marksForDamage(5, th) === 1, 'damage below Major marks 1 HP');
+  assert(marksForDamage(9, th) === 2, 'damage at Major threshold marks 2 HP');
+  assert(marksForDamage(12, th) === 2, 'damage between Major and Severe marks 2 HP');
+  assert(marksForDamage(17, th) === 3, 'damage at Severe threshold marks 3 HP');
+  assert(marksForDamage(25, th) === 3, 'damage above Severe marks 3 HP');
+  assert(marksForDamage(0, th) === 0, 'zero damage marks nothing');
+  assert(marksForDamage(-4, th) === 0, 'negative damage marks nothing');
+  assert(marksForDamage(1, { isMinion: true }) === 1, 'any damage defeats a minion');
+  assert(marksForDamage(3, { isMinion: true, minionHp: 2 }) === 2, 'minion marks its full HP');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

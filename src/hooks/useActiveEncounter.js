@@ -188,11 +188,10 @@ export function useActiveEncounter(campaignId) {
         if (untriggered.length > 0) phaseToTrigger = untriggered[0];
       }
     } else if (damageType === 'stress') {
-      const newStress = Math.min(participant.maxStress, participant.currentStress + amount);
-      updates.currentStress = newStress;
-      if (newStress >= participant.maxStress) {
-        updates.isDefeated = true;
-      }
+      // Marking Stress never defeats a Daggerheart adversary — only HP does.
+      // (An adversary forced to mark Stress with none left marks an HP instead;
+      // the GM handles that via the HP controls.)
+      updates.currentStress = Math.min(participant.maxStress, participant.currentStress + amount);
     }
 
     const newParticipants = activeEncounter.participants.map(p =>
