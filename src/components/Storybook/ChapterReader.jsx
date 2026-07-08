@@ -5,6 +5,8 @@ import {
   Edit3, ChevronLeft, ChevronRight, BookOpen, Film, Mic, Send, Trash2, X
 } from 'lucide-react';
 import MediaLightbox from './MediaLightbox';
+import CinematicPlayer from './CinematicPlayer';
+import { interleaveProseAndScenes } from './cinematicTimeline';
 import { useAllJournals } from '../../hooks/useStorybook';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +46,7 @@ export default function ChapterReader({
     }
     return 0;
   });
+  const [cinematicOpen, setCinematicOpen] = useState(false);
 
   const chapterIds = useMemo(() => orderedChapters.map(c => c.id), [orderedChapters]);
   // Public/share-link visitors don't have permission to read journalEntries,
@@ -131,6 +134,14 @@ export default function ChapterReader({
         <div style={{ display:'flex', gap:'0.5rem', alignItems:'center', flexWrap:'wrap' }}>
           <button type="button" className="sb-toolbar-btn" onClick={() => setTocOpen(true)}>
             <BookOpen size={13} /> Contents
+          </button>
+          <button
+            type="button"
+            className="sb-toolbar-btn"
+            onClick={() => setCinematicOpen(true)}
+            title="Play this chapter as an animated recap"
+          >
+            <Film size={13} /> Play Recap
           </button>
           <button
             type="button"
@@ -347,40 +358,23 @@ export default function ChapterReader({
           onNavigate={navigateLightbox}
         />
       )}
+
+      {cinematicOpen && (
+        <CinematicPlayer
+          chapter={currentChapter}
+          campaignId={campaignId}
+          isDM={isDM}
+          updateChapter={storybook?.updateChapter}
+          onClose={() => setCinematicOpen(false)}
+        />
+      )}
     </div>
   );
 }
 
 /* ── Content helpers ─────────────────────────────────────────────────────── */
-
-function interleaveProseAndScenes(paragraphs, scenes) {
-  if (!scenes || scenes.length === 0) {
-    return paragraphs.map(p => ({ kind: 'p', value: p }));
-  }
-  if (!paragraphs || paragraphs.length === 0) {
-    return scenes.map(s => ({ kind: 'scene', value: s }));
-  }
-
-  // Decide after which paragraph each scene should appear.
-  // Evenly spaced: scene i after paragraph floor(i * P / (S+1)) + 1.
-  const P = paragraphs.length;
-  const S = scenes.length;
-  const boundaries = new Map(); // paragraphIdx -> scene[]
-  for (let i = 0; i < S; i++) {
-    const after = Math.max(1, Math.min(P, Math.floor(((i + 1) * P) / (S + 1))));
-    const list = boundaries.get(after) || [];
-    list.push(scenes[i]);
-    boundaries.set(after, list);
-  }
-
-  const out = [];
-  paragraphs.forEach((p, idx) => {
-    out.push({ kind: 'p', value: p });
-    const here = boundaries.get(idx + 1);
-    if (here) here.forEach(sc => out.push({ kind: 'scene', value: sc }));
-  });
-  return out;
-}
+/* interleaveProseAndScenes is shared with the cinematic recap — see
+   ./cinematicTimeline.js (imported at the top of this file). */
 
 function ProseParagraph({ content, illuminated }) {
   if (!illuminated) {
