@@ -37,15 +37,37 @@ function RollPill({ label, formula, onClick, kind }) {
   );
 }
 
-export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
+export default function SpellsTab({ character, roll, rollDamage, campaignId, updateCharacter }) {
   const [openCard, setOpenCard] = useState(null);
 
   const cardNames = character.domainCards || [];
   const cards = cardNames.map(n => getCardByName(n)).filter(Boolean);
 
-  // First 3 cards in loadout, rest in vault
-  const loadout = cards.slice(0, 3);
-  const vault = cards.slice(3);
+  // Real loadout/vault split (SRD: max 5 active cards). Vaulted cards are tracked
+  // by name on the character; recall costs Stress equal to the card's recallCost.
+  const vaultNames = character.vaultCards || [];
+  const loadout = cards.filter(c => !vaultNames.includes(c.name));
+  const vault = cards.filter(c => vaultNames.includes(c.name));
+  const stressSlots = character.stressSlots || [false, false, false, false, false, false];
+  const unmarkedStress = stressSlots.filter(s => !s).length;
+
+  const moveToVault = (name) => {
+    if (!updateCharacter || vaultNames.includes(name)) return;
+    updateCharacter(character.id, { vaultCards: [...vaultNames, name] });
+  };
+  const recallFromVault = (card) => {
+    if (!updateCharacter) return;
+    const cost = card.recallCost || 0;
+    const updates = { vaultCards: vaultNames.filter(n => n !== card.name) };
+    if (cost > 0) {
+      if (cost > unmarkedStress) return; // not enough Stress
+      const s = [...stressSlots];
+      let marked = 0;
+      for (let i = 0; i < s.length && marked < cost; i++) if (!s[i]) { s[i] = true; marked++; }
+      updates.stressSlots = s;
+    }
+    updateCharacter(character.id, updates);
+  };
 
   const domains = [character.primaryDomain, character.secondaryDomain].filter(Boolean);
 
@@ -88,7 +110,12 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
       {/* Loadout */}
       {loadout.length > 0 && (
         <div>
-          <div className="lrp-section-label">Loadout — {loadout.length} cards</div>
+          <div className="lrp-section-label">Loadout — {loadout.length}/5 cards</div>
+          {loadout.length > 5 && (
+            <div style={{ fontSize: 11, color: '#f5c76a', margin: '0 0 8px', padding: '6px 10px', borderRadius: 8, background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)' }}>
+              Over the 5-card limit — vault {loadout.length - 5} card{loadout.length - 5 > 1 ? 's' : ''}.
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {loadout.map(card => {
               const dc = DOMAIN_COLORS[card.domain] || '#a78bfa';
@@ -112,8 +139,16 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.15em', fontWeight: 700 }}>RECALL</span>
-                        <span className="lrp-cinzel" style={{ fontSize: 12, color: '#eab308', fontWeight: 800 }}>1</span>
+                        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.15em', fontWeight: 700 }}>⚡ RECALL</span>
+                        <span className="lrp-cinzel" style={{ fontSize: 12, color: '#eab308', fontWeight: 800 }}>{card.recallCost ?? 0}</span>
+                        {updateCharacter && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); moveToVault(card.name); }}
+                            style={{ marginTop: 2, fontSize: 9, padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', letterSpacing: '0.1em', fontWeight: 700 }}
+                          >
+                            VAULT
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -172,18 +207,40 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId }) {
         <div>
           <div className="lrp-section-label">Vault — {vault.length} cards</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {vault.map(card => (
-              <div key={card.name} style={{
-                padding: '10px 12px', borderRadius: 10, opacity: 0.55,
-                background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{card.name}</span>
-                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Lv {card.level} · {card.domain}
-                </span>
-              </div>
-            ))}
+            {vault.map(card => {
+              const cost = card.recallCost || 0;
+              const loadoutFull = loadout.length >= 5;
+              const cantAfford = cost > unmarkedStress;
+              const disabled = loadoutFull || cantAfford;
+              return (
+                <div key={card.name} style={{
+                  padding: '10px 12px', borderRadius: 10,
+                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8,
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>{card.name}</span>
+                    <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 700, marginLeft: 8 }}>
+                      Lv {card.level} · ⚡{cost}
+                    </span>
+                  </div>
+                  {updateCharacter && (
+                    <button
+                      onClick={() => recallFromVault(card)}
+                      disabled={disabled}
+                      title={loadoutFull ? 'Loadout full — vault a card first' : cantAfford ? `Needs ${cost} unmarked Stress` : `Recall (marks ${cost} Stress)`}
+                      style={{
+                        flexShrink: 0, fontSize: 9, padding: '5px 10px', borderRadius: 6, fontWeight: 700, letterSpacing: '0.1em',
+                        border: '1px solid rgba(106,176,200,0.4)', background: disabled ? 'rgba(255,255,255,0.03)' : 'rgba(74,144,164,0.15)',
+                        color: disabled ? 'rgba(255,255,255,0.3)' : '#8fd0e8', cursor: disabled ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      RECALL{cost > 0 ? ` (${cost})` : ''}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

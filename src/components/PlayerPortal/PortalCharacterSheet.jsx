@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, ChevronLeft } from 'lucide-react';
+import { X, ChevronLeft, Moon, ArrowUp, Skull } from 'lucide-react';
 import { useDice, DiceTray } from '../../dice';
 import PortalSlotTracker from './PortalSlotTracker';
 import ActionsTab from './tabs/ActionsTab';
@@ -8,6 +8,9 @@ import StatsTab from './tabs/StatsTab';
 import InventoryTab from './tabs/InventoryTab';
 import FeaturesTab from './tabs/FeaturesTab';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
+import RestModal from '../Characters/RestModal';
+import DeathMoveModal from '../Characters/DeathMoveModal';
+import LevelUpWizard from '../Characters/LevelUpWizard';
 
 const TABS = [
   { key: 'actions',   label: 'Actions'   },
@@ -29,6 +32,15 @@ function toBoolArray(filled, max) {
 export default function PortalCharacterSheet({ character, updateCharacter, campaign, items, showBack, onBack, onExit }) {
   const [activeTab, setActiveTab] = useState('actions');
   const [rollBonus, setRollBonus] = useState(null);
+  const [showRest, setShowRest] = useState(false);
+  const [showDeath, setShowDeath] = useState(false);
+  const [showLevelUp, setShowLevelUp] = useState(false);
+
+  const hpMarked = (character.hpSlots || []).filter(Boolean).length;
+  const hpMax = (character.hpSlots || []).length || 6;
+  const atDeathsDoor = hpMax > 0 && hpMarked >= hpMax;
+  const applyUpdates = (updates) => updateCharacter && updateCharacter(character.id, updates);
+  const scars = character.scars || 0;
 
   // Vital track state: { filled, max }
   const [hp,     setHp]     = useState(() => toTrack(character.hpSlots,     6));
@@ -72,6 +84,10 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
   };
 
   const armorName = character.armorName || (character.armorItems?.[0]?.name) || '';
+
+  // Scars permanently cross out Hope slots — reduce the usable Hope max to match
+  // the DM sheet so a scarred character shows the right number in the portal.
+  const hopeAdjusted = { filled: Math.min(hope.filled, hope.max - scars), max: Math.max(0, hope.max - scars) };
 
   const tabProps = { character, roll, rollDamage, campaignId, rollBonus, setRollBonus, items, updateCharacter };
 
@@ -155,6 +171,23 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
             </div>
           </div>
 
+          {/* ── Quick actions: Rest / Level Up / Death Move ── */}
+          <div style={{ display: 'flex', gap: 8, padding: '12px 18px 0' }}>
+            <button className="lrp-action-btn" onClick={() => setShowRest(true)}>
+              <Moon size={15} /> Rest
+            </button>
+            {(character.level || 1) < 10 && (
+              <button className="lrp-action-btn" onClick={() => setShowLevelUp(true)}>
+                <ArrowUp size={15} /> Level Up
+              </button>
+            )}
+            {atDeathsDoor && (
+              <button className="lrp-action-btn lrp-action-danger" onClick={() => setShowDeath(true)}>
+                <Skull size={15} /> Death Move
+              </button>
+            )}
+          </div>
+
           {/* ── Vital tracks ── */}
           <div style={{ padding: '14px 18px 0' }}>
             <div style={{
@@ -162,8 +195,8 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
               border: '1px solid rgba(255,255,255,0.05)', padding: 14,
               display: 'flex', flexDirection: 'column', gap: 14,
             }}>
-              <PortalSlotTracker label="Hope" {...hope} color="gold"
-                onToggle={handleVitalToggle('hopeSlots', hope, setHope)} />
+              <PortalSlotTracker label={scars > 0 ? `Hope · ${scars} scar${scars > 1 ? 's' : ''}` : 'Hope'} {...hopeAdjusted} color="gold"
+                onToggle={handleVitalToggle('hopeSlots', hopeAdjusted, setHope)} />
               <PortalSlotTracker label="Hit Points" {...hp} color="hp"
                 onToggle={handleVitalToggle('hpSlots', hp, setHp)} />
               <PortalSlotTracker label="Stress" {...stress} color="stress"
@@ -206,6 +239,21 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
         </div>
       </div>
       <DiceTray campaignId={campaignId} />
+
+      {showRest && (
+        <RestModal character={character} onApply={applyUpdates} onClose={() => setShowRest(false)} />
+      )}
+      {showDeath && (
+        <DeathMoveModal character={character} onApply={applyUpdates} onClose={() => setShowDeath(false)} />
+      )}
+      {showLevelUp && (
+        <LevelUpWizard
+          character={character}
+          items={items}
+          onComplete={applyUpdates}
+          onClose={() => setShowLevelUp(false)}
+        />
+      )}
     </div>
   );
 }
