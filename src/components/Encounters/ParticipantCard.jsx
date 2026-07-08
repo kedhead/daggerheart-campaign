@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Heart, Zap, Skull, ChevronDown, ChevronRight, Shield, Swords, Target, X, Check, Crown } from 'lucide-react';
 import { DAGGERHEART_CONDITIONS } from '../../hooks/useActiveEncounter';
 import { parseDamageNotation } from '../../dice';
+import { marksForDamage } from '../../utils/thresholdDamage';
 
 export default function ParticipantCard({
   participant,
@@ -16,6 +17,7 @@ export default function ParticipantCard({
   onToggleExpand
 }) {
   const [showConditionPicker, setShowConditionPicker] = useState(false);
+  const [damageInput, setDamageInput] = useState('');
   const [lastAttackResult, setLastAttackResult] = useState(null);
   const [lastDamageResult, setLastDamageResult] = useState(null);
   const attackTimer = useRef(null);
@@ -94,6 +96,18 @@ export default function ParticipantCard({
     if (isDM && onApplyDamage) {
       onApplyDamage(participant.id, amount, 'hp');
     }
+  };
+
+  // Daggerheart: an incoming attack marks HP by threshold (see thresholdDamage.js).
+  const marks = (dmg) => marksForDamage(dmg, {
+    major: majorThreshold, severe: severeThreshold,
+    isMinion: role?.toLowerCase() === 'minion', minionHp: maxHP || 1,
+  });
+  const applyThresholdDamage = () => {
+    const dmg = parseInt(damageInput, 10);
+    if (!isDM || !onApplyDamage || !(dmg > 0)) return;
+    onApplyDamage(participant.id, marks(dmg), 'hp');
+    setDamageInput('');
   };
 
   const handleQuickHeal = (amount) => {
@@ -407,15 +421,42 @@ export default function ParticipantCard({
           {/* DM Controls */}
           {isDM && (
             <div className="space-y-4 p-4 bg-[var(--bg-primary)] rounded-lg border border-white/5">
+              {/* Threshold damage entry: type the damage roll → marks 1/2/3 HP */}
+              {thresholds && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white/40 uppercase shrink-0">Damage</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={damageInput}
+                    onChange={(e) => setDamageInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') applyThresholdDamage(); }}
+                    placeholder="roll total"
+                    className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-red-400/50"
+                  />
+                  <button
+                    onClick={applyThresholdDamage}
+                    disabled={!damageInput}
+                    className="btn-xs btn-secondary text-red-300 hover:bg-red-500/20 disabled:opacity-40"
+                  >
+                    Apply
+                  </button>
+                  {damageInput && parseInt(damageInput, 10) > 0 && (
+                    <span className="text-xs text-white/50">
+                      → marks {marks(parseInt(damageInput, 10))} HP
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-4">
-                <span className="text-xs font-bold text-white/40 uppercase w-12 shrink-0">Health</span>
+                <span className="text-xs font-bold text-white/40 uppercase w-12 shrink-0" title="Manual HP adjustment">Manual</span>
                 <div className="flex flex-wrap gap-1">
                   <button onClick={() => handleQuickDamage(1)} className="btn-xs btn-secondary text-red-400 hover:bg-red-500/20">-1</button>
-                  <button onClick={() => handleQuickDamage(5)} className="btn-xs btn-secondary text-red-400 hover:bg-red-500/20">-5</button>
-                  <button onClick={() => handleQuickDamage(10)} className="btn-xs btn-secondary text-red-400 hover:bg-red-500/20">-10</button>
+                  <button onClick={() => handleQuickDamage(2)} className="btn-xs btn-secondary text-red-400 hover:bg-red-500/20">-2</button>
+                  <button onClick={() => handleQuickDamage(3)} className="btn-xs btn-secondary text-red-400 hover:bg-red-500/20">-3</button>
                   <div className="w-px h-6 bg-white/10 mx-2" />
-                  <button onClick={() => handleQuickHeal(5)} className="btn-xs btn-secondary text-emerald-400 hover:bg-emerald-500/20">+5</button>
-                  <button onClick={() => handleQuickHeal(10)} className="btn-xs btn-secondary text-emerald-400 hover:bg-emerald-500/20">+10</button>
+                  <button onClick={() => handleQuickHeal(1)} className="btn-xs btn-secondary text-emerald-400 hover:bg-emerald-500/20">+1</button>
+                  <button onClick={() => handleQuickHeal(3)} className="btn-xs btn-secondary text-emerald-400 hover:bg-emerald-500/20">+3</button>
                 </div>
               </div>
 

@@ -166,6 +166,55 @@ export default function MapCanvas() {
     lastPos.current = null;
   }, [isDrawing, handleDrawingMouseUp]);
 
+  // ── Touch: reuse the mouse handlers for one finger; two fingers pinch-zoom ──
+  const lastPinchDist = useRef(null);
+  const pinchDistance = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  };
+
+  const handleTouchStart = useCallback((e) => {
+    if (e.evt.touches?.length === 2) {
+      e.evt.preventDefault();
+      lastPinchDist.current = pinchDistance(e.evt.touches);
+      isPainting.current = false;
+      return;
+    }
+    handleMouseDown(e);
+  }, [handleMouseDown]);
+
+  const handleTouchMove = useCallback((e) => {
+    const touches = e.evt.touches;
+    if (touches?.length === 2) {
+      e.evt.preventDefault();
+      const stage = stageRef.current;
+      if (!stage) return;
+      const dist = pinchDistance(touches);
+      if (lastPinchDist.current) {
+        // Zoom around the pinch midpoint (mirrors the wheel-zoom math).
+        const rect = stage.container().getBoundingClientRect();
+        const mid = {
+          x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+          y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top,
+        };
+        const oldScale = zoom;
+        const worldMid = { x: (mid.x - panOffset.x) / oldScale, y: (mid.y - panOffset.y) / oldScale };
+        const newScale = Math.max(0.1, Math.min(5, oldScale * (dist / lastPinchDist.current)));
+        setZoom(newScale);
+        setPanOffset({ x: mid.x - worldMid.x * newScale, y: mid.y - worldMid.y * newScale });
+      }
+      lastPinchDist.current = dist;
+      return;
+    }
+    handleMouseMove(e);
+  }, [handleMouseMove, zoom, panOffset, setZoom, setPanOffset]);
+
+  const handleTouchEnd = useCallback((e) => {
+    if (!e.evt.touches || e.evt.touches.length < 2) lastPinchDist.current = null;
+    handleMouseUp();
+  }, [handleMouseUp]);
+
   // Handle drag-and-drop of tokens from asset library
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -273,10 +322,14 @@ export default function MapCanvas() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         style={{
           cursor: selectedTool === 'pan' ? 'grab' : 'default',
           position: 'relative',
-          zIndex: 1
+          zIndex: 1,
+          touchAction: 'none'
         }}
       >
         {/* Background layer - only render image for static maps */}
