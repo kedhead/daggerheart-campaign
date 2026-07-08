@@ -11,6 +11,28 @@ import './CinematicPlayer.css';
 // A calm, atmospheric default score for recaps (exists in the curated library).
 const DEFAULT_MUSIC = 'CampfireMemories';
 
+// Curated narrator presets. `id` is an ElevenLabs premade voice; `style` steers
+// the OpenAI fallback (gpt-4o-mini-tts instructions) toward the same delivery.
+const NARRATOR_VOICES = [
+  {
+    key: 'wizard', label: '🧙 Wizened Wizard', id: 'N2lVS1w4EtoT3dr4eOWO', // Callum — raspy, weathered
+    style: 'Speak as a wise, ancient wizard telling an epic tale by firelight: unhurried, warm and gravelly, with gentle dramatic pauses and quiet wonder.',
+  },
+  {
+    key: 'elder', label: '📖 Old Storyteller', id: 'pqHfZKP75CvOlQylNhV4', // Bill — aged, warm
+    style: 'Speak as a kindly old storyteller by the hearth: slow, warm, weathered voice with fond amusement.',
+  },
+  {
+    key: 'herald', label: '📯 Deep Herald', id: 'onwK4e9ZLuTAKqWW03F9', // Daniel — deep British
+    style: 'Speak as a solemn royal herald: deep, formal, resonant delivery with gravity and precision.',
+  },
+  {
+    key: 'bard', label: '🎻 Warm Bard', id: 'JBFqnCBsd6RMkjVDRZzb', // George — warm narrator
+    style: 'Speak as a warm travelling bard: rich, engaging storytelling voice with easy charm.',
+  },
+];
+const DEFAULT_VOICE_KEY = 'wizard';
+
 export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapter, narrationClientKey = '', onClose }) {
   const timeline = useMemo(() => buildTimeline(chapter, chapter?.narration), [chapter]);
   const total = useMemo(() => timelineDuration(timeline), [timeline]);
@@ -21,6 +43,9 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
   const [musicOn, setMusicOn] = useState(true);
   const [narrationOn, setNarrationOn] = useState(true);
   const [fxOn, setFxOn] = useState(true);
+  const [voiceKey, setVoiceKey] = useState(
+    () => (NARRATOR_VOICES.some(v => v.key === chapter?.narrationVoice) && chapter.narrationVoice) || DEFAULT_VOICE_KEY
+  );
   const [generating, setGenerating] = useState(null); // {done,total} while generating narration
   const [exporting, setExporting] = useState(null);    // {done,total} while exporting
   const [animating, setAnimating] = useState(null);    // {label} while a scene clip generates
@@ -97,6 +122,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
   const generateNarration = useCallback(async () => {
     if (!isDM || !updateChapter) return;
     setError(null);
+    const voice = NARRATOR_VOICES.find(v => v.key === voiceKey) || NARRATOR_VOICES[0];
     const jobs = timeline
       .map((s, i) => ({ i, text: s.text }))
       .filter(s => s.text && s.text.trim().length > 1);
@@ -107,7 +133,12 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
         const resp = await fetch('/api/generate-narration', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: job.text, apiKey: narrationClientKey || '__shared__' })
+          body: JSON.stringify({
+            text: job.text,
+            voiceId: voice.id,
+            style: voice.style,
+            apiKey: narrationClientKey || '__shared__'
+          })
         });
         if (!resp.ok) {
           const e = await resp.json().catch(() => ({}));
@@ -122,14 +153,14 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
         narration.push({ index: job.i, url, duration, storagePath: `campaigns/${campaignId}/audio/${safeName}.mp3` });
         setGenerating(g => ({ ...g, done: g.done + 1 }));
       }
-      await updateChapter(chapter.id, { narration });
+      await updateChapter(chapter.id, { narration, narrationVoice: voice.key });
     } catch (err) {
       console.error('Narration generation failed:', err);
       setError(err.message || 'Narration generation failed.');
     } finally {
       setGenerating(null);
     }
-  }, [isDM, updateChapter, timeline, campaignId, chapter, narrationClientKey]);
+  }, [isDM, updateChapter, timeline, campaignId, chapter, narrationClientKey, voiceKey]);
 
   // ── DM: animate the current scene's still into a short AI video clip ──
   // Replicate image→video (server route). The finished mp4 is copied into
@@ -318,13 +349,23 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
                   : <><Film size={14} /> Animate this scene</>}
               </button>
             )}
-            {!hasNarration && (
-              <button className="cine-dm-btn" onClick={generateNarration} disabled={!!generating}>
-                {generating
-                  ? <><Loader2 size={14} className="cine-spin" /> Narrating {generating.done}/{generating.total}…</>
-                  : <><Sparkles size={14} /> Add AI narration</>}
-              </button>
-            )}
+            <select
+              className="cine-voice-select"
+              value={voiceKey}
+              onChange={(e) => setVoiceKey(e.target.value)}
+              disabled={!!generating}
+              title="Narrator voice"
+              aria-label="Narrator voice"
+            >
+              {NARRATOR_VOICES.map(v => (
+                <option key={v.key} value={v.key}>{v.label}</option>
+              ))}
+            </select>
+            <button className="cine-dm-btn" onClick={generateNarration} disabled={!!generating}>
+              {generating
+                ? <><Loader2 size={14} className="cine-spin" /> Narrating {generating.done}/{generating.total}…</>
+                : <><Sparkles size={14} /> {hasNarration ? 'Re-narrate' : 'Add AI narration'}</>}
+            </button>
             <button className="cine-dm-btn" onClick={exportVideo} disabled={!!exporting}>
               {exporting
                 ? <><Loader2 size={14} className="cine-spin" /> Rendering {exporting.done}/{exporting.total}…</>

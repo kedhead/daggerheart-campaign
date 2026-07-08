@@ -9,8 +9,14 @@ export const config = {
   maxDuration: 60
 };
 
-// A warm, storyteller-style default voice (ElevenLabs "George").
-const DEFAULT_ELEVENLABS_VOICE = 'JBFqnCBsd6RMkjVDRZzb';
+// Default narrator: ElevenLabs "Callum" — a weathered, raspy character voice
+// that reads like an old wizard recounting the tale. The player offers other
+// presets (see NARRATOR_VOICES in CinematicPlayer.jsx) via the voiceId param.
+const DEFAULT_ELEVENLABS_VOICE = 'N2lVS1w4EtoT3dr4eOWO';
+
+// Delivery direction for the OpenAI fallback (gpt-4o-mini-tts `instructions`).
+const DEFAULT_STYLE =
+  'Speak as a wise, ancient wizard telling an epic tale by firelight: unhurried, warm and gravelly, with gentle dramatic pauses and quiet wonder.';
 
 async function narrateViaElevenLabs(apiKey, text, voiceId) {
   const response = await fetch(
@@ -40,7 +46,7 @@ async function narrateViaElevenLabs(apiKey, text, voiceId) {
   return `data:audio/mpeg;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
 }
 
-async function narrateViaOpenAI(apiKey, text) {
+async function narrateViaOpenAI(apiKey, text, style) {
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
     headers: {
@@ -51,6 +57,7 @@ async function narrateViaOpenAI(apiKey, text) {
       model: 'gpt-4o-mini-tts',
       voice: 'onyx',
       input: text,
+      instructions: (style || DEFAULT_STYLE).slice(0, 400),
       response_format: 'mp3'
     })
   });
@@ -75,7 +82,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { text, voiceId, apiKey: rawClientKey } = req.body || {};
+    const { text, voiceId, style, apiKey: rawClientKey } = req.body || {};
     // '__shared__' = client sentinel for "use the server's shared key"
     const clientKey = rawClientKey === '__shared__' ? null : rawClientKey;
 
@@ -99,7 +106,7 @@ export default async function handler(req, res) {
     }
 
     if (openaiKey) {
-      const audio = await narrateViaOpenAI(openaiKey, trimmed);
+      const audio = await narrateViaOpenAI(openaiKey, trimmed, style);
       return res.status(200).json({ audio, provider: 'openai' });
     }
 
