@@ -7,7 +7,8 @@
  *
  * Slide shape:
  * {
- *   kind: 'title' | 'scene' | 'prose',
+ *   kind: 'title' | 'scene' | 'prose' | 'credits',
+ *   cast: Array|undefined,    // credits only: [{name, entityType, portraitUrl, moment}]
  *   imageUrl: string|null,   // backdrop (scenes own image; prose reuses last scene)
  *   videoUrl: string|null,   // AI-animated clip for the backdrop, when generated
  *   sceneKey: string|null,   // key into chapter.sceneVideos (scene slides only)
@@ -139,6 +140,30 @@ export function buildTimeline(chapter, narration = null) {
       });
     }
   });
+
+  // Closing credits from the chapter's Dramatis Personae spotlights — the
+  // recap ends like a film instead of stopping dead on the last paragraph.
+  // text stays empty so narration generation skips this slide.
+  const cast = (chapter.spotlights || []).filter(s => s?.name);
+  if (cast.length > 0) {
+    slides.push({
+      kind: 'credits',
+      imageUrl: null,
+      videoUrl: null,
+      sceneKey: null,
+      text: '',
+      cast: cast.map(s => ({
+        name: s.name,
+        entityType: s.entityType || '',
+        portraitUrl: s.portraitUrl || null,
+        moment: s.moment || '',
+      })),
+      duration: Math.max(6, Math.min(15, 3 + cast.length * 1.5)),
+      pan: panFor(slides.length),
+      fx: 'dust',
+      narrationUrl: null,
+    });
+  }
 
   // Attach cached narration + narration-driven durations
   if (Array.isArray(narration)) {

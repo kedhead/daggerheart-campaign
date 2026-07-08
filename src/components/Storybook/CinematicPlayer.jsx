@@ -54,6 +54,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
   const [musicVol, setMusicVol] = useState(() => readVol('lrCineVolMusic', 0.45));
   const [narrVol, setNarrVol] = useState(() => readVol('lrCineVolNarration', 1));
   const [showMixer, setShowMixer] = useState(false);
+  const [ended, setEnded] = useState(false); // outro: fade to black + music out
   const musicOn = musicVol > 0.005;
   const [fxOn, setFxOn] = useState(true);
   const [voiceKey, setVoiceKey] = useState(
@@ -89,7 +90,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
       if (advanced) return;
       advanced = true;
       if (index + 1 < timeline.length) setIndex(i => i + 1);
-      else setPlaying(false);
+      else setEnded(true); // outro effect fades music + screen, then pauses
     };
 
     if (narrationUrl && narrationRef.current) {
@@ -154,6 +155,22 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
   }, [playing, musicOn, musicVol, narrationOn, hasNarration, currentMusicUrl]);
   useEffect(() => () => clearInterval(fadeTimer.current), []);
 
+  // Outro: ramp the music down in step with the fade-to-black overlay, then
+  // pause the player once the screen is dark.
+  useEffect(() => {
+    if (!ended) return;
+    const m = musicRef.current;
+    const startVol = m ? m.volume : 0;
+    const steps = 26; // ~2.6s, matching the cine-blackout animation
+    let step = 0;
+    const iv = setInterval(() => {
+      step += 1;
+      if (m) m.volume = Math.max(0, startVol * (1 - step / steps));
+      if (step >= steps) { clearInterval(iv); setPlaying(false); }
+    }, 100);
+    return () => clearInterval(iv);
+  }, [ended]);
+
   // Animated slides: keep the clip's playback in step with the player.
   useEffect(() => {
     const v = videoRef.current;
@@ -164,9 +181,9 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
 
   useEffect(() => () => { clearTimeout(timerRef.current); }, []);
 
-  const restart = useCallback(() => { setIndex(0); setPlaying(true); }, []);
-  const prev = useCallback(() => setIndex(i => Math.max(0, i - 1)), []);
-  const next = useCallback(() => setIndex(i => Math.min(timeline.length - 1, i + 1)), [timeline.length]);
+  const restart = useCallback(() => { setEnded(false); setIndex(0); setPlaying(true); }, []);
+  const prev = useCallback(() => { setEnded(false); setIndex(i => Math.max(0, i - 1)); }, []);
+  const next = useCallback(() => { setEnded(false); setIndex(i => Math.min(timeline.length - 1, i + 1)); }, [timeline.length]);
 
   // ── DM: generate narration for every text-bearing slide, cache on the chapter ──
   const generateNarration = useCallback(async () => {
@@ -367,12 +384,42 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
             <div className="cine-eyebrow">A Chronicle Recap</div>
             <h1 className="cine-title">{slide.text}</h1>
           </div>
+        ) : slide.kind === 'credits' ? (
+          <div className="cine-credits" key={`cr-${index}`}>
+            <div className="cine-eyebrow">Dramatis Personae</div>
+            <div className="cine-credits-list">
+              {(slide.cast || []).map((p, pi) => (
+                <div className="cine-credit" key={pi}>
+                  {p.portraitUrl
+                    ? <img src={p.portraitUrl} alt="" className="cine-credit-avatar" />
+                    : <div className="cine-credit-avatar cine-credit-initial">{(p.name || '?').slice(0, 1)}</div>}
+                  <div className="cine-credit-meta">
+                    <div className="cine-credit-name">{p.name}</div>
+                    {p.entityType && <div className="cine-credit-kind">{p.entityType}</div>}
+                    {p.moment && <div className="cine-credit-moment">{p.moment}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
           slide.text && (
             <div className={`cine-lower ${slide.kind === 'prose' ? 'cine-lower-prose' : ''}`} key={`t-${index}`}>
               {slide.text}
             </div>
           )
+        )}
+
+        {ended && (
+          <div className="cine-endcap">
+            <div className="cine-endcap-inner">
+              <div className="cine-end-title">{chapter.title || 'The End'}</div>
+              <div className="cine-end-sub">fin</div>
+              <button className="cine-dm-btn" onClick={restart}>
+                <Play size={14} /> Watch again
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -389,7 +436,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
           <button
             key={i}
             className={`cine-dot ${i === index ? 'active' : ''} ${i < index ? 'done' : ''}`}
-            onClick={() => setIndex(i)}
+            onClick={() => { setEnded(false); setIndex(i); }}
             aria-label={`Slide ${i + 1}`}
           />
         ))}
@@ -399,7 +446,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
         <div className="cine-progress-bar"><div className="cine-progress-fill" style={{ width: `${progressPct}%` }} /></div>
         <div className="cine-buttons">
           <button className="cine-icon-btn" onClick={prev} disabled={index === 0}><SkipBack size={20} /></button>
-          <button className="cine-play-btn" onClick={() => (index === timeline.length - 1 && !playing ? restart() : setPlaying(p => !p))}>
+          <button className="cine-play-btn" onClick={() => (ended || (index === timeline.length - 1 && !playing) ? restart() : setPlaying(p => !p))}>
             {playing ? <Pause size={26} /> : <Play size={26} />}
           </button>
           <button className="cine-icon-btn" onClick={next} disabled={index === timeline.length - 1}><SkipForward size={20} /></button>

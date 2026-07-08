@@ -148,6 +148,31 @@ function drawLowerThird(ctx, text, isProse, alpha) {
   ctx.restore();
 }
 
+// Closing credits slide (Dramatis Personae).
+function drawCredits(ctx, slide, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(234,179,8,0.85)';
+  ctx.font = '600 22px Georgia, serif';
+  ctx.fillText('DRAMATIS PERSONAE', W / 2, 110);
+  const cast = (slide.cast || []).slice(0, 8);
+  cast.forEach((p, i) => {
+    const y = 180 + i * 62;
+    ctx.fillStyle = '#f4efe6';
+    ctx.font = '700 28px Georgia, serif';
+    ctx.fillText(p.name || '', W / 2, y);
+    if (p.entityType) {
+      ctx.fillStyle = 'rgba(234,179,8,0.6)';
+      ctx.font = '600 14px Georgia, serif';
+      ctx.fillText(String(p.entityType).toUpperCase(), W / 2, y + 22);
+    }
+  });
+  ctx.restore();
+}
+
+const END_FADE_SEC = 2.2; // fade-to-black tail, matching the in-player outro
+
 export async function exportCinematicWebM({ timeline, musicUrl, musicPlan, mix, title, onProgress }) {
   // Same mixer model as the player: music sits under the narrator.
   const musicLevel = Math.min(1, Math.max(0, mix?.music ?? 0.45));
@@ -288,7 +313,16 @@ export async function exportCinematicWebM({ timeline, musicUrl, musicPlan, mix, 
       // Text fade-in over first 0.6s of the slide
       const alpha = Math.min(1, local / (0.6 / (durations[i] || 1)));
       if (slide.kind === 'title') drawTitle(ctx, slide.text, alpha);
+      else if (slide.kind === 'credits') drawCredits(ctx, slide, alpha);
       else if (slide.text) drawLowerThird(ctx, slide.text, slide.kind === 'prose', alpha);
+
+      // Outro: fade the picture to black over the final seconds (the music
+      // plan's own end envelope ramps the audio out alongside it).
+      const remaining = totalSec - elapsed;
+      if (remaining < END_FADE_SEC) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.min(1, 1 - remaining / END_FADE_SEC)})`;
+        ctx.fillRect(0, 0, W, H);
+      }
 
       requestAnimationFrame(frame);
     }
