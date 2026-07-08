@@ -11,12 +11,9 @@ import RoleSelection from './components/RoleSelection/RoleSelection';
 import SidebarWithAuth from './components/SidebarWithAuth';
 import AppRouter from './components/AppRouter';
 import { usePendingInvites } from './hooks/usePendingInvites';
-import ChatWidget from './components/DaggerheartChat/ChatWidget';
-import CommandPalette from './components/CommandPalette/CommandPalette';
 import { useKeyboardShortcut } from './hooks/useKeyboardShortcut';
 import { usePresence } from './hooks/usePresence';
 import { useCampaignAuth } from './hooks/useCampaignAuth';
-import { useStorybook } from './hooks/useStorybook';
 import TopBar from './components/Layout/TopBar';
 import BottomNav from './components/Layout/BottomNav';
 import './App.css';
@@ -29,6 +26,9 @@ const BattleMapDisplayWindow = lazy(() => import('./components/BattleMapDisplay/
 const PlayerPortalView = lazy(() => import('./components/PlayerPortal/PlayerPortalView'));
 const DiceRoller = lazy(() => import('./dice').then(m => ({ default: m.DiceRoller })));
 const DiceTray = lazy(() => import('./dice').then(m => ({ default: m.DiceTray })));
+// Conditionally shown overlays — kept out of the initial bundle.
+const ChatWidget = lazy(() => import('./components/DaggerheartChat/ChatWidget'));
+const CommandPalette = lazy(() => import('./components/CommandPalette/CommandPalette'));
 
 function FullScreenFallback() {
   return (
@@ -64,9 +64,8 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
     maps,
     battleMaps,
     updateCharacter,
+    storybookChapters,
   } = useCampaignData();
-
-  const { chapters: storybookChapters } = useStorybook(currentCampaignId);
 
   const [currentView, setCurrentView] = useState('dashboard');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -168,23 +167,25 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
         />
 
         {hasChatBot && (
-          <ChatWidget
-            userId={currentUser?.uid}
-            gameSystem={campaign?.gameSystem || 'daggerheart'}
-            campaign={campaign}
-            campaignFrame={campaignFrame}
-            characters={characters}
-            npcs={npcs}
-            adversaries={adversaries}
-            locations={locations}
-            lore={lore}
-            sessions={sessions}
-            encounters={encounters}
-            items={items}
-            maps={maps}
-            battleMaps={battleMaps}
-            storybookChapters={storybookChapters?.filter(c => c.status === 'published')}
-          />
+          <Suspense fallback={null}>
+            <ChatWidget
+              userId={currentUser?.uid}
+              gameSystem={campaign?.gameSystem || 'daggerheart'}
+              campaign={campaign}
+              campaignFrame={campaignFrame}
+              characters={characters}
+              npcs={npcs}
+              adversaries={adversaries}
+              locations={locations}
+              lore={lore}
+              sessions={sessions}
+              encounters={encounters}
+              items={items}
+              maps={maps}
+              battleMaps={battleMaps}
+              storybookChapters={storybookChapters?.filter(c => c.status === 'published')}
+            />
+          </Suspense>
         )}
 
         <Suspense fallback={null}>
@@ -197,16 +198,20 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
           />
         </Suspense>
 
-        <CommandPalette
-          isOpen={isCommandPaletteOpen}
-          onClose={() => setIsCommandPaletteOpen(false)}
-          onNavigate={(view) => setCurrentView(view)}
-          npcs={npcs}
-          characters={characters}
-          locations={locations}
-          quests={quests}
-          isDM={isDM}
-        />
+        {isCommandPaletteOpen && (
+          <Suspense fallback={null}>
+            <CommandPalette
+              isOpen={isCommandPaletteOpen}
+              onClose={() => setIsCommandPaletteOpen(false)}
+              onNavigate={(view) => setCurrentView(view)}
+              npcs={npcs}
+              characters={characters}
+              locations={locations}
+              quests={quests}
+              isDM={isDM}
+            />
+          </Suspense>
+        )}
       </div>
     </ThemeProvider>
   );
