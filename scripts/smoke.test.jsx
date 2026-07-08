@@ -19,6 +19,7 @@ import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
+import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -199,6 +200,37 @@ section('Cinematic recap timeline');
   const afterScene = withVideo.findIndex(s => s.sceneKey === 's1');
   const nextProse = withVideo.slice(afterScene + 1).find(s => s.kind === 'prose');
   if (nextProse) assert(nextProse.videoUrl === 'http://x/clip1.mp4', 'prose after an animated scene keeps the clip');
+}
+
+// --- Defense calc: custom feature text bonuses (armor score / evasion) ---
+{
+  const character = { class: 'warrior', level: 2, armor: 0 };
+  const armor = {
+    type: 'armor', name: 'Bogplate of Testing',
+    systemData: { armorScore: 4, armorSlots: 4, features: [{ name: 'Sturdy', description: 'No bonus here.' }] },
+  };
+  const shield = {
+    type: 'weapon', name: 'Bog-Song Aegis',
+    systemData: {
+      features: [
+        { name: 'Ever Damp', description: '+1 evasion' },
+        { name: 'Armor Slot', description: '+1 armor score' },
+        { name: "The Choir's Croak", description: 'Once per Long Rest, when spending an Armor Slot to block, release a blast.' },
+      ],
+    },
+  };
+  const base = computeDefenses(character, [armor]);
+  const withShield = computeDefenses(character, [armor, shield]);
+  assert(withShield.armorScore === base.armorScore + 1, `"+1 armor score" feature text adds armor (${base.armorScore} → ${withShield.armorScore})`);
+  assert(withShield.evasion === base.evasion + 1, `"+1 evasion" feature text adds evasion (${base.evasion} → ${withShield.evasion})`);
+
+  const protectiveShield = {
+    type: 'weapon', name: 'Test Buckler',
+    systemData: { features: [{ name: 'Protective', description: '+1 to Armor Score' }] },
+  };
+  const withProtective = computeDefenses(character, [armor, protectiveShield]);
+  assert(withProtective.armorScore === base.armorScore + (character.proficiency || 2),
+    `named Protective feature is not double-counted from its description (got ${withProtective.armorScore})`);
 }
 
 // --- Mood-matched soundtrack (cinematicMusic) ---

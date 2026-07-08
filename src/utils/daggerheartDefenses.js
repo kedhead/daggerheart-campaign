@@ -9,7 +9,7 @@ import { CLASSES, getBaseProficiency, getTierForLevel } from '../data/systems/da
 import { computeAbilityDelta } from '../data/daggerheartAbilityEffects';
 import { getCardByName } from '../data/daggerheartDomainCards';
 import { DAGGERHEART_ARMOR, ALL_DAGGERHEART_ITEMS } from '../data/daggerheartItems';
-import { getFeatureName } from './itemFeatures';
+import { getFeatureName, getFeatureDescription } from './itemFeatures';
 
 // Fill in missing systemData fields from the official catalog (matched by name).
 // Handles items imported before systemData was fully established, or items with
@@ -87,7 +87,15 @@ export function computeDefenses(character, equippedItems = []) {
   // Protective: +Proficiency Armor Score (per rules — scales with level).
   // Barrier:    +Proficiency+1 Armor Score and -1 Evasion.
   // Double Duty: +1 Armor Score (flat).
+  // Feature names whose mechanics are applied by name elsewhere in this file —
+  // never re-parse their description text or the bonus would count twice.
+  const NAMED_FEATURES = new Set([
+    'protective', 'barrier', 'double duty', 'double-duty',
+    'flexible', 'heavy', 'very heavy', 'very-heavy', 'fortified',
+  ]);
+
   let armorScoreFeatureBonus = 0;
+  let featureEvasionBonus = 0;
   let barrierEvasionPenalty = 0;
   equippedItems.forEach(item => {
     (item.systemData?.features || []).forEach(f => {
@@ -95,6 +103,16 @@ export function computeDefenses(character, equippedItems = []) {
       if (fl === 'protective') armorScoreFeatureBonus += proficiency;
       else if (fl === 'barrier') { armorScoreFeatureBonus += proficiency + 1; barrierEvasionPenalty += 1; }
       else if (fl === 'double duty' || fl === 'double-duty') armorScoreFeatureBonus += 1;
+      else if (!NAMED_FEATURES.has(fl)) {
+        // Custom / AI-generated items spell their bonus out in text instead of
+        // using a recognized feature name ("Armor Slot: +1 armor score",
+        // "Ever Damp: +1 evasion") — parse it so those items actually count.
+        const text = `${getFeatureName(f)} ${getFeatureDescription(f) || ''}`;
+        const armorMatch = text.match(/([+-]\d+)\s*(?:to\s+)?armor(?:\s*(?:score|slots?))?\b/i);
+        if (armorMatch) armorScoreFeatureBonus += parseInt(armorMatch[1], 10);
+        const evasionMatch = text.match(/([+-]\d+)\s*(?:to\s+)?evasion\b/i);
+        if (evasionMatch) featureEvasionBonus += parseInt(evasionMatch[1], 10);
+      }
     });
   });
 
@@ -112,7 +130,7 @@ export function computeDefenses(character, equippedItems = []) {
       else if (fl === 'very-heavy' || fl === 'very heavy') baseEffectiveEvasion -= 2;
     });
   });
-  baseEffectiveEvasion -= barrierEvasionPenalty;
+  baseEffectiveEvasion += featureEvasionBonus - barrierEvasionPenalty;
 
   // Passive domain-card ability effects (Bare Bones, Vitality, Untouchable, ...).
   const domainCardCounts = domainCards.reduce((acc, c) => {
