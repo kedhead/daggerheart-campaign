@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Play, Pause, SkipBack, SkipForward, Music, Volume2, VolumeX, Sparkles, Download, Loader2, Wand2, Film, Clapperboard } from 'lucide-react';
-import { buildTimeline, timelineDuration } from './cinematicTimeline';
+import { buildTimeline, timelineDuration, narratableSlides } from './cinematicTimeline';
 import { createFX } from './cinematicFX';
 import { buildScore, segmentAt, musicPlanFor } from './cinematicMusic';
 import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
@@ -190,9 +190,8 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     if (!isDM || !updateChapter) return;
     setError(null);
     const voice = NARRATOR_VOICES.find(v => v.key === voiceKey) || NARRATOR_VOICES[0];
-    const jobs = timeline
-      .map((s, i) => ({ i, text: s.text }))
-      .filter(s => s.text && s.text.trim().length > 1);
+    // Title + prose only — scene captions are shown, never read aloud.
+    const jobs = narratableSlides(timeline);
     setGenerating({ done: 0, total: jobs.length });
     const narration = [];
     // Old clips get deleted after the new set lands; versioned filenames below
