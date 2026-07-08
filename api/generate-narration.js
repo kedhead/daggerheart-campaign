@@ -46,7 +46,12 @@ async function narrateViaElevenLabs(apiKey, text, voiceId) {
   return `data:audio/mpeg;base64,${Buffer.from(arrayBuffer).toString('base64')}`;
 }
 
-async function narrateViaOpenAI(apiKey, text, style) {
+// OpenAI TTS voices we allow the client to pick for the fallback, so narrator
+// presets still change the actual voice when ElevenLabs is unavailable.
+const OPENAI_VOICES = ['alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer', 'verse'];
+
+async function narrateViaOpenAI(apiKey, text, style, fallbackVoice) {
+  const voice = OPENAI_VOICES.includes(fallbackVoice) ? fallbackVoice : 'ash';
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
     headers: {
@@ -55,7 +60,7 @@ async function narrateViaOpenAI(apiKey, text, style) {
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini-tts',
-      voice: 'onyx',
+      voice,
       input: text,
       instructions: (style || DEFAULT_STYLE).slice(0, 400),
       response_format: 'mp3'
@@ -82,7 +87,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { text, voiceId, style, apiKey: rawClientKey } = req.body || {};
+    const { text, voiceId, style, fallbackVoice, apiKey: rawClientKey } = req.body || {};
     // '__shared__' = client sentinel for "use the server's shared key"
     const clientKey = rawClientKey === '__shared__' ? null : rawClientKey;
 
@@ -95,19 +100,33 @@ export default async function handler(req, res) {
     const elevenKey = process.env.ELEVENLABS_API_KEY;
     const openaiKey = clientKey || process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
 
+    let fallbackReason = null;
     if (elevenKey) {
       try {
         const audio = await narrateViaElevenLabs(elevenKey, trimmed, voiceId);
         return res.status(200).json({ audio, provider: 'elevenlabs' });
       } catch (err) {
-        console.error('ElevenLabs narration failed, trying OpenAI:', err.message);
+        console.error('ElevenLabs narration failed:', err.message);
+        // A voice-specific rejection shouldn't lose the provider — retry once
+        // with the known-good default voice before falling back to OpenAI.
+        if (voiceId && voiceId !== DEFAULT_ELEVENLABS_VOICE && /voice/i.test(err.message)) {
+          try {
+            const audio = await narrateViaElevenLabs(elevenKey, trimmed, DEFAULT_ELEVENLABS_VOICE);
+            return res.status(200).json({ audio, provider: 'elevenlabs', voiceFallback: true });
+          } catch (retryErr) {
+            console.error('ElevenLabs default-voice retry failed:', retryErr.message);
+          }
+        }
+        fallbackReason = err.message.slice(0, 200);
         if (!openaiKey) throw err;
       }
+    } else {
+      fallbackReason = 'ELEVENLABS_API_KEY is not set on the server';
     }
 
     if (openaiKey) {
-      const audio = await narrateViaOpenAI(openaiKey, trimmed, style);
-      return res.status(200).json({ audio, provider: 'openai' });
+      const audio = await narrateViaOpenAI(openaiKey, trimmed, style, fallbackVoice);
+      return res.status(200).json({ audio, provider: 'openai', fallbackReason });
     }
 
     return res.status(500).json({

@@ -148,7 +148,7 @@ function drawLowerThird(ctx, text, isProse, alpha) {
   ctx.restore();
 }
 
-export async function exportCinematicWebM({ timeline, musicUrl, title, onProgress }) {
+export async function exportCinematicWebM({ timeline, musicUrl, musicPlan, title, onProgress }) {
   if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
     throw new Error('Video export needs desktop Chrome or Edge.');
   }
@@ -170,10 +170,19 @@ export async function exportCinematicWebM({ timeline, musicUrl, title, onProgres
   const audioCtx = new AudioCtx();
   const dest = audioCtx.createMediaStreamDestination();
 
-  const musicBuf = await fetchAudioBuffer(audioCtx, musicUrl);
   const narrationBufs = await Promise.all(
     timeline.map(s => fetchAudioBuffer(audioCtx, s.narrationUrl))
   );
+
+  // Soundtrack: either a mood-matched plan of movements or one legacy track.
+  const totalPlanned = timeline.reduce((a, s) => a + (s.duration || 0), 0);
+  const plan = (musicPlan && musicPlan.length)
+    ? musicPlan
+    : (musicUrl ? [{ url: musicUrl, startSec: 0, durationSec: totalPlanned }] : []);
+  const uniqueMusicUrls = [...new Set(plan.map(p => p.url).filter(Boolean))];
+  const musicBufs = new Map(await Promise.all(
+    uniqueMusicUrls.map(async (u) => [u, await fetchAudioBuffer(audioCtx, u)])
+  ));
 
   const videoStream = canvas.captureStream(FPS);
   const mixed = new MediaStream([
@@ -190,18 +199,29 @@ export async function exportCinematicWebM({ timeline, musicUrl, title, onProgres
   durations.reduce((acc, d, i) => { starts[i] = acc; return acc + d; }, 0);
   const totalSec = durations.reduce((a, b) => a + b, 0);
 
-  // Schedule audio relative to audioCtx start time.
+  // Schedule audio relative to audioCtx start time. Each soundtrack movement
+  // gets its own looped source with a fade-in/out envelope so mood changes
+  // crossfade instead of cutting hard.
   const audioStart = audioCtx.currentTime + 0.15;
-  if (musicBuf) {
+  const musicVol = narrationBufs.some(Boolean) ? 0.12 : 0.28;
+  plan.forEach((seg) => {
+    const buf = musicBufs.get(seg.url);
+    if (!buf || !(seg.durationSec > 0)) return;
+    const t0 = audioStart + (seg.startSec || 0);
+    const t1 = Math.min(t0 + seg.durationSec, audioStart + totalSec + 0.2);
+    const fade = Math.min(1.2, seg.durationSec / 4);
     const src = audioCtx.createBufferSource();
-    src.buffer = musicBuf;
+    src.buffer = buf;
     src.loop = true;
     const gain = audioCtx.createGain();
-    gain.gain.value = narrationBufs.some(Boolean) ? 0.12 : 0.28;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.linearRampToValueAtTime(musicVol, t0 + fade);
+    gain.gain.setValueAtTime(musicVol, Math.max(t0 + fade, t1 - fade));
+    gain.gain.linearRampToValueAtTime(0.0001, t1);
     src.connect(gain).connect(dest);
-    src.start(audioStart);
-    src.stop(audioStart + totalSec + 0.2);
-  }
+    src.start(t0);
+    src.stop(t1 + 0.05);
+  });
   narrationBufs.forEach((buf, i) => {
     if (!buf) return;
     const src = audioCtx.createBufferSource();

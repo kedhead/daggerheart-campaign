@@ -18,6 +18,7 @@ import { buildTimeline, timelineDuration } from '../src/components/Storybook/cin
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
+import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -198,6 +199,33 @@ section('Cinematic recap timeline');
   const afterScene = withVideo.findIndex(s => s.sceneKey === 's1');
   const nextProse = withVideo.slice(afterScene + 1).find(s => s.kind === 'prose');
   if (nextProse) assert(nextProse.videoUrl === 'http://x/clip1.mp4', 'prose after an animated scene keeps the clip');
+}
+
+// --- Mood-matched soundtrack (cinematicMusic) ---
+{
+  assert(pickThemeForText('Steel clashed as the battle raged') === 'battle', 'battle text → battle theme');
+  assert(pickThemeForText('An ominous dread crept from the crypt') === 'tension', 'dread text → tension theme');
+  assert(pickThemeForText('They toasted their victory at the tavern') === 'victory', 'victory beats tavern (first match wins)');
+  assert(pickThemeForText('The party walked down the road') === null, 'neutral text → no explicit theme');
+
+  const slides = [
+    { text: 'The Journey Begins', duration: 4 },      // title — no explicit theme → exploration
+    { text: 'They followed the river north.', duration: 6 },
+    { text: 'Goblins attacked! Swords were drawn.', duration: 8 },  // battle
+    { text: 'The fight was hard and bloody.', duration: 6 },        // battle-ish → stays
+    { text: 'At last, they defeated the warband and rejoiced.', duration: 7 }, // victory
+  ];
+  const score = buildScore(slides, 'chapter-1');
+  assert(score[0].theme === 'exploration' && score[0].start === 0, 'opens with exploration');
+  assert(score.some(s => s.theme === 'battle'), 'battle movement appears when combat starts');
+  assert(score[score.length - 1].theme === 'victory', 'closes on a victory movement');
+  assert(score.every(s => s.url && s.url.endsWith('.mp3')), 'every movement resolves to a track URL');
+  const again = buildScore(slides, 'chapter-1');
+  assert(again.map(s => s.track).join() === score.map(s => s.track).join(), 'track choice is deterministic per chapter');
+  assert(segmentAt(score, 3).theme === 'battle', 'segmentAt finds the movement covering a slide');
+  const plan = musicPlanFor(score, slides);
+  assert(plan.length === score.length && Math.abs(plan.reduce((a, p) => a + p.durationSec, 0) - 31) < 0.01,
+    'export plan spans covers the full runtime');
 }
 
 // --- Cinematic ambient FX engine ---
