@@ -148,7 +148,10 @@ function drawLowerThird(ctx, text, isProse, alpha) {
   ctx.restore();
 }
 
-export async function exportCinematicWebM({ timeline, musicUrl, musicPlan, title, onProgress }) {
+export async function exportCinematicWebM({ timeline, musicUrl, musicPlan, mix, title, onProgress }) {
+  // Same mixer model as the player: music sits under the narrator.
+  const musicLevel = Math.min(1, Math.max(0, mix?.music ?? 0.45));
+  const narrationLevel = Math.min(1, Math.max(0, mix?.narration ?? 1));
   if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
     throw new Error('Video export needs desktop Chrome or Edge.');
   }
@@ -203,7 +206,7 @@ export async function exportCinematicWebM({ timeline, musicUrl, musicPlan, title
   // gets its own looped source with a fade-in/out envelope so mood changes
   // crossfade instead of cutting hard.
   const audioStart = audioCtx.currentTime + 0.15;
-  const musicVol = narrationBufs.some(Boolean) ? 0.12 : 0.28;
+  const musicVol = musicLevel * (narrationBufs.some(Boolean) ? 0.15 : 0.6);
   plan.forEach((seg) => {
     const buf = musicBufs.get(seg.url);
     if (!buf || !(seg.durationSec > 0)) return;
@@ -226,7 +229,9 @@ export async function exportCinematicWebM({ timeline, musicUrl, musicPlan, title
     if (!buf) return;
     const src = audioCtx.createBufferSource();
     src.buffer = buf;
-    src.connect(dest);
+    const gain = audioCtx.createGain();
+    gain.gain.value = narrationLevel;
+    src.connect(gain).connect(dest);
     src.start(audioStart + starts[i]);
   });
 
