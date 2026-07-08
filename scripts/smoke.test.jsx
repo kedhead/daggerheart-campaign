@@ -14,6 +14,7 @@ import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustmen
 import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
+import { buildTimeline, timelineDuration } from '../src/components/Storybook/cinematicTimeline.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -159,6 +160,30 @@ const chr = {
   assert(html.includes('Short Rest') && html.includes('Long Rest'), 'RestModal renders both rest types');
   html = strip(renderToString(React.createElement(DeathMoveModal, { character: chr, onApply: () => {}, onClose: () => {} })));
   assert(html.includes('Blaze of Glory') && html.includes('Avoid Death') && html.includes('Risk It All'), 'DeathMoveModal renders all three moves');
+}
+
+// ── Cinematic recap timeline ──
+section('Cinematic recap timeline');
+{
+  const chapter = {
+    title: 'The Siege of Korak',
+    prose: 'The gates held through the night.\n\nAt dawn, the tide-witch arrived.\n\nOnly ash remained.',
+    scenes: [
+      { id: 's1', imageUrl: 'http://x/1.jpg', caption: 'The burning gate' },
+      { id: 's2', imageUrl: 'http://x/2.jpg', caption: 'Matu Palu emerges' },
+    ],
+  };
+  const slides = buildTimeline(chapter);
+  assert(slides[0].kind === 'title' && slides[0].text === 'The Siege of Korak', 'first slide is the title card');
+  assert(slides.some(s => s.kind === 'scene' && s.imageUrl === 'http://x/1.jpg'), 'scene images become slides');
+  assert(slides.some(s => s.kind === 'prose'), 'prose paragraphs become slides');
+  assert(slides.every(s => s.duration >= 3 && s.pan && typeof s.pan.toScale === 'number'), 'every slide has duration + pan');
+  assert(timelineDuration(slides) > 0, 'timeline has positive runtime');
+
+  // Narration overrides duration and attaches audio to the right slide index
+  const withNarr = buildTimeline(chapter, [{ index: 1, url: 'http://x/n1.mp3', duration: 9 }]);
+  assert(withNarr[1].narrationUrl === 'http://x/n1.mp3', 'narration attaches to slide by index');
+  assert(withNarr[1].duration >= 9, 'narration duration drives slide length');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);
