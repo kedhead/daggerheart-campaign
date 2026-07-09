@@ -2,9 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus, UserPlus, Users, ArrowRight } from 'lucide-react';
 import DaggerheartCharacterSheet from './DaggerheartCharacterSheet';
 import DaggerheartCharacterForm from './DaggerheartCharacterForm';
+import StarWarsD6CharacterSheet from './StarWarsD6CharacterSheet';
+import StarWarsD6Form from './forms/StarWarsD6Form';
 import CharacterCreationWizard from './CharacterCreationWizard';
 import Modal from '../Modal';
 import { getCharacterOwnerId } from '../../utils/characterOwnership';
+
+// Systems with a full sheet experience in My Sheet view
+const SHEET_COMPONENTS = {
+  daggerheart: DaggerheartCharacterSheet,
+  starwarsd6: StarWarsD6CharacterSheet,
+};
+
+const FORM_COMPONENTS = {
+  daggerheart: DaggerheartCharacterForm,
+  starwarsd6: StarWarsD6Form,
+};
 
 export default function MySheetView({
   characters,
@@ -34,6 +47,12 @@ export default function MySheetView({
   });
   const [showWizard, setShowWizard] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+
+  const gameSystem = campaign?.gameSystem || 'daggerheart';
+  const isDaggerheart = gameSystem === 'daggerheart';
+  const SheetComponent = SHEET_COMPONENTS[gameSystem] || DaggerheartCharacterSheet;
+  const FormComponent = FORM_COMPONENTS[gameSystem] || DaggerheartCharacterForm;
 
   useEffect(() => {
     if (!selectedId && myCharacters[0]) {
@@ -62,6 +81,12 @@ export default function MySheetView({
   const handleEditSave = (data) => {
     if (character) updateCharacter(character.id, data);
     setShowEdit(false);
+  };
+
+  const handleCreateSave = async (data) => {
+    const created = await Promise.resolve(addCharacter(data));
+    setShowCreate(false);
+    if (created?.id) setSelectedId(created.id);
   };
 
   const handleDelete = () => {
@@ -127,7 +152,7 @@ export default function MySheetView({
                 color: '#fff',
                 border: '1px solid transparent',
               }}
-              onClick={() => setShowWizard(true)}
+              onClick={() => (isDaggerheart ? setShowWizard(true) : setShowCreate(true))}
             >
               <Plus size={16} />
               <span
@@ -166,6 +191,23 @@ export default function MySheetView({
             isDM={isDM}
             campaign={campaign}
           />
+        )}
+
+        {showCreate && (
+          <Modal
+            isOpen={showCreate}
+            onClose={() => setShowCreate(false)}
+            title="Create Character"
+            size="large"
+          >
+            <FormComponent
+              character={null}
+              onSave={handleCreateSave}
+              onCancel={() => setShowCreate(false)}
+              isDM={isDM}
+              campaign={campaign}
+            />
+          </Modal>
         )}
       </div>
     );
@@ -248,7 +290,7 @@ export default function MySheetView({
       )}
 
       {character && (
-        <DaggerheartCharacterSheet
+        <SheetComponent
           character={character}
           onEdit={() => setShowEdit(true)}
           onDelete={handleDelete}
@@ -267,7 +309,7 @@ export default function MySheetView({
           title={`Edit ${character.name}`}
           size="large"
         >
-          <DaggerheartCharacterForm
+          <FormComponent
             character={character}
             onSave={handleEditSave}
             onCancel={() => setShowEdit(false)}

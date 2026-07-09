@@ -223,7 +223,7 @@ export default function AppRouter({
       );
 
     case 'my-sheet':
-      if ((campaign?.gameSystem || 'daggerheart') !== 'daggerheart') {
+      if (!['daggerheart', 'starwarsd6'].includes(campaign?.gameSystem || 'daggerheart')) {
         return (
           <CharactersView
             campaign={campaign}

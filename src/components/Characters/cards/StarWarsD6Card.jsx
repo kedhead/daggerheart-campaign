@@ -1,7 +1,10 @@
 import { ExternalLink, Edit, Trash2, Zap } from 'lucide-react';
+import { ATTRIBUTES } from '../../../data/systems/starwarsd6';
 
 export default function StarWarsD6Card({ character, onEdit, onDelete, isDM, canEdit }) {
   const systemData = character.systemData || {};
+  const attributes = systemData.attributes || {};
+  const hasAttributes = ATTRIBUTES.some(a => attributes[a.toLowerCase()]?.dice);
 
   return (
     <div className="character-card">
@@ -55,6 +58,48 @@ export default function StarWarsD6Card({ character, onEdit, onDelete, isDM, canE
           </div>
         )}
       </div>
+
+      {hasAttributes && (
+        <div className="character-section">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '0.4rem',
+            }}
+          >
+            {ATTRIBUTES.map(attrName => {
+              const attr = attributes[attrName.toLowerCase()];
+              if (!attr?.dice) return null;
+              return (
+                <div
+                  key={attrName}
+                  style={{
+                    textAlign: 'center',
+                    padding: '0.35rem 0.25rem',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 215, 0, 0.06)',
+                    border: '1px solid rgba(255, 215, 0, 0.18)',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '0.55rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.1em',
+                      color: 'rgba(255, 215, 0, 0.7)',
+                    }}
+                  >
+                    {attrName.slice(0, 4)}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>{attr.dice}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {systemData.characterSheetLink && (
         <div className="character-section">

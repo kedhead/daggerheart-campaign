@@ -10,6 +10,7 @@ import DnD5eForm from './forms/DnD5eForm';
 import DnD5eCard from './cards/DnD5eCard';
 import StarWarsD6Form from './forms/StarWarsD6Form';
 import StarWarsD6Card from './cards/StarWarsD6Card';
+import StarWarsD6CharacterSheet from './StarWarsD6CharacterSheet';
 import GenericForm from './forms/GenericForm';
 import GenericCard from './cards/GenericCard';
 import AssignPlayerControl from './AssignPlayerControl';
@@ -32,6 +33,17 @@ const CARD_COMPONENTS = {
   'generic': GenericCard
 };
 
+// Systems that have a full interactive sheet view ("Full Sheets" toggle)
+const SHEET_COMPONENTS = {
+  'daggerheart': DaggerheartCharacterSheet,
+  'starwarsd6': StarWarsD6CharacterSheet
+};
+
+const SHEET_FORM_COMPONENTS = {
+  'daggerheart': DaggerheartCharacterForm,
+  'starwarsd6': StarWarsD6Form
+};
+
 export default function CharactersView({ campaign, characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId, items, partyInventory, addToCharacterInventory, removeFromCharacterInventory, toggleEquipped, transferToParty, onGoToGraveyard }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
@@ -46,13 +58,14 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
   // Get the right form/card components for this campaign's game system
   const gameSystem = campaign?.gameSystem || 'daggerheart';
   const isDaggerheart = gameSystem === 'daggerheart';
-  const isSheetMode = viewMode === 'sheets' && isDaggerheart;
+  const hasSheetView = !!SHEET_COMPONENTS[gameSystem];
+  const isSheetMode = viewMode === 'sheets' && hasSheetView;
 
   const FormComponent = isSheetMode
-    ? DaggerheartCharacterForm
+    ? SHEET_FORM_COMPONENTS[gameSystem]
     : (FORM_COMPONENTS[gameSystem] || CharacterFormSimple);
   const CardComponent = isSheetMode
-    ? DaggerheartCharacterSheet
+    ? SHEET_COMPONENTS[gameSystem]
     : (CARD_COMPONENTS[gameSystem] || CharacterCardSimple);
 
   const handleAdd = () => {
@@ -173,8 +186,8 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
         </div>
 
         <div className="flex flex-wrap items-center gap-3 relative z-10">
-          {/* View Mode Toggle - Daggerheart only */}
-          {isDaggerheart && (
+          {/* View Mode Toggle - systems with a full sheet view */}
+          {hasSheetView && (
             <div
               className="flex items-center rounded-xl p-1"
               style={{

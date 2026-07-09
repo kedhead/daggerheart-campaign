@@ -13,6 +13,80 @@ const ATTRIBUTES = [
   'Technical'
 ];
 
+// Standard WEG 2e skill lists, keyed by lowercase attribute name.
+// Used as suggestions when players add skills to their sheet.
+const SKILLS_BY_ATTRIBUTE = {
+  dexterity: [
+    'Archaic Guns', 'Blaster', 'Blaster Artillery', 'Bowcaster', 'Bows',
+    'Brawling Parry', 'Dodge', 'Firearms', 'Grenade', 'Lightsaber',
+    'Melee Combat', 'Melee Parry', 'Missile Weapons', 'Pick Pocket',
+    'Running', 'Thrown Weapons', 'Vehicle Blasters'
+  ],
+  knowledge: [
+    'Alien Species', 'Bureaucracy', 'Business', 'Cultures', 'Intimidation',
+    'Languages', 'Law Enforcement', 'Planetary Systems', 'Scholar',
+    'Streetwise', 'Survival', 'Tactics', 'Value', 'Willpower'
+  ],
+  mechanical: [
+    'Astrogation', 'Beast Riding', 'Capital Ship Gunnery', 'Capital Ship Piloting',
+    'Capital Ship Shields', 'Communications', 'Ground Vehicle Operation',
+    'Hover Vehicle Operation', 'Jet Pack Operation', 'Powersuit Operation',
+    'Repulsorlift Operation', 'Sensors', 'Space Transports',
+    'Starfighter Piloting', 'Starship Gunnery', 'Starship Shields',
+    'Swoop Operation', 'Walker Operation'
+  ],
+  perception: [
+    'Bargain', 'Command', 'Con', 'Forgery', 'Gambling', 'Hide',
+    'Investigation', 'Persuasion', 'Search', 'Sneak'
+  ],
+  strength: [
+    'Brawling', 'Climbing/Jumping', 'Lifting', 'Stamina', 'Swimming'
+  ],
+  technical: [
+    'Armor Repair', 'Blaster Repair', 'Capital Ship Repair',
+    'Computer Programming/Repair', 'Demolitions', 'Droid Programming',
+    'Droid Repair', 'First Aid', 'Ground Vehicle Repair', 'Lightsaber Repair',
+    'Medicine', 'Repulsorlift Repair', 'Security', 'Space Transports Repair',
+    'Starfighter Repair', 'Starship Weapon Repair', 'Walker Repair'
+  ]
+};
+
+// Wound track (WEG 2e). Stored on systemData.woundStatus as the `value`.
+const WOUND_LEVELS = [
+  { value: 'stunned', label: 'Stunned' },
+  { value: 'wounded', label: 'Wounded' },
+  { value: 'wounded2', label: 'Wounded Twice' },
+  { value: 'incapacitated', label: 'Incapacitated' },
+  { value: 'mortal', label: 'Mortally Wounded' }
+];
+
+// --- Dice code helpers ("3D", "4D+2", "5D+1") ---------------------------
+
+// Parse a dice code string into { dice, pips }. Returns null if unparseable.
+function parseDiceCode(code) {
+  if (code == null) return null;
+  const m = String(code).trim().match(/^(\d+)\s*D\s*(?:\+\s*([12]))?$/i);
+  if (!m) return null;
+  return { dice: parseInt(m[1], 10), pips: parseInt(m[2] || '0', 10) };
+}
+
+// Format { dice, pips } back into a canonical dice code, carrying 3 pips into a die.
+function formatDiceCode({ dice = 0, pips = 0 } = {}) {
+  const totalPips = dice * 3 + pips;
+  const d = Math.floor(totalPips / 3);
+  const p = totalPips % 3;
+  return p > 0 ? `${d}D+${p}` : `${d}D`;
+}
+
+// Blank attribute block used when a character has no saved attributes yet.
+function createEmptyAttributes() {
+  const attrs = {};
+  for (const name of ATTRIBUTES) {
+    attrs[name.toLowerCase()] = { dice: '2D', skills: [] };
+  }
+  return attrs;
+}
+
 const SPECIES = [
   'Human',
   'Wookiee',
@@ -297,6 +371,8 @@ export default {
 
   // Game data (kept for reference/tools view)
   attributes: ATTRIBUTES,
+  skillsByAttribute: SKILLS_BY_ATTRIBUTE,
+  woundLevels: WOUND_LEVELS,
   species: SPECIES,
   templates: TEMPLATES,
 
@@ -342,10 +418,15 @@ export default {
 // Export individual constants for convenience
 export {
   ATTRIBUTES,
+  SKILLS_BY_ATTRIBUTE,
+  WOUND_LEVELS,
   SPECIES,
   TEMPLATES,
   ITEM_TEMPLATES,
   SCALES,
   AVAILABILITY_RATINGS,
-  WEAPON_CATEGORIES
+  WEAPON_CATEGORIES,
+  parseDiceCode,
+  formatDiceCode,
+  createEmptyAttributes
 };
