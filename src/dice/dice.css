@@ -470,3 +470,80 @@
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
+
+/* ── Remote-roll feed: compact attributed toasts (no 3D for others' rolls) ── */
+.dice-feed {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top, 12px));
+  right: 12px;
+  z-index: 8200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: min(300px, 78vw);
+}
+.dice-toast {
+  background: rgba(12, 14, 28, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left-width: 3px;
+  border-radius: 10px;
+  padding: 8px 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  animation: dice-toast-in 0.25s ease both;
+}
+@keyframes dice-toast-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.dice-toast-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.dice-toast-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.dice-toast-label {
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dice-toast-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+.dice-toast-total {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.dice-toast-flag {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 1px 7px;
+  border-radius: 999px;
+}
+.dice-toast-hope { background: rgba(234, 179, 8, 0.18); color: #eab308; }
+.dice-toast-fear { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+.dice-toast-crit { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+.dice-toast-critfail { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+
+.banner-roller {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  margin-bottom: 2px;
+}

@@ -403,7 +403,7 @@ export default function BattleMapDisplayWindow({ campaignId }) {
 
       {/* Unified dice system: every viewer reads canonical roll docs from
           campaigns/{id}/rolls. Numbers are never derived from physics. */}
-      <DiceTray campaignId={campaignId} />
+      <DiceTray campaignId={campaignId} animateRemote />
       <RollHistory campaignId={campaignId} variant="sidebar" />
       <DiceRoller campaignId={campaignId} variant="fab" />
 

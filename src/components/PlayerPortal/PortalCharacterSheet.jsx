@@ -29,7 +29,7 @@ function toBoolArray(filled, max) {
   return Array.from({ length: max }, (_, i) => i < filled);
 }
 
-export default function PortalCharacterSheet({ character, updateCharacter, campaign, items, showBack, onBack, onExit }) {
+export default function PortalCharacterSheet({ character, currentUserId, updateCharacter, campaign, items, showBack, onBack, onExit }) {
   const [activeTab, setActiveTab] = useState('actions');
   const [rollBonus, setRollBonus] = useState(null);
   const [showRest, setShowRest] = useState(false);
@@ -238,7 +238,7 @@ export default function PortalCharacterSheet({ character, updateCharacter, campa
 
         </div>
       </div>
-      <DiceTray campaignId={campaignId} />
+      <DiceTray campaignId={campaignId} currentUserId={currentUserId} />
 
       {showRest && (
         <RestModal character={character} onApply={applyUpdates} onClose={() => setShowRest(false)} />

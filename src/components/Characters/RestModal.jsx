@@ -124,7 +124,9 @@ export default function RestModal({ character, onApply, onClose }) {
       }
     });
 
-    onApply({ hpSlots: hp, stressSlots: stress, armorSlots: armor, hopeSlots: hope });
+    // Resting ends any active class Hope feature (e.g. Rogue's Dodge lasts
+    // "until your next rest").
+    onApply({ hpSlots: hp, stressSlots: stress, armorSlots: armor, hopeSlots: hope, hopeFeatureActive: false });
     setResults(log);
   };
 

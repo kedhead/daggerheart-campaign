@@ -178,7 +178,13 @@ export function computeDefenses(character, equippedItems = []) {
     : baseEffectiveArmorScore;
   const armorScore = Math.min(12, armorScoreBase + armorScoreFeatureBonus + abilityDelta.armorScoreBonus);
 
-  const evasion = baseEffectiveEvasion + abilityDelta.evasionBonus;
+  // Active class Hope features with a passive component. Rogue's Dodge:
+  // spend 3 Hope → +2 Evasion until an attack lands / next rest. The sheet
+  // stores the active state on the character; the bonus applies while on.
+  const hopeFeatureEvasion =
+    character?.hopeFeatureActive && String(charClass || '').toLowerCase() === 'rogue' ? 2 : 0;
+
+  const evasion = baseEffectiveEvasion + abilityDelta.evasionBonus + hopeFeatureEvasion;
 
   return { armorScore, evasion, majorThreshold, severeThreshold, massiveThreshold };
 }

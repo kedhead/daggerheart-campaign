@@ -1,6 +1,6 @@
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../../data/systems/daggerheart';
 
-function FeatureCard({ tag, name, description, accentColor }) {
+function FeatureCard({ tag, name, description, accentColor, action }) {
   return (
     <div className="lrp-card" style={{ borderColor: accentColor ? `${accentColor}33` : undefined }}>
       {tag && (
@@ -12,11 +12,14 @@ function FeatureCard({ tag, name, description, accentColor }) {
       {description && (
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>{description}</div>
       )}
+      {action}
     </div>
   );
 }
 
-export default function FeaturesTab({ character }) {
+const HOPE_FEATURE_COST = 3;
+
+export default function FeaturesTab({ character, updateCharacter }) {
   const charClass     = character.class || '';
   const subclass      = character.subclass || '';
   const ancestry      = character.ancestry || '';
@@ -59,9 +62,50 @@ export default function FeaturesTab({ character }) {
         <div>
           <div className="lrp-section-label">{charClass} Features</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {hopeFeature && (
-              <FeatureCard tag="Hope Feature" name={hopeFeature.name} description={hopeFeature.description} accentColor="#eab308" />
-            )}
+            {hopeFeature && (() => {
+              // Same activation model as the full sheet: spend 3 Hope, mark
+              // active on the character (Rogue's Dodge → +2 Evasion), end
+              // manually or on rest.
+              const hopeSlots = character.hopeSlots || [];
+              const scars = character.scars || 0;
+              const usable = hopeSlots.slice(0, Math.max(0, hopeSlots.length - scars));
+              const filled = usable.filter(Boolean).length;
+              const active = !!character.hopeFeatureActive;
+              const toggle = () => {
+                if (!updateCharacter) return;
+                if (active) { updateCharacter(character.id, { hopeFeatureActive: false }); return; }
+                if (filled < HOPE_FEATURE_COST) return;
+                const next = [...hopeSlots];
+                let toSpend = HOPE_FEATURE_COST;
+                for (let i = hopeSlots.length - scars - 1; i >= 0 && toSpend > 0; i--) {
+                  if (next[i]) { next[i] = false; toSpend -= 1; }
+                }
+                updateCharacter(character.id, { hopeSlots: next, hopeFeatureActive: true });
+              };
+              return (
+                <FeatureCard
+                  tag={active ? 'Hope Feature · ✨ Active' : 'Hope Feature'}
+                  name={hopeFeature.name}
+                  description={hopeFeature.description}
+                  accentColor="#eab308"
+                  action={updateCharacter && (
+                    <button
+                      onClick={toggle}
+                      disabled={!active && filled < HOPE_FEATURE_COST}
+                      style={{
+                        marginTop: 8, padding: '6px 12px', borderRadius: 8,
+                        border: '1px solid rgba(234,179,8,0.45)',
+                        background: active ? 'rgba(234,179,8,0.22)' : 'rgba(234,179,8,0.1)',
+                        color: '#eab308', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        opacity: !active && filled < HOPE_FEATURE_COST ? 0.4 : 1,
+                      }}
+                    >
+                      {active ? 'End effect' : `Activate — ${HOPE_FEATURE_COST} Hope`}
+                    </button>
+                  )}
+                />
+              );
+            })()}
             {classFeatures.map((f, i) => (
               <FeatureCard key={i} name={f.name} description={f.description} />
             ))}

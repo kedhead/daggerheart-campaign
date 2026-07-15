@@ -243,6 +243,7 @@ export default function PlayerPortalView({ characters, currentUserId, campaign, 
   return (
     <PortalCharacterSheet
       character={character}
+      currentUserId={currentUserId}
       updateCharacter={updateCharacter}
       campaign={campaign}
       items={items}

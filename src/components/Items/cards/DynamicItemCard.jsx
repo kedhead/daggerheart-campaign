@@ -1,4 +1,5 @@
 import { Eye, EyeOff, Edit, Trash2, Package, Sword, Shield, Backpack } from 'lucide-react';
+import StashButton from '../StashButton';
 import { getGameSystem } from '../../../data/systems';
 
 /**
@@ -9,6 +10,8 @@ export default function DynamicItemCard({
   item,
   onEdit,
   onDelete,
+  onDeposit,
+  deposited,
   onToggleVisibility,
   canEdit = false,
   compact = false
@@ -253,29 +256,34 @@ export default function DynamicItemCard({
       )}
 
       {/* Actions */}
-      {canEdit && (
+      {(canEdit || onDeposit) && (
         <div className="item-card-actions">
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => onToggleVisibility?.(item.id, !item.hidden)}
-            title={item.hidden ? 'Show to players' : 'Hide from players'}
-          >
-            {item.hidden ? <Eye size={14} /> : <EyeOff size={14} />}
-          </button>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => onEdit?.(item)}
-            title="Edit"
-          >
-            <Edit size={14} />
-          </button>
-          <button
-            className="btn btn-ghost btn-sm btn-danger"
-            onClick={() => onDelete?.(item.id)}
-            title="Delete"
-          >
-            <Trash2 size={14} />
-          </button>
+          <StashButton onDeposit={onDeposit} deposited={deposited} />
+          {canEdit && (
+            <>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => onToggleVisibility?.(item.id, !item.hidden)}
+                title={item.hidden ? 'Show to players' : 'Hide from players'}
+              >
+                {item.hidden ? <Eye size={14} /> : <EyeOff size={14} />}
+              </button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => onEdit?.(item)}
+                title="Edit"
+              >
+                <Edit size={14} />
+              </button>
+              <button
+                className="btn btn-ghost btn-sm btn-danger"
+                onClick={() => onDelete?.(item.id)}
+                title="Delete"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>

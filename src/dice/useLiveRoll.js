@@ -22,13 +22,18 @@ export function useLiveRoll(campaignId, onRoll) {
     const mountTime = Date.now();
     const seen = new Set();
 
+    // limit(10), not limit(1): when several players roll at once, a
+    // limit(1) window only ever surfaces the newest doc and the rest of
+    // the burst is silently dropped. Ten covers any realistic same-second
+    // flurry; `seen` keeps each roll emitted exactly once.
     const q = query(
       collection(db, ROLLS_PATH(campaignId)),
       orderBy('clientTime', 'desc'),
-      limit(1)
+      limit(10)
     );
 
     const unsub = onSnapshot(q, (snap) => {
+      const fresh = [];
       snap.docChanges().forEach(change => {
         if (change.type !== 'added' && change.type !== 'modified') return;
         const data = change.doc.data();
@@ -42,8 +47,11 @@ export function useLiveRoll(campaignId, onRoll) {
           return;
         }
         seen.add(id);
-        if (onRollRef.current) onRollRef.current({ id, ...data });
+        fresh.push({ id, ...data });
       });
+      // Emit bursts oldest-first so viewers see rolls in table order.
+      fresh.sort((a, b) => (a.clientTime || 0) - (b.clientTime || 0));
+      fresh.forEach(roll => { if (onRollRef.current) onRollRef.current(roll); });
     }, (err) => {
       console.error('[useLiveRoll] subscription error:', err);
     });

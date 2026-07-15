@@ -41,7 +41,13 @@ function diceSpec(roll) {
   return groups;
 }
 
-export default function DiceTray({ campaignId }) {
+// Personal devices animate ONLY the local player's rolls in 3D — everyone
+// else's land as compact attributed toasts. Before this split, every phone
+// ran full physics for every roll at the table: four simultaneous rolls
+// meant four queued 3D simulations (+ banners) on every device, no names
+// attached. Shared displays (the table TV) pass animateRemote to keep the
+// full spectacle.
+export default function DiceTray({ campaignId, currentUserId = null, animateRemote = false }) {
   const containerRef = useRef(null);
   const boxRef = useRef(null);
   const readyRef = useRef(false);
@@ -54,6 +60,14 @@ export default function DiceTray({ campaignId }) {
   const [showBanner, setShowBanner] = useState(false);
   const [special, setSpecial] = useState(null);
   const [show, setShow] = useState(false);
+  const [feed, setFeed] = useState([]); // remote-roll toasts
+
+  const pushToFeed = useCallback((roll) => {
+    setFeed(prev => [...prev.slice(-3), roll]); // keep at most 4 visible
+    setTimeout(() => {
+      setFeed(prev => prev.filter(r => r.id !== roll.id));
+    }, 6000);
+  }, []);
 
   // Lazy-init dice-box once the portal target is in the DOM.
   useEffect(() => {
@@ -142,9 +156,16 @@ export default function DiceTray({ campaignId }) {
 
   // Receive new canonical rolls from Firestore.
   useLiveRoll(campaignId, useCallback((roll) => {
-    queueRef.current.push(roll);
-    drain();
-  }, [drain]));
+    const isMine = currentUserId != null && roll.rollerId === currentUserId;
+    // Someone else's private roll is not our business on any surface.
+    if (roll.isPrivate && !isMine) return;
+    if (isMine || animateRemote) {
+      queueRef.current.push(roll);
+      drain();
+    } else {
+      pushToFeed(roll);
+    }
+  }, [drain, pushToFeed, currentUserId, animateRemote]));
 
   useEffect(() => () => {
     if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
@@ -162,6 +183,11 @@ export default function DiceTray({ campaignId }) {
         <div id={CONTAINER_ID} ref={containerRef} className="dice-tray-canvas" />
         {showBanner && activeRoll && <RollResultBanner roll={activeRoll} />}
       </div>
+      {feed.length > 0 && (
+        <div className="dice-feed" aria-live="polite">
+          {feed.map(roll => <RollToast key={roll.id} roll={roll} />)}
+        </div>
+      )}
       {special && (
         <SpecialResultOverlay
           type={special.type}
@@ -171,5 +197,30 @@ export default function DiceTray({ campaignId }) {
       )}
     </>,
     document.body
+  );
+}
+
+// Compact attributed card for a remote player's roll — name, what they
+// rolled, and the outcome, with the roller's color as the accent. No 3D.
+function RollToast({ roll }) {
+  const outcome = roll.system === 'daggerheart' ? roll.outcome : null;
+  const crit = roll.flags?.isCrit;
+  const critFail = roll.flags?.isCritFail;
+  return (
+    <div className="dice-toast" style={{ borderLeftColor: roll.rollerColor || '#6366f1' }}>
+      <div className="dice-toast-meta">
+        <span className="dice-toast-name" style={{ color: roll.rollerColor || '#a5b4fc' }}>
+          {roll.rollerName || 'Player'}
+        </span>
+        {roll.label && <span className="dice-toast-label">{roll.label}</span>}
+      </div>
+      <div className="dice-toast-result">
+        <span className="dice-toast-total">{roll.total}</span>
+        {crit && <span className="dice-toast-flag dice-toast-crit">CRIT!</span>}
+        {critFail && <span className="dice-toast-flag dice-toast-critfail">FUMBLE</span>}
+        {outcome === 'hope' && <span className="dice-toast-flag dice-toast-hope">✨ Hope</span>}
+        {outcome === 'fear' && <span className="dice-toast-flag dice-toast-fear">💀 Fear</span>}
+      </div>
+    </div>
   );
 }

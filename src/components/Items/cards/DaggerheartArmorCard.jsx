@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import StashButton from '../StashButton';
 import { ChevronDown, ChevronUp, Edit2, Trash2, Shield, EyeOff } from 'lucide-react';
 import { getFeatureName, getFeatureDescription, isCustomFeature, hasFeatureName } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
@@ -19,7 +20,7 @@ const RARITY_COLORS = {
   relic: '#ec4899'
 };
 
-export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isExpanded: controlledExpanded, setIsExpanded: setControlledExpanded }) {
+export default function DaggerheartArmorCard({ item, onEdit, onDelete, onDeposit, deposited, isDM, isExpanded: controlledExpanded, setIsExpanded: setControlledExpanded }) {
   const [localExpanded, setLocalExpanded] = useState(false);
 
   // Use controlled state if provided, otherwise use local state
@@ -184,16 +185,21 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, isDM, isE
             </div>
           )}
 
-          {isDM && (
+          {(isDM || onDeposit) && (
             <div className="item-actions">
-              <button className="btn btn-secondary" onClick={onEdit}>
-                <Edit2 size={16} />
-                Edit
-              </button>
-              <button className="btn btn-danger" onClick={onDelete}>
-                <Trash2 size={16} />
-                Delete
-              </button>
+              <StashButton onDeposit={onDeposit} deposited={deposited} />
+              {isDM && (
+                <>
+                  <button className="btn btn-secondary" onClick={onEdit}>
+                    <Edit2 size={16} />
+                    Edit
+                  </button>
+                  <button className="btn btn-danger" onClick={onDelete}>
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
