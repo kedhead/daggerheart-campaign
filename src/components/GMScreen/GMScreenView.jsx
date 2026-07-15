@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import {
   LayoutDashboard, X, Columns2, Columns3,
-  Flame, Swords, Users, BookOpen, ScrollText, Activity, Hourglass, Tent,
+  Flame, Swords, Users, BookOpen, ScrollText, Activity, Hourglass, Tent, Dices,
 } from 'lucide-react';
+import RollHistory from '../../dice/RollHistory';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearControl from '../PlayerDisplay/FearControl';
 import InitiativeTracker from '../Initiative/InitiativeTracker';
@@ -23,6 +24,7 @@ const ALL_PANELS = [
   { id: 'npcs',       label: 'NPCs',        icon: Users },
   { id: 'session',    label: 'Session',     icon: ScrollText },
   { id: 'party',      label: 'Party',       icon: BookOpen },
+  { id: 'dice',       label: 'Dice Rolls',  icon: Dices },
 ];
 
 export default function GMScreenView({
@@ -58,8 +60,8 @@ export default function GMScreenView({
       if (saved) return JSON.parse(saved);
     } catch { /* ignore */ }
     return isDaggerheart
-      ? ['fear', 'initiative', 'encounters', 'npcs']
-      : ['initiative', 'encounters', 'npcs', 'session'];
+      ? ['fear', 'dice', 'encounters', 'npcs']
+      : ['initiative', 'dice', 'encounters', 'npcs'];
   });
 
   const [cols, setCols] = useState(() => {
@@ -248,6 +250,12 @@ export default function GMScreenView({
                       campaign={campaign}
                       onViewAll={() => setCurrentView?.('characters')}
                     />
+                  )}
+
+                  {id === 'dice' && (
+                    <div className="gm-dice-panel">
+                      <RollHistory campaignId={campaign?.id} count={30} isDM={isDM} compact />
+                    </div>
                   )}
                 </div>
               </div>
