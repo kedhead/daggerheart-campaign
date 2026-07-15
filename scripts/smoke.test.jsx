@@ -228,7 +228,7 @@ section('Cinematic recap timeline');
 
 // --- Defense calc: custom feature text bonuses (armor score / evasion) ---
 {
-  const character = { class: 'warrior', level: 2, armor: 0 };
+  const character = { class: 'Warrior', level: 2, armor: 0 };
   const armor = {
     type: 'armor', name: 'Bogplate of Testing',
     systemData: { armorScore: 4, armorSlots: 4, features: [{ name: 'Sturdy', description: 'No bonus here.' }] },
@@ -255,6 +255,15 @@ section('Cinematic recap timeline');
   const withProtective = computeDefenses(character, [armor, protectiveShield]);
   assert(withProtective.armorScore === base.armorScore + (character.proficiency || 2),
     `named Protective feature is not double-counted from its description (got ${withProtective.armorScore})`);
+
+  // Rogue's Dodge: active class Hope feature grants +2 Evasion (rogue only)
+  const rogue = { class: 'Rogue', level: 1 };
+  const idleRogue = computeDefenses(rogue, []);
+  const dodging = computeDefenses({ ...rogue, hopeFeatureActive: true }, []);
+  assert(idleRogue.evasion === 12, `rogue base evasion is 12 (got ${idleRogue.evasion})`);
+  assert(dodging.evasion === 14, `active Rogue's Dodge adds +2 evasion (got ${dodging.evasion})`);
+  const warriorActive = computeDefenses({ class: 'Warrior', level: 1, hopeFeatureActive: true }, []);
+  assert(warriorActive.evasion === 11, 'non-rogue active Hope feature leaves evasion unchanged');
 }
 
 // --- Mood-matched soundtrack (cinematicMusic) ---

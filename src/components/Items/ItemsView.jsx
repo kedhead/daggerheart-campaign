@@ -16,6 +16,7 @@ export default function ItemsView({
   addItem,
   updateItem,
   deleteItem,
+  addToPartyInventory,
   isDM,
   userId,
   campaignFrame = null,
@@ -40,6 +41,25 @@ export default function ItemsView({
   const [importCategory, setImportCategory] = useState('all');
   const [importTier, setImportTier] = useState('all');
   const [selectedImports, setSelectedImports] = useState(new Set());
+  const [stashedIds, setStashedIds] = useState(() => new Set()); // transient "Stashed ✓" feedback
+
+  // Quick-deposit one of this item into the shared party stash.
+  const handleDeposit = async (item) => {
+    if (!addToPartyInventory) return;
+    try {
+      await addToPartyInventory(item.id, 1);
+      setStashedIds(prev => new Set(prev).add(item.id));
+      setTimeout(() => {
+        setStashedIds(prev => {
+          const next = new Set(prev);
+          next.delete(item.id);
+          return next;
+        });
+      }, 2000);
+    } catch (err) {
+      console.error('Deposit to party stash failed:', err);
+    }
+  };
   const [isImporting, setIsImporting] = useState(false);
   const [catalogTier, setCatalogTier] = useState('all');
   const [showAIModal, setShowAIModal] = useState(false);
@@ -367,6 +387,8 @@ export default function ItemsView({
               gameSystem={gameSystem}
               onEdit={() => handleEdit(item)}
               onDelete={() => handleDelete(item.id)}
+              onDeposit={addToPartyInventory ? () => handleDeposit(item) : undefined}
+              deposited={stashedIds.has(item.id)}
               isDM={isDM}
               campaign={campaign}
             />

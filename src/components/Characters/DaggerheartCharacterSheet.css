@@ -1944,6 +1944,43 @@
 .dh-feature-hope {
   border-left: 3px solid #c8a44e;
 }
+.dh-feature-active {
+  border-left-color: #eab308;
+  box-shadow: inset 0 0 24px rgba(234, 179, 8, 0.08), 0 0 10px rgba(234, 179, 8, 0.12);
+}
+.dh-active-chip {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(234, 179, 8, 0.18);
+  border: 1px solid rgba(234, 179, 8, 0.5);
+  color: #eab308;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  animation: dh-active-pulse 2.2s ease-in-out infinite;
+}
+@keyframes dh-active-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.dh-hope-activate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.6rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  background: rgba(234, 179, 8, 0.1);
+  color: #eab308;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dh-hope-activate-btn:hover:not(:disabled) { background: rgba(234, 179, 8, 0.2); }
+.dh-hope-activate-btn:disabled { opacity: 0.4; cursor: default; }
 
 /* ─── Feature tag styling ─── */
 .dh-feature-tag {

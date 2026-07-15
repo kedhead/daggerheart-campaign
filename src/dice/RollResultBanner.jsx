@@ -14,6 +14,9 @@ export default function RollResultBanner({ roll }) {
     const dis = roll.dice?.find(d => d.groupId === 'disadvantage')?.value;
     return (
       <div className={`dice-result-banner outcome-${roll.outcome || 'tie'}`}>
+        {roll.rollerName && (
+          <div className="banner-roller" style={{ color: roll.rollerColor || undefined }}>{roll.rollerName}</div>
+        )}
         <div className="banner-dice">
           <span className="hope-chip"><Sun size={16} /> {hope}</span>
           <span className="vs">vs</span>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import StashButton from '../StashButton';
 import { ChevronDown, ChevronUp, Edit2, Trash2, Sword, EyeOff } from 'lucide-react';
 import { getFeatureName, getFeatureDescription, isCustomFeature } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
@@ -27,7 +28,7 @@ const RANGE_LABELS = {
   'very far': 'Very Far'
 };
 
-export default function DaggerheartWeaponCard({ item, onEdit, onDelete, isDM, isExpanded: controlledExpanded, setIsExpanded: setControlledExpanded }) {
+export default function DaggerheartWeaponCard({ item, onEdit, onDelete, onDeposit, deposited, isDM, isExpanded: controlledExpanded, setIsExpanded: setControlledExpanded }) {
   const [localExpanded, setLocalExpanded] = useState(false);
 
   // Use controlled state if provided, otherwise use local state
@@ -188,16 +189,21 @@ export default function DaggerheartWeaponCard({ item, onEdit, onDelete, isDM, is
             </div>
           )}
 
-          {isDM && (
+          {(isDM || onDeposit) && (
             <div className="item-actions">
-              <button className="btn btn-secondary" onClick={onEdit}>
-                <Edit2 size={16} />
-                Edit
-              </button>
-              <button className="btn btn-danger" onClick={onDelete}>
-                <Trash2 size={16} />
-                Delete
-              </button>
+              <StashButton onDeposit={onDeposit} deposited={deposited} />
+              {isDM && (
+                <>
+                  <button className="btn btn-secondary" onClick={onEdit}>
+                    <Edit2 size={16} />
+                    Edit
+                  </button>
+                  <button className="btn btn-danger" onClick={onDelete}>
+                    <Trash2 size={16} />
+                    Delete
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

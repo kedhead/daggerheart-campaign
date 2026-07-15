@@ -189,7 +189,7 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
         )}
 
         <Suspense fallback={null}>
-          <DiceTray campaignId={currentCampaignId} />
+          <DiceTray campaignId={currentCampaignId} currentUserId={currentUser?.uid} />
           <DiceRoller
             campaignId={currentCampaignId}
             gameSystem={campaign?.gameSystem || 'daggerheart'}

@@ -22,7 +22,7 @@ const TYPE_ICONS = {
   equipment: Backpack
 };
 
-export default function ItemCard({ item, gameSystem, onEdit, onDelete, isDM, campaign }) {
+export default function ItemCard({ item, gameSystem, onEdit, onDelete, onDeposit, deposited, isDM, campaign }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const TypeIcon = TYPE_ICONS[item.type] || Backpack;
@@ -38,6 +38,8 @@ export default function ItemCard({ item, gameSystem, onEdit, onDelete, isDM, cam
         item={item}
         onEdit={onEdit}
         onDelete={onDelete}
+        onDeposit={onDeposit}
+        deposited={deposited}
         isDM={isDM}
         campaign={campaign}
         isExpanded={isExpanded}
@@ -53,6 +55,8 @@ export default function ItemCard({ item, gameSystem, onEdit, onDelete, isDM, cam
       item={item}
       onEdit={onEdit ? () => onEdit(item) : undefined}
       onDelete={onDelete ? () => onDelete(item.id) : undefined}
+      onDeposit={onDeposit}
+      deposited={deposited}
       canEdit={isDM}
     />
   );

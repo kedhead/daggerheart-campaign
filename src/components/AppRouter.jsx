@@ -543,6 +543,7 @@ export default function AppRouter({
           campaign={campaign}
           items={items}
           addItem={addItem}
+          addToPartyInventory={addToPartyInventory}
           updateItem={updateItem}
           deleteItem={deleteItem}
           isDM={isDM}

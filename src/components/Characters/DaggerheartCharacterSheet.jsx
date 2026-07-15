@@ -149,6 +149,29 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     updateCharacter(character.id, { [type]: currentSlots });
   };
 
+  // Class Hope features cost 3 Hope (SRD). Activating spends the Hope and
+  // marks the effect on the character — Rogue's Dodge grants +2 Evasion via
+  // computeDefenses while active. Deactivating just clears the marker
+  // (no refund); a rest also ends it.
+  const HOPE_FEATURE_COST = 3;
+  const hopeFeatureActive = !!character.hopeFeatureActive;
+  const usableHopeCount = hopeSlots.slice(0, Math.max(0, hopeSlots.length - (character.scars || 0))).filter(Boolean).length;
+  const toggleHopeFeature = () => {
+    if (!canEdit || !updateCharacter) return;
+    if (hopeFeatureActive) {
+      updateCharacter(character.id, { hopeFeatureActive: false });
+      return;
+    }
+    if (usableHopeCount < HOPE_FEATURE_COST) return;
+    const next = [...hopeSlots];
+    let toSpend = HOPE_FEATURE_COST;
+    for (let i = hopeSlots.length - (character.scars || 0) - 1; i >= 0 && toSpend > 0; i--) {
+      if (next[i]) { next[i] = false; toSpend -= 1; }
+    }
+    setLocalHope(next);
+    updateCharacter(character.id, { hopeSlots: next, hopeFeatureActive: true });
+  };
+
   const handleSlayerDiceAdjust = (delta, max) => {
     if (!canEdit || !updateCharacter) return;
     const next = Math.max(0, Math.min(max, slayerDice + delta));
@@ -887,10 +910,27 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         <div className="dh-ability-section">
           <div className="dh-section-label">{charClass} Features</div>
           {hopeFeature && (
-            <div className="dh-feature-card dh-feature-hope">
-              <div className="dh-feature-tag">Hope Feature</div>
+            <div className={`dh-feature-card dh-feature-hope ${hopeFeatureActive ? 'dh-feature-active' : ''}`}>
+              <div className="dh-feature-tag">
+                Hope Feature
+                {hopeFeatureActive && <span className="dh-active-chip">Active</span>}
+              </div>
               <div className="dh-feature-name">{hopeFeature.name}</div>
               <div className="dh-feature-desc">{hopeFeature.description}</div>
+              {canEdit && updateCharacter && (
+                <button
+                  className="dh-hope-activate-btn"
+                  onClick={toggleHopeFeature}
+                  disabled={!hopeFeatureActive && usableHopeCount < HOPE_FEATURE_COST}
+                  title={hopeFeatureActive
+                    ? 'End the effect (no Hope refund)'
+                    : usableHopeCount < HOPE_FEATURE_COST
+                      ? `Needs ${HOPE_FEATURE_COST} unspent Hope`
+                      : `Spend ${HOPE_FEATURE_COST} Hope and mark this active`}
+                >
+                  <Sparkles size={13} /> {hopeFeatureActive ? 'End effect' : `Activate — ${HOPE_FEATURE_COST} Hope`}
+                </button>
+              )}
             </div>
           )}
           {classFeatures.map((f, i) => (
