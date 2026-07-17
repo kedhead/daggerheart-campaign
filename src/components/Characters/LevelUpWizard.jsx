@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, AlertCircle } from 'lucide-react';
 import {
   CLASSES, SUBCLASSES, DOMAINS, ADVANCEMENT_OPTIONS,
@@ -739,7 +740,10 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
     }
   };
 
-  return (
+  // Portal to <body>: ancestor transforms/filters in the app shell would
+  // otherwise re-anchor this "fixed" overlay and strand it off-viewport on
+  // phones. Server rendering (smoke tests) has no document — render inline.
+  const overlay = (
     <div className="luw-overlay" onClick={onClose}>
       <div className="luw-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -794,4 +798,5 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
       </div>
     </div>
   );
+  return typeof document === 'undefined' ? overlay : createPortal(overlay, document.body);
 }

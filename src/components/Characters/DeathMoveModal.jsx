@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Skull, Check, Flame, Shield, Dices } from 'lucide-react';
 import './LevelUpWizard.css';
 
@@ -183,7 +184,10 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
     </div>
   );
 
-  return (
+  // Portal to <body>: ancestor transforms/filters in the app shell would
+  // otherwise re-anchor this "fixed" overlay and strand it off-viewport on
+  // phones. Server rendering (smoke tests) has no document — render inline.
+  const overlay = (
     <div className="luw-overlay" onClick={onClose}>
       <div className="luw-modal" onClick={e => e.stopPropagation()}>
         <div className="luw-header">
@@ -218,4 +222,5 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
       </div>
     </div>
   );
+  return typeof document === 'undefined' ? overlay : createPortal(overlay, document.body);
 }

@@ -7,12 +7,13 @@
 import { useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { publishRoll } from './service.js';
+import { getPlayerDiceColor } from './playerColor.js';
 
 function rollerInfoFromUser(currentUser) {
   return {
     rollerId: currentUser?.uid || null,
     rollerName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Player',
-    rollerColor: (typeof window !== 'undefined' && localStorage.getItem('daggerheart_dice_color')) || '#6366f1',
+    rollerColor: getPlayerDiceColor(currentUser?.uid),
   };
 }
 

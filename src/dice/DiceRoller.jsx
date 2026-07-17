@@ -10,18 +10,13 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { publishRoll } from './service.js';
 import { SYSTEM_LABELS, DICE_COLOR } from './systems.js';
 import RollHistory from './RollHistory.jsx';
+import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor } from './playerColor.js';
 
-const PLAYER_COLORS = [
-  '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
-  '#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#ffffff',
-];
+
 
 const DICE_TYPES = [4, 6, 8, 10, 12, 20];
 
-function getStoredColor() {
-  if (typeof window === 'undefined') return '#6366f1';
-  return localStorage.getItem('daggerheart_dice_color') || '#6366f1';
-}
+
 
 function getStoredName(currentUser, fallback) {
   if (typeof window === 'undefined') return fallback || 'Player';
@@ -53,7 +48,7 @@ export default function DiceRoller({
   const [genericDice, setGenericDice] = useState({});
   const [busy, setBusy] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [playerColor, setPlayerColor] = useState(getStoredColor());
+  const [playerColor, setPlayerColor] = useState(() => getPlayerDiceColor(currentUser?.uid));
   const [playerName, setPlayerName] = useState('');
   const popoverRef = useRef(null);
 
@@ -89,7 +84,7 @@ export default function DiceRoller({
   };
   const setColor = (c) => {
     setPlayerColor(c);
-    if (typeof window !== 'undefined') localStorage.setItem('daggerheart_dice_color', c);
+    setPlayerDiceColor(c);
   };
 
   const rollerInfo = {

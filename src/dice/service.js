@@ -19,12 +19,22 @@ function sanitizeRoller(rollerInfo = {}) {
   };
 }
 
+// Dice whose color carries rules meaning (Hope gold, Fear purple, …) keep it;
+// everything else — damage dice, d20s, generic rolls — takes the player's
+// chosen color so the 3D dice themselves identify the roller.
+const SEMANTIC_DICE_GROUPS = new Set(['hope', 'fear', 'advantage', 'disadvantage', 'wild', 'wildExplode']);
+
 // Roll on the local device, write the canonical record, and return it.
 // This is the ONLY place rolls are published.
 export async function publishRoll({ campaignId, system, config = {}, rollerInfo, label = '', isPrivate = false }) {
   if (!campaignId) throw new Error('publishRoll: campaignId required');
   const result = rollForSystem(system, config);
   const roller = sanitizeRoller(rollerInfo);
+  if (roller.rollerColor) {
+    result.dice = result.dice.map(d =>
+      SEMANTIC_DICE_GROUPS.has(d.groupId) ? d : { ...d, color: roller.rollerColor }
+    );
+  }
   const docData = {
     system: result.system,
     dice: result.dice,
