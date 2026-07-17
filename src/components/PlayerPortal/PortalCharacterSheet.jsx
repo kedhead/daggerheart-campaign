@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, ChevronLeft, Moon, ArrowUp, Skull } from 'lucide-react';
+import { X, ChevronLeft, Moon, ArrowUp, Skull, Palette } from 'lucide-react';
 import { useDice, DiceTray } from '../../dice';
+import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor } from '../../dice/playerColor';
 import PortalSlotTracker from './PortalSlotTracker';
 import ActionsTab from './tabs/ActionsTab';
 import SpellsTab from './tabs/SpellsTab';
@@ -30,6 +31,8 @@ function toBoolArray(filled, max) {
 }
 
 export default function PortalCharacterSheet({ character, currentUserId, updateCharacter, campaign, items, showBack, onBack, onExit }) {
+  const [showDicePicker, setShowDicePicker] = useState(false);
+  const [diceColor, setDiceColor] = useState(() => getPlayerDiceColor(currentUserId));
   const [activeTab, setActiveTab] = useState('actions');
   const [rollBonus, setRollBonus] = useState(null);
   const [showRest, setShowRest] = useState(false);
@@ -110,11 +113,47 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
         ) : (
           <div style={{ width: 36 }} />
         )}
-        <button onClick={onExit} className="lrp-icon-btn" aria-label="Exit portal"
-          style={{ pointerEvents: 'auto' }}>
-          <X size={20} />
-        </button>
+        <div style={{ display: 'flex', gap: 8, pointerEvents: 'auto' }}>
+          <button
+            onClick={() => setShowDicePicker(v => !v)}
+            className="lrp-icon-btn"
+            aria-label="Dice color"
+            title="Your dice color"
+            style={{ borderColor: diceColor, color: diceColor }}
+          >
+            <Palette size={18} />
+          </button>
+          <button onClick={onExit} className="lrp-icon-btn" aria-label="Exit portal">
+            <X size={20} />
+          </button>
+        </div>
       </div>
+
+      {/* Dice color swatches — your damage dice, toasts, and roll history use this */}
+      {showDicePicker && (
+        <div style={{
+          position: 'absolute',
+          top: 'max(56px, calc(env(safe-area-inset-top, 10px) + 46px))',
+          right: 16, zIndex: 11,
+          display: 'grid', gridTemplateColumns: 'repeat(7, 28px)', gap: 8,
+          padding: 10, borderRadius: 12,
+          background: 'rgba(12,14,28,0.96)', border: '1px solid rgba(255,255,255,0.14)',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+        }}>
+          {PLAYER_COLORS.map(c => (
+            <button
+              key={c}
+              aria-label={`Dice color ${c}`}
+              onClick={() => { setPlayerDiceColor(c); setDiceColor(c); setShowDicePicker(false); }}
+              style={{
+                width: 28, height: 28, borderRadius: '50%', cursor: 'pointer',
+                background: c,
+                border: diceColor === c ? '2px solid #fff' : '2px solid transparent',
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Scrollable body */}
       <div className="lrp-content">
