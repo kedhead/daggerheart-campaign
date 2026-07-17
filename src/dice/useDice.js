@@ -7,13 +7,14 @@
 import { useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { publishRoll } from './service.js';
-import { getPlayerDiceColor } from './playerColor.js';
+import { getPlayerDiceColor, getDualitySet } from './playerColor.js';
 
 function rollerInfoFromUser(currentUser) {
   return {
     rollerId: currentUser?.uid || null,
     rollerName: currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Player',
     rollerColor: getPlayerDiceColor(currentUser?.uid),
+    duality: (({ hope, fear }) => ({ hope, fear }))(getDualitySet()),
   };
 }
 

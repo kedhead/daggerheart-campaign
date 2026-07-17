@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, ChevronLeft, Moon, ArrowUp, Skull, Palette } from 'lucide-react';
 import { useDice, DiceTray } from '../../dice';
-import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor } from '../../dice/playerColor';
+import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor, DUALITY_SETS, getDualitySet, setDualitySet } from '../../dice/playerColor';
 import PortalSlotTracker from './PortalSlotTracker';
 import ActionsTab from './tabs/ActionsTab';
 import SpellsTab from './tabs/SpellsTab';
@@ -33,6 +33,8 @@ function toBoolArray(filled, max) {
 export default function PortalCharacterSheet({ character, currentUserId, updateCharacter, campaign, items, showBack, onBack, onExit }) {
   const [showDicePicker, setShowDicePicker] = useState(false);
   const [diceColor, setDiceColor] = useState(() => getPlayerDiceColor(currentUserId));
+  const [dualityKey, setDualityKey] = useState(() => getDualitySet().key);
+  const dualitySet = DUALITY_SETS.find(d => d.key === dualityKey) || DUALITY_SETS[0];
   const [activeTab, setActiveTab] = useState('actions');
   const [rollBonus, setRollBonus] = useState(null);
   const [showRest, setShowRest] = useState(false);
@@ -144,7 +146,7 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
             <button
               key={c}
               aria-label={`Dice color ${c}`}
-              onClick={() => { setPlayerDiceColor(c); setDiceColor(c); setShowDicePicker(false); }}
+              onClick={() => { setPlayerDiceColor(c); setDiceColor(c); }}
               style={{
                 width: 28, height: 28, borderRadius: '50%', cursor: 'pointer',
                 background: c,
@@ -152,6 +154,25 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
               }}
             />
           ))}
+          {/* Duality (Hope/Fear) color set */}
+          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <span title="Hope die" style={{ width: 14, height: 14, borderRadius: '50%', background: dualitySet.hope, border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0 }} />
+            <span title="Fear die" style={{ width: 14, height: 14, borderRadius: '50%', background: dualitySet.fear, border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0 }} />
+            <select
+              value={dualityKey}
+              aria-label="Duality dice colors"
+              onChange={(e) => { setDualityKey(e.target.value); setDualitySet(e.target.value); }}
+              style={{
+                flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 8,
+                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+                color: 'rgba(255,255,255,0.85)', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              {DUALITY_SETS.map(d => (
+                <option key={d.key} value={d.key} style={{ background: '#14162a' }}>{d.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
