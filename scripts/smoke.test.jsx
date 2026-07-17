@@ -20,6 +20,7 @@ import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
+import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -264,6 +265,25 @@ section('Cinematic recap timeline');
   assert(dodging.evasion === 14, `active Rogue's Dodge adds +2 evasion (got ${dodging.evasion})`);
   const warriorActive = computeDefenses({ class: 'Warrior', level: 1, hopeFeatureActive: true }, []);
   assert(warriorActive.evasion === 11, 'non-rogue active Hope feature leaves evasion unchanged');
+}
+
+// --- Player dice colors (roller color + Duality sets) ---
+{
+  const dice = [
+    { groupId: 'hope', sides: 12, color: '#eab308', value: 8 },
+    { groupId: 'fear', sides: 12, color: '#7c3aed', value: 3 },
+    { groupId: 'advantage', sides: 6, color: '#22c55e', value: 4 },
+    { groupId: 'dmg-0', sides: 8, color: '#6366f1', value: 5 },
+  ];
+  const ember = DUALITY_SETS.find(d => d.key === 'ember');
+  const out = applyDiceColors(dice, { rollerColor: '#ef4444', duality: { hope: ember.hope, fear: ember.fear } });
+  assert(out[0].color === ember.hope && out[1].color === ember.fear, 'duality set recolors Hope and Fear dice');
+  assert(out[2].color === '#22c55e', 'advantage die keeps its semantic green');
+  assert(out[3].color === '#ef4444', 'damage die takes the player color');
+  const noSet = applyDiceColors(dice, { rollerColor: '#ef4444', duality: null });
+  assert(noSet[0].color === '#eab308' && noSet[1].color === '#7c3aed', 'no duality set → classic Hope/Fear colors kept');
+  assert(DUALITY_SETS.length >= 8 && DUALITY_SETS.every(d => d.hope !== d.fear), 'every duality set keeps Hope and Fear distinct');
+  assert(PLAYER_COLORS.length === 14, 'player palette intact');
 }
 
 // --- Mood-matched soundtrack (cinematicMusic) ---

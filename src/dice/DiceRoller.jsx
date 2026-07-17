@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { publishRoll } from './service.js';
 import { SYSTEM_LABELS, DICE_COLOR } from './systems.js';
 import RollHistory from './RollHistory.jsx';
-import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor } from './playerColor.js';
+import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor, DUALITY_SETS, getDualitySet, setDualitySet } from './playerColor.js';
 
 
 
@@ -49,6 +49,7 @@ export default function DiceRoller({
   const [busy, setBusy] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [playerColor, setPlayerColor] = useState(() => getPlayerDiceColor(currentUser?.uid));
+  const [dualityKey, setDualityKey] = useState(() => getDualitySet().key);
   const [playerName, setPlayerName] = useState('');
   const popoverRef = useRef(null);
 
@@ -87,10 +88,12 @@ export default function DiceRoller({
     setPlayerDiceColor(c);
   };
 
+  const dualitySet = DUALITY_SETS.find(d => d.key === dualityKey) || DUALITY_SETS[0];
   const rollerInfo = {
     rollerId: currentUser?.uid || null,
     rollerName: playerName || 'Player',
     rollerColor: playerColor,
+    duality: { hope: dualitySet.hope, fear: dualitySet.fear },
   };
 
   const handleRoll = async () => {
@@ -200,17 +203,34 @@ export default function DiceRoller({
         </button>
       </div>
       {showColorPicker && (
-        <div className="dr-color-grid">
-          {PLAYER_COLORS.map(c => (
-            <button
-              key={c}
-              type="button"
-              className={`dr-color-swatch ${playerColor === c ? 'active' : ''}`}
-              style={{ backgroundColor: c }}
-              onClick={() => { setColor(c); setShowColorPicker(false); }}
-            />
-          ))}
-        </div>
+        <>
+          <div className="dr-color-grid">
+            {PLAYER_COLORS.map(c => (
+              <button
+                key={c}
+                type="button"
+                className={`dr-color-swatch ${playerColor === c ? 'active' : ''}`}
+                style={{ backgroundColor: c }}
+                onClick={() => { setColor(c); }}
+              />
+            ))}
+          </div>
+          <div className="dr-duality-row">
+            <span className="dr-duality-dot" style={{ backgroundColor: dualitySet.hope }} title="Hope die" />
+            <span className="dr-duality-dot" style={{ backgroundColor: dualitySet.fear }} title="Fear die" />
+            <select
+              className="dr-duality-select"
+              value={dualityKey}
+              onChange={(e) => { setDualityKey(e.target.value); setDualitySet(e.target.value); }}
+              aria-label="Duality dice colors"
+              title="Hope & Fear dice colors"
+            >
+              {DUALITY_SETS.map(d => (
+                <option key={d.key} value={d.key}>{d.label}</option>
+              ))}
+            </select>
+          </div>
+        </>
       )}
 
       <div className="dr-systems">

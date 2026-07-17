@@ -547,3 +547,30 @@
   opacity: 0.9;
   margin-bottom: 2px;
 }
+
+/* ── Duality dice color set picker ── */
+.dr-duality-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.dr-duality-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+.dr-duality-select {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.dr-duality-select option { background: #14162a; color: #eee; }
