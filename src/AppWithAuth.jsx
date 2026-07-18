@@ -131,6 +131,8 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
             userRole={campaignRole}
             currentCampaign={campaign}
             onSwitchCampaign={() => setCurrentCampaignId(null)}
+            isDaggerheart={isDaggerheart}
+            onEnterPortal={handleTogglePortal}
           />
           <div className="flex-1 flex flex-col min-w-0 min-h-screen relative">
             <TopBar
