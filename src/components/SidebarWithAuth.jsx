@@ -5,7 +5,7 @@ import { getGameSystem } from '../data/systems/index.js';
 import { applyTheme } from '../config/themes.js';
 import './Sidebar.css';
 
-export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign, presenceIndicator }) {
+export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign, presenceIndicator, isDaggerheart = false, onEnterPortal }) {
   const { logout, currentUser } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -67,7 +67,14 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
       label: 'Campaign',
       icon: Home,
       items: [
-        { id: 'dashboard', label: 'Dashboard', icon: Home }
+        { id: 'dashboard', label: 'Dashboard', icon: Home },
+        // Quick access to the player's own sheet — parity with the phone
+        // bottom nav's "Sheet" (and "Portal") buttons, which don't show on
+        // tablet/desktop widths where the sidebar is the only navigation.
+        { id: 'my-sheet', label: 'My Sheet', icon: User },
+        ...((!isDM && isDaggerheart && onEnterPortal)
+          ? [{ id: 'portal', label: 'Player Portal', icon: Gamepad2, action: 'portal' }]
+          : []),
       ]
     },
     {
@@ -155,8 +162,12 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
     }
   };
 
-  const handleNavClick = (viewId) => {
-    setCurrentView(viewId);
+  const handleNavClick = (item) => {
+    if (item.action === 'portal') {
+      onEnterPortal?.();
+    } else {
+      setCurrentView(item.id);
+    }
     setIsMobileMenuOpen(false); // Close mobile menu after navigation
   };
 
@@ -275,11 +286,11 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                 <div className="space-y-1">
                   {group.items.map(item => {
                     const Icon = item.icon;
-                    const isActive = currentView === item.id;
+                    const isActive = item.action !== 'portal' && currentView === item.id;
                     return (
                       <button
                         key={item.id}
-                        onClick={() => handleNavClick(item.id)}
+                        onClick={() => handleNavClick(item)}
                         className={`
                           w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 relative group/item
                           ${isActive
