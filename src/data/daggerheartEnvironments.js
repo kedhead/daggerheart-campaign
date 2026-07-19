@@ -12,6 +12,8 @@
  * - features: Array of mechanical effects/hazards
  * - potentialAdversaries: Suggested enemies
  */
+import { HF_ENVIRONMENTS } from './hopeFear.js';
+import { withSource, HOPE_FEAR_SOURCE } from './sources.js';
 
 export const DAGGERHEART_ENVIRONMENTS = [
   {
@@ -543,6 +545,9 @@ export const DAGGERHEART_ENVIRONMENTS = [
 ];
 
 // Helper functions for filtering
+// Hope & Fear expansion environments.
+DAGGERHEART_ENVIRONMENTS.push(...withSource(HF_ENVIRONMENTS, HOPE_FEAR_SOURCE));
+
 export const getEnvironmentsByTier = (tier) =>
   DAGGERHEART_ENVIRONMENTS.filter(e => e.tier === tier);
 

@@ -1,4 +1,5 @@
 // Daggerheart Game System Definition
+import { HF_CLASSES, HF_SUBCLASSES, HF_ANCESTRIES, HF_COMMUNITIES, HF_DOMAIN_CARDS } from '../hopeFear.js';
 // Official Daggerheart RPG system by Darrington Press
 
 const CLASSES = {
@@ -478,6 +479,18 @@ const COMMUNITIES = {
     features: [{ name: 'Lightfoot', description: 'Your movement is naturally silent. You can spend 1 Hope to give a nearby ally Advantage on a Stealth or Agility roll.' }]
   }
 };
+
+// ── Hope & Fear expansion merges ──
+// Classes/subclasses/heritages extend the core maps in place; the Dread
+// domain only appears in pickers once its cards actually exist, so nobody
+// can select a domain with zero cards before the PDF content lands.
+Object.assign(CLASSES, HF_CLASSES);
+Object.assign(SUBCLASSES, HF_SUBCLASSES);
+Object.assign(ANCESTRIES, HF_ANCESTRIES);
+Object.assign(COMMUNITIES, HF_COMMUNITIES);
+if (HF_DOMAIN_CARDS.length > 0 && !DOMAINS.includes('Dread')) {
+  DOMAINS.push('Dread');
+}
 
 const LORE_TYPES = [
   'location',

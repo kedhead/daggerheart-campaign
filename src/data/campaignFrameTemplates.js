@@ -2,6 +2,8 @@
  * Campaign Frame Templates
  * Based on official Daggerheart Campaign Frames
  */
+import { HF_CAMPAIGN_FRAMES } from './hopeFear.js';
+import { withSource, HOPE_FEAR_SOURCE } from './sources.js';
 import { getGameSystem } from './systems/index.js';
 
 export const CAMPAIGN_FRAME_TEMPLATES = [
@@ -411,6 +413,9 @@ export const CAMPAIGN_FRAME_TEMPLATES = [
  * @param {string} id - Template ID
  * @returns {object|null} Template object or null if not found
  */
+// Hope & Fear expansion campaign frames.
+CAMPAIGN_FRAME_TEMPLATES.push(...withSource(HF_CAMPAIGN_FRAMES, HOPE_FEAR_SOURCE));
+
 export function getTemplateById(id) {
   return CAMPAIGN_FRAME_TEMPLATES.find(template => template.id === id) || null;
 }

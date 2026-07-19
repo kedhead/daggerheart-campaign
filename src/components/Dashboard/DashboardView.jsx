@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CONTENT_SOURCES } from '../../data/sources';
 import { Users, BookOpen, ScrollText, ExternalLink, Edit3, Swords, Crown, Calendar, UsersRound, MapPin } from 'lucide-react';
 import { DiceRoller } from '../../dice';
 import DMSoundboard from '../Soundboard/DMSoundboard';
@@ -445,6 +446,35 @@ export default function DashboardView({
               Anyone can discover and request to join this campaign.
             </p>
           </div>
+
+          {/* Content sources — which rulebooks feed this campaign's catalogs */}
+          <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
+            <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em]">Content Sources</div>
+            {CONTENT_SOURCES.map(src => (
+              <label key={src.id} className={`flex items-start gap-3 ${src.locked ? 'opacity-60' : 'cursor-pointer group'}`}>
+                <input
+                  type="checkbox"
+                  disabled={src.locked}
+                  checked={src.locked || campaignForm.contentSources?.[src.id] !== false}
+                  onChange={(e) => setCampaignForm({
+                    ...campaignForm,
+                    contentSources: { ...(campaignForm.contentSources || {}), [src.id]: e.target.checked },
+                  })}
+                  className="mt-0.5 w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-xs font-bold text-white/60 group-hover:text-white transition-colors">{src.label}</span>
+                  {src.description && (
+                    <span className="block text-[10px] text-white/25 font-medium italic">{src.description}</span>
+                  )}
+                  {src.releaseDate && (
+                    <span className="block text-[10px] text-amber-400/50 font-medium">Content arrives {src.releaseDate}</span>
+                  )}
+                </span>
+              </label>
+            ))}
+          </div>
+
           <div className="flex gap-3 pt-6 border-t border-white/5">
             <button type="button" className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 font-black text-xs uppercase tracking-widest transition-all" onClick={() => setIsEditingCampaign(false)}>
               Cancel

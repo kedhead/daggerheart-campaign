@@ -5,6 +5,8 @@
  *
  * These can be imported into campaigns as template adversaries
  */
+import { HF_ADVERSARIES } from './hopeFear.js';
+import { withSource, HOPE_FEAR_SOURCE } from './sources.js';
 
 export const DAGGERHEART_ADVERSARIES = [
   {
@@ -4804,6 +4806,9 @@ export const DAGGERHEART_ADVERSARIES = [
 ];
 
 // Group by tier
+// Hope & Fear expansion adversaries (tagged so campaigns can gate them).
+DAGGERHEART_ADVERSARIES.push(...withSource(HF_ADVERSARIES, HOPE_FEAR_SOURCE));
+
 export const ADVERSARIES_BY_TIER = {
   1: DAGGERHEART_ADVERSARIES.filter(a => a.tier === 1),
   2: DAGGERHEART_ADVERSARIES.filter(a => a.tier === 2),
