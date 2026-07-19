@@ -2,6 +2,8 @@
  * Official Daggerheart Items from daggerheart.org/reference
  * These can be imported into campaigns as template items
  */
+import { HF_WEAPONS, HF_ARMOR, HF_EQUIPMENT, HF_CONSUMABLES } from './hopeFear.js';
+import { withSource, HOPE_FEAR_SOURCE } from './sources.js';
 
 // Helper to parse damage like "d8+3" into dice and modifier
 const parseDamage = (str) => {
@@ -2288,6 +2290,12 @@ export const DAGGERHEART_CONSUMABLES = [
 ];
 
 // Combined export for easy access
+// Hope & Fear expansion items, merged before the combined catalog is built.
+DAGGERHEART_WEAPONS.push(...withSource(HF_WEAPONS, HOPE_FEAR_SOURCE));
+DAGGERHEART_ARMOR.push(...withSource(HF_ARMOR, HOPE_FEAR_SOURCE));
+DAGGERHEART_EQUIPMENT.push(...withSource(HF_EQUIPMENT, HOPE_FEAR_SOURCE));
+DAGGERHEART_CONSUMABLES.push(...withSource(HF_CONSUMABLES, HOPE_FEAR_SOURCE));
+
 export const ALL_DAGGERHEART_ITEMS = [
   ...DAGGERHEART_WEAPONS,
   ...DAGGERHEART_ARMOR,

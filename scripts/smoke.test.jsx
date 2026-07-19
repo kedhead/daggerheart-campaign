@@ -21,6 +21,14 @@ import { pickEffectForText, createFX } from '../src/components/Storybook/cinemat
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
+import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
+import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
+import { HF_TRANSFORMATIONS, HF_DOMAIN_CARDS } from '../src/data/hopeFear.js';
+import { sourceOf, isSourceEnabled, filterBySource, withSource, CONTENT_SOURCES } from '../src/data/sources.js';
+import {
+  validateAdversary, validateDomainCard, validateClass, validateSubclass,
+  validateEnvironment, validateHeritage, validateTransformation, validateCampaignFrame,
+} from '../src/data/schemas.js';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -35,7 +43,10 @@ const strip = (html) => html.replace(/<!-- -->/g, '');
 
 // ── SRD data integrity ──
 section('SRD data');
-assert(DAGGERHEART_ADVERSARIES.length === 129, `129 adversaries (got ${DAGGERHEART_ADVERSARIES.length})`);
+{
+  const core = DAGGERHEART_ADVERSARIES.filter(a => sourceOf(a) === 'core');
+  assert(core.length === 129, `129 core adversaries (got ${core.length})`);
+}
 {
   const roles = new Set(['minion', 'horde', 'standard', 'bruiser', 'skulk', 'ranged', 'support', 'social', 'leader', 'solo']);
   const bad = DAGGERHEART_ADVERSARIES.filter(a =>
@@ -44,10 +55,16 @@ assert(DAGGERHEART_ADVERSARIES.length === 129, `129 adversaries (got ${DAGGERHEA
   );
   assert(bad.length === 0, `all adversaries valid (bad: ${bad.map(a => a.name).join(', ') || 'none'})`);
 }
-assert(DOMAIN_CARDS.length === 189, `189 domain cards (got ${DOMAIN_CARDS.length})`);
+{
+  const core = DOMAIN_CARDS.filter(c => sourceOf(c) === 'core');
+  assert(core.length === 189, `189 core domain cards (got ${core.length})`);
+}
 assert(DOMAIN_CARDS.every(c => Number.isInteger(c.recallCost) && c.recallCost >= 0 && c.recallCost <= 4),
   'every domain card has a recall cost 0-4');
-assert(DAGGERHEART_ENVIRONMENTS.length === 19, `19 environments (got ${DAGGERHEART_ENVIRONMENTS.length})`);
+{
+  const core = DAGGERHEART_ENVIRONMENTS.filter(e => sourceOf(e) === 'core');
+  assert(core.length === 19, `19 core environments (got ${core.length})`);
+}
 
 // ── Leveling rules ──
 section('Leveling');
@@ -355,6 +372,47 @@ section('Cinematic recap timeline');
   assert(single.length === 1 && single[0].name === 'Gifted Tracker', 'single named feature keeps its header');
 
   assert(splitCardFeatures('').length === 0 && splitCardFeatures(null).length === 0, 'empty/nullish description → no features');
+}
+
+
+// ── Hope & Fear expansion readiness ──
+section('Hope & Fear readiness');
+{
+  // Content-source gating
+  assert(CONTENT_SOURCES.some(s2 => s2.id === 'hope-fear'), 'Hope & Fear is registered as a content source');
+  assert(isSourceEnabled({}, 'hope-fear') === true, 'expansion defaults to enabled');
+  assert(isSourceEnabled({ contentSources: { 'hope-fear': false } }, 'hope-fear') === false, 'campaign can disable the expansion');
+  assert(isSourceEnabled({ contentSources: { core: false } }, 'core') === true, 'core can never be disabled');
+  const mixed = [{ name: 'a' }, { name: 'b', source: 'hope-fear' }];
+  assert(filterBySource(mixed, { contentSources: { 'hope-fear': false } }).length === 1, 'filterBySource drops disabled-source entries');
+  assert(withSource([{ name: 'x' }], 'hope-fear')[0].source === 'hope-fear', 'withSource tags entries');
+
+  // Every entry of every merged catalog validates — pasted expansion data
+  // fails here with a precise message instead of crashing a picker.
+  const problems = [];
+  DAGGERHEART_ADVERSARIES.forEach(a => problems.push(...validateAdversary(a)));
+  DOMAIN_CARDS.forEach(c => problems.push(...validateDomainCard(c)));
+  DAGGERHEART_ENVIRONMENTS.forEach(e => problems.push(...validateEnvironment(e)));
+  Object.entries(CLASSES).forEach(([n, c]) => problems.push(...validateClass(n, c)));
+  Object.entries(SUBCLASSES).forEach(([cls, list]) => list.forEach(sc => problems.push(...validateSubclass(cls, sc))));
+  Object.entries(ANCESTRIES).forEach(([n, h]) => { if (h?.features) problems.push(...validateHeritage(n, h)); });
+  Object.entries(COMMUNITIES).forEach(([n, h]) => { if (h?.features) problems.push(...validateHeritage(n, h)); });
+  CAMPAIGN_FRAME_TEMPLATES.filter(f => f.id !== 'blank').forEach(f => problems.push(...validateCampaignFrame(f)));
+  HF_TRANSFORMATIONS.forEach(t => problems.push(...validateTransformation(t)));
+  assert(problems.length === 0, `all merged content passes schema validation (${problems.length ? problems.slice(0, 4).join(' | ') : 'clean'})`);
+
+  // The validator actually catches garbage (guards against a silently-lax schema)
+  const bad = validateAdversary({ name: 'Broken', tier: 7, role: 'dragon', hp: 0 });
+  assert(bad.length >= 4, `validator flags malformed adversaries (${bad.length} problems found)`);
+  assert(validateDomainCard({ name: 'Bad Card', domain: 'Dread', level: 99, type: 'Sorcery', recallCost: 9 }).length >= 3,
+    'validator flags malformed domain cards');
+
+  // The 9 core classes survive the merge untouched; Dread only appears once
+  // its cards exist (nobody can pick an empty domain pre-release).
+  const coreClasses = ['Bard', 'Druid', 'Guardian', 'Ranger', 'Rogue', 'Seraph', 'Sorcerer', 'Warrior', 'Wizard'];
+  assert(coreClasses.every(c => CLASSES[c]), 'all 9 core classes present after expansion merge');
+  assert(HF_DOMAIN_CARDS.length > 0 ? DOMAINS.includes('Dread') : !DOMAINS.includes('Dread'),
+    `Dread domain gated on card content (cards: ${HF_DOMAIN_CARDS.length}, listed: ${DOMAINS.includes('Dread')})`);
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

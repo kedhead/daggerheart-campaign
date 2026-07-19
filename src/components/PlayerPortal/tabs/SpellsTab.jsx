@@ -14,10 +14,12 @@ const DOMAIN_COLORS = {
   Sage: '#22c55e', Arcana: '#a78bfa', Blade: '#f5c543', Bone: '#94a3b8',
   Codex: '#60a5fa', Grace: '#f472b6', Midnight: '#7c3aed', Splendor: '#fbbf24',
   Valor: '#ef4444',
+  Dread: '#7f1d1d', // Hope & Fear expansion domain
 };
 const DOMAIN_GLYPHS = {
   Sage: '🌿', Arcana: '✦', Blade: '⚔', Bone: '☠', Codex: '📜',
   Grace: '✿', Midnight: '☾', Splendor: '☀', Valor: '⚜',
+  Dread: '🕯',
 };
 
 function RollPill({ label, formula, onClick, kind }) {

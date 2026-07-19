@@ -1,4 +1,6 @@
 // Daggerheart Domain Cards — Official SRD Data
+import { HF_DOMAIN_CARDS } from './hopeFear.js';
+import { withSource, HOPE_FEAR_SOURCE } from './sources.js';
 // 189 cards across 9 domains (21 per domain)
 // 3 cards at Level 1, 2 cards at each level 2-10
 
@@ -212,6 +214,9 @@ export const DOMAIN_CARDS = [
 ];
 
 // Helper: get all cards for a specific domain
+// Hope & Fear expansion cards (the Dread domain lives here).
+DOMAIN_CARDS.push(...withSource(HF_DOMAIN_CARDS, HOPE_FEAR_SOURCE));
+
 export const getCardsByDomain = (domain) =>
   DOMAIN_CARDS.filter(c => c.domain === domain);
 

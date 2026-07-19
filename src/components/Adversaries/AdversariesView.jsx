@@ -6,6 +6,7 @@ import StarWarsD6AdversaryCard from './StarWarsD6AdversaryCard';
 import StarWarsD6AdversaryForm from './StarWarsD6AdversaryForm';
 import Modal from '../Modal';
 import { DAGGERHEART_ADVERSARIES, ADVERSARIES_BY_TIER, ADVERSARIES_BY_ROLE } from '../../data/daggerheartAdversaries';
+import { filterBySource } from '../../data/sources';
 import {
   STARWARSD6_ADVERSARIES,
   STARWARSD6_ADVERSARIES_BY_CLASSIFICATION,
@@ -89,8 +90,9 @@ export default function AdversariesView({
       if (importTier === 'all') return STARWARSD6_ADVERSARIES;
       return STARWARSD6_ADVERSARIES_BY_CLASSIFICATION[importTier] || [];
     }
-    if (importTier === 'all') return DAGGERHEART_ADVERSARIES;
-    return ADVERSARIES_BY_TIER[parseInt(importTier)] || [];
+    // Respect the campaign's enabled content sources (e.g. Hope & Fear off).
+    if (importTier === 'all') return filterBySource(DAGGERHEART_ADVERSARIES, campaign);
+    return filterBySource(ADVERSARIES_BY_TIER[parseInt(importTier)] || [], campaign);
   };
 
   const importItems = getImportItems();
