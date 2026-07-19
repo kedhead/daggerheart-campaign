@@ -452,10 +452,14 @@ select {
    Lorelich design system utilities
    ========================================================================== */
 
-/* Responsive visibility — matches Lorelich 900px breakpoint */
+/* Responsive visibility. The "mobile" layout (bottom nav + slide-out sidebar)
+   now spans phones AND tablets: everything ≤1024px, plus touch devices up to
+   1366px so a landscape iPad Pro qualifies. A 1366px laptop with a mouse
+   (fine pointer) keeps the desktop sidebar. Must stay in lock-step with the
+   Tailwind `lr`/`desk` screens in tailwind.config.js. */
 .lr-mobile-only { display: none !important; }
 .lr-desktop-only { display: flex !important; }
-@media (max-width: 900px) {
+@media (max-width: 1024px), (max-width: 1366px) and (pointer: coarse) {
   .lr-mobile-only { display: flex !important; }
   .lr-desktop-only { display: none !important; }
   /* Reserve space so content isn't hidden behind the fixed bottom nav */
