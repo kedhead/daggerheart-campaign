@@ -41,8 +41,12 @@ export default {
         },
       },
       screens: {
-        lr: { max: '900px' },
-        desk: { min: '901px' },
+        // "Mobile" layout (bottom nav + slide-out sidebar) now covers tablets:
+        // anything ≤1024px, plus touch devices up to 1366px so a landscape
+        // iPad Pro gets it too — while a 1366px laptop with a mouse (fine
+        // pointer) stays on the desktop sidebar. `desk` is the exact inverse.
+        lr:   { raw: '(max-width: 1024px), (max-width: 1366px) and (pointer: coarse)' },
+        desk: { raw: '(min-width: 1367px), (min-width: 1025px) and (pointer: fine)' },
       },
     },
   },
