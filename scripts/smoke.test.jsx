@@ -420,6 +420,16 @@ section('Hope & Fear readiness');
   assert(CLASSES['Warlock'].domains.includes('Dread') && CLASSES['Witch'].domains.includes('Dread'), 'Warlock & Witch carry the Dread domain');
   const coreClasses = ['Bard', 'Druid', 'Guardian', 'Ranger', 'Rogue', 'Seraph', 'Sorcerer', 'Warrior', 'Wizard'];
   assert(coreClasses.every(c => CLASSES[c]), 'all 9 core classes present after expansion merge');
+  {
+    const hfEnv = DAGGERHEART_ENVIRONMENTS.filter(e => sourceOf(e) === 'hope-fear');
+    assert(hfEnv.length === 28, `28 Hope & Fear environments (got ${hfEnv.length})`);
+  }
+  {
+    const hfAdv = DAGGERHEART_ADVERSARIES.filter(a => sourceOf(a) === 'hope-fear');
+    assert(hfAdv.length === 135, `135 Hope & Fear adversaries (got ${hfAdv.length})`);
+    assert(hfAdv.every(a => a.features.length > 0), 'every H&F adversary has features');
+    assert(hfAdv.filter(a => a.tier === 4).length >= 20, 'H&F includes a full Tier 4 roster');
+  }
   assert(DOMAIN_CARDS.filter(c => c.domain === 'Dread').length === 21, `21 Dread domain cards (got ${DOMAIN_CARDS.filter(c => c.domain === 'Dread').length})`);
   assert(HF_DOMAIN_CARDS.length > 0 ? DOMAINS.includes('Dread') : !DOMAINS.includes('Dread'),
     `Dread domain gated on card content (cards: ${HF_DOMAIN_CARDS.length}, listed: ${DOMAINS.includes('Dread')})`);
