@@ -409,6 +409,11 @@ section('Hope & Fear readiness');
 
   // The 9 core classes survive the merge untouched; Dread only appears once
   // its cards exist (nobody can pick an empty domain pre-release).
+  const hfClasses = ['Assassin', 'Brawler', 'Warlock', 'Witch'];
+  assert(hfClasses.every(c => CLASSES[c]), 'all 4 Hope & Fear classes merged in');
+  assert(hfClasses.every(c => (SUBCLASSES[c] || []).length === 2), 'each new class has 2 subclasses');
+  assert(CLASSES['Assassin'].baseEvasion === 12 && CLASSES['Witch'].baseHp === 6, 'new class base stats transcribed (Assassin Ev12, Witch HP6)');
+  assert(CLASSES['Warlock'].domains.includes('Dread') && CLASSES['Witch'].domains.includes('Dread'), 'Warlock & Witch carry the Dread domain');
   const coreClasses = ['Bard', 'Druid', 'Guardian', 'Ranger', 'Rogue', 'Seraph', 'Sorcerer', 'Warrior', 'Wizard'];
   assert(coreClasses.every(c => CLASSES[c]), 'all 9 core classes present after expansion merge');
   assert(DOMAIN_CARDS.filter(c => c.domain === 'Dread').length === 21, `21 Dread domain cards (got ${DOMAIN_CARDS.filter(c => c.domain === 'Dread').length})`);
