@@ -515,7 +515,7 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
                       {availableDomainCards
                         .filter(c => c.name === advDetails[opt.key]?.card || !cardsClaimed.has(c.name))
                         .map(c => (
-                          <option key={c.name} value={c.name}>{c.name} (Lv {c.level} {c.domain})</option>
+                          <option key={c.name} value={c.name}>{c.name} (Lv {c.level} {c.domain}){c.source === 'hope-fear' ? ' — Hope & Fear' : ''}</option>
                         ))}
                     </select>
                   </div>
@@ -610,7 +610,10 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
             onClick={() => setFreeDomainCard(freeDomainCard === card.name ? null : card.name)}
           >
             <div className="luw-card-header">
-              <span className="luw-card-name">{card.name}</span>
+              <span className="luw-card-name">
+                {card.name}
+                {card.source === 'hope-fear' && <span className="hf-badge">Hope &amp; Fear</span>}
+              </span>
               <span className="luw-card-meta">Lv {card.level} · {card.domain} · {card.type}</span>
             </div>
             <div className="luw-card-desc">{card.description}</div>
