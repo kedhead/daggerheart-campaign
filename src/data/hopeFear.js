@@ -390,6 +390,10 @@ export const HF_ADVERSARIES = [
   { name: 'Wyrmfiend', tier: 4, role: 'minion', description: 'A reptilian biped created by mysterious and ancient dragon magic. Wyrmfiends exist more as extensions of their draconic master\'s will than as individual beings.', motives: 'Hold the line, sacrifice, serve, swarm', difficulty: 17, thresholds: { minor: 0, major: 0 }, hp: 1, stress: 1, attack: 3, attackName: 'Weapons from the Hoard', attackRange: 'Melee', attackDamage: '11 phy', experience: 'Dragon Bond +2', features: [{ name: 'Minion', type: 'passive', description: 'The Wyrmfiend is defeated when it takes any damage. For every 13 damage a PC deals to the Wyrmfiend, the PC defeats an additional Minion within range the attack would succeed against.' }, { name: 'Venomous Bite', type: 'action', description: 'Spend a Fear to make an attack against a PC within Melee range. On a success, deal 4d4+4 physical damage and Poison the target until they succeed on a Strength Roll (20). While Poisoned, the target must roll a d6 before they make an action roll. On a result of 4 or lower, the target must mark a Stress.' }, { name: 'Group Attack', type: 'action', description: 'Spend a Fear to choose a target and spotlight all Wyrmfiends within Close range of them. Those Minions move into Melee range of the target and make one shared attack roll. On a success, they deal 11 physical damage each. Combine this damage.' }] },
   { name: 'Wyrmlings', tier: 4, role: 'horde', description: 'A clutch of newly hatched dragons. As newborns, they\'re furious, hungry, and stupid.', motives: 'Consume, shred, swarm', difficulty: 17, thresholds: { minor: 25, major: 45 }, hp: 8, stress: 5, attack: 2, attackName: 'Tiny Jaws & Claws', attackRange: 'Melee', attackDamage: '4d6+10 phy', experience: 'Dragon Bond +2', features: [{ name: 'Horde', type: 'passive', description: 'When the Wyrmlings have marked half or more of their HP, their standard attack deals 2d6+5 physical damage instead.' }, { name: 'Ravenous', type: 'reaction', description: 'Once per GM turn when a PC marks a HP from an attack made by the Wyrmlings, you can spend a Fear to spotlight the Wyrmlings again.' }, { name: 'Overwhelm', type: 'reaction', description: 'When the Wyrmlings take Minor damage from an attack within Melee range, you can mark a Stress to make a standard attack with advantage against the attacker.' }] },
   { name: 'Xero The Castle Killer', tier: 4, role: 'solo', description: 'A castle-sized, bipedal reptile.', motives: 'Leave a wake of destruction, level buildings, stomp through settlements', difficulty: 20, thresholds: { minor: 35, major: 70 }, hp: 12, stress: 10, attack: 8, attackName: 'Tail Swipe', attackRange: 'Close', attackDamage: '4d12+6 phy', experience: 'Destruction +5', features: [{ name: 'Relentless', type: 'passive', description: 'Xero can be spotlighted up to X times per GM turn, where X is the number of PCs in the scene. Spend Fear as usual to spotlight it.' }, { name: 'Collateral Damage', type: 'passive', description: 'Xero\'s movement can\'t be hindered, impeded, or affected by anything other than natural terrain. All destructible terrain or obstacles in Xero\'s path are destroyed when Xero moves through them.' }, { name: 'Gigaton Stomp', type: 'action', description: 'Spend a Fear to have Xero bring its foot down hard, creating a localized earthquake. Each PC within Melee range takes 4d12 physical damage and is Restrained until they wriggle out with a successful Finesse Roll. Each creature beyond Melee range but within Close range must succeed on an Instinct Reaction Roll or be knocked back to Far range. If a target is knocked back, they must either mark an Armor Slot or take 4d12 physical damage as they land.' }, { name: 'Power Slide', type: 'action', description: 'Mark a Stress to move up to Close range. Each PC Xero moves through must succeed on a Strength Reaction Roll or choose to either mark 2 Armor Slots or take Severe damage.' }, { name: 'Radioactive Breath', type: 'action', description: 'Spend a Fear to have Xero charge up a nuclear beam. Place a token on this stat block. The next time Xero is spotlighted, you can spend this token and unleash a beam to Very Far range. The beam has a width of Close range. Each PC in this area must make an Agility Reaction Roll. Targets who fail take 4d12+12 direct magic damage. Targets who succeed take half damage. Xero can\'t use this feature again until it takes Severe damage.' }, { name: 'Regeneration', type: 'action', description: 'Up to three times per scene, spend any number of Fear to clear an equal number of HP. XERO THE CASTLE KILLER 97 Chapter 3: Tier 4 Adversaries' }] },
+  // ── Campaign-frame unique adversaries (Reign of the Weredragon) ──
+  { name: 'Forlorne Lykona (Faun Form)', tier: 4, role: 'solo', description: 'The weredragon queen of Whelvia in her original faun body—devilishly charming, civil, and cunning. This is the form in which she oversees the affairs of her realm and is most likely to be encountered outside combat.', motives: 'Ascend to the stars, learn new magic, rule through terror, transform', difficulty: 18, thresholds: { minor: 35, major: 70 }, hp: 11, stress: 8, attack: 6, attackName: 'Eldritch Incantation', attackRange: 'Far', attackDamage: '4d8+14 mag', experience: 'Arcane Knowledge +5, Death from Above +5', features: [{ name: 'Relentless (4)', type: 'passive', description: 'Forlorne can be spotlighted up to four times per GM turn. Spend Fear as usual to spotlight her.' }, { name: 'Transform', type: 'action', description: 'Mark a Stress to have Forlorne shift between her Dragon Form and Faun Form. While she embodies a form, she uses its statistics and features.' }, { name: 'Feed on Fear', type: 'reaction', description: 'When a PC within Close range fails with Fear, Forlorne can clear a HP or a Stress.' }, { name: 'Battle Teleport', type: 'passive', description: 'Before or after making a standard attack, you can mark a Stress to have Forlorne teleport to a location within Far range.' }, { name: 'Grasping Vines', type: 'action', description: 'Spend a Fear to target a group within Far range. Each target must succeed on an Agility Reaction Roll or take 2d8+7 magic damage and become Restrained until they break free with a successful Strength Roll. The vines last until Forlorne takes Severe damage, uses this feature again, or ends the effect.' }, { name: 'Stone-Cold Gaze', type: 'reaction', description: 'When Forlorne takes damage from an attack within Close range, you can spend 2 Fear to force the attacker to make an Instinct Reaction Roll. On a failure, the target must spend 3 Hope or gain the Petrified Curse. Until this condition is cleared, the target and the equipment they\'re wearing or carrying turn to stone. While under the Petrified Curse, the target is Restrained and Vulnerable, can\'t act, and gains a +10 bonus to their damage thresholds.' }] },
+  { name: 'Forlorne Lykona (Dragon Form)', tier: 4, role: 'solo', description: 'The weredragon queen in the stolen shape of the once-peaceful dragon Sazanthe—rapacious, terrifying, and merciless, having cast off all trappings of civility to indulge her primal cravings.', motives: 'Ascend to the stars, learn new magic, rule through terror, transform', difficulty: 20, thresholds: { minor: 40, major: 80 }, hp: 11, stress: 8, attack: 8, attackName: 'Claws and Teeth', attackRange: 'Close', attackDamage: '4d10+10 phy', experience: 'Arcane Knowledge +5, Death from Above +5', features: [{ name: 'Relentless (4)', type: 'passive', description: 'Forlorne can be spotlighted up to four times per GM turn. Spend Fear as usual to spotlight her.' }, { name: 'Transform', type: 'action', description: 'Mark a Stress to have Forlorne shift between her Dragon Form and Faun Form. While she embodies a form, she uses its statistics and features.' }, { name: 'Feed on Fear', type: 'reaction', description: 'When a PC within Close range fails with Fear, Forlorne can clear a HP or a Stress.' }, { name: 'Flying', type: 'passive', description: 'While flying, Forlorne gains a +3 bonus to her Difficulty.' }, { name: 'Terrifying', type: 'passive', description: 'When Forlorne makes a successful attack, all PCs within Far range lose a Hope and you gain a Fear.' }, { name: 'Breath Weapon', type: 'action', description: 'Spend 2 Fear to have Forlorne exhale a cloud of magical energy, filling an area within Close range. Each target in that area must make a Presence Reaction Roll. On a failure, they must mark 3 Stress or gain the Weredrake Curse. While under the Weredrake Curse, the target drops their equipment and loot and transforms into a Weredrake adversary under the GM\'s control. After this condition is cleared, the target retains no memory of their time as a weredrake.' }, { name: 'Tail Swipe', type: 'reaction', description: 'When Forlorne marks 1 or more HP from an attack within Very Close range, you can mark a Stress to deal 2d10+10 physical damage to all creatures within that range.' }] },
+  { name: 'Weredrake', tier: 2, role: 'standard', description: 'A person transformed into a wingless, quadrupedal draconic predator by a weredragon\'s breath weapon. They can\'t speak and retain no memory of their former life, though elements of their former ancestry may remain discernible.', motives: 'Hunger for flesh, hunt in small packs', difficulty: 12, thresholds: { minor: 8, major: 14 }, hp: 5, stress: 2, attack: 2, attackName: 'Claws & Teeth', attackRange: 'Melee', attackDamage: '1d8+3 phy', experience: 'Pack Hunter +3', features: [{ name: 'Climber', type: 'passive', description: 'The Weredrake climbs as easily as it runs.' }, { name: 'Pack Tactics', type: 'passive', description: 'If the Weredrake makes a successful standard attack and another Weredrake is within Melee range of the target, deal 1d8+6 physical damage instead of its standard damage and gain a Fear.' }, { name: 'Innocent Guise', type: 'action', description: 'The Weredrake magically assumes the form of the person it was before its transformation but retains its claws and teeth. This form lasts until it dies or uses this feature again to revert to its draconic form.' }] },
 ];
 
 // ── Environments ── same shape as DAGGERHEART_ENVIRONMENTS entries:
@@ -428,7 +432,7 @@ export const HF_ENVIRONMENTS = [
 
 // ── Items ── same shapes as the four arrays in daggerheartItems.js; keyed by
 // which catalog they extend.
-// ── HF_WEAPONS (66) ──
+// ── HF_WEAPONS (66 general + 7 frame) ──
 export const HF_WEAPONS = [
   { name: 'Arcane Rifle', type: 'weapon', description: 'Aimed: Your attack has disadvantage if the target is within Very Close range of you or within Melee range of one of your allies. You can mark a Stress to ignore this penalty.',
     systemData: { tier: 1, classification: 'primary', damageType: 'magic',
@@ -760,9 +764,45 @@ export const HF_WEAPONS = [
       trait: 'finesse', range: 'melee', burden: 'one-handed',
       damageTier1Dice: 'd4', damageTier1Modifier: 0, damageTier2Dice: 'd4', damageTier2Modifier: 0, damageTier3Dice: 'd4', damageTier3Modifier: 3, damageTier4Dice: 'd4', damageTier4Modifier: 6,
       features: ['inverted'] } },
+  // ── Campaign-frame unique weapons (Dark Heart of Andaluria + Reign of the Weredragon) ──
+  { name: 'Blessed Brass Knuckles', type: 'weapon', description: '',
+    systemData: { tier: 1, classification: 'primary', damageType: 'magic',
+      trait: 'strength', range: 'melee', burden: 'one-handed',
+      damageTier1Dice: 'd8', damageTier1Modifier: 1, damageTier2Dice: 'd8', damageTier2Modifier: 4, damageTier3Dice: 'd8', damageTier3Modifier: 7, damageTier4Dice: 'd8', damageTier4Modifier: 10,
+      features: [] } },
+  { name: 'Holy Shotgun', type: 'weapon', description: 'Scattershot: When you make an attack, target all creatures in front of you within range.',
+    systemData: { tier: 1, classification: 'primary', damageType: 'magic',
+      trait: 'agility', range: 'very close', burden: 'two-handed',
+      damageTier1Dice: 'd6', damageTier1Modifier: 2, damageTier2Dice: 'd6', damageTier2Modifier: 5, damageTier3Dice: 'd6', damageTier3Modifier: 8, damageTier4Dice: 'd6', damageTier4Modifier: 11,
+      features: ['scattershot'] } },
+  { name: 'Repeating Crossbow', type: 'weapon', description: 'Quick: When you make an attack, you can mark a Stress to target another creature within range.',
+    systemData: { tier: 1, classification: 'primary', damageType: 'physical',
+      trait: 'finesse', range: 'far', burden: 'two-handed',
+      damageTier1Dice: 'd6', damageTier1Modifier: 2, damageTier2Dice: 'd6', damageTier2Modifier: 5, damageTier3Dice: 'd6', damageTier3Modifier: 8, damageTier4Dice: 'd6', damageTier4Modifier: 11,
+      features: ['quick'] } },
+  { name: 'Wooden Stake', type: 'weapon', description: 'Paired: Gain a bonus equal to 1 + your tier to primary weapon damage to targets within Melee range.',
+    systemData: { tier: 1, classification: 'secondary', damageType: 'physical',
+      trait: 'strength', range: 'melee', burden: 'one-handed',
+      damageTier1Dice: 'd8', damageTier1Modifier: 0, damageTier2Dice: 'd8', damageTier2Modifier: 2, damageTier3Dice: 'd8', damageTier3Modifier: 4, damageTier4Dice: 'd8', damageTier4Modifier: 6,
+      features: ['paired'] } },
+  { name: 'Hallowed Shield', type: 'weapon', description: 'Resonant: When you critically succeed on a primary weapon attack, you gain an additional Hope.',
+    systemData: { tier: 1, classification: 'secondary', damageType: 'magic',
+      trait: 'instinct', range: 'melee', burden: 'one-handed',
+      damageTier1Dice: 'd4', damageTier1Modifier: 0, damageTier2Dice: 'd4', damageTier2Modifier: 2, damageTier3Dice: 'd4', damageTier3Modifier: 4, damageTier4Dice: 'd4', damageTier4Modifier: 6,
+      features: ['resonant'] } },
+  { name: 'Chain Whip', type: 'weapon', description: 'Hooked: On a successful attack, you can pull the target into Melee range.',
+    systemData: { tier: 1, classification: 'secondary', damageType: 'physical',
+      trait: 'presence', range: 'very close', burden: 'one-handed',
+      damageTier1Dice: 'd6', damageTier1Modifier: 1, damageTier2Dice: 'd6', damageTier2Modifier: 3, damageTier3Dice: 'd6', damageTier3Modifier: 5, damageTier4Dice: 'd6', damageTier4Modifier: 7,
+      features: ['hooked'] } },
+  { name: 'Lady Lavender\'s Longsword', type: 'weapon', description: 'Curse Breaker: This weapon clears all magical curses on a creature it touches.',
+    systemData: { tier: 1, classification: 'primary', damageType: 'physical',
+      trait: 'agility', range: 'melee', burden: 'two-handed',
+      damageTier1Dice: 'd8', damageTier1Modifier: 1, damageTier2Dice: 'd8', damageTier2Modifier: 4, damageTier3Dice: 'd8', damageTier3Modifier: 7, damageTier4Dice: 'd8', damageTier4Modifier: 10,
+      features: ['curse'] } },
 ];
 
-// ── HF_ARMOR (35) ──
+// ── HF_ARMOR (35 general + 12 frame) ──
 export const HF_ARMOR = [
   { name: 'Mage Robes', type: 'armor', description: 'Enchanted: Gain a bonus to your damage thresholds equal to your Spellcast trait.',
     systemData: { armorScore: 2, armorSlots: 2, tier: 1,
@@ -869,9 +909,46 @@ export const HF_ARMOR = [
   { name: 'Resonant Harness', type: 'armor', description: 'Vitreous: When you would take Severe or greater damage, you can mark 2 Armor Slots to negate that damage. If you do, you gain a -5 penalty to your damage thresholds until you choose to repair your armor as a downtime move.',
     systemData: { armorScore: 7, armorSlots: 7, tier: 4,
       thresholds: { minor: 15, major: 40 }, features: ['vitreous'] } },
+  // ── Campaign-frame unique armor (Dark Heart of Andaluria; tier variants per app convention) ──
+  { name: 'Coffinwood Armor', type: 'armor', description: 'Splintering: Gain a bonus to your damage thresholds equal to your unmarked Armor Slots.',
+    systemData: { armorScore: 3, armorSlots: 3, tier: 1,
+      thresholds: { minor: 4, major: 10 }, features: ['splintering'] } },
+  { name: 'Improved Coffinwood Armor', type: 'armor', description: 'Splintering: Gain a bonus to your damage thresholds equal to your unmarked Armor Slots.',
+    systemData: { armorScore: 4, armorSlots: 4, tier: 2,
+      thresholds: { minor: 6, major: 15 }, features: ['splintering'] } },
+  { name: 'Advanced Coffinwood Armor', type: 'armor', description: 'Splintering: Gain a bonus to your damage thresholds equal to your unmarked Armor Slots.',
+    systemData: { armorScore: 5, armorSlots: 5, tier: 3,
+      thresholds: { minor: 8, major: 22 }, features: ['splintering'] } },
+  { name: 'Legendary Coffinwood Armor', type: 'armor', description: 'Splintering: Gain a bonus to your damage thresholds equal to your unmarked Armor Slots.',
+    systemData: { armorScore: 6, armorSlots: 6, tier: 4,
+      thresholds: { minor: 10, major: 31 }, features: ['splintering'] } },
+  { name: 'Leather Longcoat', type: 'armor', description: 'Quiet: Gain a +2 bonus to rolls you make to move silently.',
+    systemData: { armorScore: 3, armorSlots: 3, tier: 1,
+      thresholds: { minor: 5, major: 12 }, features: ['quiet'] } },
+  { name: 'Improved Leather Longcoat', type: 'armor', description: 'Quiet: Gain a +2 bonus to rolls you make to move silently.',
+    systemData: { armorScore: 4, armorSlots: 4, tier: 2,
+      thresholds: { minor: 8, major: 18 }, features: ['quiet'] } },
+  { name: 'Advanced Leather Longcoat', type: 'armor', description: 'Quiet: Gain a +2 bonus to rolls you make to move silently.',
+    systemData: { armorScore: 5, armorSlots: 5, tier: 3,
+      thresholds: { minor: 10, major: 25 }, features: ['quiet'] } },
+  { name: 'Legendary Leather Longcoat', type: 'armor', description: 'Quiet: Gain a +2 bonus to rolls you make to move silently.',
+    systemData: { armorScore: 6, armorSlots: 6, tier: 4,
+      thresholds: { minor: 12, major: 34 }, features: ['quiet'] } },
+  { name: 'Silverweave Armor', type: 'armor', description: 'Warded: You reduce incoming magic damage by your Armor Score before applying it to your damage thresholds.',
+    systemData: { armorScore: 3, armorSlots: 3, tier: 1,
+      thresholds: { minor: 5, major: 11 }, features: ['warded'] } },
+  { name: 'Improved Silverweave Armor', type: 'armor', description: 'Warded: You reduce incoming magic damage by your Armor Score before applying it to your damage thresholds.',
+    systemData: { armorScore: 4, armorSlots: 4, tier: 2,
+      thresholds: { minor: 7, major: 16 }, features: ['warded'] } },
+  { name: 'Advanced Silverweave Armor', type: 'armor', description: 'Warded: You reduce incoming magic damage by your Armor Score before applying it to your damage thresholds.',
+    systemData: { armorScore: 5, armorSlots: 5, tier: 3,
+      thresholds: { minor: 9, major: 23 }, features: ['warded'] } },
+  { name: 'Legendary Silverweave Armor', type: 'armor', description: 'Warded: You reduce incoming magic damage by your Armor Score before applying it to your damage thresholds.',
+    systemData: { armorScore: 6, armorSlots: 6, tier: 4,
+      thresholds: { minor: 11, major: 32 }, features: ['warded'] } },
 ];
 
-// ── HF_EQUIPMENT (60) ──
+// ── HF_EQUIPMENT (60 general + 1 frame) ──
 export const HF_EQUIPMENT = [
   { name: 'Caltrops', type: 'equipment', description: 'You can spread these caltrops in a Very Close area around you. A creature hastening through that area must mark a Stress.',
     systemData: { category: 'utility', mechanicalEffect: 'You can spread these caltrops in a Very Close area around you. A creature hastening through that area must mark a Stress.',
@@ -1052,6 +1129,10 @@ export const HF_EQUIPMENT = [
       activation: 'action', uses: -1, hopeCost: 0, stressCost: 0 } },
   { name: 'Augur\'s Relic', type: 'equipment', description: 'Once per long rest, you can activate your Hope feature without spending Hope. You can carry only one relic.',
     systemData: { category: 'utility', mechanicalEffect: 'Once per long rest, you can activate your Hope feature without spending Hope. You can carry only one relic.',
+      activation: 'action', uses: -1, hopeCost: 0, stressCost: 0 } },
+  // ── Campaign-frame unique loot (Reign of the Weredragon) ──
+  { name: 'Zoetrope of the Bright Bacchanal', type: 'equipment', description: 'When you place a candle in this zoetrope\'s cylinder and turn the metal key attached to the base counterclockwise, the cylinder rotates, casting a luminous parade of dancing fauns on nearby surfaces. While the lit zoetrope turns, it clears all magical curses on creatures within Close range.',
+    systemData: { category: 'utility', mechanicalEffect: 'When you place a candle in this zoetrope\'s cylinder and turn the metal key attached to the base counterclockwise, the cylinder rotates, casting a luminous parade of dancing fauns on nearby surfaces. While the lit zoetrope turns, it clears all magical curses on creatures within Close range.',
       activation: 'action', uses: -1, hopeCost: 0, stressCost: 0 } },
 ];
 

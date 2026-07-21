@@ -427,7 +427,7 @@ section('Hope & Fear readiness');
   }
   {
     const hfAdv = DAGGERHEART_ADVERSARIES.filter(a => sourceOf(a) === 'hope-fear');
-    assert(hfAdv.length === 135, `135 Hope & Fear adversaries (got ${hfAdv.length})`);
+    assert(hfAdv.length === 138, `138 Hope & Fear adversaries (got ${hfAdv.length})`);
     assert(hfAdv.every(a => a.features.length > 0), 'every H&F adversary has features');
     assert(hfAdv.filter(a => a.tier === 4).length >= 20, 'H&F includes a full Tier 4 roster');
   }
@@ -442,9 +442,9 @@ section('Hope & Fear readiness');
     const hfA = DAGGERHEART_ARMOR.filter(a => sourceOf(a) === 'hope-fear');
     const hfE = DAGGERHEART_EQUIPMENT.filter(e => sourceOf(e) === 'hope-fear');
     const hfC = DAGGERHEART_CONSUMABLES.filter(c => sourceOf(c) === 'hope-fear');
-    assert(hfW.length === 66, `66 Hope & Fear weapons (got ${hfW.length})`);
-    assert(hfA.length === 35, `35 Hope & Fear armor (got ${hfA.length})`);
-    assert(hfE.length === 60, `60 Hope & Fear loot items (got ${hfE.length})`);
+    assert(hfW.length === 73, `73 Hope & Fear weapons (got ${hfW.length})`);
+    assert(hfA.length === 47, `47 Hope & Fear armor (got ${hfA.length})`);
+    assert(hfE.length === 61, `61 Hope & Fear loot items (got ${hfE.length})`);
     assert(hfC.length === 60, `60 Hope & Fear consumables (got ${hfC.length})`);
     assert(hfW.every(w => w.systemData?.damageTier1Dice && w.systemData?.damageTier4Dice && w.systemData?.trait), 'every H&F weapon carries all 4 damage tiers + a trait');
     assert(hfA.every(a => a.systemData?.thresholds?.minor > 0 && typeof a.systemData?.armorScore === 'number'), 'every H&F armor has thresholds + a numeric score');
