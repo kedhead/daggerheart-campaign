@@ -421,6 +421,10 @@ section('Hope & Fear readiness');
   const coreClasses = ['Bard', 'Druid', 'Guardian', 'Ranger', 'Rogue', 'Seraph', 'Sorcerer', 'Warrior', 'Wizard'];
   assert(coreClasses.every(c => CLASSES[c]), 'all 9 core classes present after expansion merge');
   {
+    const hfEnv = DAGGERHEART_ENVIRONMENTS.filter(e => sourceOf(e) === 'hope-fear');
+    assert(hfEnv.length === 28, `28 Hope & Fear environments (got ${hfEnv.length})`);
+  }
+  {
     const hfAdv = DAGGERHEART_ADVERSARIES.filter(a => sourceOf(a) === 'hope-fear');
     assert(hfAdv.length === 135, `135 Hope & Fear adversaries (got ${hfAdv.length})`);
     assert(hfAdv.every(a => a.features.length > 0), 'every H&F adversary has features');
