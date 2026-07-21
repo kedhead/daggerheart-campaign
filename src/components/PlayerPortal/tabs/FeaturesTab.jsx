@@ -1,4 +1,6 @@
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../../data/systems/daggerheart';
+import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../../data/sources';
+import TransformationPanel from '../../Characters/TransformationPanel';
 
 function FeatureCard({ tag, name, description, accentColor, action }) {
   return (
@@ -19,7 +21,7 @@ function FeatureCard({ tag, name, description, accentColor, action }) {
 
 const HOPE_FEATURE_COST = 3;
 
-export default function FeaturesTab({ character, updateCharacter }) {
+export default function FeaturesTab({ character, updateCharacter, campaign }) {
   const charClass     = character.class || '';
   const subclass      = character.subclass || '';
   const ancestry      = character.ancestry || '';
@@ -153,6 +155,13 @@ export default function FeaturesTab({ character, updateCharacter }) {
               <FeatureCard key={`c-${i}`} tag={`Community — ${community}`} name={f.name} description={f.description} accentColor="#60a5fa" />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Transformation (Hope & Fear) */}
+      {isSourceEnabled(campaign, HOPE_FEAR_SOURCE) && (
+        <div>
+          <TransformationPanel character={character} canEdit={!!updateCharacter} updateCharacter={updateCharacter} />
         </div>
       )}
 
