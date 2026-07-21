@@ -416,6 +416,15 @@ section('Hope & Fear readiness');
   assert(HF_TRANSFORMATIONS.map(t => t.key).sort().join(',') === 'demigod,ghost,reanimated,shapeshifter,vampire,werewolf', 'transformation keys match the six announced');
   const hfClasses = ['Assassin', 'Brawler', 'Warlock', 'Witch'];
   assert(hfClasses.every(c => CLASSES[c]), 'all 4 Hope & Fear classes merged in');
+  // Source-gating: expansion classes/heritages are tagged so pickers can hide them.
+  assert(hfClasses.every(c => CLASSES[c].source === 'hope-fear'), 'H&F classes tagged source=hope-fear for picker gating');
+  assert(['Aetheris', 'Gnome'].every(a => ANCESTRIES[a]?.source === 'hope-fear'), 'H&F ancestries tagged source=hope-fear');
+  assert(CLASSES['Bard'].source === undefined || CLASSES['Bard'].source === 'core', 'core classes stay untagged (core source)');
+  {
+    const off = { contentSources: { 'hope-fear': false } };
+    assert(!isSourceEnabled(off, CLASSES['Witch'].source), 'disabling H&F hides Witch from pickers');
+    assert(isSourceEnabled(off, CLASSES['Bard'].source), 'core Bard stays available when H&F is off');
+  }
   assert(hfClasses.every(c => (SUBCLASSES[c] || []).length === 2), 'each new class has 2 subclasses');
   assert(CLASSES['Assassin'].baseEvasion === 12 && CLASSES['Witch'].baseHp === 6, 'new class base stats transcribed (Assassin Ev12, Witch HP6)');
   assert(CLASSES['Warlock'].domains.includes('Dread') && CLASSES['Witch'].domains.includes('Dread'), 'Warlock & Witch carry the Dread domain');

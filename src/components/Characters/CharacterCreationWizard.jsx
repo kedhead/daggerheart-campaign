@@ -4,6 +4,7 @@ import {
     CLASSES, SUBCLASSES, DOMAINS, ANCESTRIES, COMMUNITIES,
     STANDARD_ARRAY, TRAIT_RANGE, getBaseProficiency
 } from '../../data/systems/daggerheart';
+import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
 import { getCardsForCharacter } from '../../data/daggerheartDomainCards';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -425,7 +426,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             <p className="luw-step-desc">Your class determines your combat style, domains, and core abilities.</p>
 
             <div className="luw-options-list">
-                {Object.entries(CLASSES).map(([className, data]) => {
+                {Object.entries(CLASSES).filter(([, data]) => isSourceEnabled(campaign, data.source)).map(([className, data]) => {
                     const isSelected = charClass === className;
                     return (
                         <div key={className} className={`luw-option ${isSelected ? 'selected' : ''}`}>
@@ -434,7 +435,10 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                                 onClick={() => handleClassChange(className)}
                             >
                                 <div className="luw-option-header">
-                                    <span className="luw-option-label">{className}</span>
+                                    <span className="luw-option-label">
+                                        {className}
+                                        {data.source === HOPE_FEAR_SOURCE && <span className="hf-badge">Hope &amp; Fear</span>}
+                                    </span>
                                     <span className="luw-option-meta">
                                         {data.domains.join(' · ')} | HP {data.baseHp} | Evasion {data.baseEvasion}
                                     </span>
@@ -540,7 +544,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
 
             <div className="luw-label" style={{ marginBottom: '0.5rem' }}>Ancestry *</div>
             <div className="luw-options-list">
-                {Object.entries(ANCESTRIES).map(([ancestryName, data]) => {
+                {Object.entries(ANCESTRIES).filter(([, data]) => isSourceEnabled(campaign, typeof data === 'object' ? data.source : undefined)).map(([ancestryName, data]) => {
                     const isSelected = !customAncestry && ancestry === ancestryName;
                     const desc = typeof data === 'string' ? data : data.description;
                     const features = typeof data === 'object' ? data.features || [] : [];
@@ -552,7 +556,10 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                                 onClick={() => handleAncestrySelect(ancestryName)}
                             >
                                 <div className="luw-option-header">
-                                    <span className="luw-option-label">{ancestryName}</span>
+                                    <span className="luw-option-label">
+                                        {ancestryName}
+                                        {typeof data === 'object' && data.source === HOPE_FEAR_SOURCE && <span className="hf-badge">Hope &amp; Fear</span>}
+                                    </span>
                                     {isSelected && <span style={{ color: '#c8a44e', fontSize: '0.7rem' }}>✓ Selected</span>}
                                 </div>
                                 <div className="luw-option-desc" style={{ fontSize: '0.75rem', color: 'rgba(228,232,240,0.6)', marginTop: '0.15rem' }}>
@@ -599,7 +606,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
 
             <div className="luw-label" style={{ marginTop: '1.25rem', marginBottom: '0.5rem' }}>Community *</div>
             <div className="luw-options-list">
-                {Object.entries(COMMUNITIES).map(([commName, data]) => {
+                {Object.entries(COMMUNITIES).filter(([, data]) => isSourceEnabled(campaign, typeof data === 'object' ? data.source : undefined)).map(([commName, data]) => {
                     const isSelected = !customCommunity && community === commName;
                     const desc = typeof data === 'string' ? data : data.description;
                     const features = typeof data === 'object' ? data.features || [] : [];
@@ -611,7 +618,10 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                                 onClick={() => handleCommunitySelect(commName)}
                             >
                                 <div className="luw-option-header">
-                                    <span className="luw-option-label">{commName}</span>
+                                    <span className="luw-option-label">
+                                        {commName}
+                                        {typeof data === 'object' && data.source === HOPE_FEAR_SOURCE && <span className="hf-badge">Hope &amp; Fear</span>}
+                                    </span>
                                     {isSelected && <span style={{ color: '#c8a44e', fontSize: '0.7rem' }}>✓ Selected</span>}
                                 </div>
                                 <div className="luw-option-desc" style={{ fontSize: '0.75rem', color: 'rgba(228,232,240,0.6)', marginTop: '0.15rem' }}>

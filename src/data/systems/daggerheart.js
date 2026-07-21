@@ -1,5 +1,6 @@
 // Daggerheart Game System Definition
 import { HF_CLASSES, HF_SUBCLASSES, HF_ANCESTRIES, HF_COMMUNITIES, HF_DOMAIN_CARDS } from '../hopeFear.js';
+import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../sources.js';
 // Official Daggerheart RPG system by Darrington Press
 
 const CLASSES = {
@@ -481,13 +482,30 @@ const COMMUNITIES = {
 };
 
 // ── Hope & Fear expansion merges ──
-// Classes/subclasses/heritages extend the core maps in place; the Dread
-// domain only appears in pickers once its cards actually exist, so nobody
-// can select a domain with zero cards before the PDF content lands.
+// Classes/subclasses/heritages extend the core maps in place. Each merged
+// entry is tagged `source: 'hope-fear'` so pickers can hide expansion options
+// in campaigns that disable the source (see HOPE_FEAR_HERITAGES /
+// HOPE_FEAR_CLASSES below). The Dread domain only appears in pickers once its
+// cards actually exist, so nobody can select a domain with zero cards.
 Object.assign(CLASSES, HF_CLASSES);
 Object.assign(SUBCLASSES, HF_SUBCLASSES);
 Object.assign(ANCESTRIES, HF_ANCESTRIES);
 Object.assign(COMMUNITIES, HF_COMMUNITIES);
+// Re-tag just the expansion keys (Object.assign copied them untagged).
+for (const k of Object.keys(HF_CLASSES)) CLASSES[k] = { ...CLASSES[k], source: HOPE_FEAR_SOURCE };
+for (const k of Object.keys(HF_ANCESTRIES)) ANCESTRIES[k] = { ...ANCESTRIES[k], source: HOPE_FEAR_SOURCE };
+for (const k of Object.keys(HF_COMMUNITIES)) COMMUNITIES[k] = { ...COMMUNITIES[k], source: HOPE_FEAR_SOURCE };
+
+/** Class/heritage keys that belong to the Hope & Fear expansion. */
+export const HOPE_FEAR_CLASSES = Object.keys(HF_CLASSES);
+export const HOPE_FEAR_ANCESTRIES = Object.keys(HF_ANCESTRIES);
+export const HOPE_FEAR_COMMUNITIES = Object.keys(HF_COMMUNITIES);
+
+/** Filter a list of class/ancestry/community names to those a campaign allows. */
+export function filterNamesBySource(names, map, campaign) {
+  return (names || []).filter(n => isSourceEnabled(campaign, map[n]?.source));
+}
+
 if (HF_DOMAIN_CARDS.length > 0 && !DOMAINS.includes('Dread')) {
   DOMAINS.push('Dread');
 }
