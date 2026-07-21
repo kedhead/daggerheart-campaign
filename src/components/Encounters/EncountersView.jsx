@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Swords, ExternalLink, Wand2, Play } from 'lucide-react';
 import EncounterCard from './EncounterCard';
 import EncounterForm from './EncounterForm';
@@ -8,17 +8,36 @@ import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
 
-export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, addAdversary, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [] }) {
+const SORTS = {
+  newest: (a, b) => ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)) || (a.name || '').localeCompare(b.name || ''),
+  oldest: (a, b) => ((a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) || (a.name || '').localeCompare(b.name || ''),
+  name: (a, b) => (a.name || '').localeCompare(b.name || ''),
+};
+
+export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, addAdversary, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [], targetEncounterId = null, onTargetEncounterHandled }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [useBuilder, setUseBuilder] = useState(true); // Use new BP builder by default
   const [showTracker, setShowTracker] = useState(false);
 
   // Active encounter hook
   const { activeEncounter, startEncounter } = useActiveEncounter(campaign?.id);
+
+  // Auto-open a specific encounter when navigated here from a session's encounter link
+  useEffect(() => {
+    if (!targetEncounterId) return;
+    const target = encounters.find(e => e.id === targetEncounterId);
+    if (target && (isDM || !target.hidden)) {
+      setEditingEncounter(target);
+      setIsModalOpen(true);
+    }
+    onTargetEncounterHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetEncounterId, encounters, isDM]);
 
   // Check if this is a Daggerheart campaign (BP builder is Daggerheart-specific)
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
@@ -73,7 +92,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     const matchesFilter = filterDifficulty === 'all' || encounter.difficulty === filterDifficulty;
 
     return matchesSearch && matchesFilter;
-  });
+  }).sort(SORTS[sortBy] || SORTS.newest);
 
   // Count by difficulty
   const counts = {
@@ -288,6 +307,22 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
               </button>
             );
           })}
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold focus:outline-none transition-all cursor-pointer"
+            style={{
+              background: 'var(--surface-hi)',
+              border: '1px solid var(--line)',
+              color: 'var(--text)',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name">Name A–Z</option>
+          </select>
         </div>
       </div>
 

@@ -250,6 +250,7 @@ export default function SessionsView({
               onDelete={() => deleteSession(session.id)}
               onGoLive={() => handleGoLive(session)}
               onEncounterClick={onEncounterClick}
+              encounters={encounters}
               isDM={isDM}
               campaign={campaign}
             />
