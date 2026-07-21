@@ -4,6 +4,7 @@ import EnvironmentCard from './EnvironmentCard';
 import EnvironmentForm from './EnvironmentForm';
 import Modal from '../Modal';
 import { DAGGERHEART_ENVIRONMENTS, getEnvironmentsByTier, ENVIRONMENT_TYPES } from '../../data/daggerheartEnvironments';
+import { sourceOf, CONTENT_SOURCES } from '../../data/sources';
 import './EnvironmentsView.css';
 
 export default function EnvironmentsView({
@@ -17,8 +18,10 @@ export default function EnvironmentsView({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
   const [filterType, setFilterType] = useState('all');
+  const [filterSource, setFilterSource] = useState('all');
   const [showImportModal, setShowImportModal] = useState(false);
   const [importTier, setImportTier] = useState('all');
+  const [importSource, setImportSource] = useState('all');
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
   const [expandedEnvId, setExpandedEnvId] = useState(null);
@@ -31,7 +34,8 @@ export default function EnvironmentsView({
     return getEnvironmentsByTier(parseInt(importTier));
   };
 
-  const importItems = getImportItems();
+  const importItems = getImportItems()
+    .filter(e => importSource === 'all' || sourceOf(e) === importSource);
   const existingNames = new Set(environments.map(e => e.name.toLowerCase()));
 
   const toggleImportItem = (name) => {
@@ -113,8 +117,9 @@ export default function EnvironmentsView({
 
     const matchesTier = filterTier === 'all' || env.tier === parseInt(filterTier);
     const matchesType = filterType === 'all' || env.type === filterType;
+    const matchesSource = filterSource === 'all' || sourceOf(env) === filterSource;
 
-    return matchesSearch && matchesTier && matchesType;
+    return matchesSearch && matchesTier && matchesType && matchesSource;
   });
 
   // Get unique types from environments
@@ -195,6 +200,13 @@ export default function EnvironmentsView({
               <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
             ))}
           </select>
+
+          <select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} title="Filter by source book">
+            <option value="all">All Sources</option>
+            {CONTENT_SOURCES.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -262,6 +274,21 @@ export default function EnvironmentsView({
               >
                 {cat.label}
               </button>
+            ))}
+          </div>
+
+          <div className="import-source-row">
+            <span className="import-source-label">Source</span>
+            <button
+              className={`import-source-chip ${importSource === 'all' ? 'active' : ''}`}
+              onClick={() => setImportSource('all')}
+            >All</button>
+            {CONTENT_SOURCES.map(s => (
+              <button
+                key={s.id}
+                className={`import-source-chip ${importSource === s.id ? 'active' : ''}`}
+                onClick={() => setImportSource(s.id)}
+              >{s.label}</button>
             ))}
           </div>
 

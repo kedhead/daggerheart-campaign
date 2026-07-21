@@ -383,3 +383,23 @@
     grid-template-columns: 2fr 1fr 1fr auto;
   }
 }
+
+/* Source filter chips in the import catalog */
+.import-source-row {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 0.4rem; margin: 0.5rem 0 0.75rem;
+}
+.import-source-label {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: #8899aa; margin-right: 0.15rem;
+}
+.import-source-chip {
+  font-size: 0.75rem; font-weight: 500; padding: 0.25rem 0.7rem;
+  border-radius: 999px; border: 1px solid rgba(150, 90, 200, 0.28);
+  background: rgba(150, 90, 200, 0.08); color: #b98adf; cursor: pointer;
+  font-family: inherit; transition: background 0.15s, border-color 0.15s;
+}
+.import-source-chip:hover { background: rgba(150, 90, 200, 0.18); }
+.import-source-chip.active {
+  background: rgba(150, 90, 200, 0.32); border-color: #b98adf; color: #f0e6fb;
+}

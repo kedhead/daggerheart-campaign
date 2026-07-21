@@ -5,6 +5,7 @@ import ItemForm from './ItemForm';
 import ItemAIModal from './ItemAIModal';
 import Modal from '../Modal';
 import { ALL_DAGGERHEART_ITEMS, DAGGERHEART_WEAPONS, DAGGERHEART_ARMOR, DAGGERHEART_EQUIPMENT, DAGGERHEART_CONSUMABLES } from '../../data/daggerheartItems';
+import { sourceOf, CONTENT_SOURCES } from '../../data/sources';
 import { ALL_STARWARSD6_ITEMS, STARWARSD6_WEAPONS, STARWARSD6_ARMOR, STARWARSD6_EQUIPMENT } from '../../data/starwarsd6Items';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { buildCampaignContext } from '../../services/campaignContext';
@@ -37,9 +38,11 @@ export default function ItemsView({
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [filterSource, setFilterSource] = useState('all');
   const [showImportModal, setShowImportModal] = useState(false);
   const [importCategory, setImportCategory] = useState('all');
   const [importTier, setImportTier] = useState('all');
+  const [importSource, setImportSource] = useState('all');
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [stashedIds, setStashedIds] = useState(() => new Set()); // transient "Stashed ✓" feedback
 
@@ -171,7 +174,8 @@ export default function ItemsView({
     return items;
   };
 
-  const importItems = getImportItems();
+  const importItems = getImportItems()
+    .filter(i => importSource === 'all' || sourceOf(i) === importSource);
 
   // Determine if current import category should show rarity or tier filter
   const showRarityFilter = importCategory === 'equipment' || importCategory === 'consumables';
@@ -248,7 +252,9 @@ export default function ItemsView({
       matchesTier = itemTier === parseInt(catalogTier);
     }
 
-    return matchesSearch && matchesFilter && matchesTier;
+    const matchesSource = filterSource === 'all' || sourceOf(item) === filterSource;
+
+    return matchesSearch && matchesFilter && matchesTier && matchesSource;
   });
 
   // Count by type
@@ -357,6 +363,18 @@ export default function ItemsView({
               <option value="4">Tier 4</option>
             </select>
           )}
+
+          <select
+            className="catalog-tier-select"
+            value={filterSource}
+            onChange={(e) => setFilterSource(e.target.value)}
+            title="Filter by source book"
+          >
+            <option value="all">All Sources</option>
+            {CONTENT_SOURCES.map(s => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -521,6 +539,21 @@ export default function ItemsView({
                 ))}
               </>
             )}
+          </div>
+
+          <div className="import-source-row">
+            <span className="import-source-label">Source</span>
+            <button
+              className={`import-source-chip ${importSource === 'all' ? 'active' : ''}`}
+              onClick={() => setImportSource('all')}
+            >All</button>
+            {CONTENT_SOURCES.map(s => (
+              <button
+                key={s.id}
+                className={`import-source-chip ${importSource === s.id ? 'active' : ''}`}
+                onClick={() => setImportSource(s.id)}
+              >{s.label}</button>
+            ))}
           </div>
 
           <div className="import-actions-bar">
