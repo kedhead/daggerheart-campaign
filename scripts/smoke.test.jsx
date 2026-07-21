@@ -23,7 +23,7 @@ import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
-import { HF_TRANSFORMATIONS, HF_DOMAIN_CARDS } from '../src/data/hopeFear.js';
+import { HF_TRANSFORMATIONS, HF_DOMAIN_CARDS, HF_CAMPAIGN_FRAMES } from '../src/data/hopeFear.js';
 import { sourceOf, isSourceEnabled, filterBySource, withSource, CONTENT_SOURCES } from '../src/data/sources.js';
 import {
   validateAdversary, validateDomainCard, validateClass, validateSubclass,
@@ -429,6 +429,12 @@ section('Hope & Fear readiness');
     assert(hfAdv.length === 135, `135 Hope & Fear adversaries (got ${hfAdv.length})`);
     assert(hfAdv.every(a => a.features.length > 0), 'every H&F adversary has features');
     assert(hfAdv.filter(a => a.tier === 4).length >= 20, 'H&F includes a full Tier 4 roster');
+  }
+  {
+    const hfFrames = CAMPAIGN_FRAME_TEMPLATES.filter(f => sourceOf(f) === 'hope-fear');
+    assert(hfFrames.length === 4, `4 Hope & Fear campaign frames (got ${hfFrames.length})`);
+    assert(HF_CAMPAIGN_FRAMES.map(f => f.complexity).sort().join('') === '1234', 'H&F frames span complexity 1-4');
+    assert(hfFrames.every(f => f.pitch && f.overview && f.incitingIncident), 'every H&F frame has pitch, overview & inciting incident');
   }
   assert(DOMAIN_CARDS.filter(c => c.domain === 'Dread').length === 21, `21 Dread domain cards (got ${DOMAIN_CARDS.filter(c => c.domain === 'Dread').length})`);
   assert(HF_DOMAIN_CARDS.length > 0 ? DOMAINS.includes('Dread') : !DOMAINS.includes('Dread'),
