@@ -12,8 +12,7 @@ export const CONTENT_SOURCES = [
   {
     id: HOPE_FEAR_SOURCE,
     label: 'Hope & Fear (expansion)',
-    releaseDate: '2026-08-25',
-    description: 'Witch, Warlock, Brawler & Assassin · Dread domain · Transformations · 130+ adversaries',
+    description: 'Assassin, Brawler, Warlock & Witch · Dread domain · 6 ancestries & communities · Transformations · 138 adversaries · 28 environments · 200+ items · 4 campaign frames',
   },
 ];
 
