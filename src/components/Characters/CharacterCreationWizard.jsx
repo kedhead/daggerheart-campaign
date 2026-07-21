@@ -748,6 +748,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
                             <div key={domain}>
                                 <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.15em', color: 'var(--hope-color, #fbbf24)', marginBottom: '0.25rem', marginTop: '0.5rem' }}>
                                     {domain}
+                                    {cards.some(c => c.source === HOPE_FEAR_SOURCE) && <span className="hf-badge">Hope &amp; Fear</span>}
                                 </div>
                                 {cards.map(card => {
                                     const isSelected = domainCards.includes(card.name);

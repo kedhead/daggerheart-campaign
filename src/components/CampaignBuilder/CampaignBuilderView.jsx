@@ -4,6 +4,7 @@ import CampaignBuilderWizard from './CampaignBuilderWizard';
 import { useCampaignBuilder } from '../../hooks/useCampaignBuilder';
 import { getAvailableTemplates } from '../../data/campaignFrameTemplates';
 import { getGameSystem } from '../../data/systems/index.js';
+import { HOPE_FEAR_SOURCE } from '../../data/sources';
 
 export default function CampaignBuilderView({
   userId,
@@ -498,13 +499,18 @@ export default function CampaignBuilderView({
               onClick={() => setSelectedTemplate(template)}
             >
               <div className="mb-4">
-                <h4 className="text-lg font-bold text-white mb-1 group-hover:text-[rgb(var(--color-primary))] transition-colors">
+                <h4 className="text-lg font-bold text-white mb-1 group-hover:text-[rgb(var(--color-primary))] transition-colors flex items-center gap-2 flex-wrap">
                   {template.name}
+                  {template.source === HOPE_FEAR_SOURCE && (
+                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-1.5 py-0.5 rounded border border-[#965ac8]/40 bg-[#965ac8]/15 text-[#b98adf]">
+                      Hope &amp; Fear
+                    </span>
+                  )}
                 </h4>
                 <div className="text-xs text-white/40 mb-3 flex items-center gap-1">
                   Complexity:
                   <div className="flex">
-                    {[1, 2, 3].map(i => (
+                    {[1, 2, 3, 4].map(i => (
                       <div key={i} className={`w-2 h-2 rounded-full mx-0.5 ${i <= template.complexity ? 'bg-[rgb(var(--color-primary))]' : 'bg-white/10'}`} />
                     ))}
                   </div>
