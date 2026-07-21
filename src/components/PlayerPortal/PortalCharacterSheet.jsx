@@ -94,7 +94,7 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   // the DM sheet so a scarred character shows the right number in the portal.
   const hopeAdjusted = { filled: Math.min(hope.filled, hope.max - scars), max: Math.max(0, hope.max - scars) };
 
-  const tabProps = { character, roll, rollDamage, campaignId, rollBonus, setRollBonus, items, updateCharacter };
+  const tabProps = { character, roll, rollDamage, campaignId, campaign, rollBonus, setRollBonus, items, updateCharacter };
 
   return (
     <div className="lrp-portal">

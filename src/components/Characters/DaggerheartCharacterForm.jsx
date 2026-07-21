@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Save, X, ExternalLink, Wand2, Loader2, Plus, Check, Sword, Shield, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { CLASSES, SUBCLASSES, DOMAINS, ANCESTRIES, COMMUNITIES, TRAIT_RANGE, STANDARD_ARRAY } from '../../data/systems/daggerheart';
+import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
 import { getCardsForCharacter, getCardByName } from '../../data/daggerheartDomainCards';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -308,8 +309,8 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
           <label>Class</label>
           <select value={formData.class || ''} onChange={(e) => handleClassChange(e.target.value)}>
             <option value="">-- Select Class --</option>
-            {Object.keys(CLASSES).map(cls => (
-              <option key={cls} value={cls}>{cls}</option>
+            {Object.keys(CLASSES).filter(cls => isSourceEnabled(campaign, CLASSES[cls]?.source) || formData.class === cls).map(cls => (
+              <option key={cls} value={cls}>{cls}{CLASSES[cls]?.source === HOPE_FEAR_SOURCE ? ' — Hope & Fear' : ''}</option>
             ))}
           </select>
           {selectedClassInfo && (
@@ -408,8 +409,8 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             }}
           >
             <option value="">-- Select Ancestry --</option>
-            {Object.entries(ANCESTRIES).map(([name, data]) => (
-              <option key={name} value={name}>{name}</option>
+            {Object.entries(ANCESTRIES).filter(([name, data]) => isSourceEnabled(campaign, typeof data === 'object' ? data.source : undefined) || formData.ancestry === name).map(([name, data]) => (
+              <option key={name} value={name}>{name}{typeof data === 'object' && data.source === HOPE_FEAR_SOURCE ? ' — Hope & Fear' : ''}</option>
             ))}
             <option value="__custom__">Custom / Homebrew...</option>
           </select>
@@ -438,8 +439,8 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
             }}
           >
             <option value="">-- Select Community --</option>
-            {Object.entries(COMMUNITIES).map(([name, data]) => (
-              <option key={name} value={name}>{name}</option>
+            {Object.entries(COMMUNITIES).filter(([name, data]) => isSourceEnabled(campaign, typeof data === 'object' ? data.source : undefined) || formData.community === name).map(([name, data]) => (
+              <option key={name} value={name}>{name}{typeof data === 'object' && data.source === HOPE_FEAR_SOURCE ? ' — Hope & Fear' : ''}</option>
             ))}
             <option value="__custom__">Custom / Homebrew...</option>
           </select>

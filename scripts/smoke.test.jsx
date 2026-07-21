@@ -23,7 +23,8 @@ import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
-import { HF_TRANSFORMATIONS, HF_DOMAIN_CARDS } from '../src/data/hopeFear.js';
+import { DAGGERHEART_WEAPONS, DAGGERHEART_ARMOR, DAGGERHEART_EQUIPMENT, DAGGERHEART_CONSUMABLES } from '../src/data/daggerheartItems.js';
+import { HF_TRANSFORMATIONS, HF_DOMAIN_CARDS, HF_CAMPAIGN_FRAMES } from '../src/data/hopeFear.js';
 import { sourceOf, isSourceEnabled, filterBySource, withSource, CONTENT_SOURCES } from '../src/data/sources.js';
 import {
   validateAdversary, validateDomainCard, validateClass, validateSubclass,
@@ -415,6 +416,15 @@ section('Hope & Fear readiness');
   assert(HF_TRANSFORMATIONS.map(t => t.key).sort().join(',') === 'demigod,ghost,reanimated,shapeshifter,vampire,werewolf', 'transformation keys match the six announced');
   const hfClasses = ['Assassin', 'Brawler', 'Warlock', 'Witch'];
   assert(hfClasses.every(c => CLASSES[c]), 'all 4 Hope & Fear classes merged in');
+  // Source-gating: expansion classes/heritages are tagged so pickers can hide them.
+  assert(hfClasses.every(c => CLASSES[c].source === 'hope-fear'), 'H&F classes tagged source=hope-fear for picker gating');
+  assert(['Aetheris', 'Gnome'].every(a => ANCESTRIES[a]?.source === 'hope-fear'), 'H&F ancestries tagged source=hope-fear');
+  assert(CLASSES['Bard'].source === undefined || CLASSES['Bard'].source === 'core', 'core classes stay untagged (core source)');
+  {
+    const off = { contentSources: { 'hope-fear': false } };
+    assert(!isSourceEnabled(off, CLASSES['Witch'].source), 'disabling H&F hides Witch from pickers');
+    assert(isSourceEnabled(off, CLASSES['Bard'].source), 'core Bard stays available when H&F is off');
+  }
   assert(hfClasses.every(c => (SUBCLASSES[c] || []).length === 2), 'each new class has 2 subclasses');
   assert(CLASSES['Assassin'].baseEvasion === 12 && CLASSES['Witch'].baseHp === 6, 'new class base stats transcribed (Assassin Ev12, Witch HP6)');
   assert(CLASSES['Warlock'].domains.includes('Dread') && CLASSES['Witch'].domains.includes('Dread'), 'Warlock & Witch carry the Dread domain');
@@ -426,9 +436,31 @@ section('Hope & Fear readiness');
   }
   {
     const hfAdv = DAGGERHEART_ADVERSARIES.filter(a => sourceOf(a) === 'hope-fear');
-    assert(hfAdv.length === 135, `135 Hope & Fear adversaries (got ${hfAdv.length})`);
+    assert(hfAdv.length === 138, `138 Hope & Fear adversaries (got ${hfAdv.length})`);
     assert(hfAdv.every(a => a.features.length > 0), 'every H&F adversary has features');
     assert(hfAdv.filter(a => a.tier === 4).length >= 20, 'H&F includes a full Tier 4 roster');
+  }
+  {
+    const hfFrames = CAMPAIGN_FRAME_TEMPLATES.filter(f => sourceOf(f) === 'hope-fear');
+    assert(hfFrames.length === 4, `4 Hope & Fear campaign frames (got ${hfFrames.length})`);
+    assert(HF_CAMPAIGN_FRAMES.map(f => f.complexity).sort().join('') === '1234', 'H&F frames span complexity 1-4');
+    assert(hfFrames.every(f => f.pitch && f.overview && f.incitingIncident), 'every H&F frame has pitch, overview & inciting incident');
+    assert(hfFrames.every(f => f.playerPrinciples?.length && f.gmPrinciples?.length && f.distinctions?.length && f.sessionZeroQuestions?.length), 'every H&F frame has principles, distinctions & session-zero questions');
+    assert(hfFrames.every(f => f.distinctions.every(d => d.name && d.description)), 'every H&F frame distinction has name + description');
+  }
+  {
+    const hfW = DAGGERHEART_WEAPONS.filter(w => sourceOf(w) === 'hope-fear');
+    const hfA = DAGGERHEART_ARMOR.filter(a => sourceOf(a) === 'hope-fear');
+    const hfE = DAGGERHEART_EQUIPMENT.filter(e => sourceOf(e) === 'hope-fear');
+    const hfC = DAGGERHEART_CONSUMABLES.filter(c => sourceOf(c) === 'hope-fear');
+    assert(hfW.length === 73, `73 Hope & Fear weapons (got ${hfW.length})`);
+    assert(hfA.length === 47, `47 Hope & Fear armor (got ${hfA.length})`);
+    assert(hfE.length === 61, `61 Hope & Fear loot items (got ${hfE.length})`);
+    assert(hfC.length === 60, `60 Hope & Fear consumables (got ${hfC.length})`);
+    assert(hfW.every(w => w.systemData?.damageTier1Dice && w.systemData?.damageTier4Dice && w.systemData?.trait), 'every H&F weapon carries all 4 damage tiers + a trait');
+    assert(hfA.every(a => a.systemData?.thresholds?.minor > 0 && typeof a.systemData?.armorScore === 'number'), 'every H&F armor has thresholds + a numeric score');
+    const katana = hfW.find(w => w.name === 'Katana');
+    assert(katana && katana.systemData.damageTier1Modifier === 3 && katana.systemData.damageTier4Modifier === 12, 'Katana scales d10+3 → d10+12 across tiers');
   }
   assert(DOMAIN_CARDS.filter(c => c.domain === 'Dread').length === 21, `21 Dread domain cards (got ${DOMAIN_CARDS.filter(c => c.domain === 'Dread').length})`);
   assert(HF_DOMAIN_CARDS.length > 0 ? DOMAINS.includes('Dread') : !DOMAINS.includes('Dread'),

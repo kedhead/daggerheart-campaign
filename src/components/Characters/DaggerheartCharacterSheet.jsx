@@ -13,7 +13,9 @@ import LevelUpWizard from './LevelUpWizard';
 import RestModal from './RestModal';
 import DeathMoveModal from './DeathMoveModal';
 import BeastformPanel from './BeastformPanel';
+import TransformationPanel from './TransformationPanel';
 import CompanionSheet from './CompanionSheet';
+import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
 import './DaggerheartCharacterSheet.css';
 
 // Parse a damage string like "d8+3" or "2d6" into parts for rolling
@@ -776,6 +778,11 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
       {/* Beastform (Druid only) */}
       {isDruid && (
         <BeastformPanel character={character} canEdit={canEdit} updateCharacter={updateCharacter} />
+      )}
+
+      {/* Transformation (Hope & Fear — shown unless the expansion is disabled) */}
+      {isSourceEnabled(campaign, HOPE_FEAR_SOURCE) && (
+        <TransformationPanel character={character} canEdit={canEdit} updateCharacter={updateCharacter} />
       )}
 
       {/* Active Weapons */}

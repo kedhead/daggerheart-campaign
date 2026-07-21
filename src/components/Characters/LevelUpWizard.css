@@ -478,3 +478,19 @@
     padding: 0.5rem 0.6rem;
   }
 }
+
+/* Hope & Fear expansion badge on class/heritage options */
+.hf-badge {
+  display: inline-block;
+  margin-left: 0.45rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #b98adf;
+  background: rgba(150, 90, 200, 0.14);
+  border: 1px solid rgba(150, 90, 200, 0.3);
+  padding: 0.08rem 0.4rem;
+  border-radius: 4px;
+  vertical-align: middle;
+}
