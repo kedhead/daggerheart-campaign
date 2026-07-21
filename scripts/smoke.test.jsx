@@ -23,6 +23,7 @@ import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
+import { DAGGERHEART_WEAPONS, DAGGERHEART_ARMOR, DAGGERHEART_EQUIPMENT, DAGGERHEART_CONSUMABLES } from '../src/data/daggerheartItems.js';
 import { HF_TRANSFORMATIONS, HF_DOMAIN_CARDS, HF_CAMPAIGN_FRAMES } from '../src/data/hopeFear.js';
 import { sourceOf, isSourceEnabled, filterBySource, withSource, CONTENT_SOURCES } from '../src/data/sources.js';
 import {
@@ -435,6 +436,20 @@ section('Hope & Fear readiness');
     assert(hfFrames.length === 4, `4 Hope & Fear campaign frames (got ${hfFrames.length})`);
     assert(HF_CAMPAIGN_FRAMES.map(f => f.complexity).sort().join('') === '1234', 'H&F frames span complexity 1-4');
     assert(hfFrames.every(f => f.pitch && f.overview && f.incitingIncident), 'every H&F frame has pitch, overview & inciting incident');
+  }
+  {
+    const hfW = DAGGERHEART_WEAPONS.filter(w => sourceOf(w) === 'hope-fear');
+    const hfA = DAGGERHEART_ARMOR.filter(a => sourceOf(a) === 'hope-fear');
+    const hfE = DAGGERHEART_EQUIPMENT.filter(e => sourceOf(e) === 'hope-fear');
+    const hfC = DAGGERHEART_CONSUMABLES.filter(c => sourceOf(c) === 'hope-fear');
+    assert(hfW.length === 66, `66 Hope & Fear weapons (got ${hfW.length})`);
+    assert(hfA.length === 35, `35 Hope & Fear armor (got ${hfA.length})`);
+    assert(hfE.length === 60, `60 Hope & Fear loot items (got ${hfE.length})`);
+    assert(hfC.length === 60, `60 Hope & Fear consumables (got ${hfC.length})`);
+    assert(hfW.every(w => w.systemData?.damageTier1Dice && w.systemData?.damageTier4Dice && w.systemData?.trait), 'every H&F weapon carries all 4 damage tiers + a trait');
+    assert(hfA.every(a => a.systemData?.thresholds?.minor > 0 && typeof a.systemData?.armorScore === 'number'), 'every H&F armor has thresholds + a numeric score');
+    const katana = hfW.find(w => w.name === 'Katana');
+    assert(katana && katana.systemData.damageTier1Modifier === 3 && katana.systemData.damageTier4Modifier === 12, 'Katana scales d10+3 → d10+12 across tiers');
   }
   assert(DOMAIN_CARDS.filter(c => c.domain === 'Dread').length === 21, `21 Dread domain cards (got ${DOMAIN_CARDS.filter(c => c.domain === 'Dread').length})`);
   assert(HF_DOMAIN_CARDS.length > 0 ? DOMAINS.includes('Dread') : !DOMAINS.includes('Dread'),
