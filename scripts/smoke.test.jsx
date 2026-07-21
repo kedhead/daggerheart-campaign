@@ -436,6 +436,8 @@ section('Hope & Fear readiness');
     assert(hfFrames.length === 4, `4 Hope & Fear campaign frames (got ${hfFrames.length})`);
     assert(HF_CAMPAIGN_FRAMES.map(f => f.complexity).sort().join('') === '1234', 'H&F frames span complexity 1-4');
     assert(hfFrames.every(f => f.pitch && f.overview && f.incitingIncident), 'every H&F frame has pitch, overview & inciting incident');
+    assert(hfFrames.every(f => f.playerPrinciples?.length && f.gmPrinciples?.length && f.distinctions?.length && f.sessionZeroQuestions?.length), 'every H&F frame has principles, distinctions & session-zero questions');
+    assert(hfFrames.every(f => f.distinctions.every(d => d.name && d.description)), 'every H&F frame distinction has name + description');
   }
   {
     const hfW = DAGGERHEART_WEAPONS.filter(w => sourceOf(w) === 'hope-fear');
