@@ -6,7 +6,7 @@ import StarWarsD6AdversaryCard from './StarWarsD6AdversaryCard';
 import StarWarsD6AdversaryForm from './StarWarsD6AdversaryForm';
 import Modal from '../Modal';
 import { DAGGERHEART_ADVERSARIES, ADVERSARIES_BY_TIER, ADVERSARIES_BY_ROLE } from '../../data/daggerheartAdversaries';
-import { filterBySource } from '../../data/sources';
+import { filterBySource, sourceOf, CONTENT_SOURCES } from '../../data/sources';
 import {
   STARWARSD6_ADVERSARIES,
   STARWARSD6_ADVERSARIES_BY_CLASSIFICATION,
@@ -48,6 +48,7 @@ export default function AdversariesView({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
+  const [filterSource, setFilterSource] = useState('all');
   const [filterClassification, setFilterClassification] = useState('all');
   const [filterAffiliation, setFilterAffiliation] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
@@ -55,6 +56,7 @@ export default function AdversariesView({
   const [showForm, setShowForm] = useState(false);
   const [editingAdversary, setEditingAdversary] = useState(null);
   const [importTier, setImportTier] = useState('all');
+  const [importSource, setImportSource] = useState('all');
   const [selectedImports, setSelectedImports] = useState(new Set());
   const [isImporting, setIsImporting] = useState(false);
 
@@ -102,7 +104,8 @@ export default function AdversariesView({
     return filterBySource(ADVERSARIES_BY_TIER[parseInt(importTier)] || [], campaign);
   };
 
-  const importItems = getImportItems();
+  const importItems = getImportItems()
+    .filter(a => importSource === 'all' || sourceOf(a) === importSource);
   const existingNames = new Set(adversaries.map(a => a.name.toLowerCase()));
 
   const toggleImportItem = (name) => {
@@ -240,7 +243,8 @@ export default function AdversariesView({
 
     const matchesTier = filterTier === 'all' || adv.tier === parseInt(filterTier);
     const matchesRole = filterRole === 'all' || adv.role === filterRole;
-    return matchesSearch && matchesTier && matchesRole;
+    const matchesSource = filterSource === 'all' || sourceOf(adv) === filterSource;
+    return matchesSearch && matchesTier && matchesRole && matchesSource;
   }).sort(SORTS[sortBy] || SORTS.newest);
 
   // Get unique roles / classifications / affiliations from adversaries
@@ -339,6 +343,13 @@ export default function AdversariesView({
                 <option value="all">All Roles</option>
                 {roles.map(role => (
                   <option key={role} value={role}>{role}</option>
+                ))}
+              </select>
+
+              <select value={filterSource} onChange={(e) => setFilterSource(e.target.value)} title="Filter by source book">
+                <option value="all">All Sources</option>
+                {CONTENT_SOURCES.map(s => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </select>
             </>
@@ -463,6 +474,23 @@ export default function AdversariesView({
               </button>
             ))}
           </div>
+
+          {!isStarWarsD6 && (
+            <div className="import-source-row">
+              <span className="import-source-label">Source</span>
+              <button
+                className={`import-source-chip ${importSource === 'all' ? 'active' : ''}`}
+                onClick={() => setImportSource('all')}
+              >All</button>
+              {CONTENT_SOURCES.map(s => (
+                <button
+                  key={s.id}
+                  className={`import-source-chip ${importSource === s.id ? 'active' : ''}`}
+                  onClick={() => setImportSource(s.id)}
+                >{s.label}</button>
+              ))}
+            </div>
+          )}
 
           <div className="import-actions-bar">
             <span className="selection-count">
