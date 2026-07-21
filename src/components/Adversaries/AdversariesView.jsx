@@ -19,6 +19,12 @@ import { generateAdversaryStatblock, generateBossStatblock } from '../../service
 import { buildCampaignContext } from '../../services/campaignContext';
 import './AdversariesView.css';
 
+const SORTS = {
+  newest: (a, b) => ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)) || (a.name || '').localeCompare(b.name || ''),
+  oldest: (a, b) => ((a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) || (a.name || '').localeCompare(b.name || ''),
+  name: (a, b) => (a.name || '').localeCompare(b.name || ''),
+};
+
 export default function AdversariesView({
   campaign,
   adversaries = [],
@@ -44,6 +50,7 @@ export default function AdversariesView({
   const [filterRole, setFilterRole] = useState('all');
   const [filterClassification, setFilterClassification] = useState('all');
   const [filterAffiliation, setFilterAffiliation] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
   const [showImportModal, setShowImportModal] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingAdversary, setEditingAdversary] = useState(null);
@@ -234,7 +241,7 @@ export default function AdversariesView({
     const matchesTier = filterTier === 'all' || adv.tier === parseInt(filterTier);
     const matchesRole = filterRole === 'all' || adv.role === filterRole;
     return matchesSearch && matchesTier && matchesRole;
-  });
+  }).sort(SORTS[sortBy] || SORTS.newest);
 
   // Get unique roles / classifications / affiliations from adversaries
   const roles = [...new Set(adversaries.map(a => a.role).filter(Boolean))];
@@ -336,6 +343,12 @@ export default function AdversariesView({
               </select>
             </>
           )}
+
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="name">Name A–Z</option>
+          </select>
         </div>
       </div>
 

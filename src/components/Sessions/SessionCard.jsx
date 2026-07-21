@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit3, Trash2, Calendar, EyeOff, Link as LinkIcon, Radio, ScrollText, Play } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit3, Trash2, Calendar, EyeOff, Link as LinkIcon, ExternalLink, Radio, ScrollText, Play } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import './SessionCard.css';
 
-export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM, campaign, isEmbedded = false, entities, onEncounterClick }) {
+export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM, campaign, isEmbedded = false, entities, onEncounterClick, encounters = [] }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
@@ -115,19 +115,38 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
               </h4>
               <div className="flex flex-wrap gap-2">
                 {session.encounterLinks.split(',').map((link, index) => {
+                  const raw = link.trim();
+                  if (!raw) return null;
+                  // Manually-created sessions may store external URLs (e.g. FreshCutGrass links)
+                  if (/^https?:\/\//i.test(raw)) {
+                    return (
+                      <a
+                        key={index}
+                        href={raw}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={raw}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-[rgb(var(--color-primary))/10] border border-[rgb(var(--color-primary))/30] rounded-md text-[rgb(var(--color-primary-light))] text-sm transition-colors hover:bg-[rgb(var(--color-primary))/20] cursor-pointer"
+                      >
+                        <ExternalLink size={12} />
+                        Encounter {index + 1}
+                      </a>
+                    );
+                  }
                   // Encounters stored as plain Firestore IDs (or legacy encounter:// URIs)
-                  const encounterId = link.trim().replace(/^encounter:\/\//, '');
-                  if (!encounterId) return null;
+                  const encounterId = raw.replace(/^encounter:\/\//, '');
+                  const encounter = encounters.find(e => e.id === encounterId);
+                  const label = encounter?.name || `Encounter ${index + 1}`;
                   const Wrapper = onEncounterClick ? 'button' : 'span';
                   return (
                     <Wrapper
                       key={index}
-                      title={onEncounterClick ? `Open encounter ${index + 1}` : `Encounter ID: ${encounterId}`}
+                      title={onEncounterClick ? `Open ${label}` : `Encounter ID: ${encounterId}`}
                       onClick={onEncounterClick ? () => onEncounterClick(encounterId) : undefined}
                       className={`flex items-center gap-2 px-3 py-1.5 bg-[rgb(var(--color-primary))/10] border border-[rgb(var(--color-primary))/30] rounded-md text-[rgb(var(--color-primary-light))] text-sm transition-colors ${onEncounterClick ? 'hover:bg-[rgb(var(--color-primary))/20] cursor-pointer' : ''}`}
                     >
                       <LinkIcon size={12} />
-                      Encounter {index + 1}
+                      {label}
                     </Wrapper>
                   );
                 })}

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useCampaignData } from '../contexts/CampaignDataContext';
 
 const DashboardView = lazy(() => import('./Dashboard/DashboardView'));
@@ -144,6 +144,9 @@ export default function AppRouter({
     loading,
     storybookChapters,
   } = useCampaignData();
+
+  // Encounter to auto-open when navigating to the encounters view (e.g. from a session's encounter link)
+  const [targetEncounterId, setTargetEncounterId] = useState(null);
 
   const publishedStorybookChapters = storybookChapters?.filter(c => c.status === 'published') || [];
 
@@ -306,7 +309,10 @@ export default function AppRouter({
           maps={maps}
           battleMaps={battleMaps}
           storybookChapters={publishedStorybookChapters}
-          onEncounterClick={() => setCurrentView('encounters')}
+          onEncounterClick={(encounterId) => {
+            setTargetEncounterId(encounterId || null);
+            setCurrentView('encounters');
+          }}
         />
       );
 
@@ -474,6 +480,8 @@ export default function AppRouter({
           adversaries={adversaries}
           environments={environments}
           characters={characters}
+          targetEncounterId={targetEncounterId}
+          onTargetEncounterHandled={() => setTargetEncounterId(null)}
         />
       );
 
