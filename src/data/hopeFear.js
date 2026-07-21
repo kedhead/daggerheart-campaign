@@ -178,8 +178,76 @@ export const HF_DOMAIN_CARDS = [
 
 // ── Ancestries / Communities ── same object shapes as ANCESTRIES/COMMUNITIES:
 // 'Name': { description, features: [{name, description}] }
-export const HF_ANCESTRIES = {};
-export const HF_COMMUNITIES = {};
+export const HF_ANCESTRIES = {
+  'Aetheris': {
+    description: 'Winged humanoids bearing sacred markings, descended from the angels of the Hallows Above.',
+    features: [
+      { name: 'Hallowed Aura', description: 'Once per long rest when an ally within Close range rolls with Fear, you can change it into a roll with Hope instead.' },
+      { name: 'Celestial Wings', description: 'You have wings that allow you to fly. Once per scene while flying, you can spend a Hope instead of marking an Armor Slot.' },
+    ],
+  },
+  'Earthkin': {
+    description: 'Elemental kin whose bodies are formed of flesh and earth — rock, crystal, clay, soil, or sand.',
+    features: [
+      { name: 'Stoneskin', description: 'Gain a permanent +1 bonus to your Armor Score and damage thresholds at character creation.' },
+      { name: 'Immovable', description: 'While you’re touching the ground, you can’t be lifted or moved against your will.' },
+    ],
+  },
+  'Emberkin': {
+    description: 'Elemental kin descended from fire elementals, manifesting flaming hair, ember eyes, or smoldering skin.',
+    features: [
+      { name: 'Fireproof', description: 'You are immune to damage from magical or mundane flame.' },
+      { name: 'Ignition', description: 'Mark a Stress to wreathe your primary weapon in flame until the end of the scene. While ablaze, it gives off bright light and you gain a 1d6 bonus to damage rolls with that weapon.' },
+    ],
+  },
+  'Skykin': {
+    description: 'Elemental kin descended from air elementals, with color-shifting skin and wispy, floating features.',
+    features: [
+      { name: 'Gale Force', description: 'Mark a Stress to conjure a gust of wind that carries you or a Very Close ally up to Very Far range. You can always control the speed at which you fall.' },
+      { name: 'Eye of the Storm', description: 'Spend 2 Hope to grant you or an ally within Melee range a +1 bonus to Evasion until you take Severe damage or you use this feature again.' },
+    ],
+  },
+  'Tidekin': {
+    description: 'Elemental kin descended from water elementals, with finlike ears, webbed digits, and water-hued coloring.',
+    features: [
+      { name: 'Amphibious', description: 'You can breathe and move naturally underwater.' },
+      { name: 'Lifespring', description: 'Once per rest when you have access to a small amount of water, mark a Stress to clear a Hit Point on yourself or an ally within Very Close range.' },
+    ],
+  },
+  'Gnome': {
+    description: 'Small humanoids with conical heads and long arms, known for teleporting short distances.',
+    features: [
+      { name: 'Nimble Fingers', description: 'When you make a Finesse Roll, you can spend 2 Hope to reroll your Hope Die.' },
+      { name: 'Flicker Step', description: 'Once per scene, you can teleport to another point you can see within Far range.' },
+    ],
+  },
+};
+export const HF_COMMUNITIES = {
+  'Duneborne': {
+    description: 'You made a home among the shifting sands and arid climate of the desert.',
+    features: [{ name: 'Oasis', description: 'During a short rest, you or an ally can reroll a die used for a downtime move and take the higher result.' }],
+  },
+  'Freeborne': {
+    description: 'You come from a collective that once lived under tyrannical rule but is now liberated.',
+    features: [{ name: 'Unbound', description: 'Once per session when you roll with Fear, you can change it into a roll with Hope instead.' }],
+  },
+  'Frostborne': {
+    description: 'You come from a place of snow and ice, accustomed to surviving in the harshest conditions.',
+    features: [{ name: 'Hardy', description: 'When you take a rest, you clear a Hit Point.' }],
+  },
+  'Hearthborne': {
+    description: 'You come from humble origins in a modest village or quaint countryside, among close families and neighbors.',
+    features: [{ name: 'Close-Knit', description: 'Once per long rest, you can spend any number of Hope to grant an ally within Far range an equal number of Hope.' }],
+  },
+  'Reborne': {
+    description: 'You were once a member of a different community that you’re no longer part of.',
+    features: [{ name: 'Found Family', description: 'Once per rest, you can spend a Hope to use an ally’s Experience as if it were your own. Describe how your time with that ally prepared you for this moment.' }],
+  },
+  'Warborne': {
+    description: 'You come from a place that is, or was, ravaged by war.',
+    features: [{ name: 'Brave Face', description: 'Once per session when you would be forced to mark a Stress, you can spend a Hope instead.' }],
+  },
+};
 
 // ── Adversaries ── same shape as DAGGERHEART_ADVERSARIES entries:
 // { name, tier: 1-4, role, description, motives, difficulty,
@@ -211,7 +279,56 @@ export const HF_CAMPAIGN_FRAMES = [];
 //   features: [{ name, description, type?: 'passive'|'action'|'reaction' }],
 //   // optional mechanical hooks, applied by computeDefenses/ability layer:
 //   modifiers?: { evasion?, armorScore?, hpSlots?, stressSlots?, traits? } }
-export const HF_TRANSFORMATIONS = [];
+export const HF_TRANSFORMATIONS = [
+  {
+    key: 'demigod', name: 'Demigod',
+    description: 'Mortal creatures whose veins flow with the blood of the gods, bearing a subtle luminosity — and heavy expectations.',
+    features: [
+      { name: 'Gifted', type: 'passive', description: 'You gain a +1 bonus to action, reaction, and damage rolls.' },
+      { name: 'Weight of Divinity', type: 'passive', description: 'When you fail a roll, you must mark a Stress or the GM gains a Fear.' },
+    ],
+  },
+  {
+    key: 'ghost', name: 'Ghost',
+    description: 'Spirits of the once-living bound to the Mortal Realm, able to shift between the physical and the spectral.',
+    features: [
+      { name: 'Unfinished Business', type: 'passive', description: 'Work with your GM to decide what purpose keeps you bound to the Mortal Realm. When you fulfill it, you cross through the veil of death.' },
+      { name: 'Ephemeral', type: 'passive', description: 'Your body wavers in and out of being corporeal. You are resistant to physical damage, take double magic damage, and can mark 2 Stress to momentarily pass through a solid object.' },
+    ],
+  },
+  {
+    key: 'shapeshifter', name: 'Shapeshifter',
+    description: 'Creatures who can change their physical form, swapping the shape and features of their ancestry.',
+    features: [
+      { name: 'Change Shape', type: 'action', description: 'During a rest, use a downtime move to swap your current ancestry with another. Describe how your appearance changes.' },
+      { name: 'Only Skin Deep', type: 'passive', description: 'You gain the benefit of only one of your chosen ancestry’s features, selected when you choose the ancestry. Use a downtime move to choose a different feature from that ancestry.' },
+    ],
+  },
+  {
+    key: 'vampire', name: 'Vampire',
+    description: 'Undead creatures with sharp fangs who feed on the blood of the living.',
+    features: [
+      { name: 'Fangs', type: 'action', description: 'Make an attack using a trait of your choice to bite a target within Melee range. On a success, deal d6 physical damage using your Proficiency.' },
+      { name: 'Feed', type: 'action', description: 'On a successful "Fangs" attack against a creature that can bleed, mark a Stress to feed: place tokens equal to the Hit Points the target marks (max 6). Before an action roll, spend a token to make your Fear Die a d20. Remove a token on a long rest. While there are no tokens, you make action and reaction rolls with disadvantage.' },
+    ],
+  },
+  {
+    key: 'werewolf', name: 'Werewolf',
+    description: 'Creatures who transform into large, ferocious wolves when wounded or enraged.',
+    features: [
+      { name: 'Wolf Form', type: 'action', description: 'When you mark 1 or more Hit Points, mark a Stress to enter Wolf Form. While in it, gain a 1d10 bonus to attack and damage rolls; when you gain a Hope in Wolf Form, also mark a Stress. Lasts until you go into Howling Rampage or take a rest.' },
+      { name: 'Howling Rampage', type: 'reaction', description: 'When you mark your last Stress while in Wolf Form, you rampage: roll a number of d20s equal to your tier and deal that much physical damage to all creatures within Very Close range, then drop out of Wolf Form.' },
+    ],
+  },
+  {
+    key: 'reanimated', name: 'Reanimated',
+    description: 'Corpses who have been brought back to life, maintaining their decaying bodies through grim means.',
+    features: [
+      { name: 'Corpse', type: 'passive', description: 'During a rest, you can clear Hit Points only if you have access to remains from a recently deceased creature. Describe how you use these materials to maintain your corpse.' },
+      { name: 'Won’t Stay Dead', type: 'reaction', description: 'When you choose the Risk It All death move and fail, you can permanently mark a Hit Point to succeed instead (still using the Hope Die’s value to clear Hit Points and Stress). When you permanently mark your last Hit Point, you pass through the veil of death.' },
+    ],
+  },
+];
 
 // Dread domain UI identity (color/glyph used by pickers and card lists the
 // moment Dread cards exist).

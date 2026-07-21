@@ -409,6 +409,10 @@ section('Hope & Fear readiness');
 
   // The 9 core classes survive the merge untouched; Dread only appears once
   // its cards exist (nobody can pick an empty domain pre-release).
+  assert(Object.keys(ANCESTRIES).filter(a => ['Aetheris','Earthkin','Emberkin','Skykin','Tidekin','Gnome'].includes(a)).length === 6, 'all 6 Hope & Fear ancestries merged');
+  assert(Object.keys(COMMUNITIES).filter(c => ['Duneborne','Freeborne','Frostborne','Hearthborne','Reborne','Warborne'].includes(c)).length === 6, 'all 6 Hope & Fear communities merged');
+  assert(HF_TRANSFORMATIONS.length === 6 && HF_TRANSFORMATIONS.every(t => t.key && t.features.length), 'all 6 transformations present with features');
+  assert(HF_TRANSFORMATIONS.map(t => t.key).sort().join(',') === 'demigod,ghost,reanimated,shapeshifter,vampire,werewolf', 'transformation keys match the six announced');
   const hfClasses = ['Assassin', 'Brawler', 'Warlock', 'Witch'];
   assert(hfClasses.every(c => CLASSES[c]), 'all 4 Hope & Fear classes merged in');
   assert(hfClasses.every(c => (SUBCLASSES[c] || []).length === 2), 'each new class has 2 subclasses');
