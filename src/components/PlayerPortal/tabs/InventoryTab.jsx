@@ -27,7 +27,7 @@ function ItemStats({ item }) {
   );
 }
 
-function ItemCard({ item, onRemove }) {
+function ItemCard({ item, onRemove, onEquip, onUnequip }) {
   const sd = item.systemData || {};
   const features = sd.features || [];
   const customFeatures = features.filter(f => getFeatureDescription(f));
@@ -105,16 +105,40 @@ function ItemCard({ item, onRemove }) {
         </div>
       )}
 
-      {/* Use / expend button for consumables */}
-      {onRemove && (
-        <button onClick={onRemove} style={{
-          marginTop: 10, padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
-          background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-          color: '#f87171', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-          textTransform: 'uppercase', fontFamily: 'inherit',
-        }}>
-          Use / Expend
-        </button>
+      {/* Action buttons: equip / unequip / expend */}
+      {(onEquip || onUnequip || onRemove) && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          {onEquip && (
+            <button onClick={onEquip} style={{
+              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+              background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.35)',
+              color: '#4ade80', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', fontFamily: 'inherit',
+            }}>
+              Equip
+            </button>
+          )}
+          {onUnequip && (
+            <button onClick={onUnequip} style={{
+              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
+              color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', fontFamily: 'inherit',
+            }}>
+              Unequip
+            </button>
+          )}
+          {onRemove && (
+            <button onClick={onRemove} style={{
+              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+              color: '#f87171', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', fontFamily: 'inherit',
+            }}>
+              Use / Expend
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -145,6 +169,21 @@ export default function InventoryTab({ character, items, updateCharacter }) {
     updateCharacter(character.id, { equippedItems: remaining });
   };
 
+  // Flip a single inventory entry's equipped state. Matches by itemId (and the
+  // opposite current state, so equipped and carried copies of the same item
+  // don't collide).
+  const setEquipped = (item, value) => {
+    if (!updateCharacter) return;
+    const arr = [...(character.equippedItems || [])];
+    const idx = arr.findIndex(ei =>
+      (ei.itemId === item.itemId || (item.id && ei.id === item.id)) &&
+      (value ? ei.equipped === false : ei.equipped !== false)
+    );
+    if (idx === -1) return;
+    arr[idx] = { ...arr[idx], equipped: value };
+    updateCharacter(character.id, { equippedItems: arr });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Gold */}
@@ -166,7 +205,9 @@ export default function InventoryTab({ character, items, updateCharacter }) {
         <div>
           <div className="lrp-section-label">Equipped</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {equipped.map((it, i) => <ItemCard key={it.id || i} item={it} />)}
+            {equipped.map((it, i) => (
+              <ItemCard key={it.id || i} item={it} onUnequip={updateCharacter ? () => setEquipped(it, false) : undefined} />
+            ))}
           </div>
         </div>
       )}
@@ -175,7 +216,9 @@ export default function InventoryTab({ character, items, updateCharacter }) {
         <div>
           <div className="lrp-section-label">Carried</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {carried.map((it, i) => <ItemCard key={it.id || i} item={it} />)}
+            {carried.map((it, i) => (
+              <ItemCard key={it.id || i} item={it} onEquip={updateCharacter ? () => setEquipped(it, true) : undefined} />
+            ))}
           </div>
         </div>
       )}

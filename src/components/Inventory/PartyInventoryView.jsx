@@ -289,6 +289,50 @@ export default function PartyInventoryView({
                   </div>
                 </div>
 
+                {/* Key stats so players can size up gear before claiming it */}
+                {(() => {
+                  const sd = item.systemData || {};
+                  const bits = [];
+                  if (item.type === 'weapon') {
+                    if (sd.trait) bits.push(sd.trait);
+                    if (sd.range) bits.push(sd.range);
+                    const dmg = sd.damageTier1Dice
+                      ? `${sd.damageTier1Dice}${sd.damageTier1Modifier ? `+${sd.damageTier1Modifier}` : ''}${sd.damageType ? ` ${sd.damageType === 'magic' ? 'mag' : 'phy'}` : ''}`
+                      : null;
+                    if (dmg) bits.push(dmg);
+                    if (sd.burden) bits.push(sd.burden);
+                  } else if (item.type === 'armor') {
+                    if (sd.armorScore != null) bits.push(`Armor ${sd.armorScore}`);
+                    if (sd.thresholds) bits.push(`Thresholds ${sd.thresholds.minor}/${sd.thresholds.major}`);
+                  }
+                  return bits.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {bits.map((b, i) => (
+                        <span key={i} className="text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize"
+                          style={{ background: 'var(--surface-hi)', border: '1px solid var(--line)', color: 'var(--text-muted)' }}>
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
+
+                {item.description && (
+                  <p className="mt-3 text-[12px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                    {item.description}
+                  </p>
+                )}
+
+                {(item.systemData?.features || []).filter(f => f && f.description).length > 0 && (
+                  <div className="mt-2.5 flex flex-col gap-1.5">
+                    {(item.systemData.features).filter(f => f && f.description).map((f, i) => (
+                      <div key={i} className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--text)' }}>{f.name}:</span> {f.description}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {entry.notes && (
                   <p
                     className="mt-4 p-3 rounded-lg text-[11px] leading-relaxed italic"
