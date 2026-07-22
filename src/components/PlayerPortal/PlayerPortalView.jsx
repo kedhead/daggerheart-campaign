@@ -203,7 +203,7 @@ function CharacterSelectScreen({ characters, playerName, campaign, onSelect, onE
   );
 }
 
-export default function PlayerPortalView({ characters, currentUserId, campaign, updateCharacter, items, onExit }) {
+export default function PlayerPortalView({ characters, currentUserId, campaign, updateCharacter, stashFromCharacter, items, onExit }) {
   const storageKey = currentUserId ? `lrPortalChar:${currentUserId}` : null;
 
   const myCharacters = useMemo(
@@ -245,6 +245,7 @@ export default function PlayerPortalView({ characters, currentUserId, campaign, 
       character={character}
       currentUserId={currentUserId}
       updateCharacter={updateCharacter}
+      stashFromCharacter={stashFromCharacter}
       campaign={campaign}
       items={items}
       showBack={myCharacters.length > 1}

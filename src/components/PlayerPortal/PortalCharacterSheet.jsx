@@ -30,7 +30,7 @@ function toBoolArray(filled, max) {
   return Array.from({ length: max }, (_, i) => i < filled);
 }
 
-export default function PortalCharacterSheet({ character, currentUserId, updateCharacter, campaign, items, showBack, onBack, onExit }) {
+export default function PortalCharacterSheet({ character, currentUserId, updateCharacter, stashFromCharacter, campaign, items, showBack, onBack, onExit }) {
   const [showDicePicker, setShowDicePicker] = useState(false);
   const [diceColor, setDiceColor] = useState(() => getPlayerDiceColor(currentUserId));
   const [dualityKey, setDualityKey] = useState(() => getDualitySet().key);
@@ -94,7 +94,7 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   // the DM sheet so a scarred character shows the right number in the portal.
   const hopeAdjusted = { filled: Math.min(hope.filled, hope.max - scars), max: Math.max(0, hope.max - scars) };
 
-  const tabProps = { character, roll, rollDamage, campaignId, campaign, rollBonus, setRollBonus, items, updateCharacter };
+  const tabProps = { character, roll, rollDamage, campaignId, campaign, rollBonus, setRollBonus, items, updateCharacter, stashFromCharacter };
 
   return (
     <div className="lrp-portal">

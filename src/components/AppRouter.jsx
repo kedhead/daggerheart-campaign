@@ -124,6 +124,7 @@ export default function AppRouter({
     updatePartyInventoryItem,
     transferToParty,
     transferToCharacter,
+    stashFromCharacter,
     initiative,
     startInitiative,
     updateInitiative,
@@ -258,6 +259,7 @@ export default function AppRouter({
           addToCharacterInventory={addToCharacterInventory}
           removeFromCharacterInventory={removeFromCharacterInventory}
           toggleEquipped={toggleEquipped}
+          stashFromCharacter={stashFromCharacter}
           onGoToRoster={() => setCurrentView('characters')}
         />
       );

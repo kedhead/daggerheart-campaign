@@ -27,7 +27,7 @@ function ItemStats({ item }) {
   );
 }
 
-function ItemCard({ item, onRemove, onEquip, onUnequip }) {
+function ItemCard({ item, onRemove, onEquip, onUnequip, onStash }) {
   const sd = item.systemData || {};
   const features = sd.features || [];
   const customFeatures = features.filter(f => getFeatureDescription(f));
@@ -105,8 +105,8 @@ function ItemCard({ item, onRemove, onEquip, onUnequip }) {
         </div>
       )}
 
-      {/* Action buttons: equip / unequip / expend */}
-      {(onEquip || onUnequip || onRemove) && (
+      {/* Action buttons: equip / unequip / stash / expend */}
+      {(onEquip || onUnequip || onStash || onRemove) && (
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
           {onEquip && (
             <button onClick={onEquip} style={{
@@ -128,6 +128,16 @@ function ItemCard({ item, onRemove, onEquip, onUnequip }) {
               Unequip
             </button>
           )}
+          {onStash && (
+            <button onClick={onStash} style={{
+              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+              background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.35)',
+              color: '#a78bfa', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', fontFamily: 'inherit',
+            }}>
+              → Party Stash
+            </button>
+          )}
           {onRemove && (
             <button onClick={onRemove} style={{
               padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
@@ -144,7 +154,7 @@ function ItemCard({ item, onRemove, onEquip, onUnequip }) {
   );
 }
 
-export default function InventoryTab({ character, items, updateCharacter }) {
+export default function InventoryTab({ character, items, updateCharacter, stashFromCharacter }) {
   const gold = character.gold ?? 0;
   const inventoryText = typeof character.inventory === 'string' ? character.inventory : '';
   const notes = character.playerNotes || '';
@@ -184,6 +194,14 @@ export default function InventoryTab({ character, items, updateCharacter }) {
     updateCharacter(character.id, { equippedItems: arr });
   };
 
+  // Move an item to the party stash. `wasEquipped` disambiguates when the
+  // player holds both an equipped and a carried copy of the same item.
+  const handleStash = (item) => {
+    if (!stashFromCharacter) return;
+    const wasEquipped = item.equipped !== false;
+    stashFromCharacter(character.id, item.itemId, wasEquipped);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Gold */}
@@ -206,7 +224,9 @@ export default function InventoryTab({ character, items, updateCharacter }) {
           <div className="lrp-section-label">Equipped</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {equipped.map((it, i) => (
-              <ItemCard key={it.id || i} item={it} onUnequip={updateCharacter ? () => setEquipped(it, false) : undefined} />
+              <ItemCard key={it.id || i} item={it}
+                onUnequip={updateCharacter ? () => setEquipped(it, false) : undefined}
+                onStash={stashFromCharacter ? () => handleStash(it) : undefined} />
             ))}
           </div>
         </div>
@@ -217,7 +237,9 @@ export default function InventoryTab({ character, items, updateCharacter }) {
           <div className="lrp-section-label">Carried</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {carried.map((it, i) => (
-              <ItemCard key={it.id || i} item={it} onEquip={updateCharacter ? () => setEquipped(it, true) : undefined} />
+              <ItemCard key={it.id || i} item={it}
+                onEquip={updateCharacter ? () => setEquipped(it, true) : undefined}
+                onStash={stashFromCharacter ? () => handleStash(it) : undefined} />
             ))}
           </div>
         </div>
@@ -228,7 +250,9 @@ export default function InventoryTab({ character, items, updateCharacter }) {
           <div className="lrp-section-label">Consumable</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {consumable.map((it, i) => (
-              <ItemCard key={it.id || i} item={it} onRemove={() => handleExpend(it)} />
+              <ItemCard key={it.id || i} item={it}
+                onRemove={() => handleExpend(it)}
+                onStash={stashFromCharacter ? () => handleStash(it) : undefined} />
             ))}
           </div>
         </div>
