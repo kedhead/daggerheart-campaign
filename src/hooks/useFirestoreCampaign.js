@@ -702,6 +702,50 @@ export function useFirestoreCampaign(campaignId) {
     await batch.commit();
   };
 
+  // Deposit an item from a character's player-facing inventory (equippedItems)
+  // into the party stash. Matches the entry by itemId + equipped state so an
+  // equipped and a carried copy of the same item don't collide. This is the
+  // reverse of transferToCharacter and lets players move gear to the stash
+  // from their portal.
+  const stashFromCharacter = async (characterId, itemId, wasEquipped = false, quantity = null) => {
+    if (!basePath) return;
+    const charRef = doc(db, `${basePath}/characters`, characterId);
+    const charSnap = await getDoc(charRef);
+    if (!charSnap.exists()) return;
+
+    const equippedItems = [...(charSnap.data().equippedItems || [])];
+    const idx = equippedItems.findIndex(
+      ei => ei.itemId === itemId && (wasEquipped ? ei.equipped !== false : ei.equipped === false)
+    );
+    if (idx === -1) return;
+    const entry = equippedItems[idx];
+    const entryQty = entry.quantity || 1;
+    const moveQty = quantity ?? entryQty;
+
+    const batch = writeBatch(db);
+
+    // Add to the party stash
+    const partyRef = doc(collection(db, `${basePath}/partyInventory`));
+    batch.set(partyRef, {
+      itemId,
+      quantity: moveQty,
+      notes: entry.notes || '',
+      addedBy: currentUser.uid,
+      addedByName: currentUser.displayName || currentUser.email,
+      addedAt: serverTimestamp(),
+    });
+
+    // Remove from or reduce the character's inventory
+    if (moveQty >= entryQty) {
+      equippedItems.splice(idx, 1);
+    } else {
+      equippedItems[idx] = { ...entry, quantity: entryQty - moveQty };
+    }
+    batch.update(charRef, { equippedItems, updatedAt: serverTimestamp() });
+
+    await batch.commit();
+  };
+
   // Initiative methods
   const startInitiative = async (participants = []) => {
     if (!basePath) return;
@@ -951,6 +995,7 @@ export function useFirestoreCampaign(campaignId) {
     // Transfers
     transferToParty,
     transferToCharacter,
+    stashFromCharacter,
     // Initiative
     initiative,
     startInitiative,

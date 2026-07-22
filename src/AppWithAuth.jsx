@@ -64,6 +64,7 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
     maps,
     battleMaps,
     updateCharacter,
+    stashFromCharacter,
     storybookChapters,
   } = useCampaignData();
 
@@ -106,6 +107,7 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
         currentUserId={currentUser.uid}
         campaign={campaign}
         updateCharacter={updateCharacter}
+        stashFromCharacter={stashFromCharacter}
         items={items}
         onExit={handleTogglePortal}
       />
