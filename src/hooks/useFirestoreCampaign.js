@@ -654,21 +654,37 @@ export function useFirestoreCampaign(campaignId) {
     const charSnap = await getDoc(charRef);
     if (!charSnap.exists()) return;
 
-    const inventory = [...(charSnap.data().inventory || [])];
-    const newEntry = {
-      itemId: partyItem.itemId,
-      quantity: transferQuantity,
-      equipped: false,
-      slot: null,
-      notes: partyItem.notes || '',
-      acquiredAt: new Date().toISOString()
-    };
+    // The character sheet and every player-portal tab read from
+    // `equippedItems` (resolved against the campaign item catalog by itemId),
+    // so transfers must land there — writing to the legacy `inventory` array
+    // left items invisible to players. Merge into an existing unequipped stack
+    // of the same item when present; otherwise add a new, unequipped entry so
+    // the player can choose to equip it.
+    const equippedItems = [...(charSnap.data().equippedItems || [])];
+    const stackIdx = equippedItems.findIndex(
+      ei => ei.itemId === partyItem.itemId && ei.equipped !== true
+    );
+    if (stackIdx >= 0) {
+      equippedItems[stackIdx] = {
+        ...equippedItems[stackIdx],
+        quantity: (equippedItems[stackIdx].quantity || 1) + transferQuantity,
+      };
+    } else {
+      equippedItems.push({
+        itemId: partyItem.itemId,
+        quantity: transferQuantity,
+        equipped: false,
+        slot: null,
+        notes: partyItem.notes || '',
+        acquiredAt: new Date().toISOString(),
+      });
+    }
 
     const batch = writeBatch(db);
 
-    // Add to character inventory
+    // Add to the character's player-facing inventory
     batch.update(charRef, {
-      inventory: [...inventory, newEntry],
+      equippedItems,
       updatedAt: serverTimestamp()
     });
 
