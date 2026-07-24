@@ -47,7 +47,6 @@ export default function BattleMapStudio({ campaign, isDM }) {
   const [isLive, setIsLive] = useState(false); // Live broadcast mode
   const [showSoundboard, setShowSoundboard] = useState(false); // Soundboard modal
   const containerRef = useRef(null);
-  const lastBroadcastRef = useRef(null); // Track last broadcast to debounce
   const toast = useToast();
 
   const {
@@ -55,11 +54,13 @@ export default function BattleMapStudio({ campaign, isDM }) {
     mapName,
     mapImage,
     tokens,
+    drawings,
     fogRevealed,
     gridSize,
     gridVisible,
     gridColor,
     fogEnabled,
+    showTokenLabels,
     isDirty,
     past,
     future,
@@ -105,13 +106,15 @@ export default function BattleMapStudio({ campaign, isDM }) {
   useEffect(() => {
     if (!isLive || !mapImage) return;
 
-    // Debounce broadcasts to avoid overwhelming Firestore
+    // Debounce broadcasts to avoid overwhelming Firestore. 100ms meant a token
+    // drag published a document per frame; broadcastToPlayers additionally
+    // skips writes whose payload is unchanged.
     const timeoutId = setTimeout(() => {
       broadcastToPlayers();
-    }, 100); // 100ms debounce
+    }, 400);
 
     return () => clearTimeout(timeoutId);
-  }, [isLive, mapImage, tokens, fogRevealed, gridSize, gridVisible, gridColor, fogEnabled, broadcastToPlayers]);
+  }, [isLive, mapImage, tokens, drawings, fogRevealed, gridSize, gridVisible, gridColor, fogEnabled, showTokenLabels, broadcastToPlayers]);
 
   // Save current map
   const handleSave = async () => {

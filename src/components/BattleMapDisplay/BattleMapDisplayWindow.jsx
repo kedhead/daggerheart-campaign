@@ -1,141 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { Stage, Layer, Image as KonvaImage, Line, Rect, Circle, Text, Shape } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Rect } from 'react-konva';
 import useImage from 'use-image';
 import { Maximize, Minimize, RotateCw, Grid } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
+// Shared with the studio so the two views cannot drift apart again.
+import GridOverlay from '../BattleMapStudio/Canvas/GridOverlay';
+import FogOfWarLayer from '../BattleMapStudio/Canvas/FogOfWarLayer';
+import TokenLayer from '../BattleMapStudio/Canvas/TokenLayer';
+import DrawingLayer from '../BattleMapStudio/Canvas/DrawingLayer';
 import { DiceTray, DiceRoller, RollHistory } from '../../dice';
 import AudioReceiver from '../Soundboard/AudioReceiver';
 import './BattleMapDisplayWindow.css';
 
-/**
- * Token component for rendering tokens on the display
- */
-function DisplayToken({ token, gridSize }) {
-  const [image] = useImage(token.src, 'anonymous');
-
-  if (token.src && image) {
-    return (
-      <KonvaImage
-        x={token.x}
-        y={token.y}
-        width={token.width}
-        height={token.height}
-        image={image}
-        rotation={token.rotation || 0}
-        offsetX={token.width / 2}
-        offsetY={token.height / 2}
-      />
-    );
-  }
-
-  // Colored token (no image)
-  if (token.color) {
-    const size = token.width || gridSize;
-    return (
-      <>
-        <Circle
-          x={token.x}
-          y={token.y}
-          radius={size / 2}
-          fill={token.color}
-          stroke="white"
-          strokeWidth={2}
-        />
-        {token.name && (
-          <Text
-            x={token.x - size / 2}
-            y={token.y + size / 2 + 4}
-            width={size}
-            text={token.name}
-            fontSize={12}
-            fill="white"
-            align="center"
-          />
-        )}
-      </>
-    );
-  }
-
-  return null;
-}
-
-/**
- * Grid overlay component
- */
-function GridOverlay({ width, height, gridSize, gridColor }) {
-  const lines = [];
-
-  // Vertical lines
-  for (let x = 0; x <= width; x += gridSize) {
-    lines.push(
-      <Line
-        key={`v-${x}`}
-        points={[x, 0, x, height]}
-        stroke={gridColor}
-        strokeWidth={1}
-      />
-    );
-  }
-
-  // Horizontal lines
-  for (let y = 0; y <= height; y += gridSize) {
-    lines.push(
-      <Line
-        key={`h-${y}`}
-        points={[0, y, width, y]}
-        stroke={gridColor}
-        strokeWidth={1}
-      />
-    );
-  }
-
-  return <>{lines}</>;
-}
-
-/**
- * Fog of War layer - shows unexplored areas as black
- */
-function FogOfWarLayer({ width, height, revealed }) {
-  const drawFog = (context, shape) => {
-    // Fill entire area with fog
-    context.fillStyle = 'rgba(0, 0, 0, 0.95)';
-    context.fillRect(0, 0, width, height);
-
-    // Use destination-out to cut holes for revealed areas
-    context.globalCompositeOperation = 'destination-out';
-
-    revealed.forEach(area => {
-      if (area.type === 'circle') {
-        context.beginPath();
-        context.arc(area.x, area.y, area.radius, 0, Math.PI * 2);
-        context.fill();
-      } else if (area.type === 'rect') {
-        context.fillRect(area.x, area.y, area.width, area.height);
-      } else if (area.type === 'polygon' && area.points) {
-        context.beginPath();
-        context.moveTo(area.points[0].x, area.points[0].y);
-        for (let i = 1; i < area.points.length; i++) {
-          context.lineTo(area.points[i].x, area.points[i].y);
-        }
-        context.closePath();
-        context.fill();
-      }
-    });
-
-    // Reset composite operation
-    context.globalCompositeOperation = 'source-over';
-    context.fillStrokeShape(shape);
-  };
-
-  return (
-    <Shape
-      sceneFunc={drawFog}
-      listening={false}
-    />
-  );
-}
+const noop = () => {};
 
 /**
  * Main map canvas component
@@ -159,7 +38,10 @@ function MapCanvas({ mapState }) {
   const {
     mapImage: mapData,
     tokens = [],
+    showTokenLabels = true,
+    drawings = [],
     gridSize = 50,
+    gridType = 'square',
     gridVisible = true,
     gridColor = 'rgba(255,255,255,0.3)',
     fogRevealed = [],
@@ -169,8 +51,13 @@ function MapCanvas({ mapState }) {
     animationEnabled = false
   } = mapState;
 
-  // Check if fog should be shown (enabled and has revealed areas to cut)
-  const showFog = fogEnabled && fogRevealed.length > 0;
+  // Fog with nothing revealed means the DM has covered the whole map — that
+  // must render as fully fogged, not as no fog at all.
+  const showFog = fogEnabled;
+
+  // Same split as the studio: scenery renders beneath creature tokens.
+  const backgroundTokens = tokens.filter(t => t.layer === 'background');
+  const foregroundTokens = tokens.filter(t => t.layer !== 'background');
 
   return (
     <div style={{ position: 'relative', width: mapData.width, height: mapData.height }}>
@@ -241,23 +128,50 @@ function MapCanvas({ mapState }) {
           </Layer>
         )}
 
+        {/* Scenery, beneath grid and creatures */}
+        {backgroundTokens.length > 0 && (
+          <Layer listening={false}>
+            <TokenLayer
+              tokens={backgroundTokens}
+              selectedIds={[]}
+              onSelect={noop}
+              onUpdate={noop}
+              gridSize={gridSize}
+              snapToGrid={false}
+              isSelectable={false}
+              showLabels={showTokenLabels}
+            />
+          </Layer>
+        )}
+
         {/* Grid layer */}
-        {gridVisible && (
+        {gridVisible && gridType !== 'none' && (
           <Layer listening={false}>
             <GridOverlay
               width={mapData.width}
               height={mapData.height}
+              gridType={gridType}
               gridSize={gridSize}
               gridColor={gridColor}
             />
           </Layer>
         )}
 
+        {/* DM annotations — broadcast all along but never rendered here */}
+        <DrawingLayer drawings={drawings} />
+
         {/* Tokens layer */}
-        <Layer>
-          {tokens.map(token => (
-            <DisplayToken key={token.id} token={token} gridSize={gridSize} />
-          ))}
+        <Layer listening={false}>
+          <TokenLayer
+            tokens={foregroundTokens}
+            selectedIds={[]}
+            onSelect={noop}
+            onUpdate={noop}
+            gridSize={gridSize}
+            snapToGrid={false}
+            isSelectable={false}
+            showLabels={showTokenLabels}
+          />
         </Layer>
 
         {/* Fog of War layer - on top of everything */}

@@ -50,6 +50,7 @@ export default function MapCanvas() {
     tokens,
     selectedTokenIds,
     showTokenLabels,
+    drawings,
     snapToGrid,
     animationEffects,
     animationIntensity,
@@ -168,6 +169,14 @@ export default function MapCanvas() {
       x: (pos.x - panOffset.x) / zoom,
       y: (pos.y - panOffset.y) / zoom
     };
+
+    // Only record a dab once the cursor has moved a fraction of the brush.
+    // Appending one circle per pointer move made fogRevealed grow without
+    // bound, which is both the map document and every broadcast.
+    if (lastPos.current) {
+      const step = Math.hypot(scaledPos.x - lastPos.current.x, scaledPos.y - lastPos.current.y);
+      if (step < fogBrushSize / 4) return;
+    }
 
     addFogReveal({
       type: 'circle',
@@ -395,6 +404,7 @@ export default function MapCanvas() {
         {/* Drawing layer (New) */}
         {layers.drawings?.visible !== false && (
           <DrawingLayer
+            drawings={drawings}
             currentDrawing={currentShape}
             isDrawing={isDrawing}
           />

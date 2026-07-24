@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   collection,
   doc,
@@ -16,6 +16,8 @@ import { useBattleMapStore } from '../stores/battleMapStore';
 export function useBattleMap(campaignId) {
   const [savedMaps, setSavedMaps] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Last payload published to the display, to suppress no-op writes.
+  const lastBroadcastRef = useRef(null);
 
   const basePath = campaignId ? `campaigns/${campaignId}/battleMaps` : null;
   // Use separate battleMapDisplay path (not playerDisplay) for dedicated battle map screen
@@ -111,6 +113,12 @@ export function useBattleMap(campaignId) {
 
     try {
       const playerViewState = useBattleMapStore.getState().getPlayerViewState();
+
+      // Live mode fires this on every state change. Skip writes that would
+      // publish exactly what the display already has.
+      const serialized = JSON.stringify(playerViewState);
+      if (serialized === lastBroadcastRef.current) return;
+
       const displayRef = doc(db, displayPath);
 
       // Store the full map state directly for the dedicated battle map display
@@ -118,6 +126,8 @@ export function useBattleMap(campaignId) {
         ...playerViewState,
         updatedAt: serverTimestamp()
       });
+
+      lastBroadcastRef.current = serialized;
     } catch (error) {
       console.error('Error broadcasting to battle map display:', error);
       throw error;
@@ -131,6 +141,7 @@ export function useBattleMap(campaignId) {
     try {
       const displayRef = doc(db, displayPath);
       await deleteDoc(displayRef);
+      lastBroadcastRef.current = null;
     } catch (error) {
       console.error('Error clearing battle map display:', error);
       throw error;

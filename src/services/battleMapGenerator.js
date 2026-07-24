@@ -21,7 +21,7 @@ export async function generateBattleMap(options) {
     prompt,
     type = 'battle-map',
     model = 'gpt-image-1',  // Default to gpt-image-1 (direct OpenAI, faster than 1min.ai)
-    size = '1792x1024',  // Default to widescreen landscape for all maps
+    size = '1536x1024',  // Widescreen landscape, and a size gpt-image-1 returns as asked
     style = 'vivid',
     animated = false
   } = options;

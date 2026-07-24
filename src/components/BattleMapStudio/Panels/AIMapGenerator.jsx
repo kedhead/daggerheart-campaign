@@ -15,7 +15,8 @@ export default function AIMapGenerator({ campaignId }) {
   const [error, setError] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [model, setModel] = useState('gpt-image-1');
-  const [size, setSize] = useState('1024x1024');
+  // Wide by default — the battle-map prompt template asks for a widescreen map.
+  const [size, setSize] = useState('1536x1024');
 
   const { setMapImage, setMapName } = useBattleMapStore();
 
@@ -161,11 +162,13 @@ export default function AIMapGenerator({ campaignId }) {
 
             <div className="option-row">
               <label>Size</label>
+              {/* These are the sizes the image model actually returns. The old
+                  list offered 1792×1024 and 2560×1440, which the server
+                  silently downscaled — QHD came back square. */}
               <select value={size} onChange={(e) => setSize(e.target.value)}>
+                <option value="1536x1024">1536×1024 (Wide)</option>
                 <option value="1024x1024">1024×1024 (Square)</option>
-                <option value="1792x1024">1792×1024 (Wide)</option>
-                <option value="1024x1792">1024×1792 (Tall)</option>
-                <option value="2560x1440">2560×1440 (QHD Wide)</option>
+                <option value="1024x1536">1024×1536 (Tall)</option>
               </select>
             </div>
           </div>

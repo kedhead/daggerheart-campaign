@@ -589,6 +589,44 @@ section('Battle Map store');
     assert(bytes < 100 * 1024, `a blank map with 50 tokens serialises small (${bytes} bytes, limit 1MB)`);
   }
 
+  // What the display window receives must carry everything it renders.
+  {
+    fresh();
+    store.getState().loadMapState({
+      mapImage: { url: 'https://firebasestorage.example/map.png', width: 1536, height: 1024 },
+      tokens: [
+        { id: 'a', name: 'Goblin', layer: 'tokens', x: 0, y: 0, width: 50, height: 50 },
+        { id: 'b', name: 'Crate', layer: 'background', x: 50, y: 0, width: 50, height: 50 }
+      ],
+      drawings: [{ id: 'd1', type: 'line', points: [0, 0, 10, 10], color: '#fff', width: 3 }],
+      fogEnabled: true,
+      fogRevealed: []
+    });
+    const view = store.getState().getPlayerViewState();
+    assert(view.drawings.length === 1, 'drawings reach the display');
+    assert(typeof view.showTokenLabels === 'boolean', 'the label toggle reaches the display');
+    assert(view.gridType === 'square', 'grid type reaches the display');
+    assert(view.tokens.length === 2, 'both scenery and creature tokens are broadcast');
+    assert(view.fogEnabled && view.fogRevealed.length === 0,
+      'fog enabled with nothing revealed is broadcast as fully fogged');
+  }
+
+  // Hidden layers must not leak to players.
+  {
+    fresh();
+    store.getState().loadMapState({
+      mapImage: { url: 'https://firebasestorage.example/map.png', width: 100, height: 100 },
+      tokens: [
+        { id: 'a', name: 'Goblin', layer: 'tokens', x: 0, y: 0, width: 50, height: 50 },
+        { id: 'b', name: 'Secret', layer: 'background', x: 0, y: 0, width: 50, height: 50 }
+      ]
+    });
+    store.getState().toggleLayerVisibility('background');
+    const view = store.getState().getPlayerViewState();
+    assert(view.tokens.length === 1 && view.tokens[0].name === 'Goblin',
+      'tokens on a hidden layer are withheld from players');
+  }
+
   // Blank canvases are described, not baked into a PNG data URL.
   {
     fresh();

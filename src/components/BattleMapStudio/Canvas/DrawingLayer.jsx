@@ -1,10 +1,10 @@
-import { useRef, useEffect } from 'react';
 import { Layer, Line, Rect, Circle } from 'react-konva';
-import { useBattleMapStore } from '../../../stores/battleMapStore';
 
-export default function DrawingLayer({ currentDrawing, isDrawing }) {
-    const { drawings, drawingSettings } = useBattleMapStore();
-
+/**
+ * Renders committed drawings plus the in-progress shape. Drawings come in as a
+ * prop so the display window can render broadcast state with the same code.
+ */
+export default function DrawingLayer({ drawings = [], currentDrawing, isDrawing }) {
     // Render a single shape based on its type
     const renderShape = (shape, i, isTemp = false) => {
         // If it's a temp shape, use its own properties.
