@@ -115,7 +115,9 @@ export default function AssetLibrary({ campaignId }) {
       width: gridSize * sizeMultiplier,
       height: gridSize * sizeMultiplier
     }));
-    setSelectedTool('place');
+    // Drops land wherever they're released; make sure the canvas is in a mode
+    // where the new token can be picked up straight away.
+    setSelectedTool('select');
   };
 
   // Group shared assets by category

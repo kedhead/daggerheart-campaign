@@ -6,7 +6,6 @@ import FearCounter from './FearCounter';
 import InitiativeDisplay from './InitiativeDisplay';
 import ContentDisplay from './ContentDisplay';
 import ContentGrid from './ContentGrid';
-import BattleMapDisplay from './BattleMapDisplay';
 import { Maximize, Minimize } from 'lucide-react';
 import './PlayerDisplay.css';
 
@@ -20,9 +19,7 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
     contentType,
     content,
     contentItems,
-    videoMuted,
-    showBattleMap,
-    battleMapState
+    videoMuted
   } = usePlayerDisplay(campaignId);
 
   const [initiative, setInitiative] = useState(null);
@@ -123,32 +120,22 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
       className={`player-display-container ${isFullscreen ? 'fullscreen' : ''}`}
       onClick={() => setShowControls(prev => !prev)}
     >
-      {showBattleMap && battleMapState ? (
-        /* Battle Map: fills the entire screen, no overlays */
-        <div className="battle-map-fullscreen">
-          <BattleMapDisplay mapState={battleMapState} />
-        </div>
-      ) : (
-        /* Normal player display: Fear/Initiative header + content */
-        <>
-          <div className="player-display-header">
-            {isDaggerheart && showFear && (
-              <FearCounter fearCount={fearCount} />
-            )}
-            {showInitiative && initiative?.active && (
-              <InitiativeDisplay initiative={initiative} />
-            )}
-          </div>
+      <div className="player-display-header">
+        {isDaggerheart && showFear && (
+          <FearCounter fearCount={fearCount} />
+        )}
+        {showInitiative && initiative?.active && (
+          <InitiativeDisplay initiative={initiative} />
+        )}
+      </div>
 
-          <div className="player-display-content">
-            {contentItems && contentItems.length > 0 ? (
-              <ContentGrid items={contentItems} showNames={showNames} videoMuted={videoMuted} />
-            ) : (
-              <ContentDisplay contentType={contentType} content={content} showNames={showNames} videoMuted={videoMuted} />
-            )}
-          </div>
-        </>
-      )}
+      <div className="player-display-content">
+        {contentItems && contentItems.length > 0 ? (
+          <ContentGrid items={contentItems} showNames={showNames} videoMuted={videoMuted} />
+        ) : (
+          <ContentDisplay contentType={contentType} content={content} showNames={showNames} videoMuted={videoMuted} />
+        )}
+      </div>
 
       {/* Fullscreen Control */}
       <button

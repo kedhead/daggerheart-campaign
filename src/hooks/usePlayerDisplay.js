@@ -14,9 +14,7 @@ export function usePlayerDisplay(campaignId) {
     contentName: '',
     contentShowName: true,
     contentItems: [], // Array of content items for multi-display
-    videoMuted: true, // DM-controlled mute for uploaded videos (default on for reliable autoplay)
-    showBattleMap: false,
-    battleMapState: null
+    videoMuted: true // DM-controlled mute for uploaded videos (default on for reliable autoplay)
   });
   const [loading, setLoading] = useState(true);
 
@@ -52,9 +50,7 @@ export function usePlayerDisplay(campaignId) {
             contentName: '',
             contentShowName: true,
             contentItems: [],
-            videoMuted: true,
-            showBattleMap: false,
-            battleMapState: null
+            videoMuted: true
           });
         }
         setLoading(false);
@@ -207,8 +203,6 @@ export function usePlayerDisplay(campaignId) {
     content,
     contentItems: displayState.contentItems || [],
     videoMuted: displayState.videoMuted !== false, // default true
-    showBattleMap: displayState.showBattleMap === true,
-    battleMapState: displayState.battleMapState || null,
 
     // Fear methods
     incrementFear,

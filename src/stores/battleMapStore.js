@@ -16,7 +16,7 @@ const initialState = {
   // Canvas
   zoom: 1,
   panOffset: { x: 0, y: 0 },
-  selectedTool: 'select',   // 'select' | 'pan' | 'place' | 'fog-erase' | 'fog-paint'
+  selectedTool: 'select',   // 'select' | 'pan' | 'fog-erase' | 'fog-paint' | drawing tools
   stageSize: { width: 800, height: 600 },
 
   // Tokens

@@ -9,11 +9,6 @@ import {
   Layers,
   ExternalLink,
   Radio,
-  Sparkles,
-  Grid,
-  Route,
-  Package,
-  Boxes,
   Volume2,
   Film,
   X
@@ -33,8 +28,6 @@ import AIMapGenerator from './Panels/AIMapGenerator';
 import AIAssetGenerator from './Panels/AIAssetGenerator';
 import AIAssetPackGenerator from './Panels/AIAssetPackGenerator';
 import AnimationControls from './Panels/AnimationControls';
-import TileLibrary from './Panels/TileLibrary';
-import OverlayLibrary from './Panels/OverlayLibrary';
 import AssetPackImporter from './Panels/AssetPackImporter';
 import AnimatedMapLibrary from './Panels/AnimatedMapLibrary';
 import DMSoundboard from '../Soundboard/DMSoundboard';
@@ -351,8 +344,6 @@ export default function BattleMapStudio({ campaign, isDM }) {
           <div className="flex items-center overflow-x-auto p-1 border-b border-zinc-800 gap-1 scrollbar-hide">
             {[
               { id: 'assets', icon: Layers, label: 'Tokens' },
-              { id: 'tiles', icon: Grid, label: 'Tiles' },
-              { id: 'overlays', icon: Route, label: 'Overlays' },
               { id: 'animated-maps', icon: Film, label: 'Animated' },
               { id: 'ai-assets', icon: Wand2, label: 'AI' }
             ].map(tab => (
@@ -378,12 +369,6 @@ export default function BattleMapStudio({ campaign, isDM }) {
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {activePanel === 'assets' && (
               <AssetLibrary campaignId={campaignId} />
-            )}
-            {activePanel === 'tiles' && (
-              <TileLibrary />
-            )}
-            {activePanel === 'overlays' && (
-              <OverlayLibrary />
             )}
             {activePanel === 'import' && (
               <AssetPackImporter campaignId={campaignId} />
