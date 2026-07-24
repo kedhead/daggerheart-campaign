@@ -1,4 +1,4 @@
-import { Image, Users, Cloud, Eye, EyeOff } from 'lucide-react';
+import { Image, Users, Cloud, Eye, EyeOff, Tag } from 'lucide-react';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
 
 const layerConfig = [
@@ -8,7 +8,15 @@ const layerConfig = [
 ];
 
 export default function LayerControls() {
-  const { layers, toggleLayerVisibility, fogBrushSize, setFogBrushSize, selectedTool } = useBattleMapStore();
+  const {
+    layers,
+    toggleLayerVisibility,
+    fogBrushSize,
+    setFogBrushSize,
+    selectedTool,
+    showTokenLabels,
+    toggleTokenLabels
+  } = useBattleMapStore();
 
   return (
     <div className="layer-controls">
@@ -32,6 +40,20 @@ export default function LayerControls() {
           </button>
         );
       })}
+
+      <button
+        className={`relative p-2 rounded-md transition-colors ${showTokenLabels ? 'text-zinc-200 hover:bg-zinc-800' : 'text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/50'}`}
+        onClick={toggleTokenLabels}
+        title={`Token names (${showTokenLabels ? 'Shown' : 'Hidden'})`}
+      >
+        <Tag size={18} />
+        {!showTokenLabels && (
+          <EyeOff
+            size={10}
+            className="absolute bottom-1 right-1 text-red-500 bg-zinc-900 rounded-full"
+          />
+        )}
+      </button>
 
       {/* Fog Tools - Only show if Fog layer is visible */}
       {layers.fog?.visible && (

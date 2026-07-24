@@ -20,6 +20,7 @@ import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
+import { useBattleMapStore } from '../src/stores/battleMapStore.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
@@ -465,6 +466,141 @@ section('Hope & Fear readiness');
   assert(DOMAIN_CARDS.filter(c => c.domain === 'Dread').length === 21, `21 Dread domain cards (got ${DOMAIN_CARDS.filter(c => c.domain === 'Dread').length})`);
   assert(HF_DOMAIN_CARDS.length > 0 ? DOMAINS.includes('Dread') : !DOMAINS.includes('Dread'),
     `Dread domain gated on card content (cards: ${HF_DOMAIN_CARDS.length}, listed: ${DOMAINS.includes('Dread')})`);
+}
+
+section('Battle Map store');
+{
+  const store = useBattleMapStore;
+  const fresh = () => {
+    store.getState().resetMap();
+    store.setState({ past: [], future: [] });
+  };
+
+  // Undo/redo across the three collections history tracks.
+  {
+    fresh();
+    const { addToken } = store.getState();
+    addToken({ name: 'Goblin', x: 0, y: 0 });
+    addToken({ name: 'Ogre', x: 50, y: 50 });
+    assert(store.getState().tokens.length === 2, 'two tokens added');
+
+    store.getState().undo();
+    assert(store.getState().tokens.length === 1, 'undo removes the last token');
+    assert(store.getState().tokens[0].name === 'Goblin', 'undo restores the prior token set');
+
+    store.getState().redo();
+    assert(store.getState().tokens.length === 2, 'redo re-adds the token');
+    assert(store.getState().tokens[1].name === 'Ogre', 'redo restores the exact token');
+
+    // A new edit after undo must clear the redo stack.
+    store.getState().undo();
+    store.getState().addToken({ name: 'Wolf' });
+    assert(store.getState().future.length === 0, 'a fresh edit clears the redo stack');
+  }
+
+  // Undo must not leave selection pointing at tokens that no longer exist.
+  {
+    fresh();
+    store.getState().addToken({ name: 'Goblin' });
+    const id = store.getState().tokens[0].id;
+    store.getState().selectToken(id);
+    store.getState().undo();
+    assert(store.getState().tokens.length === 0, 'undo removed the token');
+    assert(store.getState().selectedTokenIds.length === 0, 'undo drops selection of removed tokens');
+  }
+
+  // Locked tokens survive a Delete aimed at the selection.
+  {
+    fresh();
+    store.getState().addToken({ name: 'Scenery' });
+    store.getState().addToken({ name: 'Goblin' });
+    const [scenery, goblin] = store.getState().tokens;
+    store.getState().selectToken(scenery.id);
+    store.getState().toggleSelectedLocked();
+    store.getState().selectToken(scenery.id);
+    store.getState().selectToken(goblin.id, true);
+    store.getState().deleteSelectedTokens();
+    const names = store.getState().tokens.map(t => t.name);
+    assert(names.length === 1 && names[0] === 'Scenery', 'delete skips locked tokens');
+  }
+
+  // Shift-clicking a selected token removes it from the selection.
+  {
+    fresh();
+    store.getState().addToken({ name: 'A' });
+    store.getState().addToken({ name: 'B' });
+    const [a, b] = store.getState().tokens;
+    store.getState().selectToken(a.id);
+    store.getState().selectToken(b.id, true);
+    assert(store.getState().selectedTokenIds.length === 2, 'shift-click adds to selection');
+    store.getState().selectToken(b.id, true);
+    assert(store.getState().selectedTokenIds.length === 1, 'shift-click again deselects');
+  }
+
+  // Z-order is render order.
+  {
+    fresh();
+    store.getState().addToken({ name: 'bottom' });
+    store.getState().addToken({ name: 'top' });
+    const bottom = store.getState().tokens[0];
+    store.getState().selectToken(bottom.id);
+    store.getState().bringSelectedToFront();
+    assert(store.getState().tokens[1].name === 'bottom', 'bring to front moves the token last');
+    store.getState().sendSelectedToBack();
+    assert(store.getState().tokens[0].name === 'bottom', 'send to back moves the token first');
+  }
+
+  // Duplicate offsets the copy and selects it, leaving the original alone.
+  {
+    fresh();
+    store.getState().addToken({ name: 'Crate', x: 100, y: 100 });
+    const original = store.getState().tokens[0];
+    store.getState().selectToken(original.id);
+    store.getState().duplicateSelectedTokens();
+    const tokens = store.getState().tokens;
+    assert(tokens.length === 2, 'duplicate adds one token');
+    assert(tokens[1].id !== original.id, 'the copy gets a new id');
+    assert(tokens[1].x === original.x + store.getState().gridSize, 'the copy is offset by one cell');
+    assert(store.getState().selectedTokenIds[0] === tokens[1].id, 'the copy becomes the selection');
+  }
+
+  // History must never reach the saved document — it would multiply its size.
+  {
+    fresh();
+    store.getState().addToken({ name: 'Goblin' });
+    const saved = store.getState().getSerializableState();
+    assert(!('past' in saved) && !('future' in saved), 'history is excluded from the saved map');
+    assert(!('zoom' in saved) && !('panOffset' in saved), 'view state is excluded from the saved map');
+  }
+
+  // The 1MB Firestore document limit is what made tile maps unsaveable.
+  {
+    fresh();
+    store.getState().loadMapState({
+      mapImage: { isBlank: true, width: 2560, height: 1440, bgColor: '#1a1a2e' },
+      tokens: Array.from({ length: 50 }, (_, i) => ({
+        id: `t${i}`,
+        src: `https://firebasestorage.example/token_${i}.png`,
+        name: `Token ${i}`,
+        x: i * 50, y: i * 50, width: 50, height: 50, rotation: 0, layer: 'tokens'
+      }))
+    });
+    const bytes = JSON.stringify(store.getState().getSerializableState()).length;
+    assert(bytes < 100 * 1024, `a blank map with 50 tokens serialises small (${bytes} bytes, limit 1MB)`);
+  }
+
+  // Blank canvases are described, not baked into a PNG data URL.
+  {
+    fresh();
+    store.getState().loadMapState({
+      mapImage: { isBlank: true, width: 2560, height: 1440, bgColor: '#1a1a2e', url: null }
+    });
+    const { mapImage } = store.getState().getSerializableState();
+    assert(!mapImage.url, 'a blank canvas carries no image URL');
+    assert(mapImage.bgColor === '#1a1a2e', 'a blank canvas carries its fill colour');
+  }
+
+  fresh();
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

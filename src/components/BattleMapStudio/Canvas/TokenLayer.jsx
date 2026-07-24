@@ -2,10 +2,16 @@ import { useRef, useEffect } from 'react';
 import { Group, Image as KonvaImage, Transformer, Circle, Text } from 'react-konva';
 import useImage from 'use-image';
 
-function Token({ token, isSelected, onSelect, onUpdate, gridSize, snapToGrid, isSelectable }) {
+function Token({ token, isSelected, onSelect, onUpdate, gridSize, snapToGrid, isSelectable, showLabels }) {
   const [image] = useImage(token.src, 'anonymous');
   const shapeRef = useRef();
   const transformerRef = useRef();
+
+  // Locked tokens (scenery you don't want to grab by accident) stay put.
+  const canInteract = isSelectable && !token.locked;
+  // Labels are a global toggle with a per-token opt-out, so a map full of
+  // props isn't covered in captions.
+  const showLabel = token.name && showLabels && token.showLabel !== false;
 
   useEffect(() => {
     if (isSelected && transformerRef.current && shapeRef.current) {
@@ -48,6 +54,8 @@ function Token({ token, isSelected, onSelect, onUpdate, gridSize, snapToGrid, is
   const handleClick = (e) => {
     if (!isSelectable) return;
     e.cancelBubble = true;
+    // Locked tokens can still be selected (so they can be unlocked), just not
+    // dragged or transformed.
     onSelect(token.id, e.evt.shiftKey);
   };
 
@@ -63,7 +71,7 @@ function Token({ token, isSelected, onSelect, onUpdate, gridSize, snapToGrid, is
           fill={token.color || '#8b5cf6'}
           stroke={isSelected ? '#fff' : 'transparent'}
           strokeWidth={2}
-          draggable={isSelectable}
+          draggable={canInteract}
           onClick={handleClick}
           onTap={handleClick}
           onDragEnd={(e) => {
@@ -74,7 +82,7 @@ function Token({ token, isSelected, onSelect, onUpdate, gridSize, snapToGrid, is
             onUpdate(token.id, { x: pos.x, y: pos.y });
           }}
         />
-        {token.name && (
+        {showLabel && (
           <Text
             x={token.x}
             y={token.y + token.height + 4}
@@ -100,13 +108,14 @@ function Token({ token, isSelected, onSelect, onUpdate, gridSize, snapToGrid, is
         width={token.width}
         height={token.height}
         rotation={token.rotation || 0}
-        draggable={isSelectable}
+        draggable={canInteract}
+        opacity={token.locked ? 0.95 : 1}
         onClick={handleClick}
         onTap={handleClick}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
       />
-      {token.name && (
+      {showLabel && (
         <Text
           x={token.x}
           y={token.y + token.height + 4}
@@ -118,7 +127,7 @@ function Token({ token, isSelected, onSelect, onUpdate, gridSize, snapToGrid, is
           listening={false}
         />
       )}
-      {isSelected && (
+      {isSelected && !token.locked && (
         <Transformer
           ref={transformerRef}
           rotateEnabled={true}
@@ -142,7 +151,8 @@ export default function TokenLayer({
   onUpdate,
   gridSize,
   snapToGrid,
-  isSelectable
+  isSelectable,
+  showLabels = true
 }) {
   return (
     <Group>
@@ -156,6 +166,7 @@ export default function TokenLayer({
           gridSize={gridSize}
           snapToGrid={snapToGrid}
           isSelectable={isSelectable}
+          showLabels={showLabels}
         />
       ))}
     </Group>

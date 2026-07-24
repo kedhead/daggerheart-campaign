@@ -11,6 +11,12 @@ import {
   Radio,
   Volume2,
   Film,
+  Grid,
+  Boxes,
+  FolderInput,
+  CloudRain,
+  Undo2,
+  Redo2,
   X
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
@@ -18,6 +24,7 @@ import { useBattleMap } from '../../hooks/useBattleMap';
 import { useToast } from '../../contexts/ToastContext';
 import CanvasLayers from './Canvas/MapCanvas'; // Using existing MapCanvas component
 import FloatingToolbar from './Toolbar/FloatingToolbar';
+import SelectionToolbar from './Toolbar/SelectionToolbar';
 import ZoomControls from './Toolbar/ZoomControls';
 import LayerControls from './Toolbar/LayerControls';
 import AssetLibrary from './Panels/AssetLibrary';
@@ -54,11 +61,18 @@ export default function BattleMapStudio({ campaign, isDM }) {
     gridColor,
     fogEnabled,
     isDirty,
+    past,
+    future,
     setMapName,
     resetMap,
     loadMapState,
     getSerializableState,
-    markClean
+    markClean,
+    undo,
+    redo,
+    duplicateSelectedTokens,
+    deleteSelectedTokens,
+    selectedTokenIds
   } = useBattleMapStore();
 
   const {
@@ -191,6 +205,10 @@ export default function BattleMapStudio({ campaign, isDM }) {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // Don't hijack keys while the map-name field or any other input has focus.
+      const tag = e.target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || e.target?.isContentEditable) return;
+
       if (e.ctrlKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
           case 's':
@@ -201,13 +219,31 @@ export default function BattleMapStudio({ campaign, isDM }) {
             e.preventDefault();
             handleNewMap();
             break;
+          case 'z':
+            e.preventDefault();
+            if (e.shiftKey) redo(); else undo();
+            break;
+          case 'y':
+            e.preventDefault();
+            redo();
+            break;
+          case 'd':
+            e.preventDefault();
+            duplicateSelectedTokens();
+            break;
         }
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        deleteSelectedTokens();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isDirty, mapId]);
+  }, [isDirty, mapId, undo, redo, duplicateSelectedTokens, deleteSelectedTokens]);
 
   if (!isDM) {
     return (
@@ -263,6 +299,25 @@ export default function BattleMapStudio({ campaign, isDM }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            className="p-2 rounded-md transition-colors text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400"
+            onClick={undo}
+            disabled={past.length === 0}
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo2 size={18} />
+          </button>
+          <button
+            className="p-2 rounded-md transition-colors text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-zinc-400"
+            onClick={redo}
+            disabled={future.length === 0}
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            <Redo2 size={18} />
+          </button>
+
+          <div className="h-6 w-px bg-zinc-800 mx-1" />
+
           <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors" onClick={handleNewMap} title="New Map (Ctrl+N)">
             <Plus size={18} />
           </button>
@@ -306,12 +361,30 @@ export default function BattleMapStudio({ campaign, isDM }) {
           <ZoomControls />
           <div className="w-8 h-px bg-zinc-800" />
           <LayerControls />
+          <div className="w-8 h-px bg-zinc-800" />
+          {/* Grid and effects open in the right rail; they live here to keep the
+              tab bar readable at 320px. */}
+          <button
+            className={`p-2 rounded-md transition-colors ${activePanel === 'grid' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
+            onClick={() => setActivePanel('grid')}
+            title="Grid & Fog settings"
+          >
+            <Grid size={18} />
+          </button>
+          <button
+            className={`p-2 rounded-md transition-colors ${activePanel === 'animate' ? 'bg-indigo-500/20 text-indigo-400' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'}`}
+            onClick={() => setActivePanel('animate')}
+            title="Weather & effects"
+          >
+            <CloudRain size={18} />
+          </button>
         </div>
 
         {/* Canvas area */}
         <div className="relative bg-zinc-950 overflow-hidden flex items-center justify-center">
 
           <FloatingToolbar />
+          {mapImage && <SelectionToolbar />}
 
           {/* Mode selector - only show when no map loaded AND in import mode */}
           {!mapImage && canvasMode === 'import' && (
@@ -344,19 +417,26 @@ export default function BattleMapStudio({ campaign, isDM }) {
           <div className="flex items-center overflow-x-auto p-1 border-b border-zinc-800 gap-1 scrollbar-hide">
             {[
               { id: 'assets', icon: Layers, label: 'Tokens' },
+              { id: 'import', icon: FolderInput, label: 'Packs' },
               { id: 'animated-maps', icon: Film, label: 'Animated' },
               { id: 'ai-assets', icon: Wand2, label: 'AI' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${activePanel === tab.id ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
-                onClick={() => setActivePanel(tab.id)}
-                title={tab.label}
-              >
-                <tab.icon size={16} />
-                {tab.label}
-              </button>
-            ))}
+            ].map(tab => {
+              // The AI tab covers both the single-asset and pack generators.
+              const isActive = tab.id === 'ai-assets'
+                ? (activePanel === 'ai-assets' || activePanel === 'ai-packs')
+                : activePanel === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${isActive ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
+                  onClick={() => setActivePanel(tab.id)}
+                  title={tab.label}
+                >
+                  <tab.icon size={16} />
+                  {tab.label}
+                </button>
+              );
+            })}
             <button
               className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${activePanel === 'maps' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
               onClick={() => setActivePanel('maps')}
@@ -373,11 +453,28 @@ export default function BattleMapStudio({ campaign, isDM }) {
             {activePanel === 'import' && (
               <AssetPackImporter campaignId={campaignId} />
             )}
-            {activePanel === 'ai-assets' && (
-              <AIAssetGenerator campaignId={campaignId} />
-            )}
-            {activePanel === 'ai-packs' && (
-              <AIAssetPackGenerator campaignId={campaignId} />
+            {(activePanel === 'ai-assets' || activePanel === 'ai-packs') && (
+              <>
+                <div className="flex gap-1 p-1 mb-3 bg-zinc-950 border border-zinc-800 rounded-lg">
+                  <button
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors ${activePanel === 'ai-assets' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => setActivePanel('ai-assets')}
+                  >
+                    <Wand2 size={14} />
+                    Single
+                  </button>
+                  <button
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors ${activePanel === 'ai-packs' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    onClick={() => setActivePanel('ai-packs')}
+                  >
+                    <Boxes size={14} />
+                    Pack
+                  </button>
+                </div>
+                {activePanel === 'ai-assets'
+                  ? <AIAssetGenerator campaignId={campaignId} />
+                  : <AIAssetPackGenerator campaignId={campaignId} />}
+              </>
             )}
             {activePanel === 'grid' && (
               <GridCalibrator />

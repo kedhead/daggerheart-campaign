@@ -49,6 +49,7 @@ export default function MapCanvas() {
     fogBrushSize,
     tokens,
     selectedTokenIds,
+    showTokenLabels,
     snapToGrid,
     animationEffects,
     animationIntensity,
@@ -59,8 +60,14 @@ export default function MapCanvas() {
     addToken,
     selectToken,
     deselectAll,
-    updateToken
+    updateToken,
+    pushHistory
   } = useBattleMapStore();
+
+  // Scenery sits under creatures. Tokens are rendered in array order, so a
+  // single layer meant a prop placed after a mini covered it.
+  const backgroundTokens = tokens.filter(t => t.layer === 'background');
+  const foregroundTokens = tokens.filter(t => t.layer !== 'background');
 
   const {
     isDrawing,
@@ -127,6 +134,8 @@ export default function MapCanvas() {
 
     if (selectedTool === 'fog-erase' || selectedTool === 'fog-paint') {
       isPainting.current = true;
+      // One undo point per stroke, not per pointer move.
+      pushHistory();
       const pos = e.target.getStage().getPointerPosition();
       const scaledPos = {
         x: (pos.x - panOffset.x) / zoom,
@@ -134,17 +143,16 @@ export default function MapCanvas() {
       };
       lastPos.current = scaledPos;
 
-      // Add initial point
-      if (selectedTool === 'fog-erase') {
-        addFogReveal({
-          type: 'circle',
-          x: scaledPos.x,
-          y: scaledPos.y,
-          radius: fogBrushSize / 2
-        });
-      }
+      addFogReveal({
+        type: 'circle',
+        x: scaledPos.x,
+        y: scaledPos.y,
+        radius: fogBrushSize / 2,
+        // fog-paint puts fog back; fog-erase cuts it away.
+        mode: selectedTool === 'fog-paint' ? 'hide' : 'reveal'
+      });
     }
-  }, [selectedTool, panOffset, zoom, fogBrushSize, addFogReveal, handleDrawingMouseDown]);
+  }, [selectedTool, panOffset, zoom, fogBrushSize, addFogReveal, handleDrawingMouseDown, pushHistory]);
 
   const handleMouseMove = useCallback((e) => {
     // Handle Drawing
@@ -161,14 +169,13 @@ export default function MapCanvas() {
       y: (pos.y - panOffset.y) / zoom
     };
 
-    if (selectedTool === 'fog-erase') {
-      addFogReveal({
-        type: 'circle',
-        x: scaledPos.x,
-        y: scaledPos.y,
-        radius: fogBrushSize / 2
-      });
-    }
+    addFogReveal({
+      type: 'circle',
+      x: scaledPos.x,
+      y: scaledPos.y,
+      radius: fogBrushSize / 2,
+      mode: selectedTool === 'fog-paint' ? 'hide' : 'reveal'
+    });
 
     lastPos.current = scaledPos;
   }, [selectedTool, panOffset, zoom, fogBrushSize, addFogReveal, isDrawing, handleDrawingMouseMove]);
@@ -247,15 +254,17 @@ export default function MapCanvas() {
       const stage = stageRef.current;
       if (!stage) return;
 
-      // Get drop position relative to stage
+      // Get drop position relative to stage, then centre the token on the
+      // cursor — tokens are drawn from their top-left corner.
       const stageRect = stage.container().getBoundingClientRect();
-      let x = (e.clientX - stageRect.left - panOffset.x) / zoom;
-      let y = (e.clientY - stageRect.top - panOffset.y) / zoom;
+      let x = (e.clientX - stageRect.left - panOffset.x) / zoom - (tokenData.width || gridSize) / 2;
+      let y = (e.clientY - stageRect.top - panOffset.y) / zoom - (tokenData.height || gridSize) / 2;
 
-      // Snap to grid if enabled
+      // Snap to the grid corner, matching TokenLayer's drag-end snap. These
+      // used to disagree by half a cell, so nudging a token shifted it.
       if (snapToGrid) {
-        x = Math.round(x / gridSize) * gridSize + gridSize / 2;
-        y = Math.round(y / gridSize) * gridSize + gridSize / 2;
+        x = Math.round(x / gridSize) * gridSize;
+        y = Math.round(y / gridSize) * gridSize;
       }
 
       addToken({
@@ -354,6 +363,22 @@ export default function MapCanvas() {
           </Layer>
         )}
 
+        {/* Scenery placed on the background layer, beneath grid and creatures */}
+        {layers.background.visible && backgroundTokens.length > 0 && (
+          <Layer>
+            <TokenLayer
+              tokens={backgroundTokens}
+              selectedIds={selectedTokenIds}
+              onSelect={selectToken}
+              onUpdate={updateToken}
+              gridSize={gridSize}
+              snapToGrid={snapToGrid}
+              isSelectable={selectedTool === 'select'}
+              showLabels={showTokenLabels}
+            />
+          </Layer>
+        )}
+
         {/* Grid layer */}
         {gridVisible && gridType !== 'none' && (
           <Layer listening={false}>
@@ -379,13 +404,14 @@ export default function MapCanvas() {
         {layers.tokens.visible && (
           <Layer>
             <TokenLayer
-              tokens={tokens}
+              tokens={foregroundTokens}
               selectedIds={selectedTokenIds}
               onSelect={selectToken}
               onUpdate={updateToken}
               gridSize={gridSize}
               snapToGrid={snapToGrid}
               isSelectable={selectedTool === 'select'}
+              showLabels={showTokenLabels}
             />
           </Layer>
         )}
