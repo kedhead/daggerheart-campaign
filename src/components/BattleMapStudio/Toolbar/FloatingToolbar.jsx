@@ -98,10 +98,12 @@ export default function FloatingToolbar() {
             )}
 
             {/* Main Toolbar */}
-            <div className="bg-zinc-900/90 backdrop-blur-md border border-zinc-700 rounded-full px-2 py-2 shadow-2xl flex items-center gap-2">
+            {/* Tighter below sm: at the desktop metrics this row is 363px and
+                overflowed a 360px phone. */}
+            <div className="bg-zinc-900/90 backdrop-blur-md border border-zinc-700 rounded-full px-1.5 sm:px-2 py-2 shadow-2xl flex items-center gap-1 sm:gap-2">
                 {tools.map((tool) => {
                     if (tool.type === 'divider') {
-                        return <div key={tool.id} className="w-px h-8 bg-zinc-700 mx-1" />;
+                        return <div key={tool.id} className="w-px h-8 bg-zinc-700 mx-0.5 sm:mx-1" />;
                     }
 
                     const Icon = tool.icon;
@@ -117,7 +119,7 @@ export default function FloatingToolbar() {
                                 }
                             }}
                             className={`
-                p-2.5 rounded-full transition-all duration-200 relative group
+                p-2 sm:p-2.5 rounded-full transition-all duration-200 relative group
                 ${isActive
                                     ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20'
                                     : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
@@ -137,11 +139,11 @@ export default function FloatingToolbar() {
                 {/* Settings Toggle (only if drawing) */}
                 {isDrawingTool && (
                     <>
-                        <div className="w-px h-8 bg-zinc-700 mx-1" />
+                        <div className="w-px h-8 bg-zinc-700 mx-0.5 sm:mx-1" />
                         <button
                             onClick={() => setShowSettings(!showSettings)}
                             className={`
-                p-2.5 rounded-full transition-all duration-200
+                p-2 sm:p-2.5 rounded-full transition-all duration-200
                 ${showSettings ? 'bg-zinc-800 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'}
               `}
                             title="Settings"

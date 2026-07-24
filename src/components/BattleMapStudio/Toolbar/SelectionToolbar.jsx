@@ -50,7 +50,7 @@ export default function SelectionToolbar() {
 
   return (
     <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-2 py-1.5 bg-zinc-900/90 backdrop-blur-md border border-zinc-700 rounded-full shadow-2xl">
-      <span className="px-2 text-xs text-zinc-500 tabular-nums">
+      <span className="px-2 text-xs text-zinc-500 tabular-nums whitespace-nowrap">
         {selectedTokenIds.length} selected
       </span>
       <div className="w-px h-6 bg-zinc-700" />
