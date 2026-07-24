@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { Stage, Layer, Image as KonvaImage } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Rect } from 'react-konva';
 import useImage from 'use-image';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
 import { useDrawingMode } from '../../../hooks/useDrawingMode';
@@ -9,8 +9,23 @@ import FogOfWarLayer from './FogOfWarLayer';
 import DrawingLayer from './DrawingLayer';
 import MapAnimationOverlay from './MapAnimationOverlay';
 
-function MapBackground({ url }) {
-  const [image] = useImage(url, 'anonymous');
+function MapBackground({ mapImage }) {
+  const [image] = useImage(mapImage.url || '', 'anonymous');
+
+  // Blank canvases carry no image — they are just a filled rect, which keeps
+  // the saved map document small.
+  if (mapImage.isBlank || !mapImage.url) {
+    return (
+      <Rect
+        x={0}
+        y={0}
+        width={mapImage.width}
+        height={mapImage.height}
+        fill={mapImage.bgColor || '#1a1a2e'}
+      />
+    );
+  }
+
   return image ? <KonvaImage image={image} /> : null;
 }
 
@@ -335,7 +350,7 @@ export default function MapCanvas() {
         {/* Background layer - only render image for static maps */}
         {layers.background.visible && !mapImage.isVideo && !mapImage.isYouTube && (
           <Layer>
-            <MapBackground url={mapImage.url} />
+            <MapBackground mapImage={mapImage} />
           </Layer>
         )}
 

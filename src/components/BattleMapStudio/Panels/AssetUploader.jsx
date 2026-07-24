@@ -1,10 +1,14 @@
 import { useState, useRef } from 'react';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../../config/firebase';
 
-export default function AssetUploader({ onUpload, onCancel }) {
+export default function AssetUploader({ campaignId, onUpload, onCancel }) {
   const [name, setName] = useState('');
   const [preview, setPreview] = useState(null);
   const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (e) => {
@@ -12,21 +16,46 @@ export default function AssetUploader({ onUpload, onCancel }) {
     if (selectedFile && selectedFile.type.startsWith('image/')) {
       setFile(selectedFile);
       setPreview(URL.createObjectURL(selectedFile));
+      setError('');
       if (!name) {
         setName(selectedFile.name.replace(/\.[^/.]+$/, ''));
       }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file || !preview) return;
+    if (!file || !preview || uploading) return;
 
-    onUpload({
-      id: `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: name || 'Custom Token',
-      url: preview
-    });
+    if (!campaignId) {
+      setError('No campaign selected — cannot save this token.');
+      return;
+    }
+
+    // The preview is a blob: URL, which dies with this document. Upload the file
+    // so the token survives a reload and renders on the display window.
+    setUploading(true);
+    setError('');
+    try {
+      const storagePath = `campaigns/${campaignId}/battleMaps/token_${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+
+      URL.revokeObjectURL(preview);
+
+      onUpload({
+        id: `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        name: name || 'Custom Token',
+        url,
+        storagePath
+      });
+    } catch (err) {
+      console.error('Error uploading token:', err);
+      setError('Upload failed. Check your connection and try again.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -68,12 +97,13 @@ export default function AssetUploader({ onUpload, onCancel }) {
             onChange={(e) => setName(e.target.value)}
             className="uploader-name-input"
           />
+          {error && <p className="uploader-error">{error}</p>}
           <div className="uploader-actions">
-            <button type="button" className="btn btn-secondary" onClick={onCancel}>
+            <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={uploading}>
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary">
-              Add
+            <button type="submit" className="btn btn-primary" disabled={uploading}>
+              {uploading ? <Loader2 size={14} className="uploader-spin" /> : 'Add'}
             </button>
           </div>
         </>
@@ -142,9 +172,24 @@ export default function AssetUploader({ onUpload, onCancel }) {
           outline: none;
           border-color: var(--fear-color);
         }
+        .uploader-error {
+          margin: 0;
+          font-size: 0.75rem;
+          color: var(--danger);
+        }
+        .uploader-spin {
+          animation: uploader-spin 1s linear infinite;
+        }
+        @keyframes uploader-spin {
+          to { transform: rotate(360deg); }
+        }
         .uploader-actions {
           display: flex;
           gap: 0.5rem;
+        }
+        .uploader-actions .btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
         .uploader-actions .btn {
           flex: 1;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   setDoc,
   deleteDoc,
@@ -82,8 +83,10 @@ export function useBattleMap(campaignId) {
     if (!basePath || !mapId) return null;
 
     try {
-      const map = savedMaps.find(m => m.id === mapId);
-      return map || null;
+      // Fetch rather than reading the subscribed list — that array is empty
+      // until the first snapshot lands, which silently returned null.
+      const snapshot = await getDoc(doc(db, basePath, mapId));
+      return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
     } catch (error) {
       console.error('Error loading battle map:', error);
       throw error;

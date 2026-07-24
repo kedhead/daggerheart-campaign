@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Grid, Square, Youtube, Link, Play } from 'lucide-react';
+import { Upload, Grid, Square, Youtube, Link, Play, AlertTriangle } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../../../config/firebase';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
 
 // Blank canvas size presets
@@ -11,13 +13,17 @@ const blankCanvasSizes = [
   { id: 'custom', label: 'QHD (2560×1440)', width: 2560, height: 1440, gridSquares: 51 }
 ];
 
-export default function MapImporter() {
+// storage.rules caps campaigns/{id}/battleMaps uploads at 20MB.
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+export default function MapImporter({ campaignId }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showBlankOptions, setShowBlankOptions] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [localOnlyWarning, setLocalOnlyWarning] = useState('');
   const fileInputRef = useRef(null);
 
   const { setMapImage, setGridSize } = useBattleMapStore();
@@ -93,11 +99,12 @@ export default function MapImporter() {
     }
 
     setIsLoading(true);
+    setLocalOnlyWarning('');
+
+    // Read dimensions off a local object URL first — no need to wait for the upload.
+    const localUrl = URL.createObjectURL(file);
 
     try {
-      // Create object URL for the file
-      const url = URL.createObjectURL(file);
-
       let width, height;
 
       if (isVideo) {
@@ -107,7 +114,7 @@ export default function MapImporter() {
         await new Promise((resolve, reject) => {
           video.onloadedmetadata = resolve;
           video.onerror = reject;
-          video.src = url;
+          video.src = localUrl;
         });
         width = video.videoWidth;
         height = video.videoHeight;
@@ -117,11 +124,42 @@ export default function MapImporter() {
         await new Promise((resolve, reject) => {
           img.onload = resolve;
           img.onerror = reject;
-          img.src = url;
+          img.src = localUrl;
         });
         width = img.width;
         height = img.height;
       }
+
+      // Upload to Storage so the map survives a reload and reaches the display
+      // window. A blob: URL only lives as long as this document does.
+      let url = localUrl;
+      let isLocalOnly = false;
+
+      if (!campaignId) {
+        isLocalOnly = true;
+        setLocalOnlyWarning('No campaign selected — this map is temporary and will not be saved.');
+      } else if (file.size > MAX_UPLOAD_BYTES) {
+        isLocalOnly = true;
+        setLocalOnlyWarning(
+          `${file.name} is ${(file.size / 1024 / 1024).toFixed(1)}MB, over the 20MB upload limit. ` +
+          'Using it locally — it will not persist or show on the display window.'
+        );
+      } else {
+        try {
+          const storagePath = `campaigns/${campaignId}/battleMaps/upload_${Date.now()}_${file.name}`;
+          const storageRef = ref(storage, storagePath);
+          await uploadBytes(storageRef, file);
+          url = await getDownloadURL(storageRef);
+        } catch (uploadError) {
+          console.error('Error uploading map to Storage:', uploadError);
+          isLocalOnly = true;
+          setLocalOnlyWarning(
+            'Upload failed — using this map locally. It will not persist or show on the display window.'
+          );
+        }
+      }
+
+      if (!isLocalOnly) URL.revokeObjectURL(localUrl);
 
       setMapImage({
         url,
@@ -129,15 +167,17 @@ export default function MapImporter() {
         height,
         name: file.name,
         isVideo,
+        isLocalOnly,
         mimeType: file.type
       });
     } catch (error) {
+      URL.revokeObjectURL(localUrl);
       console.error('Error loading file:', error);
       alert('Failed to load file');
     } finally {
       setIsLoading(false);
     }
-  }, [setMapImage]);
+  }, [setMapImage, campaignId]);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -171,43 +211,18 @@ export default function MapImporter() {
   }, [processFile]);
 
   const createBlankCanvas = useCallback((preset) => {
-    // Create a canvas with the specified size
-    const canvas = document.createElement('canvas');
-    canvas.width = preset.width;
-    canvas.height = preset.height;
-    const ctx = canvas.getContext('2d');
-
-    // Fill with a dark background
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, preset.width, preset.height);
-
-    // Optional: Add subtle grid pattern
+    // Describe the canvas rather than baking a PNG data URL — a 2560×1440 blank
+    // used to cost 100KB+ of the map document's 1MB budget before anything was
+    // placed on it. MapCanvas draws this as a plain Rect.
     const gridSize = preset.width / preset.gridSquares;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 1;
-
-    for (let x = 0; x <= preset.width; x += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, preset.height);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= preset.height; y += gridSize) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(preset.width, y);
-      ctx.stroke();
-    }
-
-    // Convert to data URL
-    const url = canvas.toDataURL('image/png');
 
     setMapImage({
-      url,
+      url: null,
       width: preset.width,
       height: preset.height,
       name: `Blank Canvas (${preset.label})`,
-      isBlank: true
+      isBlank: true,
+      bgColor: '#1a1a2e'
     });
 
     // Set grid size to match
@@ -249,6 +264,13 @@ export default function MapImporter() {
           onChange={handleFileChange}
         />
       </div>
+
+      {localOnlyWarning && (
+        <div className="local-only-warning">
+          <AlertTriangle size={16} />
+          <span>{localOnlyWarning}</span>
+        </div>
+      )}
 
       {/* YouTube URL Section */}
       <div className="youtube-section">
@@ -341,6 +363,25 @@ export default function MapImporter() {
       </div>
 
       <style>{`
+        .local-only-warning {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          margin-top: 0.75rem;
+          padding: 0.6rem 0.75rem;
+          border: 1px solid rgba(245, 158, 11, 0.35);
+          background: rgba(245, 158, 11, 0.1);
+          border-radius: 6px;
+          color: #fbbf24;
+          font-size: 0.8rem;
+          line-height: 1.4;
+        }
+
+        .local-only-warning svg {
+          flex-shrink: 0;
+          margin-top: 1px;
+        }
+
         .blank-canvas-section {
           margin-top: 1.5rem;
           text-align: center;

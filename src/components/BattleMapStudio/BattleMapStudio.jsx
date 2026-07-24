@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
+import { useToast } from '../../contexts/ToastContext';
 import CanvasLayers from './Canvas/MapCanvas'; // Using existing MapCanvas component
 import FloatingToolbar from './Toolbar/FloatingToolbar';
 import ZoomControls from './Toolbar/ZoomControls';
@@ -47,6 +48,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
   const [showSoundboard, setShowSoundboard] = useState(false); // Soundboard modal
   const containerRef = useRef(null);
   const lastBroadcastRef = useRef(null); // Track last broadcast to debounce
+  const toast = useToast();
 
   const {
     mapId,
@@ -107,8 +109,21 @@ export default function BattleMapStudio({ campaign, isDM }) {
   // Save current map
   const handleSave = async () => {
     const state = getSerializableState();
-    await saveMap(mapId, state);
-    markClean();
+    try {
+      await saveMap(mapId, state);
+      markClean();
+      toast.success('Map saved');
+    } catch (err) {
+      // Firestore caps documents at 1MB. Without this the rejection was an
+      // unhandled promise and the user was told nothing.
+      const tooBig = /longer than|exceeds maximum|invalid-argument/i.test(err?.message || '');
+      toast.error(
+        tooBig
+          ? 'Map too large to save. Remove some placed assets, or use an uploaded/AI-generated background instead of embedded images.'
+          : `Could not save map: ${err?.message || 'unknown error'}`,
+        { duration: 8000 }
+      );
+    }
   };
 
   // Create new map
@@ -128,12 +143,27 @@ export default function BattleMapStudio({ campaign, isDM }) {
         return;
       }
     }
-    const mapData = await loadMap(selectedMapId);
-    if (mapData) {
-      loadMapState({
-        mapId: selectedMapId,
-        ...mapData
-      });
+    try {
+      const mapData = await loadMap(selectedMapId);
+      if (mapData) {
+        const { id, ...mapState } = mapData;
+        loadMapState({
+          mapId: selectedMapId,
+          ...mapState
+        });
+        // Maps saved before imports were uploaded to Storage carry a dead
+        // blob: URL. Say so rather than showing an empty canvas.
+        if (mapState.mapImage?.url?.startsWith('blob:')) {
+          toast.warning(
+            'This map was saved before uploads were fixed, so its background image is gone. Re-import the image to repair it.',
+            { duration: 10000 }
+          );
+        }
+      } else {
+        toast.error('That map could not be found.');
+      }
+    } catch (err) {
+      toast.error(`Could not load map: ${err?.message || 'unknown error'}`);
     }
     setActivePanel('assets');
   };
@@ -219,7 +249,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
     }
 
     // 'importing' mode or fallback: show the MapImporter
-    return <MapImporter />;
+    return <MapImporter campaignId={campaignId} />;
   };
 
   return (

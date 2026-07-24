@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Upload, User, Users, Skull, Globe, Loader2 } from 'lucide-react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
 import AssetUploader from './AssetUploader';
@@ -35,6 +35,26 @@ export default function AssetLibrary({ campaignId }) {
   const [loadingShared, setLoadingShared] = useState(false);
 
   const { addToken, gridSize, setSelectedTool } = useBattleMapStore();
+
+  // Load this campaign's previously uploaded tokens
+  useEffect(() => {
+    if (!campaignId) return;
+
+    const loadCustomAssets = async () => {
+      try {
+        const q = query(
+          collection(db, `campaigns/${campaignId}/battleMapAssets`),
+          orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        setCustomAssets(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (err) {
+        console.error('Error loading custom tokens:', err);
+      }
+    };
+
+    loadCustomAssets();
+  }, [campaignId]);
 
   // Load shared assets when tab is activated
   useEffect(() => {
@@ -71,9 +91,22 @@ export default function AssetLibrary({ campaignId }) {
     });
   };
 
-  const handleAssetUpload = (asset) => {
+  const handleAssetUpload = async (asset) => {
     setCustomAssets(prev => [...prev, asset]);
     setShowUploader(false);
+
+    // Persist so the token is still here next session. Uploads without a
+    // campaign are rejected upstream, so campaignId is set by this point.
+    try {
+      await addDoc(collection(db, `campaigns/${campaignId}/battleMapAssets`), {
+        name: asset.name,
+        url: asset.url,
+        storagePath: asset.storagePath || null,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Error saving custom token:', err);
+    }
   };
 
   const handleDragStart = (e, tokenDef) => {
@@ -194,6 +227,7 @@ export default function AssetLibrary({ campaignId }) {
             <div className="pt-2">
               {showUploader ? (
                 <AssetUploader
+                  campaignId={campaignId}
                   onUpload={handleAssetUpload}
                   onCancel={() => setShowUploader(false)}
                 />

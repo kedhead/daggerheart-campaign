@@ -222,7 +222,16 @@ function MapCanvas({ mapState }) {
         {/* Background layer - only for static images */}
         {isStaticImage && (
           <Layer>
-            {mapImage && (
+            {/* Blank canvases carry no image, just a fill colour */}
+            {(mapData.isBlank || !mapData.url) ? (
+              <Rect
+                x={0}
+                y={0}
+                width={mapData.width}
+                height={mapData.height}
+                fill={mapData.bgColor || '#1a1a2e'}
+              />
+            ) : mapImage && (
               <KonvaImage
                 image={mapImage}
                 width={mapData.width}
