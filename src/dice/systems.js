@@ -5,7 +5,7 @@
 // The shape is what gets persisted to Firestore and read back by every
 // viewer. No side effects, no Firestore, no DOM.
 
-import { uniformDie as defaultUniformDie, rollNDice } from './rng.js';
+import { uniformDie as defaultUniformDie } from './rng.js';
 
 export const DICE_COLOR = {
   4: '#10b981',
@@ -112,14 +112,16 @@ export function rollGeneric({ modifier = 0, diceConfig, sides, quantity, label }
   } else if (sides) {
     const s = parseInt(sides, 10);
     const q = Math.max(1, parseInt(quantity, 10) || 1);
-    const values = rollNDice(q, s);
     for (let i = 0; i < q; i++) {
+      // Draw through the injected rng like every other branch. This used to
+      // call rollNDice directly, which ignored `rng` and so could not be
+      // replayed from physics results.
       dice.push({
         groupId: `d${s}-${i}`,
         sides: s,
         color: DICE_COLOR[s] || '#6366f1',
         label: `d${s}`,
-        value: values[i],
+        value: rng(s),
       });
     }
   }

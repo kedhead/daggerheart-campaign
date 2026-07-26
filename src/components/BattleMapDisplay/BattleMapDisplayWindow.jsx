@@ -10,7 +10,11 @@ import GridOverlay from '../BattleMapStudio/Canvas/GridOverlay';
 import FogOfWarLayer from '../BattleMapStudio/Canvas/FogOfWarLayer';
 import TokenLayer from '../BattleMapStudio/Canvas/TokenLayer';
 import DrawingLayer from '../BattleMapStudio/Canvas/DrawingLayer';
-import { DiceTray, DiceRoller, RollHistory } from '../../dice';
+import { DiceTray, DiceRoller, RollHistory, claimDiceAuthority, releaseDiceAuthority } from '../../dice';
+
+// Re-claimed well inside the 30s TTL in service.js so a brief hiccup doesn't
+// make the display look dead and send rolls back to the local RNG.
+const DICE_AUTHORITY_HEARTBEAT_MS = 10000;
 import AudioReceiver from '../Soundboard/AudioReceiver';
 import './BattleMapDisplayWindow.css';
 
@@ -242,6 +246,22 @@ export default function BattleMapDisplayWindow({ campaignId }) {
     return unsubscribe;
   }, [campaignId]);
 
+  // Claim the dice authority for as long as this screen is open. Rolls
+  // published while the claim is live are left unresolved for this window to
+  // throw real dice for — so the numbers players watch land are the result.
+  useEffect(() => {
+    if (!campaignId) return undefined;
+    claimDiceAuthority(campaignId).catch(err =>
+      console.warn('[BattleMapDisplay] could not claim dice authority:', err));
+    const id = setInterval(() => {
+      claimDiceAuthority(campaignId).catch(() => { /* next beat will retry */ });
+    }, DICE_AUTHORITY_HEARTBEAT_MS);
+    return () => {
+      clearInterval(id);
+      releaseDiceAuthority(campaignId);
+    };
+  }, [campaignId]);
+
   // Auto-scale map to fit window
   useEffect(() => {
     if (!mapState?.mapImage) return;
@@ -326,7 +346,7 @@ export default function BattleMapDisplayWindow({ campaignId }) {
 
       {/* Unified dice system: every viewer reads canonical roll docs from
           campaigns/{id}/rolls. Numbers are never derived from physics. */}
-      <DiceTray campaignId={campaignId} animateRemote />
+      <DiceTray campaignId={campaignId} animateRemote isRollAuthority />
       <RollHistory campaignId={campaignId} variant="sidebar" />
       <DiceRoller campaignId={campaignId} variant="fab" />
 
