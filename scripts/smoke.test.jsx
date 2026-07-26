@@ -21,6 +21,7 @@ import { pickEffectForText, createFX } from '../src/components/Storybook/cinemat
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { useBattleMapStore } from '../src/stores/battleMapStore.js';
+import { diceSpec, MAX_CONCURRENT_ROLLS } from '../src/dice/diceSpec.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
@@ -639,6 +640,66 @@ section('Battle Map store');
   }
 
   fresh();
+}
+
+section('Dice tray (concurrent rolls)');
+{
+  // A Daggerheart duality roll: two d12s in different colours must stay in
+  // separate groups so Hope and Fear keep their own dice.
+  {
+    const spec = diceSpec({ dice: [
+      { groupId: 'hope', sides: 12, color: '#fbbf24', value: 9 },
+      { groupId: 'fear', sides: 12, color: '#a855f7', value: 4 }
+    ]});
+    assert(spec.length === 2, `duality dice stay in two groups (got ${spec.length})`);
+    assert(spec[0].themeColor === '#fbbf24' && spec[1].themeColor === '#a855f7',
+      'each duality die keeps its own colour');
+    assert(spec[0].value[0] === 9 && spec[1].value[0] === 4,
+      'canonical face values are locked onto the dice');
+  }
+
+  // Same sides and colour collapse into one group carrying every face.
+  {
+    const spec = diceSpec({ dice: [
+      { sides: 6, color: '#3b82f6', value: 3 },
+      { sides: 6, color: '#3b82f6', value: 5 },
+      { sides: 6, color: '#3b82f6', value: 1 }
+    ]});
+    assert(spec.length === 1, `matching dice collapse into one group (got ${spec.length})`);
+    assert(spec[0].qty === 3, `group carries the full quantity (got ${spec[0].qty})`);
+    assert(spec[0].value.join(',') === '3,5,1', 'every face value is preserved in order');
+  }
+
+  // Grouping is by *consecutive* runs — a colour change splits, and changing
+  // back opens a new group rather than rejoining the first.
+  {
+    const spec = diceSpec({ dice: [
+      { sides: 6, color: '#aaa', value: 1 },
+      { sides: 6, color: '#bbb', value: 2 },
+      { sides: 6, color: '#aaa', value: 3 }
+    ]});
+    assert(spec.length === 3, `a colour change splits consecutive runs (got ${spec.length})`);
+  }
+
+  // Mixed sides never share a group, or dice would render with wrong faces.
+  {
+    const spec = diceSpec({ dice: [
+      { sides: 20, color: '#fff', value: 18 },
+      { sides: 6, color: '#fff', value: 4 }
+    ]});
+    assert(spec.length === 2, 'different sides never share a group');
+    assert(spec[0].sides === 20 && spec[1].sides === 6, 'each group keeps its die size');
+  }
+
+  // Defensive: a malformed or empty roll must not throw into the animation.
+  {
+    assert(diceSpec({ dice: [] }).length === 0, 'an empty roll yields no dice groups');
+    assert(diceSpec({}).length === 0, 'a roll with no dice field yields no groups');
+    assert(diceSpec(null).length === 0, 'a null roll yields no groups');
+  }
+
+  assert(MAX_CONCURRENT_ROLLS >= 4 && MAX_CONCURRENT_ROLLS <= 12,
+    `concurrency cap is a sane table size (got ${MAX_CONCURRENT_ROLLS})`);
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

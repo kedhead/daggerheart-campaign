@@ -1,10 +1,15 @@
 // The single 3D dice animation overlay for the entire app. Mounted once
 // per surface (player view, battle map display, dashboard). Subscribes via
-// useLiveRoll, queues incoming canonical roll documents, and animates each
-// one with @3d-dice/dice-box. Face values are passed to dice-box as locked
-// `value:` overrides — physics tumbles cosmetically, lands on the
-// canonical face. Numbers are never derived from physics; the banner reads
-// the canonical doc.
+// useLiveRoll, animates each incoming canonical roll document with
+// @3d-dice/dice-box, and shows its result. Face values are passed to
+// dice-box as locked `value:` overrides — physics tumbles cosmetically, lands
+// on the canonical face. Numbers are never derived from physics; the banner
+// reads the canonical doc.
+//
+// Rolls animate CONCURRENTLY. When several players roll at once their dice
+// share the table, each in that player's colour, and their result cards sit
+// side by side. This relies on dice-box's `add()` rather than `roll()`:
+// `roll()` calls clear() first, so a second roll erased the first mid-tumble.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -13,33 +18,15 @@ import { initAudio, playRollSound, playCritSound, playDoublesSound } from '../ut
 import SpecialResultOverlay from '../components/DiceRoller/SpecialResultOverlay.jsx';
 import RollResultBanner from './RollResultBanner.jsx';
 import { useLiveRoll } from './useLiveRoll.js';
+import { diceSpec, MAX_CONCURRENT_ROLLS } from './diceSpec.js';
 
 const CONTAINER_ID = 'dice-tray-canvas';
 const BANNER_DURATION = 3000;
 const SPECIAL_OVERLAY_DURATION = 2500;
-
-function diceSpec(roll) {
-  // Group consecutive dice with the same sides+color into one dice-box group
-  // so the engine renders them with locked face values via `value: [...]`.
-  const groups = [];
-  let cur = null;
-  for (const d of roll.dice || []) {
-    if (cur && cur.sides === d.sides && cur.themeColor === d.color) {
-      cur.qty += 1;
-      cur.value.push(d.value);
-    } else {
-      cur = {
-        qty: 1,
-        sides: d.sides,
-        theme: 'magic',
-        themeColor: d.color,
-        value: [d.value],
-      };
-      groups.push(cur);
-    }
-  }
-  return groups;
-}
+// If dice-box never resolves a roll, that roll would sit on the table
+// forever holding the scrim up over the whole screen — and, now that rolls
+// are concurrent, blocking everyone else's cleanup too. Force it through.
+const ROLL_WATCHDOG_MS = 15000;
 
 // Personal devices animate ONLY the local player's rolls in 3D — everyone
 // else's land as compact attributed toasts. Before this split, every phone
@@ -51,13 +38,29 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
   const containerRef = useRef(null);
   const boxRef = useRef(null);
   const readyRef = useRef(false);
-  const queueRef = useRef([]);
-  const playingRef = useRef(false);
-  const bannerTimerRef = useRef(null);
+  // Rolls that arrived before dice-box finished initialising.
+  const pendingRef = useRef([]);
+  const groupTimerRef = useRef(null);
   const specialTimerRef = useRef(null);
+  const watchdogsRef = useRef(new Map()); // rollId -> timeout
+  // A special overlay is a full-screen takeover; two crits landing together
+  // would fight over it, so the first one holds the slot.
+  const specialBusyRef = useRef(false);
 
-  const [activeRoll, setActiveRoll] = useState(null);
-  const [showBanner, setShowBanner] = useState(false);
+  // Every roll currently on the table: { roll, results, settled }.
+  // `results` comes back from dice-box and is what remove() needs to tear
+  // down just this roll's dice.
+  //
+  // entriesRef is authoritative and updated synchronously; `entries` state
+  // only mirrors it for rendering. Two rolls landing in the same tick both
+  // need to see each other, which a state read alone would miss.
+  const entriesRef = useRef([]);
+  const [entries, setEntries] = useState([]);
+  const commitEntries = useCallback((next) => {
+    entriesRef.current = next;
+    setEntries(next);
+  }, []);
+
   const [special, setSpecial] = useState(null);
   const [show, setShow] = useState(false);
   const [feed, setFeed] = useState([]); // remote-roll toasts
@@ -68,6 +71,115 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
       setFeed(prev => prev.filter(r => r.id !== roll.id));
     }, 6000);
   }, []);
+
+  // Retire every roll that has finished tumbling, together. Rolls still in
+  // the air are left alone and will re-arm the timer when they land.
+  const clearSettled = useCallback(() => {
+    const current = entriesRef.current;
+    const remaining = current.filter(e => !e.settled);
+    const box = boxRef.current;
+
+    if (box) {
+      try {
+        if (remaining.length === 0) {
+          // Nothing left in the air — a full clear is cheaper and can't leak.
+          box.clear();
+        } else {
+          for (const e of current) {
+            if (e.settled && Array.isArray(e.results) && e.results.length) {
+              box.remove(e.results);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[DiceTray] failed to clear dice:', err);
+      }
+    }
+
+    commitEntries(remaining);
+    if (remaining.length === 0) setShow(false);
+  }, [commitEntries]);
+
+  const armGroupTimer = useCallback(() => {
+    if (groupTimerRef.current) clearTimeout(groupTimerRef.current);
+    groupTimerRef.current = setTimeout(clearSettled, BANNER_DURATION);
+  }, [clearSettled]);
+
+  // Mark a roll settled whether or not the engine came back, so the group
+  // timer can retire it.
+  const settleRoll = useCallback((rollId, results) => {
+    const watchdog = watchdogsRef.current.get(rollId);
+    if (watchdog) {
+      clearTimeout(watchdog);
+      watchdogsRef.current.delete(rollId);
+    }
+    // It may already have been dismissed while tumbling — don't re-add it.
+    if (!entriesRef.current.some(e => e.roll.id === rollId)) return;
+    commitEntries(entriesRef.current.map(e => (
+      e.roll.id === rollId ? { ...e, results, settled: true } : e
+    )));
+    armGroupTimer();
+  }, [armGroupTimer, commitEntries]);
+
+  const playRoll = useCallback(async (roll) => {
+    if (!boxRef.current || !readyRef.current) {
+      pendingRef.current.push(roll);
+      return;
+    }
+    // Already on the table (a duplicate emit) — ignore.
+    if (entriesRef.current.some(e => e.roll.id === roll.id)) return;
+    if (entriesRef.current.length >= MAX_CONCURRENT_ROLLS) {
+      pushToFeed(roll);
+      return;
+    }
+
+    commitEntries([...entriesRef.current, { roll, results: null, settled: false }]);
+    setShow(true);
+
+    initAudio();
+    playRollSound();
+
+    // Trigger special-result full-screen overlays based ONLY on canonical
+    // flags from the doc. The roller authored the truth; we just display it.
+    if (!specialBusyRef.current) {
+      let next = null;
+      if (roll.flags?.isCrit) {
+        playCritSound();
+        next = { type: 'crit', value: 20 };
+      } else if (roll.flags?.isCritFail) {
+        next = { type: 'critfail', value: 1 };
+      } else if (roll.flags?.isDoubles) {
+        playDoublesSound();
+        const doublesValue = roll.dice?.find(d => d.groupId === 'hope')?.value ?? roll.dice?.[0]?.value;
+        next = { type: 'doubles', value: doublesValue };
+      }
+      if (next) {
+        specialBusyRef.current = true;
+        setSpecial(next);
+        if (specialTimerRef.current) clearTimeout(specialTimerRef.current);
+        specialTimerRef.current = setTimeout(() => {
+          setSpecial(null);
+          specialBusyRef.current = false;
+        }, SPECIAL_OVERLAY_DURATION);
+      }
+    }
+
+    watchdogsRef.current.set(roll.id, setTimeout(() => {
+      console.warn('[DiceTray] roll never settled, retiring it:', roll.id);
+      settleRoll(roll.id, null);
+    }, ROLL_WATCHDOG_MS));
+
+    let results = null;
+    try {
+      // add(), not roll() — roll() clears the table first and would wipe
+      // any dice still tumbling from another player.
+      results = await boxRef.current.add(diceSpec(roll));
+    } catch (err) {
+      console.warn('[DiceTray] dice-box.add failed:', err);
+    }
+
+    settleRoll(roll.id, results);
+  }, [pushToFeed, commitEntries, settleRoll]);
 
   // Lazy-init dice-box once the portal target is in the DOM.
   useEffect(() => {
@@ -87,72 +199,14 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
       if (cancelled) return;
       boxRef.current = box;
       readyRef.current = true;
-      // Drain any queued rolls that arrived before init finished.
-      drain();
+      // Play anything that arrived while we were initialising.
+      const queued = pendingRef.current;
+      pendingRef.current = [];
+      for (const roll of queued) playRoll(roll);
     }).catch(err => console.error('[DiceTray] dice-box init failed:', err));
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const finishRoll = useCallback(() => {
-    setShowBanner(false);
-    setActiveRoll(null);
-    setShow(false);
-    if (boxRef.current) {
-      try { boxRef.current.clear(); } catch (e) { /* noop */ }
-    }
-    playingRef.current = false;
-    drain();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const playRoll = useCallback(async (roll) => {
-    if (!boxRef.current || !readyRef.current) {
-      queueRef.current.push(roll);
-      return;
-    }
-    playingRef.current = true;
-    setActiveRoll(roll);
-    setShow(true);
-    setShowBanner(false);
-
-    initAudio();
-    playRollSound();
-
-    // Trigger special-result full-screen overlays based ONLY on canonical
-    // flags from the doc. The roller authored the truth; we just display it.
-    if (roll.flags?.isCrit) {
-      playCritSound();
-      setSpecial({ type: 'crit', value: 20 });
-    } else if (roll.flags?.isCritFail) {
-      setSpecial({ type: 'critfail', value: 1 });
-    } else if (roll.flags?.isDoubles) {
-      playDoublesSound();
-      const doublesValue = roll.dice?.find(d => d.groupId === 'hope')?.value ?? roll.dice?.[0]?.value;
-      setSpecial({ type: 'doubles', value: doublesValue });
-    } else {
-      setSpecial(null);
-    }
-    if (specialTimerRef.current) clearTimeout(specialTimerRef.current);
-    specialTimerRef.current = setTimeout(() => setSpecial(null), SPECIAL_OVERLAY_DURATION);
-
-    try {
-      boxRef.current.clear();
-      await boxRef.current.roll(diceSpec(roll));
-    } catch (err) {
-      console.warn('[DiceTray] dice-box.roll failed:', err);
-    }
-
-    setShowBanner(true);
-    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
-    bannerTimerRef.current = setTimeout(finishRoll, BANNER_DURATION);
-  }, [finishRoll]);
-
-  const drain = useCallback(() => {
-    if (playingRef.current) return;
-    const next = queueRef.current.shift();
-    if (next) playRoll(next);
-  }, [playRoll]);
 
   // Receive new canonical rolls from Firestore.
   useLiveRoll(campaignId, useCallback((roll) => {
@@ -160,28 +214,45 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     // Someone else's private roll is not our business on any surface.
     if (roll.isPrivate && !isMine) return;
     if (isMine || animateRemote) {
-      queueRef.current.push(roll);
-      drain();
+      playRoll(roll);
     } else {
       pushToFeed(roll);
     }
-  }, [drain, pushToFeed, currentUserId, animateRemote]));
+  }, [playRoll, pushToFeed, currentUserId, animateRemote]));
 
-  useEffect(() => () => {
-    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
-    if (specialTimerRef.current) clearTimeout(specialTimerRef.current);
+  useEffect(() => {
+    const watchdogs = watchdogsRef.current;
+    return () => {
+      if (groupTimerRef.current) clearTimeout(groupTimerRef.current);
+      if (specialTimerRef.current) clearTimeout(specialTimerRef.current);
+      for (const t of watchdogs.values()) clearTimeout(t);
+      watchdogs.clear();
+    };
   }, []);
 
+  // Tapping the tray clears everything on the table at once.
   const dismiss = useCallback(() => {
-    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
-    finishRoll();
-  }, [finishRoll]);
+    if (groupTimerRef.current) clearTimeout(groupTimerRef.current);
+    for (const t of watchdogsRef.current.values()) clearTimeout(t);
+    watchdogsRef.current.clear();
+    if (boxRef.current) {
+      try { boxRef.current.clear(); } catch (e) { /* noop */ }
+    }
+    commitEntries([]);
+    setShow(false);
+  }, [commitEntries]);
+
+  const banners = entries.filter(e => e.settled);
 
   return createPortal(
     <>
       <div className={`dice-tray ${show ? 'is-visible' : ''}`} onClick={dismiss}>
         <div id={CONTAINER_ID} ref={containerRef} className="dice-tray-canvas" />
-        {showBanner && activeRoll && <RollResultBanner roll={activeRoll} />}
+        {banners.length > 0 && (
+          <div className={`dice-banner-stack ${banners.length > 1 ? 'is-multi' : ''}`}>
+            {banners.map(e => <RollResultBanner key={e.roll.id} roll={e.roll} />)}
+          </div>
+        )}
       </div>
       {feed.length > 0 && (
         <div className="dice-feed" aria-live="polite">
@@ -192,7 +263,7 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
         <SpecialResultOverlay
           type={special.type}
           value={special.value}
-          onClose={() => setSpecial(null)}
+          onClose={() => { setSpecial(null); specialBusyRef.current = false; }}
         />
       )}
     </>,

@@ -72,10 +72,19 @@ function playTick(ctx, time, volume = 0.3) {
     osc.stop(time + 0.05);
 }
 
+// Simultaneous rolls each ask for the tumble sound. Playing four copies at
+// once is just noise, so collapse a burst into one.
+const ROLL_SOUND_THROTTLE_MS = 200;
+let lastRollSoundAt = 0;
+
 /**
  * Play dice tumbling/rolling sound (~600ms of rapid clicks)
  */
 export function playRollSound() {
+    const now = Date.now();
+    if (now - lastRollSoundAt < ROLL_SOUND_THROTTLE_MS) return;
+    lastRollSoundAt = now;
+
     try {
         const ctx = getAudioContext();
 

@@ -1,5 +1,16 @@
 import { Sun, Moon } from 'lucide-react';
 
+// Who rolled it. Concurrent rolls put several cards on screen at once, so
+// this belongs on every system's banner, not just Daggerheart's.
+function Roller({ roll }) {
+  if (!roll.rollerName) return null;
+  return (
+    <div className="banner-roller" style={{ color: roll.rollerColor || undefined }}>
+      {roll.rollerName}
+    </div>
+  );
+}
+
 // Reads everything from the canonical roll document. Never re-derives
 // numbers. If a field isn't on the doc, we don't display it.
 export default function RollResultBanner({ roll }) {
@@ -14,9 +25,7 @@ export default function RollResultBanner({ roll }) {
     const dis = roll.dice?.find(d => d.groupId === 'disadvantage')?.value;
     return (
       <div className={`dice-result-banner outcome-${roll.outcome || 'tie'}`}>
-        {roll.rollerName && (
-          <div className="banner-roller" style={{ color: roll.rollerColor || undefined }}>{roll.rollerName}</div>
-        )}
+        <Roller roll={roll} />
         <div className="banner-dice">
           <span className="hope-chip"><Sun size={16} /> {hope}</span>
           <span className="vs">vs</span>
@@ -39,6 +48,7 @@ export default function RollResultBanner({ roll }) {
     const values = (roll.dice || []).map(d => d.value).join(', ');
     return (
       <div className={`dice-result-banner ${roll.flags?.isCrit ? 'is-crit' : ''} ${roll.flags?.isCritFail ? 'is-critfail' : ''}`}>
+        <Roller roll={roll} />
         <div className="banner-dice">d20: {values}{modSuffix}</div>
         <div className="banner-total">{roll.total}</div>
         {roll.flags?.isCrit && <div className="banner-outcome crit">🎯 CRITICAL HIT</div>}
@@ -53,6 +63,7 @@ export default function RollResultBanner({ roll }) {
     const others = (roll.dice || []).filter(d => d.groupId !== 'wild').map(d => d.value).join(', ');
     return (
       <div className={`dice-result-banner ${roll.flags?.complication ? 'is-complication' : ''}`}>
+        <Roller roll={roll} />
         <div className="banner-dice">Wild: {wild} | [{others}]{modSuffix}</div>
         <div className="banner-total">{roll.total}</div>
         {roll.flags?.complication && <div className="banner-outcome complication">⚠️ COMPLICATION</div>}
@@ -69,6 +80,7 @@ export default function RollResultBanner({ roll }) {
   ));
   return (
     <div className={`dice-result-banner ${roll.flags?.isCrit ? 'is-crit' : ''} ${roll.flags?.isCritFail ? 'is-critfail' : ''}`}>
+      <Roller roll={roll} />
       <div className="banner-dice">[{breakdown}]{modSuffix}</div>
       <div className="banner-total">{roll.total}</div>
       {roll.flags?.isCrit && <div className="banner-outcome crit">🎯 CRITICAL HIT</div>}
