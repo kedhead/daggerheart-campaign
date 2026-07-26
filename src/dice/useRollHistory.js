@@ -23,11 +23,7 @@ export function useRollHistory(campaignId, count = 50) {
       limit(count)
     );
     const unsub = onSnapshot(q, (snap) => {
-      // Skip rolls whose dice are still deciding — they have no total yet and
-      // would flash "= null" in the log for a second or two.
-      const list = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(r => r.pending !== true);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setRolls(list);
       setLoading(false);
     }, (err) => {

@@ -21,9 +21,7 @@ import { pickEffectForText, createFX } from '../src/components/Storybook/cinemat
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { useBattleMapStore } from '../src/stores/battleMapStore.js';
-import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_NUMBERED, THEME_RUNES } from '../src/dice/diceSpec.js';
-import { rollForSystem } from '../src/dice/systems.js';
-import { scriptedRng, valuesFromPhysics } from '../src/dice/scriptedRng.js';
+import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from '../src/dice/diceSpec.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
@@ -675,14 +673,13 @@ section('Dice tray (concurrent rolls)');
     assert(spec[0].qty === 3, `group carries the full quantity (got ${spec[0].qty})`);
   }
 
-  // Numbered faces are only truthful on the screen that rolls the real dice.
+  // The engine cannot be told what to land on, so the faces are meaningless.
+  // Runes carry no number and therefore cannot contradict the real total; a
+  // numbered theme here would print wrong digits next to the right answer.
   {
     const roll = { dice: [{ sides: 12, color: '#fbbf24', value: 9 }] };
-    assert(diceSpec(roll)[0].theme === THEME_RUNES,
-      'dice wear runes by default, where they cannot match the result');
-    assert(diceSpec(roll, THEME_NUMBERED)[0].theme === THEME_NUMBERED,
-      'the authority screen can ask for numbered faces');
-    assert(THEME_NUMBERED !== THEME_RUNES, 'the two themes are distinct');
+    assert(diceSpec(roll)[0].theme === THEME_RUNES, 'dice always wear the rune theme');
+    assert(THEME_RUNES === 'magic', 'the rune theme is the one shipped in public/assets');
   }
 
   // Grouping is by *consecutive* runs — a colour change splits, and changing
@@ -717,62 +714,6 @@ section('Dice tray (concurrent rolls)');
     `concurrency cap is a sane table size (got ${MAX_CONCURRENT_ROLLS})`);
 }
 
-section('Dice replay (physics-authoritative rolls)');
-{
-  // The display window rolls real dice and the faces they land on become the
-  // canonical result. That replay must run through the SAME roll logic as a
-  // crypto roll, or totals, crit flags and Hope/Fear would diverge from what
-  // the dice show. Round-trip every system: roll, feed its own faces back,
-  // and require an identical record.
-  const cases = [
-    ['daggerheart', { modifier: 2 }],
-    ['daggerheart', { modifier: 0, advantage: true }],
-    ['daggerheart', { modifier: 1, disadvantage: true }],
-    ['dnd5e', { modifier: 3, mode: 'advantage' }],
-    ['dnd5e', { modifier: 0, mode: 'normal' }],
-    ['starwarsd6', { count: 4 }],
-    ['generic', { sides: 6, quantity: 3, modifier: 1 }],
-    ['generic', { diceConfig: { d20: 1, d6: 2 } }],
-  ];
-  for (const [system, config] of cases) {
-    let mismatches = 0;
-    for (let i = 0; i < 100; i++) {
-      const orig = rollForSystem(system, config);
-      const replay = rollForSystem(system, config, scriptedRng(orig.dice.map(d => d.value)));
-      if (JSON.stringify(orig) !== JSON.stringify(replay)) mismatches++;
-    }
-    assert(mismatches === 0,
-      `${system} ${JSON.stringify(config)} replays identically (${mismatches} mismatches in 100)`);
-  }
-
-  // Physics results arrive in whatever order the engine finished them; the
-  // draw order is rollId order.
-  {
-    const vals = valuesFromPhysics([
-      { rollId: 2, value: 7 }, { rollId: 0, value: 3 }, { rollId: 1, value: 11 }
-    ]);
-    assert(vals.join(',') === '3,11,7', `physics values sort into draw order (got ${vals.join(',')})`);
-  }
-  {
-    const vals = valuesFromPhysics([{ rollId: 0, value: 4 }, null, { rollId: 1 }]);
-    assert(vals.join(',') === '4', 'dice with no value are dropped rather than poisoning the replay');
-  }
-
-  // A value that can't belong to the die means physics and draw order
-  // disagreed — fall back instead of persisting an impossible face.
-  {
-    const rng = scriptedRng([99]);
-    const v = rng(12);
-    assert(v >= 1 && v <= 12, `an out-of-range physics value falls back in range (got ${v})`);
-  }
-  {
-    // Running out of values falls back too (SW D6 wild explosion).
-    const rng = scriptedRng([5]);
-    rng(6);
-    const v = rng(6);
-    assert(v >= 1 && v <= 6, `running out of physics values falls back in range (got ${v})`);
-  }
-}
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);
 process.exit(failures === 0 ? 0 : 1);

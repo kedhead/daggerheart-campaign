@@ -8,10 +8,7 @@ export { default as RollResultBanner } from './RollResultBanner.jsx';
 export { useDice } from './useDice.js';
 export { useLiveRoll } from './useLiveRoll.js';
 export { useRollHistory } from './useRollHistory.js';
-export {
-  publishRoll, clearRollHistory, deleteRoll, ROLLS_PATH,
-  resolveRoll, claimDiceAuthority, releaseDiceAuthority, DICE_AUTHORITY_PATH,
-} from './service.js';
+export { publishRoll, clearRollHistory, deleteRoll, ROLLS_PATH } from './service.js';
 export { uniformDie } from './rng.js';
 export {
   rollDaggerheart,

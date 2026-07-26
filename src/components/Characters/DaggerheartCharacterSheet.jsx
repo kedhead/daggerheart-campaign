@@ -96,10 +96,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   // overlay JSX consumes. Single source of truth is still the doc; this is
   // just a view-shape adapter.
   const showRollResult = (label, type, data) => {
-    // When the battle map display is open it throws the real dice and decides
-    // the numbers, so a freshly published roll has none yet. The dice tray
-    // shows the result when they land; there is nothing to overlay here.
-    if (!data || data.pending) return;
+    if (!data) return;
     if (rollResultTimer.current) clearTimeout(rollResultTimer.current);
     let view;
     if (type === 'daggerheart') {

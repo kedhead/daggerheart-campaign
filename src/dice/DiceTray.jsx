@@ -7,13 +7,16 @@
 // whichever face points up once the die stops (Dice.js getRollResult); a
 // `value` in the notation is read only by the non-3D fallback path and is
 // ignored for rendered dice. An earlier version of this comment claimed the
-// opposite, which is why nobody could make the numbers agree with the dice
-// and the app ended up on rune faces that show no number at all.
+// opposite, which cost two attempts at "making the numbers match" before
+// anyone checked the engine.
 //
-// So the screen holding `isRollAuthority` throws the real dice and writes
-// back whatever they land on: on that screen the faces are the result, by
-// construction, and it wears numbered dice. Every other screen re-simulates
-// and can't agree, so it keeps runes and reads numbers off the document.
+// The tumble is therefore an ANIMATION of a result the crypto RNG already
+// decided (rng.js -> systems.js -> service.js), not the thing that produced
+// it. The faces it settles on are meaningless. That is exactly why the dice
+// wear the rune theme: rune faces carry no number, so they cannot contradict
+// the canonical total on the banner. Do not switch to a numbered theme — the
+// digits would be wrong, and only a screen that physically decides its own
+// rolls could ever show honest ones.
 //
 // Rolls animate CONCURRENTLY. When several players roll at once their dice
 // share the table, each in that player's colour, and their result cards sit
@@ -27,9 +30,7 @@ import { initAudio, playRollSound, playCritSound, playDoublesSound } from '../ut
 import SpecialResultOverlay from '../components/DiceRoller/SpecialResultOverlay.jsx';
 import RollResultBanner from './RollResultBanner.jsx';
 import { useLiveRoll } from './useLiveRoll.js';
-import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_NUMBERED, THEME_RUNES } from './diceSpec.js';
-import { valuesFromPhysics } from './scriptedRng.js';
-import { resolveRoll } from './service.js';
+import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from './diceSpec.js';
 
 const CONTAINER_ID = 'dice-tray-canvas';
 const BANNER_DURATION = 3000;
@@ -45,17 +46,7 @@ const ROLL_WATCHDOG_MS = 15000;
 // meant four queued 3D simulations (+ banners) on every device, no names
 // attached. Shared displays (the table TV) pass animateRemote to keep the
 // full spectacle.
-export default function DiceTray({
-  campaignId,
-  currentUserId = null,
-  animateRemote = false,
-  // When set, this screen decides the numbers: it throws real 3D dice for
-  // unresolved rolls and writes back whatever they land on. dice-box reads a
-  // die's value by ray-casting the settled face and cannot be told what to
-  // land on, so the only way the numbers can match the dice is to let the
-  // dice choose. Exactly one screen per campaign should set this.
-  isRollAuthority = false,
-}) {
+export default function DiceTray({ campaignId, currentUserId = null, animateRemote = false }) {
   const containerRef = useRef(null);
   const boxRef = useRef(null);
   const readyRef = useRef(false);
@@ -64,14 +55,6 @@ export default function DiceTray({
   const groupTimerRef = useRef(null);
   const specialTimerRef = useRef(null);
   const watchdogsRef = useRef(new Map()); // rollId -> timeout
-  // Rolls this screen resolved itself, so the completed doc echoing back
-  // doesn't animate them a second time.
-  const resolvedByMeRef = useRef(new Set());
-  // Numbered faces only where they can be truthful: this screen's dice decide
-  // the result, so what they show is what was rolled. Everywhere else the
-  // dice are a re-simulation that cannot agree with the canonical numbers, so
-  // they wear runes instead of lying with digits.
-  const themeRef = useRef(isRollAuthority ? THEME_NUMBERED : THEME_RUNES);
   // A special overlay is a full-screen takeover; two crits landing together
   // would fight over it, so the first one holds the slot.
   const specialBusyRef = useRef(false);
@@ -159,9 +142,8 @@ export default function DiceTray({
   }, []);
 
   // Mark a roll settled whether or not the engine came back, so the group
-  // timer can retire it. `resolved` replaces the stored doc when the dice
-  // have just decided its numbers.
-  const settleRoll = useCallback((rollId, results, resolved = null) => {
+  // timer can retire it.
+  const settleRoll = useCallback((rollId, results) => {
     const watchdog = watchdogsRef.current.get(rollId);
     if (watchdog) {
       clearTimeout(watchdog);
@@ -171,7 +153,7 @@ export default function DiceTray({
     if (!entriesRef.current.some(e => e.roll.id === rollId)) return;
     commitEntries(entriesRef.current.map(e => (
       e.roll.id === rollId
-        ? { ...e, roll: resolved || e.roll, results, settled: true }
+        ? { ...e, results, settled: true }
         : e
     )));
     armGroupTimer();
@@ -186,23 +168,6 @@ export default function DiceTray({
     if (entriesRef.current.some(e => e.roll.id === roll.id)) return;
     if (entriesRef.current.length >= MAX_CONCURRENT_ROLLS) {
       pushToFeed(roll);
-      // A roll nobody throws dice for would sit unresolved until the roller's
-      // rescue timer fires twelve seconds later. Settle it now with the local
-      // RNG instead — past six simultaneous rolls the dice aren't legible
-      // anyway, and a fast number beats a correct-looking stall.
-      if (isRollAuthority && roll.pending && roll.rollConfig) {
-        resolvedByMeRef.current.add(roll.id);
-        resolveRoll(campaignId, roll.id, {
-          system: roll.rollConfig.system,
-          config: roll.rollConfig.config,
-          values: [],
-          rollerInfo: { rollerId: roll.rollerId, rollerName: roll.rollerName, rollerColor: roll.rollerColor },
-          shape: roll.dice,
-        }).catch(err => {
-          console.warn('[DiceTray] overflow roll could not be resolved:', err);
-          resolvedByMeRef.current.delete(roll.id);
-        });
-      }
       return;
     }
 
@@ -212,9 +177,7 @@ export default function DiceTray({
     initAudio();
     playRollSound();
 
-    // An unresolved roll has no flags yet — its overlay fires once the dice
-    // have decided, in the authority branch below.
-    if (!roll.pending) showSpecialFor(roll);
+    showSpecialFor(roll);
 
     watchdogsRef.current.set(roll.id, setTimeout(() => {
       console.warn('[DiceTray] roll never settled, retiring it:', roll.id);
@@ -225,39 +188,13 @@ export default function DiceTray({
     try {
       // add(), not roll() — roll() clears the table first and would wipe
       // any dice still tumbling from another player.
-      results = await boxRef.current.add(diceSpec(roll, themeRef.current));
+      results = await boxRef.current.add(diceSpec(roll));
     } catch (err) {
       console.warn('[DiceTray] dice-box.add failed:', err);
     }
 
-    // These dice just decided the roll. Write the faces they landed on back
-    // as the canonical result, so the numbers on screen ARE the numbers.
-    let resolved = roll;
-    if (isRollAuthority && roll.pending && roll.rollConfig) {
-      resolvedByMeRef.current.add(roll.id);
-      try {
-        const patch = await resolveRoll(campaignId, roll.id, {
-          system: roll.rollConfig.system,
-          config: roll.rollConfig.config,
-          values: valuesFromPhysics(results),
-          rollerInfo: {
-            rollerId: roll.rollerId,
-            rollerName: roll.rollerName,
-            rollerColor: roll.rollerColor,
-          },
-          shape: roll.dice,
-        });
-        if (patch) resolved = { ...roll, ...patch, pending: false };
-      } catch (err) {
-        console.warn('[DiceTray] could not resolve roll, leaving it pending:', err);
-        resolvedByMeRef.current.delete(roll.id);
-      }
-      // Special-result overlays read canonical flags, which only exist now.
-      showSpecialFor(resolved);
-    }
-
-    settleRoll(roll.id, results, resolved);
-  }, [pushToFeed, commitEntries, settleRoll, isRollAuthority, campaignId, showSpecialFor]);
+    settleRoll(roll.id, results);
+  }, [pushToFeed, commitEntries, settleRoll, showSpecialFor]);
 
   // Lazy-init dice-box once the portal target is in the DOM.
   useEffect(() => {
@@ -268,7 +205,7 @@ export default function DiceTray({
       scale: 6,
       throwForce: 6,
       gravity: 3,
-      theme: themeRef.current,
+      theme: THEME_RUNES,
       themeColor: '#3b82f6',
       offscreen: false,
     });
@@ -291,28 +228,12 @@ export default function DiceTray({
     const isMine = currentUserId != null && roll.rollerId === currentUserId;
     // Someone else's private roll is not our business on any surface.
     if (roll.isPrivate && !isMine) return;
-
-    if (roll.pending) {
-      // Only the authority throws dice for an unresolved roll. Everyone else
-      // waits for the numbers rather than showing a blank result.
-      if (!isRollAuthority) return;
-      playRoll(roll);
-      return;
-    }
-
-    // The authority already animated and banner'd this one; the completed doc
-    // coming back is its own write echoing to it.
-    if (resolvedByMeRef.current.has(roll.id)) {
-      resolvedByMeRef.current.delete(roll.id);
-      return;
-    }
-
     if (isMine || animateRemote) {
       playRoll(roll);
     } else {
       pushToFeed(roll);
     }
-  }, [playRoll, pushToFeed, currentUserId, animateRemote, isRollAuthority]));
+  }, [playRoll, pushToFeed, currentUserId, animateRemote]));
 
   useEffect(() => {
     const watchdogs = watchdogsRef.current;
@@ -336,8 +257,7 @@ export default function DiceTray({
     setShow(false);
   }, [commitEntries]);
 
-  // A roll whose dice are still deciding has no numbers to show yet.
-  const banners = entries.filter(e => e.settled && !e.roll.pending);
+  const banners = entries.filter(e => e.settled);
 
   return createPortal(
     <>
