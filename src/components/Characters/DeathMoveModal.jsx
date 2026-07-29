@@ -1,19 +1,38 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Skull, Check, Flame, Shield, Dices } from 'lucide-react';
+import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
 import './LevelUpWizard.css';
 
 const d12 = () => Math.floor(Math.random() * 12) + 1;
 
-export default function DeathMoveModal({ character, onApply, onClose }) {
+/**
+ * Choosing a death move used to roll and persist the result inside the option
+ * button's onClick — so clicking "Avoid Death" just to read what it does could
+ * silently cost a scar, with no roll shown and no way back. Selecting a move
+ * now only previews it; nothing is written until the player presses Roll.
+ *
+ * The roll itself goes through the campaign dice system when the caller
+ * provides one, so the table sees it in the tray and the roll log. Both call
+ * sites already hold a campaign and call useDice, so this costs no plumbing.
+ */
+export default function DeathMoveModal({ character, onApply, onClose, onRollHopeDie, onRollDuality }) {
   const level = character.level || 1;
-  const scars = character.scars || 0;
-  const hopeSlotCount = (character.hopeSlots || [false, false, false, false, false, false]).length;
+  const scars = scarCount(character);
+  const hopeSlotCount = normalizeHopeSlots(character.hopeSlots).length;
 
   const [outcome, setOutcome] = useState(null);
+  // Which move is selected but not yet rolled: 'avoid' | 'risk' | null.
+  const [pending, setPending] = useState(null);
+  const [rolling, setRolling] = useState(false);
   // Risk It All splitting state
   const [riskPool, setRiskPool] = useState(null); // { hopeDie, fearDie, result }
   const [hpSplit, setHpSplit] = useState(0);
+
+  const rollHopeDie = async () => (onRollHopeDie ? await onRollHopeDie() : d12());
+  const rollDuality = async () => (
+    onRollDuality ? await onRollDuality() : { hope: d12(), fear: d12() }
+  );
 
   const chooseBlaze = () => {
     setOutcome({
@@ -27,8 +46,18 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
     });
   };
 
-  const chooseAvoid = () => {
-    const roll = d12();
+  const chooseAvoid = async () => {
+    if (rolling) return;
+    setRolling(true);
+    let roll;
+    try {
+      roll = await rollHopeDie();
+    } catch (err) {
+      console.error('[DeathMove] Hope Die roll failed:', err);
+      setRolling(false);
+      return;
+    }
+    setRolling(false);
     const scarred = roll <= level;
     const updates = {};
     const lines = [
@@ -45,12 +74,23 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
       }
     }
     if (Object.keys(updates).length) onApply(updates);
+    setPending(null);
     setOutcome({ title: 'Avoid Death', lines, deadly: scars + (scarred ? 1 : 0) >= hopeSlotCount });
   };
 
-  const chooseRisk = () => {
-    const hopeDie = d12();
-    const fearDie = d12();
+  const chooseRisk = async () => {
+    if (rolling) return;
+    setRolling(true);
+    let hopeDie, fearDie;
+    try {
+      ({ hope: hopeDie, fear: fearDie } = await rollDuality());
+    } catch (err) {
+      console.error('[DeathMove] Duality roll failed:', err);
+      setRolling(false);
+      return;
+    }
+    setRolling(false);
+    setPending(null);
     if (hopeDie === fearDie) {
       // Critical success — clear all HP and Stress
       const hp = (character.hpSlots || []).map(() => true);
@@ -118,8 +158,10 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
             </div>
           </button>
         </div>
+        {/* Selecting only previews — the roll on the next screen is what
+            commits anything. */}
         <div className="luw-option">
-          <button className="luw-option-btn" onClick={chooseAvoid}>
+          <button className="luw-option-btn" onClick={() => setPending('avoid')}>
             <div className="luw-option-header">
               <span className="luw-option-label"><Shield size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Avoid Death</span>
             </div>
@@ -130,7 +172,7 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
           </button>
         </div>
         <div className="luw-option">
-          <button className="luw-option-btn" onClick={chooseRisk}>
+          <button className="luw-option-btn" onClick={() => setPending('risk')}>
             <div className="luw-option-header">
               <span className="luw-option-label"><Dices size={14} style={{ verticalAlign: '-2px', marginRight: 6 }} />Risk It All</span>
             </div>
@@ -143,6 +185,28 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
       </div>
     </div>
   );
+
+  // The gate. Nothing has been written to the character at this point, and
+  // backing out here leaves them exactly as they were.
+  const renderPending = () => {
+    const isAvoid = pending === 'avoid';
+    return (
+      <div className="luw-step-content">
+        <h3 className="luw-step-title">
+          {isAvoid ? <Shield size={16} style={{ verticalAlign: '-3px', marginRight: 8 }} /> : <Dices size={16} style={{ verticalAlign: '-3px', marginRight: 8 }} />}
+          {isAvoid ? 'Avoid Death' : 'Risk It All'}
+        </h3>
+        <p className="luw-step-desc">
+          {isAvoid
+            ? `Drop unconscious and let the situation worsen. Roll your Hope Die: on ${level} or under (your level) you gain a scar, permanently crossing out a Hope slot.`
+            : 'Roll your Duality Dice. Hope higher: you stay up and clear that many HP/Stress. Fear higher: your character dies. Doubles: clear ALL HP and Stress.'}
+        </p>
+        <div className="luw-hint">
+          Nothing has changed on your character yet — press Roll to find out.
+        </div>
+      </div>
+    );
+  };
 
   const renderRiskSplit = () => {
     const { hopeDie, fearDie } = riskPool;
@@ -198,7 +262,7 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
         </div>
 
         <div className="luw-body">
-          {outcome ? renderOutcome() : riskPool ? renderRiskSplit() : renderMoves()}
+          {outcome ? renderOutcome() : riskPool ? renderRiskSplit() : pending ? renderPending() : renderMoves()}
         </div>
 
         <div className="luw-footer">
@@ -211,6 +275,17 @@ export default function DeathMoveModal({ character, onApply, onClose }) {
             <>
               <span />
               <button className="luw-btn luw-btn-primary" onClick={applyRiskSplit}><Check size={16} /> Apply</button>
+            </>
+          ) : pending ? (
+            <>
+              <button className="luw-btn luw-btn-secondary" onClick={() => setPending(null)} disabled={rolling}>Back</button>
+              <button
+                className="luw-btn luw-btn-primary"
+                onClick={pending === 'avoid' ? chooseAvoid : chooseRisk}
+                disabled={rolling}
+              >
+                <Dices size={16} /> {rolling ? 'Rolling…' : (pending === 'avoid' ? 'Roll Hope Die' : 'Roll Duality Dice')}
+              </button>
             </>
           ) : (
             <>

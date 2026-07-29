@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sun, Moon, Check, Flame } from 'lucide-react';
 import { getTierForLevel } from '../../../data/systems/daggerheart';
+import { scarCount } from '../../../utils/daggerheartHope';
 
 const d4 = () => Math.floor(Math.random() * 4) + 1;
 
@@ -26,7 +27,7 @@ export default function PartyRestPanel({ characters = [], updateCharacter, fearC
       const stress = [...(c.stressSlots || [false, false, false, false, false, false])];
       const armor = [...(c.armorSlots || [false, false, false, false, false, false])];
       const hope = [...(c.hopeSlots || [false, false, false, false, false, false])];
-      const scars = c.scars || 0;
+      const scars = scarCount(c);
       const parts = [];
 
       const clearHP = (n) => { let k = 0; for (let i = 0; i < hp.length && k < n; i++) if (!hp[i]) { hp[i] = true; k++; } return k; };

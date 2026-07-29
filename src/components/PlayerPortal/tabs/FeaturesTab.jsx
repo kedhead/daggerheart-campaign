@@ -1,6 +1,7 @@
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../../data/systems/daggerheart';
 import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../../data/sources';
 import TransformationPanel from '../../Characters/TransformationPanel';
+import { scarCount } from '../../../utils/daggerheartHope';
 
 function FeatureCard({ tag, name, description, accentColor, action }) {
   return (
@@ -69,7 +70,7 @@ export default function FeaturesTab({ character, updateCharacter, campaign }) {
               // active on the character (Rogue's Dodge → +2 Evasion), end
               // manually or on rest.
               const hopeSlots = character.hopeSlots || [];
-              const scars = character.scars || 0;
+              const scars = scarCount(character);
               const usable = hopeSlots.slice(0, Math.max(0, hopeSlots.length - scars));
               const filled = usable.filter(Boolean).length;
               const active = !!character.hopeFeatureActive;

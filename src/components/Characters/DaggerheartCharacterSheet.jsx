@@ -6,6 +6,7 @@ import { getCardByName } from '../../data/daggerheartDomainCards';
 import { splitCardFeatures } from '../../utils/domainCardText';
 import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
+import { scarCount, normalizeHopeSlots, usableHopeFilled } from '../../utils/daggerheartHope';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useDice } from '../../dice';
@@ -92,6 +93,21 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const { roll, rollDamage } = useDice(campaign?.id);
 
+  // Death-move rolls go through the shared roller so the table sees them in
+  // the dice tray and the roll log. Falls back to a local die if there's no
+  // campaign to publish to, so the modal still works.
+  const localD12 = () => Math.floor(Math.random() * 12) + 1;
+  const rollDeathHopeDie = async () => {
+    const doc = await rollDamage({ label: 'Death Move — Hope Die', dieType: 12, quantity: 1 });
+    return doc?.dice?.[0]?.value ?? localD12();
+  };
+  const rollDeathDuality = async () => {
+    const doc = await roll({ label: 'Death Move — Risk It All' });
+    const hope = doc?.dice?.find(d => d.groupId === 'hope')?.value;
+    const fear = doc?.dice?.find(d => d.groupId === 'fear')?.value;
+    return { hope: hope ?? localD12(), fear: fear ?? localD12() };
+  };
+
   // Translate a canonical roll document into the legacy fields the inline
   // overlay JSX consumes. Single source of truth is still the doc; this is
   // just a view-shape adapter.
@@ -134,7 +150,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const hpSlots = localHp || character.hpSlots || DEFAULT_HP;
   const stressSlots = localStress || character.stressSlots || DEFAULT_STRESS;
   const rawArmorSlots = localArmor || character.armorSlots || DEFAULT_ARMOR_SLOTS;
-  const hopeSlots = localHope || character.hopeSlots || DEFAULT_HOPE_SLOTS;
+  // Normalized so a track shortened by the old portal scar bug displays whole.
+  const hopeSlots = normalizeHopeSlots(localHope || character.hopeSlots || DEFAULT_HOPE_SLOTS);
   const slayerDice = localSlayerDice ?? character.slayerDice ?? 0;
   const traits = { ...DEFAULT_TRAITS, ...character.traits };
 
@@ -158,7 +175,21 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   // (no refund); a rest also ends it.
   const HOPE_FEATURE_COST = 3;
   const hopeFeatureActive = !!character.hopeFeatureActive;
-  const usableHopeCount = hopeSlots.slice(0, Math.max(0, hopeSlots.length - (character.scars || 0))).filter(Boolean).length;
+  const usableHopeCount = usableHopeFilled(character, hopeSlots);
+
+  // Scars are permanent by the rules, but healable through downtime or a quest
+  // reward — and mistakes happen. Clicking a crossed-out slot gives it back.
+  const handleRemoveScar = () => {
+    const current = scarCount(character);
+    if (!canEdit || !updateCharacter || current <= 0) return;
+    if (!confirm(`Remove one scar from ${character.name || 'this character'}? This restores a Hope slot.`)) return;
+    updateCharacter(character.id, {
+      scars: Math.max(0, current - 1),
+      // Repair the track too, in case it was shortened by the old portal bug.
+      hopeSlots: normalizeHopeSlots(character.hopeSlots),
+    });
+  };
+
   const toggleHopeFeature = () => {
     if (!canEdit || !updateCharacter) return;
     if (hopeFeatureActive) {
@@ -294,7 +325,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const hpFilledCount = hpSlots.filter(Boolean).length;
   const stressFilledCount = stressSlots.filter(Boolean).length;
-  const scars = character.scars || 0;
+  const scars = scarCount(character);
   const atDeathsDoor = hpFilledCount === 0;
 
   const handleGeneratePortrait = async () => {
@@ -487,7 +518,9 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         <div className="dh-sidebar-vital-group">
           <div className="dh-sidebar-vital-header">
             <span className="dh-sidebar-vital-label">Hope{scars > 0 ? ` · ${scars} scar${scars > 1 ? 's' : ''}` : ''}</span>
-            <span className="dh-sidebar-vital-count">{hopeSlots.filter(Boolean).length}/{hopeSlots.length - scars}</span>
+            {/* Numerator excludes scarred slots, or a scarred character with a
+                full track reads "6/5". */}
+            <span className="dh-sidebar-vital-count">{usableHopeCount}/{hopeSlots.length - scars}</span>
           </div>
           <div className="dh-sidebar-slots">
             {hopeSlots.map((filled, i) => {
@@ -496,9 +529,11 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                 <button
                   key={i}
                   className={`dh-slot dh-slot-hope ${filled && !scarred ? 'filled' : ''} ${scarred ? 'scarred' : ''}`}
-                  title={scarred ? 'Scarred — this Hope slot is permanently crossed out' : undefined}
-                  onClick={() => handleSlotToggle('hopeSlots', i)}
-                  disabled={!canEdit || scarred}
+                  title={scarred
+                    ? (canEdit ? 'Scarred — click to heal this scar and restore the slot' : 'Scarred — this Hope slot is permanently crossed out')
+                    : undefined}
+                  onClick={() => (scarred ? handleRemoveScar() : handleSlotToggle('hopeSlots', i))}
+                  disabled={!canEdit}
                 />
               );
             })}
@@ -1495,6 +1530,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         <DeathMoveModal
           character={character}
           onApply={(updates) => updateCharacter && updateCharacter(character.id, updates)}
+          onRollHopeDie={rollDeathHopeDie}
+          onRollDuality={rollDeathDuality}
           onClose={() => setShowDeathMove(false)}
         />
       )}

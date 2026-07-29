@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Sun, Moon, Check, Dices } from 'lucide-react';
 import { getTierForLevel } from '../../data/systems/daggerheart';
+import { scarCount } from '../../utils/daggerheartHope';
 import './LevelUpWizard.css';
 
 const d4 = () => Math.floor(Math.random() * 4) + 1;
@@ -24,7 +25,7 @@ const LONG_MOVES = [
 export default function RestModal({ character, onApply, onClose }) {
   const level = character.level || 1;
   const tier = getTierForLevel(level);
-  const scars = character.scars || 0;
+  const scars = scarCount(character);
 
   const [restType, setRestType] = useState(null); // 'short' | 'long'
   const [picks, setPicks] = useState([]); // up to 2 move ids (repeats allowed)

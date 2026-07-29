@@ -22,6 +22,7 @@ import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/co
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { useBattleMapStore } from '../src/stores/battleMapStore.js';
 import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from '../src/dice/diceSpec.js';
+import { usableHopeMax, usableHopeFilled, normalizeHopeSlots, isScarredSlot } from '../src/utils/daggerheartHope.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
@@ -714,6 +715,72 @@ section('Dice tray (concurrent rolls)');
     `concurrency cap is a sane table size (got ${MAX_CONCURRENT_ROLLS})`);
 }
 
+
+section('Hope & scars');
+{
+  const full = [false, false, false, false, false, false];
+
+  // Basic scar arithmetic.
+  {
+    assert(usableHopeMax({ scars: 0 }, full) === 6, 'no scars leaves all six Hope slots usable');
+    assert(usableHopeMax({ scars: 2 }, full) === 4, 'two scars cross out two slots');
+    assert(usableHopeMax({}, full) === 6, 'a character with no scars field is treated as unscarred');
+    assert(usableHopeMax({ scars: 99 }, full) === 0, 'more scars than slots floors at zero, never negative');
+  }
+
+  // The DM sheet used to render the numerator over ALL filled slots while the
+  // denominator subtracted scars, so a full track with one scar read "6/5".
+  {
+    const allHeld = [true, true, true, true, true, true];
+    const c = { scars: 1 };
+    assert(usableHopeFilled(c, allHeld) === 5 && usableHopeMax(c, allHeld) === 5,
+      `a fully-held track with one scar reads 5/5, not 6/5 (got ${usableHopeFilled(c, allHeld)}/${usableHopeMax(c, allHeld)})`);
+  }
+
+  // Scarred slots are the trailing ones, matching how the sheet draws them.
+  {
+    const held = [true, true, false, false, false, true];
+    assert(usableHopeFilled({ scars: 1 }, held) === 2,
+      'Hope sitting in a scarred slot does not count as usable');
+    assert(isScarredSlot(5, { scars: 1 }, held) && !isScarredSlot(4, { scars: 1 }, held),
+      'the last slot is the scarred one');
+  }
+
+  // THE REGRESSION: the portal passed the scar-reduced track to the persist
+  // path, so every Hope tap saved a shorter array and a scarred character's
+  // maximum Hope ratcheted down a slot at a time. Simulate that loop.
+  {
+    const toBoolArray = (filled, max) => Array.from({ length: max }, (_, i) => i < filled);
+    const scars = 1;
+    let stored = [...full];
+    for (let tap = 0; tap < 5; tap++) {
+      const trueMax = normalizeHopeSlots(stored).length;      // what must be persisted
+      const displayMax = Math.max(0, trueMax - scars);         // what the UI shows
+      const filled = Math.min(1, displayMax);
+      stored = toBoolArray(filled, trueMax);                   // the fixed behaviour
+    }
+    assert(stored.length === 6,
+      `five Hope taps on a scarred character leave the track six long (got ${stored.length})`);
+  }
+
+  // Repairing characters already damaged by that bug.
+  {
+    assert(normalizeHopeSlots([true, false, true, false]).length === 6,
+      'a track shortened to four is repaired back to six');
+    assert(normalizeHopeSlots([true, false, true, false]).slice(0, 4).join() === 'true,false,true,false',
+      'repairing preserves the Hope that was already held');
+    assert(normalizeHopeSlots(undefined).length === 6, 'a missing track becomes a full empty one');
+    assert(normalizeHopeSlots([]).length === 6, 'an empty track becomes a full empty one');
+  }
+
+  // Removing a scar must give the slot straight back — max Hope is derived,
+  // never stored, which is what makes removal possible at all.
+  {
+    const before = usableHopeMax({ scars: 1 }, full);
+    const after = usableHopeMax({ scars: 0 }, full);
+    assert(before === 5 && after === 6, `removing a scar restores a slot (${before} -> ${after})`);
+  }
+}
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);
 process.exit(failures === 0 ? 0 : 1);

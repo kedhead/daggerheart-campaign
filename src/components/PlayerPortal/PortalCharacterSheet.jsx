@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { X, ChevronLeft, Moon, ArrowUp, Skull, Palette } from 'lucide-react';
+import { X, ChevronLeft, Moon, ArrowUp, Skull, Palette, Heart } from 'lucide-react';
 import { useDice, DiceTray } from '../../dice';
 import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor, DUALITY_SETS, getDualitySet, setDualitySet } from '../../dice/playerColor';
 import PortalSlotTracker from './PortalSlotTracker';
@@ -9,6 +9,7 @@ import StatsTab from './tabs/StatsTab';
 import InventoryTab from './tabs/InventoryTab';
 import FeaturesTab from './tabs/FeaturesTab';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
+import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
 import RestModal from '../Characters/RestModal';
 import DeathMoveModal from '../Characters/DeathMoveModal';
 import LevelUpWizard from '../Characters/LevelUpWizard';
@@ -45,12 +46,14 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   const hpMax = (character.hpSlots || []).length || 6;
   const atDeathsDoor = hpMax > 0 && hpMarked >= hpMax;
   const applyUpdates = (updates) => updateCharacter && updateCharacter(character.id, updates);
-  const scars = character.scars || 0;
+  const scars = scarCount(character);
 
   // Vital track state: { filled, max }
   const [hp,     setHp]     = useState(() => toTrack(character.hpSlots,     6));
   const [stress, setStress] = useState(() => toTrack(character.stressSlots, 6));
-  const [hope,   setHope]   = useState(() => toTrack(character.hopeSlots,   6));
+  // Normalized so a character whose track was shortened by the old scar bug is
+  // repaired on read, and written back whole on the next toggle.
+  const [hope,   setHope]   = useState(() => toTrack(normalizeHopeSlots(character.hopeSlots), 6));
 
   // Resolve equipped items and compute the true armor score (applying Protective /
   // Barrier / Double Duty feature bonuses) BEFORE the armor useState so the lazy
@@ -74,24 +77,56 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   useEffect(() => {
     setHp(toTrack(character.hpSlots, 6));
     setStress(toTrack(character.stressSlots, 6));
-    setHope(toTrack(character.hopeSlots, 6));
+    setHope(toTrack(normalizeHopeSlots(character.hopeSlots), 6));
     setArmor(toTrack(character.armorSlots, computedArmorScore || 0));
   }, [character.hpSlots, character.stressSlots, character.hopeSlots, character.armorSlots, computedArmorScore]);
 
   const campaignId = campaign?.id;
   const { roll, rollDamage } = useDice(campaignId);
 
-  const handleVitalToggle = (field, getter, setter) => (i, wasOn) => {
+  // `getter` is what the UI shows, which for Hope is the scar-reduced track.
+  // `persistMax` is the real stored length — passing the displayed max here
+  // used to shrink the saved Hope array by one slot on every single tap,
+  // ratcheting a scarred character's maximum Hope down to nothing.
+  const handleVitalToggle = (field, getter, setter, persistMax = null) => (i, wasOn) => {
     if (!updateCharacter) return;
     const newFilled = Math.max(0, Math.min(getter.max, wasOn ? i : i + 1));
     setter({ ...getter, filled: newFilled });
-    updateCharacter(character.id, { [field]: toBoolArray(newFilled, getter.max) });
+    updateCharacter(character.id, { [field]: toBoolArray(newFilled, persistMax ?? getter.max) });
+  };
+
+  // Death-move rolls go through the shared roller so the table sees them in
+  // the dice tray and the roll log. Falls back to a local die if there's no
+  // campaign to publish to, so the modal still works.
+  const localD12 = () => Math.floor(Math.random() * 12) + 1;
+  const rollDeathHopeDie = async () => {
+    const doc = await rollDamage({ label: 'Death Move — Hope Die', dieType: 12, quantity: 1 });
+    return doc?.dice?.[0]?.value ?? localD12();
+  };
+  const rollDeathDuality = async () => {
+    const doc = await roll({ label: 'Death Move — Risk It All' });
+    const hope = doc?.dice?.find(d => d.groupId === 'hope')?.value;
+    const fear = doc?.dice?.find(d => d.groupId === 'fear')?.value;
+    return { hope: hope ?? localD12(), fear: fear ?? localD12() };
+  };
+
+  // Scars are permanent by the rules, but they can be healed through downtime
+  // or a quest reward — and mistakes happen. Confirm, then give the slot back.
+  const handleRemoveScar = () => {
+    if (!updateCharacter || scars <= 0) return;
+    if (!confirm(`Remove one scar from ${character.name || 'this character'}? This restores a Hope slot.`)) return;
+    updateCharacter(character.id, {
+      scars: Math.max(0, scars - 1),
+      // Repair the track at the same time, in case it was shortened before.
+      hopeSlots: normalizeHopeSlots(character.hopeSlots),
+    });
   };
 
   const armorName = character.armorName || (character.armorItems?.[0]?.name) || '';
 
   // Scars permanently cross out Hope slots — reduce the usable Hope max to match
   // the DM sheet so a scarred character shows the right number in the portal.
+  // Display only: the stored track stays hope.max long (see handleVitalToggle).
   const hopeAdjusted = { filled: Math.min(hope.filled, hope.max - scars), max: Math.max(0, hope.max - scars) };
 
   const tabProps = { character, roll, rollDamage, campaignId, campaign, rollBonus, setRollBonus, items, updateCharacter, stashFromCharacter };
@@ -255,8 +290,28 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
               border: '1px solid rgba(255,255,255,0.05)', padding: 14,
               display: 'flex', flexDirection: 'column', gap: 14,
             }}>
-              <PortalSlotTracker label={scars > 0 ? `Hope · ${scars} scar${scars > 1 ? 's' : ''}` : 'Hope'} {...hopeAdjusted} color="gold"
-                onToggle={handleVitalToggle('hopeSlots', hopeAdjusted, setHope)} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <PortalSlotTracker label={scars > 0 ? `Hope · ${scars} scar${scars > 1 ? 's' : ''}` : 'Hope'} {...hopeAdjusted} color="gold"
+                    onToggle={handleVitalToggle('hopeSlots', hopeAdjusted, setHope, hope.max)} />
+                </div>
+                {scars > 0 && updateCharacter && (
+                  <button
+                    onClick={handleRemoveScar}
+                    title="Remove a scar (restores a Hope slot)"
+                    aria-label="Remove a scar"
+                    style={{
+                      flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '6px 10px', borderRadius: 999,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      color: '#fbbf24', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    <Heart size={12} /> Heal scar
+                  </button>
+                )}
+              </div>
               <PortalSlotTracker label="Hit Points" {...hp} color="hp"
                 onToggle={handleVitalToggle('hpSlots', hp, setHp)} />
               <PortalSlotTracker label="Stress" {...stress} color="stress"
@@ -304,7 +359,13 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
         <RestModal character={character} onApply={applyUpdates} onClose={() => setShowRest(false)} />
       )}
       {showDeath && (
-        <DeathMoveModal character={character} onApply={applyUpdates} onClose={() => setShowDeath(false)} />
+        <DeathMoveModal
+          character={character}
+          onApply={applyUpdates}
+          onRollHopeDie={rollDeathHopeDie}
+          onRollDuality={rollDeathDuality}
+          onClose={() => setShowDeath(false)}
+        />
       )}
       {showLevelUp && (
         <LevelUpWizard

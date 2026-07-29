@@ -30,6 +30,9 @@ const DEFAULT_CHARACTER = {
   evasion: 10,
   armor: 0,
   hopeSlots: [...DEFAULT_HOPE_SLOTS],
+  // Crossed-out Hope slots from death moves. Explicit so it stops being an
+  // implicit field that only appears once a character has been scarred.
+  scars: 0,
   primaryDomain: '',
   secondaryDomain: '',
   domainNotes: '',

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
 import { getCharacterOwnerId } from '../../utils/characterOwnership';
+import { usableHopeFilled, usableHopeMax } from '../../utils/daggerheartHope';
 import PortalCharacterSheet from './PortalCharacterSheet';
 import './PlayerPortal.css';
 
@@ -123,7 +124,9 @@ function CharacterSelectScreen({ characters, playerName, campaign, onSelect, onE
 
               {/* Mini vital strip */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 16, position: 'relative' }}>
-                <MiniVital label="Hope"   filled={toFilled(primary.hopeSlots)}   max={toMax(primary.hopeSlots)}   color="gold" />
+                {/* Scars cross out Hope slots — the roster used to ignore them
+                    and show the unreduced maximum. */}
+                <MiniVital label="Hope"   filled={usableHopeFilled(primary)}     max={usableHopeMax(primary)}     color="gold" />
                 <MiniVital label="HP"     filled={toFilled(primary.hpSlots)}     max={toMax(primary.hpSlots)}     color="hp" />
                 <MiniVital label="Stress" filled={toFilled(primary.stressSlots)} max={toMax(primary.stressSlots)} color="stress" />
               </div>
