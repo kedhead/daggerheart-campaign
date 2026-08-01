@@ -23,6 +23,13 @@ import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { useBattleMapStore } from '../src/stores/battleMapStore.js';
 import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from '../src/dice/diceSpec.js';
 import { usableHopeMax, usableHopeFilled, normalizeHopeSlots, isScarredSlot } from '../src/utils/daggerheartHope.js';
+import {
+  findConnectedComponent,
+  labelVisibleFor,
+  worldSizeForScreenPx,
+  screenSizeForWorld,
+  MIN_TAP_RADIUS_PX
+} from '../src/utils/graphCalculations.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
@@ -779,6 +786,71 @@ section('Hope & scars');
     const before = usableHopeMax({ scars: 1 }, full);
     const after = usableHopeMax({ scars: 0 }, full);
     assert(before === 5 && after === 6, `removing a scar restores a slot (${before} -> ${after})`);
+  }
+}
+
+// ── Constellation on small screens ──
+section('Relationship graph — scale invariance & focus');
+{
+  // Everything inside the graph's <svg> lives in world units, so what the eye
+  // gets is `world x zoom`. fitToView settles around 0.29 on a 390px phone and
+  // clamps at a 0.15 floor for a big campaign — that turned a nominal 44px tap
+  // target into 6.6px. The counter-scale has to hold across the whole range.
+  const ZOOMS = [0.15, 0.29, 0.5, 1, 2];
+  {
+    const worst = ZOOMS.map(z => screenSizeForWorld(worldSizeForScreenPx(MIN_TAP_RADIUS_PX, z), z));
+    assert(worst.every(px => Math.abs(px - MIN_TAP_RADIUS_PX) < 1e-9),
+      `tap radius stays ${MIN_TAP_RADIUS_PX}px on screen at every zoom (${worst.map(v => v.toFixed(1)).join(', ')})`);
+    assert(worst.every(px => px * 2 >= 44), 'that is a 44px diameter target, the accessible minimum');
+  }
+
+  // The render takes max(r * 2, counterScaled), so a big node keeps its own
+  // hit area and only small ones get inflated.
+  {
+    const hit = (r, z) => Math.max(r * 2, worldSizeForScreenPx(MIN_TAP_RADIUS_PX, z));
+    assert(hit(4, 0.15) === worldSizeForScreenPx(MIN_TAP_RADIUS_PX, 0.15),
+      'a small node zoomed way out gets the counter-scaled hit area');
+    assert(hit(400, 1) === 800, 'a large node keeps its own, larger hit area');
+  }
+
+  // Degenerate zooms must not produce NaN/Infinity radii — a bad viewBox blanks
+  // the whole canvas.
+  {
+    [0, -1, NaN, undefined, null].forEach(bad => {
+      const v = worldSizeForScreenPx(MIN_TAP_RADIUS_PX, bad);
+      assert(Number.isFinite(v) && v > 0, `zoom ${String(bad)} still yields a finite radius (${v})`);
+    });
+  }
+
+  // Counter-scaled labels stay readable but collide once zoomed out, so they
+  // thin by importance rather than all-or-nothing.
+  {
+    const hub = { importance: 9 };
+    const mid = { importance: 4 };
+    const leaf = { importance: 1 };
+    assert(labelVisibleFor(leaf, 1) && labelVisibleFor(hub, 1), 'zoomed in, everything is labelled');
+    assert(labelVisibleFor(mid, 0.5) && !labelVisibleFor(leaf, 0.5), 'mid zoom keeps connected nodes only');
+    assert(labelVisibleFor(hub, 0.2) && !labelVisibleFor(mid, 0.2), 'zoomed out, only the hubs keep names');
+    assert(!labelVisibleFor(undefined, 0.2), 'a missing node never claims a label');
+  }
+
+  // Tap-to-focus feeds findConnectedComponent, which was imported and wired but
+  // never actually reachable — nothing ever called setFocusNode with an id.
+  {
+    const nodes = ['a', 'b', 'c', 'd', 'e'].map(id => ({ id, name: id }));
+    const edges = [
+      { id: 'ab', source: 'a', target: 'b' },
+      { id: 'bc', source: 'b', target: 'c' },
+      { id: 'de', source: 'd', target: 'e' },   // a separate island
+    ];
+    const comp = findConnectedComponent('a', nodes, edges);
+    assert(comp.nodes.map(n => n.id).sort().join('') === 'abc',
+      'focusing a node returns its whole component, not just direct neighbours');
+    assert(comp.edges.length === 2, 'and only the edges inside that component');
+    assert(!comp.nodes.some(n => n.id === 'd'), 'the unrelated island is excluded');
+
+    const lone = findConnectedComponent('z', [{ id: 'z', name: 'z' }], []);
+    assert(lone.nodes.length === 1 && lone.edges.length === 0, 'an isolated node focuses to just itself');
   }
 }
 

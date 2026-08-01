@@ -130,6 +130,43 @@ export function findConnectedComponent(nodeId, nodes, edges) {
  * @param {number} iterations - Number of iterations to run
  * @returns {Array} Nodes with updated positions
  */
+// ── Screen-space sizing ──────────────────────────────────────────────────
+// Nodes and labels live in world units inside the SVG viewBox, so what the
+// eye actually gets is `world × zoom`. fitToView settles around 0.29 on a
+// 390px phone and clamps at a 0.15 floor for a large campaign, which turned a
+// nominal 44px tap target into 7-13px and a 10px label into 1.5-3px. These
+// helpers convert a desired SCREEN size into the world size to render at.
+
+/** Minimum comfortable touch target radius in CSS px (44px diameter). */
+export const MIN_TAP_RADIUS_PX = 22;
+// Label sizes are counter-scaled in the stylesheet instead, via
+// `calc(10px * var(--label-scale))`, so hover can still enlarge them.
+
+/** World-space radius that renders at `screenPx` regardless of zoom. */
+export function worldSizeForScreenPx(screenPx, zoom) {
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  return screenPx / z;
+}
+
+/** What a world-space size actually measures on screen at this zoom. */
+export function screenSizeForWorld(worldSize, zoom) {
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  return worldSize * z;
+}
+
+/**
+ * Whether a node keeps its label at this zoom.
+ *
+ * Counter-scaled labels stay readable but start colliding once zoomed out, so
+ * thin them by importance. The old rule kept every node with degree ≥ 3 —
+ * exactly the hubs, exactly where labels pile up worst.
+ */
+export function labelVisibleFor(node, zoom, { hubThreshold = 6 } = {}) {
+  if (zoom >= 0.7) return true;
+  if (zoom >= 0.35) return (node?.importance || 0) >= 3;
+  return (node?.importance || 0) >= hubThreshold;
+}
+
 export function calculateForceDirectedLayout(nodes, edges, width, height, iterations = 50) {
   const k = Math.sqrt((width * height) / nodes.length); // Ideal distance
   const repulsion = k * k;

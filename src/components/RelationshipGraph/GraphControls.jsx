@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Filter, X, ZoomIn, ZoomOut, Maximize2, Download, ChevronUp, ChevronDown, Shuffle } from 'lucide-react';
+import { Eye, EyeOff, Filter, X, ZoomIn, ZoomOut, Maximize2, Minimize2, Crosshair, Download, ChevronUp, ChevronDown, Shuffle } from 'lucide-react';
 import { getTypeLabel } from '../../utils/graphCalculations';
 import './RelationshipGraph.css';
 
@@ -15,7 +15,9 @@ export default function GraphControls({
   onZoomOut,
   onReset,
   onSpread,
-  onExport
+  onExport,
+  expanded,
+  onToggleExpand
 }) {
   const [showFilters, setShowFilters] = useState(false);
   const allTypes = ['npc', 'location', 'lore', 'session', 'timelineEvent', 'encounter', 'note'];
@@ -47,20 +49,20 @@ export default function GraphControls({
         <div className="graph-bar-actions">
           {/* View Controls */}
           <div className="control-group">
-            <button className="btn-icon-bar" onClick={onExport} title="Export Map">
+            <button className="btn-icon-bar" onClick={onExport} title="Export Map" aria-label="Export map as SVG">
               <Download size={18} />
             </button>
             <div className="divider" />
-            <button className="btn-icon-bar" onClick={onZoomOut} title="Zoom Out">
+            <button className="btn-icon-bar" onClick={onZoomOut} title="Zoom Out" aria-label="Zoom out">
               <ZoomOut size={18} />
             </button>
-            <button className="btn-icon-bar" onClick={onReset} title="Reset View">
-              <Maximize2 size={18} />
+            <button className="btn-icon-bar" onClick={onReset} title="Fit To Screen" aria-label="Fit the whole map on screen">
+              <Crosshair size={18} />
             </button>
-            <button className="btn-icon-bar" onClick={onSpread} title="Spread Nodes">
+            <button className="btn-icon-bar" onClick={onSpread} title="Spread Nodes" aria-label="Spread nodes apart">
               <Shuffle size={18} />
             </button>
-            <button className="btn-icon-bar" onClick={onZoomIn} title="Zoom In">
+            <button className="btn-icon-bar" onClick={onZoomIn} title="Zoom In" aria-label="Zoom in">
               <ZoomIn size={18} />
             </button>
           </div>
@@ -73,6 +75,8 @@ export default function GraphControls({
               className={`btn-toggle ${showLabels ? 'active' : ''}`}
               onClick={() => setShowLabels(!showLabels)}
               title="Toggle Labels"
+              aria-pressed={showLabels}
+              aria-label={showLabels ? 'Hide labels' : 'Show labels'}
             >
               {showLabels ? <Eye size={18} /> : <EyeOff size={18} />}
               <span className="btn-label">Labels</span>
@@ -82,11 +86,26 @@ export default function GraphControls({
               className={`btn-toggle ${showFilters ? 'active' : ''}`}
               onClick={() => setShowFilters(!showFilters)}
               title="Filter Entities"
+              aria-expanded={showFilters}
+              aria-label="Filter entities"
             >
               <Filter size={18} />
               <span className="btn-label">Filters</span>
               {showFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
+
+            {onToggleExpand && (
+              <button
+                className={`btn-toggle btn-expand ${expanded ? 'active' : ''}`}
+                onClick={onToggleExpand}
+                title={expanded ? 'Exit Full Screen' : 'Full Screen'}
+                aria-pressed={!!expanded}
+                aria-label={expanded ? 'Exit full screen' : 'Open full screen'}
+              >
+                {expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                <span className="btn-label">{expanded ? 'Exit' : 'Expand'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -94,7 +113,7 @@ export default function GraphControls({
         {focusNode && (
           <div className="control-group focus-group">
             <span className="focus-label">Focused View</span>
-            <button className="btn-icon-bar btn-danger" onClick={() => setFocusNode(null)} title="Clear Focus">
+            <button className="btn-icon-bar btn-danger" onClick={() => setFocusNode(null)} title="Clear Focus" aria-label="Clear focus">
               <X size={18} />
             </button>
           </div>

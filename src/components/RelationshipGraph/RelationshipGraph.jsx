@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { Network, ZoomIn, ZoomOut, Maximize2, Download } from 'lucide-react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Network, Sparkles, X } from 'lucide-react';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import GraphControls from './GraphControls';
 import {
@@ -8,8 +9,11 @@ import {
   filterGraphByTypes,
   findConnectedComponent,
   getNodeColor,
-  getTypeLabel
+  getTypeLabel,
+  labelVisibleFor,
+  MIN_TAP_RADIUS_PX
 } from '../../utils/graphCalculations';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import './RelationshipGraph.css';
 
 // The layout runs in a virtual world sized by node count, NOT the container.
@@ -56,20 +60,76 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   const pinchRef = useRef(null);
   const tapRef = useRef(null);
   const displayNodesRef = useRef([]);
+  const displayEdgesRef = useRef([]);
+  const focusNodeRef = useRef(null);
   const needsFitRef = useRef(true);
+
+  const isMobile = useIsMobile();
+  const [expanded, setExpanded] = useState(false);
+
+  // The graph is a `touch-action: none` canvas sized to most of the viewport.
+  // Inline in the Dashboard's scrolling <main> on a phone, it spans the full
+  // column and swallows every vertical swipe, so the whole page stops
+  // scrolling once it comes into view. On mobile it therefore renders as a
+  // preview card until tapped, and the live canvas only exists inside the
+  // full-screen overlay, where owning the gestures is the point.
+  const showCanvas = !isMobile || expanded;
 
   // The canvas only exists once there are nodes (the empty state renders
   // instead) — every container listener must (re)attach when this flips.
-  const hasGraph = !!entities && allNodes.length > 0;
+  const hasGraph = !!entities && allNodes.length > 0 && showCanvas;
 
-  // Re-render on container resize (rotation, keyboard) so the viewBox tracks it
-  const [, setViewportTick] = useState(0);
-  useEffect(() => {
-    if (!hasGraph || !containerRef.current || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(() => setViewportTick(t => t + 1));
-    ro.observe(containerRef.current);
+  // Edge rendering walks every edge twice (gradient defs, then the lines) and
+  // used to `.find()` both endpoints each time — O(E·N) per frame, and the
+  // graph re-renders on every pan and pinch frame. Index once instead.
+  const nodeById = useMemo(() => {
+    const map = new Map();
+    displayNodes.forEach(n => map.set(n.id, n));
+    return map;
+  }, [displayNodes]);
+  const highlightedEdgeSet = useMemo(() => new Set(highlightedEdges), [highlightedEdges]);
+
+  // Measured container size, driving the viewBox. Measured in a LAYOUT effect
+  // so it lands before the browser paints — reading containerRef during render
+  // yields null on the mount pass, which used to paint one frame at a
+  // hardcoded 800x600 and visibly jump on a 390px phone.
+  const [viewportSize, setViewportSize] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    if (!hasGraph) return undefined;
+    const el = containerRef.current;
+    if (!el) return undefined;
+    const measure = () => {
+      const node = containerRef.current;
+      if (!node) return;
+      setViewportSize(prev => {
+        const w = node.offsetWidth || prev.w;
+        const h = node.offsetHeight || prev.h;
+        return prev.w === w && prev.h === h ? prev : { w, h };
+      });
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    // Rotation and the on-screen keyboard both resize us.
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
     return () => ro.disconnect();
   }, [hasGraph]);
+
+  // Opening or closing the overlay hands the canvas a completely different
+  // viewport, so the previous zoom/pan is meaningless — re-fit on the next
+  // measured frame. Also stop the page behind the overlay from scrolling.
+  useEffect(() => {
+    needsFitRef.current = true;
+    if (!expanded) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [expanded]);
 
   // Fit the whole constellation (or the given nodes) on screen
   const fitToView = (nodesArg) => {
@@ -384,6 +444,19 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   // Keep refs in sync with state for use in native event handlers
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { panRef.current = pan; }, [pan]);
+  useEffect(() => { focusNodeRef.current = focusNode; }, [focusNode]);
+  useEffect(() => { displayEdgesRef.current = displayEdges; }, [displayEdges]);
+
+  // Entering or leaving focus changes which nodes are on screen, so re-fit to
+  // whatever is left — on a phone this is what turns "a cloud of specks" into
+  // "this thing and the four things it touches".
+  const prevFocusRef = useRef(null);
+  useEffect(() => {
+    if (prevFocusRef.current !== focusNode) {
+      prevFocusRef.current = focusNode;
+      needsFitRef.current = true;
+    }
+  }, [focusNode]);
 
   // Scroll wheel zoom (native listener for passive: false)
   useEffect(() => {
@@ -425,11 +498,13 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
       needsFitRef.current = false;
       fitToView(displayNodesRef.current);
     }
-  }, [hasGraph, displayNodes]);
+  }, [hasGraph, displayNodes, expanded, viewportSize]);
 
   const handleNodeHover = (node) => {
     if (isDraggingRef.current) return;
-    const connected = displayEdges.filter(e =>
+    // Read through the ref: this is also called from the native pointer
+    // handler, whose closure would otherwise hold a stale edge list.
+    const connected = displayEdgesRef.current.filter(e =>
       e.source === node.id || e.target === node.id
     );
     setHighlightedEdges(connected.map(e => e.id));
@@ -472,7 +547,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         return;
       }
 
-      tapRef.current = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false };
+      tapRef.current = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false, pointerType: e.pointerType };
       const nodeEl = e.target.closest?.('[data-node-id]');
       if (nodeEl) {
         const node = displayNodesRef.current.find(n => n.id === nodeEl.getAttribute('data-node-id'));
@@ -547,13 +622,27 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         const node = draggedNodeRef.current;
         const tap = tapRef.current;
         if (node && tap && !tap.moved && Date.now() - tap.t < 600) {
-          setSelectedEntity({
+          const openEntity = () => setSelectedEntity({
             type: node.type,
             data: node.data,
             name: node.name,
             displayName: node.name,
             subtitle: node.type
           });
+
+          // Touch has no hover, so a tap used to jump straight past the whole
+          // point of a relationship map — seeing what a thing connects to.
+          // First tap lights up the node's links; tapping it again opens it.
+          // A mouse keeps its old behaviour, since hover already reveals links.
+          if (tap.pointerType === 'mouse') {
+            openEntity();
+          } else if (focusNodeRef.current === node.id) {
+            openEntity();
+          } else {
+            handleNodeHover(node);
+            focusNodeRef.current = node.id;
+            setFocusNode(node.id);
+          }
         }
       }
 
@@ -628,7 +717,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
   if (!entities || allNodes.length === 0) {
     return (
-      <div className="relationship-graph-container">
+      <div className="relationship-graph-container is-empty">
         <div className="relationship-graph-empty">
           <Network size={64} style={{ opacity: 0.5, color: '#fbbf24' }} />
           <h3>The Void Awaits</h3>
@@ -765,9 +854,63 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     fitToView(currentNodes);
   };
 
-  return (
-    <div className="relationship-graph-container">
+  // On mobile the live canvas is only mounted inside the overlay, so the
+  // Dashboard shows this instead and keeps scrolling.
+  if (!showCanvas) {
+    const typeCounts = {};
+    displayNodes.forEach(n => { typeCounts[n.type] = (typeCounts[n.type] || 0) + 1; });
+    const topTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).slice(0, 4);
+
+    return (
+      <button
+        type="button"
+        className="relationship-graph-preview"
+        onClick={() => setExpanded(true)}
+      >
+        <span className="preview-glyph" aria-hidden="true">
+          <Network size={30} />
+        </span>
+        <span className="preview-body">
+          <span className="preview-title">The Constellation</span>
+          <span className="preview-meta">
+            {displayNodes.length} {displayNodes.length === 1 ? 'body' : 'bodies'}
+            {' · '}
+            {displayEdges.length} {displayEdges.length === 1 ? 'link' : 'links'}
+          </span>
+          {topTypes.length > 0 && (
+            <span className="preview-types">
+              {topTypes.map(([type, count]) => (
+                <span key={type} className="preview-chip">
+                  <i style={{ background: getNodeColor(type) }} />
+                  {count} {getTypeLabel(type)}
+                </span>
+              ))}
+            </span>
+          )}
+        </span>
+        <span className="preview-cta">
+          <Sparkles size={16} />
+          Tap to explore
+        </span>
+      </button>
+    );
+  }
+
+  const graph = (
+    <div className={`relationship-graph-container${expanded ? ' is-expanded' : ''}`}>
+      {expanded && (
+        <button
+          type="button"
+          className="graph-close-expanded"
+          onClick={() => setExpanded(false)}
+          aria-label="Close the constellation"
+        >
+          <X size={20} />
+        </button>
+      )}
       <GraphControls
+        expanded={expanded}
+        onToggleExpand={() => setExpanded(v => !v)}
         header={
           <div className="graph-header-content">
             <h2>
@@ -798,7 +941,12 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           ref={svgRef}
           width="100%"
           height="100%"
-          viewBox={`${pan.x} ${pan.y} ${(containerRef.current?.offsetWidth || 800) / zoom} ${(containerRef.current?.offsetHeight || 600) / zoom}`}
+          // Everything inside is in world units, so text scales with zoom.
+          // The stylesheet multiplies its font sizes by this so labels keep a
+          // constant SCREEN size — as a CSS var rather than an inline
+          // font-size, so the :hover enlargement still wins.
+          style={{ '--label-scale': 1 / zoom }}
+          viewBox={`${pan.x} ${pan.y} ${Math.max(1, viewportSize.w) / zoom} ${Math.max(1, viewportSize.h) / zoom}`}
         >
           <defs>
             {/* Star glow filter - enhanced bloom for nodes */}
@@ -829,8 +977,8 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
             </filter>
             {/* Per-edge gradients */}
             {displayEdges.map((edge) => {
-              const source = displayNodes.find(n => n.id === edge.source);
-              const target = displayNodes.find(n => n.id === edge.target);
+              const source = nodeById.get(edge.source);
+              const target = nodeById.get(edge.target);
               if (!source || !target) return null;
               const sourceColor = getNodeColor(source.type);
               const targetColor = getNodeColor(target.type);
@@ -852,12 +1000,12 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
           {/* Edges */}
           <g className="edges">
             {displayEdges.map((edge) => {
-              const source = displayNodes.find(n => n.id === edge.source);
-              const target = displayNodes.find(n => n.id === edge.target);
+              const source = nodeById.get(edge.source);
+              const target = nodeById.get(edge.target);
               if (!source || !target) return null;
 
               const strength = edgeStrengthMap.get(edge.id) || 1;
-              const isHighlighted = highlightedEdges.includes(edge.id);
+              const isHighlighted = highlightedEdgeSet.has(edge.id);
               const strokeWidth = Math.min(3, 0.5 + strength * 0.4);
               const opacity = isHighlighted ? 0.9 : (0.15 + (strength * 0.05));
               const gradientUrl = `url(#edge-grad-${edge.id})`;
@@ -872,6 +1020,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     y2={target.y}
                     stroke={isHighlighted ? '#fbbf24' : gradientUrl}
                     strokeWidth={isHighlighted ? strokeWidth * 4 : strokeWidth * 3}
+                    vectorEffect="non-scaling-stroke"
                     opacity={isHighlighted ? 0.4 : opacity * 0.5}
                     filter="url(#edge-glow)"
                     className="edge-glow-line"
@@ -884,6 +1033,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     y2={target.y}
                     stroke={isHighlighted ? '#fbbf24' : gradientUrl}
                     strokeWidth={isHighlighted ? strokeWidth * 1.5 : strokeWidth}
+                    vectorEffect="non-scaling-stroke"
                     opacity={opacity}
                     className="edge-main-line"
                   />
@@ -917,11 +1067,14 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     '--node-color': baseColor
                   }}
                 >
-                  {/* 0. Invisible touch target — keeps taps easy on phones */}
+                  {/* 0. Invisible touch target. In world units, so it shrinks
+                      with zoom — at a phone's fit zoom a flat 22 rendered
+                      ~7-13px across. Counter-scaling keeps it ≥44px on screen
+                      (Apple/Google minimum) whatever the zoom. */}
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={Math.max(r * 2, 22)}
+                    r={Math.max(r * 2, MIN_TAP_RADIUS_PX / zoom)}
                     fill="transparent"
                     pointerEvents="all"
                   />
@@ -958,6 +1111,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                       x2={node.x} y2={node.y + spikeLength}
                       stroke={baseColor}
                       strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
                       opacity="0.5"
                       className="spike-line"
                     />
@@ -967,6 +1121,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                       x2={node.x + spikeLength} y2={node.y}
                       stroke={baseColor}
                       strokeWidth="1"
+                      vectorEffect="non-scaling-stroke"
                       opacity="0.5"
                       className="spike-line"
                     />
@@ -976,6 +1131,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                       x2={node.x + spikeLength * 0.6} y2={node.y + spikeLength * 0.6}
                       stroke={baseColor}
                       strokeWidth="0.5"
+                      vectorEffect="non-scaling-stroke"
                       opacity="0.25"
                       className="spike-line-minor"
                     />
@@ -985,6 +1141,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                       x2={node.x - spikeLength * 0.6} y2={node.y + spikeLength * 0.6}
                       stroke={baseColor}
                       strokeWidth="0.5"
+                      vectorEffect="non-scaling-stroke"
                       opacity="0.25"
                       className="spike-line-minor"
                     />
@@ -1024,14 +1181,16 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     className="star-sparkle"
                   />
 
-                  {/* Labels: at low zoom only important nodes keep a name so the
-                      map doesn't turn into overlapping text; type tags need
-                      more zoom still. */}
-                  {showLabels && (zoom >= 0.7 || (node.importance || 0) >= 3) && (
+                  {/* Labels sit in world units inside the viewBox, so at the
+                      fit zoom a phone settles on (~0.29, or the 0.15 floor for
+                      a big campaign) a 10px label rendered under 3px. Font
+                      sizes counter-scale by 1/zoom to stay constant on screen;
+                      the cull below then keeps them from overlapping. */}
+                  {showLabels && labelVisibleFor(node, zoom) && (
                     <>
                       <text
                         x={node.x}
-                        y={node.y - r - 8}
+                        y={node.y - r - 8 / zoom}
                         textAnchor="middle"
                         className="node-label"
                       >
@@ -1040,7 +1199,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                       {zoom >= 0.7 && (
                         <text
                           x={node.x}
-                          y={node.y - r - 22}
+                          y={node.y - r - 22 / zoom}
                           textAnchor="middle"
                           className="node-type-label"
                         >
@@ -1068,4 +1227,9 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
       )}
     </div>
   );
+
+  // Fixed positioning is enough on its own, but the Dashboard card that hosts
+  // the graph is `overflow-hidden`, so portal out rather than depend on no
+  // ancestor ever growing a transform.
+  return expanded ? createPortal(graph, document.body) : graph;
 }

@@ -381,7 +381,9 @@
   font-family: 'Cinzel', serif;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-size: 10px;
+  /* Counter-scaled by the zoom level so the label keeps a constant size on
+     screen; --label-scale is set on the <svg> as 1/zoom. */
+  font-size: calc(10px * var(--label-scale, 1));
   fill: rgba(226, 232, 240, 0.8);
   text-shadow: 0 0 5px #000;
 }
@@ -389,13 +391,13 @@
 .node:hover .node-label {
   fill: #fbbf24;
   font-weight: 700;
-  font-size: 12px;
+  font-size: calc(12px * var(--label-scale, 1));
   text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
 }
 
 .node-type-label {
   font-family: 'Inter', sans-serif;
-  font-size: 8px;
+  font-size: calc(8px * var(--label-scale, 1));
   fill: rgba(148, 163, 184, 0.6);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -479,8 +481,187 @@
   font-style: italic;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* The Void — empty state. It has no canvas, so it should not reserve a whole
+   viewport of blank space in the Dashboard flow. */
+.relationship-graph-container.is-empty {
+  height: auto;
+  min-height: 240px;
+  border-radius: 14px;
+}
+
+.relationship-graph-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+.relationship-graph-empty h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.25rem;
+  color: #fbbf24;
+  margin: 0;
+}
+
+.relationship-graph-empty p {
+  max-width: 42ch;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: rgba(226, 232, 240, 0.7);
+}
+
+.relationship-graph-empty code {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  padding: 0.05em 0.35em;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+/* ===== Mobile preview card =====
+   Stands in for the canvas in the Dashboard flow so the page keeps scrolling;
+   tapping it opens the full-screen overlay below. */
+.relationship-graph-preview {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1rem;
+  text-align: left;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 14px;
+  background: radial-gradient(circle at 15% 20%, rgba(251, 191, 36, 0.12) 0%, transparent 55%),
+    linear-gradient(135deg, #1a1b26 0%, #0f1016 100%);
+  color: #e2e8f0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.relationship-graph-preview:active {
+  border-color: rgba(251, 191, 36, 0.5);
+}
+
+.preview-glyph {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.preview-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.preview-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  color: #fbbf24;
+}
+
+.preview-meta {
+  font-size: 0.78rem;
+  color: rgba(226, 232, 240, 0.65);
+}
+
+.preview-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.5rem;
+  margin-top: 0.1rem;
+}
+
+.preview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(226, 232, 240, 0.6);
+}
+
+.preview-chip i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.preview-cta {
+  flex-shrink: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+}
+
+/* ===== Full-screen overlay =====
+   `bottom: var(--lr-main-pad)` clears the fixed mobile bottom nav; the var is
+   only defined inside the app's mobile breakpoint, so on desktop this
+   resolves to 0 and the overlay covers the viewport. */
+.relationship-graph-container.is-expanded {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: var(--lr-main-pad, 0px);
+  width: auto;
+  height: auto;
+  z-index: 1000;
+  border-radius: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.is-expanded .graph-top-bar {
+  padding-right: 3.5rem;
+}
+
+.graph-close-expanded {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  right: 0.6rem;
+  z-index: 30;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(15, 23, 42, 0.9);
+  color: #fbbf24;
+  cursor: pointer;
+}
+
+.graph-close-expanded:hover {
+  background: rgba(251, 191, 36, 0.15);
+}
+
+/* Responsive — must track the app's mobile breakpoint (globals.css), not a
+   768px guess. Between 769-1024px the app already shows mobile chrome, so the
+   graph rendering its desktop toolbar there was a mismatch on every tablet. */
+@media (max-width: 1024px), (max-width: 1366px) and (pointer: coarse) {
   .relationship-graph-container {
     height: calc(100vh - 60px);
     height: calc(100dvh - 60px);
@@ -490,11 +671,6 @@
     padding: 0.4rem 0.6rem;
     gap: 0.5rem;
     flex-wrap: wrap;
-  }
-
-  /* Icon-only buttons on phones */
-  .btn-label {
-    display: none;
   }
 
   .graph-bar-actions {
@@ -535,5 +711,28 @@
 
   .graph-type-checkbox {
     min-height: 40px;
+  }
+}
+
+/* Narrow phones only. Tablets have room for the words, and an icon with a
+   `title=` tooltip says nothing at all on a touch device — the aria-labels
+   cover screen readers, the visible text covers everyone else. */
+@media (max-width: 560px) {
+  .btn-label {
+    display: none;
+  }
+
+  .graph-header-content h2 {
+    font-size: 0.95rem;
+  }
+
+  .relationship-graph-preview {
+    gap: 0.7rem;
+    padding: 0.85rem;
+  }
+
+  .preview-cta {
+    font-size: 0;
+    gap: 0;
   }
 }
