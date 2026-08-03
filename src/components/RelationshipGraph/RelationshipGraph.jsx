@@ -8,8 +8,9 @@ import {
   calculateNodeImportance,
   filterGraphByTypes,
   filterIsolatedNodes,
-  filterToTopHubs,
   findConnectedComponent,
+  hubLimitFor,
+  selectOpeningView,
   layoutLabels,
   truncateLabel,
   getNodeColor,
@@ -24,9 +25,6 @@ import './RelationshipGraph.css';
 // every node against the walls. fitToView() maps the world to the screen.
 const layoutSizeFor = (count) => Math.max(900, Math.ceil(Math.sqrt(Math.max(1, count))) * 170);
 
-// How many nodes the opening view keeps. Chosen so a phone shows a readable
-// constellation rather than a hairball; "Show all" is one tap away.
-const HUB_LIMIT = 24;
 // Label budget. Collision handling alone would allow far more on a desktop,
 // but a wall of names is the thing being fixed.
 const MAX_LABELS_MOBILE = 12;
@@ -413,15 +411,15 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     }
     setHiddenCount(hidden);
 
-    // Then narrow to hubs. After isolation, so the budget is spent on nodes
-    // that actually connect to something; skipped entirely while focused,
-    // because you asked for that neighbourhood specifically.
+    // Then narrow to the opening view. After isolation, so the budget is spent
+    // on nodes that actually connect to something; skipped entirely while
+    // focused, because you asked for that neighbourhood specifically.
     let trimmed = 0;
     if (!showAllNodes && !focusNode) {
-      const hubs = filterToTopHubs(nodes, edges, HUB_LIMIT);
-      nodes = hubs.nodes;
-      edges = hubs.edges;
-      trimmed = hubs.trimmedCount;
+      const opening = selectOpeningView(nodes, edges, hubLimitFor(nodes.length));
+      nodes = opening.nodes;
+      edges = opening.edges;
+      trimmed = opening.trimmedCount;
     }
     setTrimmedCount(trimmed);
 

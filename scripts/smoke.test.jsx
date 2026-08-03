@@ -30,7 +30,8 @@ import {
   buildGraphEdges,
   entityTextsFor,
   isInferrableMention,
-  filterToTopHubs,
+  selectOpeningView,
+  hubLimitFor,
   layoutLabels,
   truncateLabel,
   LABEL_MAX_CHARS,
@@ -879,21 +880,56 @@ section('Relationship graph — scale invariance & focus');
     assert(LABEL_MAX_CHARS > 20, 'and the limit is looser than the old 20 characters');
   }
 
-  // Opening view: 99 stars never fit a phone, so start on the best-connected.
+  // Opening view. A hundred stars never fit a phone, and over a year a flat
+  // "top N by connections" is worse than it looks: core NPCs are named in
+  // every session and pile up degree, while each session links to a handful of
+  // things — so events would never appear at all. Draft round-robin by type.
   {
-    const nodes = Array.from({ length: 30 }, (_, i) => ({ id: `n${i}`, name: `N${i}`, importance: i }));
-    const edges = [
-      { id: 'e1', source: 'n29', target: 'n28' },   // both survive the cut
-      { id: 'e2', source: 'n29', target: 'n0' },    // n0 is trimmed away
+    const nodes = [
+      ...Array.from({ length: 20 }, (_, i) => ({ id: `npc${i}`, type: 'npc', name: `NPC ${i}`, importance: 50 - i })),
+      { id: 's0', type: 'session', name: 'Session One', importance: 3 },
+      { id: 's1', type: 'session', name: 'Session Two', importance: 2 },
+      { id: 't0', type: 'timelineEvent', name: 'The Siege', importance: 4 },
     ];
-    const hubs = filterToTopHubs(nodes, edges, 5);
-    assert(hubs.nodes.length === 5 && hubs.trimmedCount === 25, 'the top 5 hubs are kept and the rest counted');
-    assert(hubs.nodes.every(n => n.importance >= 25), 'and they really are the best-connected ones');
-    assert(hubs.edges.length === 1, 'edges to trimmed nodes are dropped, leaving no dangling ends');
+    const edges = [
+      { id: 'e1', source: 'npc0', target: 't0' },     // both survive
+      { id: 'e2', source: 'npc0', target: 'npc19' },  // npc19 is trimmed
+    ];
 
-    const small = filterToTopHubs(nodes.slice(0, 3), [], 5);
+    const view = selectOpeningView(nodes, edges, 6);
+    const types = view.nodes.map(n => n.type);
+    assert(view.nodes.length === 6, 'the opening view honours its limit');
+    assert(types.includes('session') && types.includes('timelineEvent'),
+      'sessions and events appear even though every NPC out-ranks them');
+    assert(view.nodes.some(n => n.id === 'npc0'), 'the strongest NPC is still there');
+    assert(view.edges.length === 1, 'edges to trimmed nodes are dropped, leaving no dangling ends');
+    assert(view.trimmedCount === nodes.length - 6, 'and the remainder is counted for the "show all" chip');
+
+    // Regression against the flat-ranking behaviour this replaced.
+    const flatTop6 = [...nodes].sort((a, b) => b.importance - a.importance).slice(0, 6);
+    assert(flatTop6.every(n => n.type === 'npc'),
+      'sanity: ranking by connections alone really would have shown only NPCs');
+
+    // A type that runs out hands its slots back rather than wasting them.
+    const wide = selectOpeningView(nodes, edges, 10);
+    assert(wide.nodes.length === 10, 'slots from exhausted types are redistributed, not lost');
+
+    const small = selectOpeningView(nodes.slice(0, 3), [], 20);
     assert(small.nodes.length === 3 && small.trimmedCount === 0,
       'a campaign smaller than the limit is left completely alone');
+
+    assert(selectOpeningView(nodes, edges, 6).nodes.map(n => n.id).join() ===
+           selectOpeningView(nodes, edges, 6).nodes.map(n => n.id).join(),
+      'the selection is deterministic between renders');
+  }
+
+  // The limit scales, because a fixed one ages badly in both directions.
+  {
+    assert(hubLimitFor(12) === 12, 'a campaign under the floor is shown whole');
+    assert(hubLimitFor(99) === 35, `a 99-entity campaign opens on 35 (got ${hubLimitFor(99)})`);
+    assert(hubLimitFor(500) === 60, 'a year-long campaign is capped so a phone stays legible');
+    assert(hubLimitFor(0) > 0 && hubLimitFor(NaN) > 0, 'degenerate counts still yield a usable limit');
+    assert(hubLimitFor(200) > hubLimitFor(60), 'a bigger campaign always opens on at least as much');
   }
 
   // Tap-to-focus feeds findConnectedComponent, which was imported and wired but

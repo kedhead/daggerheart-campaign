@@ -400,24 +400,67 @@ export function layoutLabels(nodes, { zoom, pan, viewport, fontPx = 10, maxLabel
 }
 
 /**
- * Narrow a graph to its best-connected nodes.
+ * How many nodes the opening view holds, scaled to the campaign.
  *
- * 99 stars will not fit on a 390px phone however well they are drawn, so the
- * map opens on the shape of the campaign — the hubs and what joins them — and
- * lets you ask for the rest.
+ * A fixed limit ages badly in both directions: it hides most of a young
+ * campaign and shows a vanishing fraction of a year-old one. Roughly a third,
+ * floored so a small campaign is nearly complete and capped so a phone stays
+ * legible. A campaign smaller than the floor is returned whole.
+ */
+export function hubLimitFor(nodeCount, { share = 0.35, min = 30, max = 60 } = {}) {
+  if (!Number.isFinite(nodeCount) || nodeCount <= 0) return min;
+  return Math.max(Math.min(nodeCount, min), Math.min(max, Math.round(nodeCount * share)));
+}
+
+/**
+ * Choose what the map opens on.
+ *
+ * Ranking by connection count alone looks right and fails over time: a year in,
+ * a few core NPCs and places are named in nearly every session and accumulate
+ * enormous degree, while each session or timeline event links to only a
+ * handful of things. A flat "top N by degree" therefore converges on the same
+ * two dozen characters forever and never shows a single major event.
+ *
+ * So draft round-robin by type instead — the strongest NPC, the strongest
+ * location, the strongest session, and so on, before the second of any type.
+ * Every type present gets a share, ordered by connections within it, and types
+ * with few entities simply run out and hand their slots to the rest.
  *
  * @returns {Object} { nodes, edges, trimmedCount }
  */
-export function filterToTopHubs(nodes, edges, limit) {
+export function selectOpeningView(nodes, edges, limit) {
   if (!Array.isArray(nodes) || nodes.length <= limit) {
     return { nodes, edges, trimmedCount: 0 };
   }
 
-  const ranked = [...nodes].sort((a, b) =>
-    (b.importance || 0) - (a.importance || 0) ||
-    String(a.name || '').localeCompare(String(b.name || ''))
-  );
-  const keep = new Set(ranked.slice(0, limit).map(n => n.id));
+  const byType = new Map();
+  nodes.forEach(n => {
+    const list = byType.get(n.type);
+    if (list) list.push(n);
+    else byType.set(n.type, [n]);
+  });
+
+  // Sorted by type name only so the draft order is stable between renders;
+  // within a type it is strongest first.
+  const queues = [...byType.entries()]
+    .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+    .map(([, list]) => list.sort((a, b) =>
+      (b.importance || 0) - (a.importance || 0) ||
+      String(a.name || '').localeCompare(String(b.name || ''))
+    ));
+
+  const keep = new Set();
+  let drafted = true;
+  while (keep.size < limit && drafted) {
+    drafted = false;
+    for (const queue of queues) {
+      if (keep.size >= limit) break;
+      const next = queue.shift();
+      if (!next) continue;
+      keep.add(next.id);
+      drafted = true;
+    }
+  }
 
   const keptNodes = nodes.filter(n => keep.has(n.id));
   const keptEdges = edges.filter(e => keep.has(e.source) && keep.has(e.target));
