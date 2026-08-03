@@ -34,7 +34,10 @@ export function entityTextsFor(entity, type) {
   } else if (type === 'lore') {
     texts.push(entity.content);
   } else if (type === 'session') {
+    // `highlights` is a curated array of what mattered — the purest signal in
+    // the whole schema, and it was never scanned for links.
     texts.push(entity.summary, entity.dmNotes);
+    if (Array.isArray(entity.highlights)) texts.push(...entity.highlights);
   } else if (type === 'timelineEvent') {
     texts.push(entity.description, entity.outcome);
   } else if (type === 'encounter') {
@@ -49,6 +52,58 @@ export function entityTextsFor(entity, type) {
   // Keep only real strings so a structured array can never be regex-matched
   // as "[object Object]".
   return texts.filter(t => typeof t === 'string' && t.length > 0);
+}
+
+/** Collection key → node type, and the order types are drafted in. */
+export const ENTITY_TYPE_MAP = {
+  npcs: 'npc',
+  locations: 'location',
+  lore: 'lore',
+  sessions: 'session',
+  timelineEvents: 'timelineEvent',
+  encounters: 'encounter',
+  notes: 'note',
+};
+
+/**
+ * Turn the campaign's entity collections into graph nodes.
+ *
+ * Positions are deliberately NOT set here: the world map seeds them randomly
+ * and runs a force simulation, while the story map computes them from
+ * chronology. Both need the same nodes, and the visibility rules below are the
+ * kind of thing that must not be maintained twice.
+ *
+ * @returns {Array} nodes as { id, name, type, data }
+ */
+export function collectEntityNodes(entities, { isDM = true, currentUserId = null } = {}) {
+  const nodes = [];
+  if (!entities) return nodes;
+
+  Object.entries(ENTITY_TYPE_MAP).forEach(([key, type]) => {
+    const list = entities[key];
+    if (!Array.isArray(list)) {
+      if (list) console.warn(`RelationshipGraph: ${key} is not an array:`, list);
+      return;
+    }
+
+    list.forEach(entity => {
+      if (!entity) return;
+
+      // Players see their own notes and anything shared with them; everything
+      // else marked hidden is the DM's alone.
+      if (!isDM && entity.hidden) {
+        if (type !== 'note') return;
+        if (entity.createdBy !== currentUserId && !entity.visibleToPlayers) return;
+      }
+
+      const name = entity.title || entity.name;
+      if (!name) return;
+
+      nodes.push({ id: `${type}-${entity.id}`, name, type, data: entity });
+    });
+  });
+
+  return nodes;
 }
 
 /** Inferred edges are guesses, so they weigh less than a link someone typed. */

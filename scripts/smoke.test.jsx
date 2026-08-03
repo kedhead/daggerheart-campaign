@@ -39,6 +39,13 @@ import {
   screenSizeForWorld,
   MIN_TAP_RADIUS_PX
 } from '../src/utils/graphCalculations.js';
+import {
+  buildStoryGraph,
+  sortSessionsByDate,
+  sessionRecapTexts,
+  hasRecap,
+  STORY_MIN_GAP
+} from '../src/utils/storyGraph.js';
 import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/playerColor.js';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
@@ -1097,6 +1104,142 @@ section('Relationship graph — edge inference & unlinked nodes');
     assert(edges.length > 0, `a 200-entity campaign infers ${edges.length} edges`);
     assert(ms < 8000, `and builds in ${ms}ms (budget 8000ms)`);
     console.log(`  info: 200 entities -> ${edges.length} edges in ${ms}ms`);
+  }
+}
+
+// ── The story map: the campaign as its recaps report it ──
+section('Story map — recap-driven graph');
+{
+  const session = (id, date, fields) => ({
+    id: `session-${id}`, type: 'session', name: `Session ${id}`,
+    data: { id, name: `Session ${id}`, date, ...fields },
+  });
+  const ent = (type, id, name) => ({ id: `${type}-${id}`, type, name, data: { id, name } });
+
+  // Chronology is the whole point, so ordering has to be right — including the
+  // undated sessions that must not silently lead the campaign.
+  {
+    const sorted = sortSessionsByDate([
+      session('c', '2026-03-01', {}), session('a', '2026-01-15', {}),
+      session('z', '', {}), session('b', '2026-02-20', {}),
+    ]);
+    assert(sorted.map(s => s.data.id).join() === 'a,b,c,z',
+      `sessions run oldest to newest with undated ones last (got ${sorted.map(s => s.data.id).join()})`);
+  }
+
+  // A recap is only a recap if something was written up.
+  {
+    assert(hasRecap({ summary: 'We fought.' }), 'a summary counts as a recap');
+    assert(hasRecap({ highlights: ['Vale betrayed us'] }), 'highlights alone count');
+    assert(!hasRecap({ summary: '   ' }), 'whitespace is not a recap');
+    assert(!hasRecap({ status: 'planned' }), 'a planned session with nothing written is not a chapter');
+    assert(sessionRecapTexts({ summary: 's', highlights: ['h'], dmNotes: 'd' }).length === 3,
+      'summary, highlights and dmNotes are all read');
+  }
+
+  // The graph itself: a spine, with what each recap named branching off it.
+  {
+    const nodes = [
+      ent('npc', 'n1', 'Captain Vale'),
+      ent('location', 'l1', 'Thornwood Bridge'),
+      ent('npc', 'n2', 'Never Mentioned'),
+      session('1', '2026-01-01', { summary: 'Captain Vale held Thornwood Bridge.' }),
+      session('2', '2026-01-08', { summary: 'Captain Vale fell back.', highlights: ['Captain Vale wounded'] }),
+      session('3', '2026-01-15', { status: 'planned' }),   // no recap, not a chapter
+    ];
+    const story = buildStoryGraph(nodes);
+
+    assert(story.sessionCount === 2, `only written-up sessions become chapters (got ${story.sessionCount})`);
+    assert(!story.nodes.some(n => n.id === 'npc-n2'), 'an entity no recap mentions is absent, with no filter needed');
+
+    const spine = story.edges.filter(e => e.spine);
+    assert(spine.length === 1, 'consecutive sessions are joined by a spine edge');
+    assert(spine[0].source === 'session-1' && spine[0].target === 'session-2', 'and it runs forwards in time');
+
+    const sessionNodes = story.nodes.filter(n => n.isSpine);
+    assert(sessionNodes.every(n => n.x === 0), 'sessions sit on a single vertical line');
+    assert(sessionNodes[0].y < sessionNodes[1].y, 'later sessions sit further down it');
+    assert(story.nodes.filter(n => !n.isSpine).every(n => n.x !== 0), 'entities sit off the spine, never on it');
+
+    // A recurring character is the point of the view: one node touching several
+    // chapters, drawn larger, not a duplicate per session.
+    const vale = story.nodes.filter(n => n.id === 'npc-n1');
+    assert(vale.length === 1, 'an entity in two recaps appears once, not twice');
+    assert(vale[0].importance === 2, 'and its importance is how many chapters it spans');
+    const bridge = story.nodes.find(n => n.id === 'location-l1');
+    assert(vale[0].radius > bridge.radius, 'a recurring entity is drawn larger than a one-off');
+  }
+
+  // Typed links still beat inference here, and the strict rule still applies.
+  {
+    const nodes = [
+      ent('location', 'l1', 'Sagewilds'),
+      session('1', '2026-01-01', { summary: 'A raid in the Sagewilds.' }),
+    ];
+    assert(buildStoryGraph(nodes).nodes.filter(n => !n.isSpine).length === 0,
+      'a single mention of a one-word name is still too weak to infer');
+
+    const typed = [
+      ent('location', 'l1', 'Sagewilds'),
+      session('1', '2026-01-01', { summary: 'A raid in the [[Sagewilds]].' }),
+    ];
+    const built = buildStoryGraph(typed);
+    const link = built.edges.find(e => !e.spine);
+    assert(link && link.inferred === false, 'a typed link in a recap is honoured as deliberate');
+  }
+
+  // Layout must not stack entities on top of each other, and must be stable —
+  // a map that reshuffles every render is unreadable however well it is packed.
+  {
+    const nodes = [session('1', '2026-01-01', {
+      summary: Array.from({ length: 12 }, (_, i) => `Waystation Number ${i}`).join(', '),
+    })];
+    for (let i = 0; i < 12; i++) nodes.push(ent('location', `l${i}`, `Waystation Number ${i}`));
+
+    const story = buildStoryGraph(nodes);
+    const placed = story.nodes.filter(n => !n.isSpine);
+    assert(placed.length === 12, `every mentioned entity is placed, none dropped (got ${placed.length})`);
+
+    const collisions = placed.filter((a, i) =>
+      placed.some((b, j) => j !== i && a.x === b.x && Math.abs(a.y - b.y) < STORY_MIN_GAP)
+    );
+    assert(collisions.length === 0, `no two entities overlap in a lane (${collisions.length} collisions)`);
+
+    const again = buildStoryGraph(nodes);
+    assert(JSON.stringify(story.nodes.map(n => [n.id, n.x, n.y])) ===
+           JSON.stringify(again.nodes.map(n => [n.id, n.x, n.y])),
+      'the layout is identical between builds — no simulation, no drift');
+  }
+
+  // A year is ~50 sessions; the map opens on the recent ones.
+  {
+    // Genuinely increasing dates — one session a week for 40 weeks. Trimming
+    // is by date, not array order, so the fixture has to be honest about that.
+    const nodes = [];
+    for (let i = 0; i < 40; i++) {
+      const day = new Date(Date.UTC(2026, 0, 4) + i * 7 * 86400000).toISOString().slice(0, 10);
+      nodes.push(session(String(i).padStart(2, '0'), day, { summary: 'The company marched on.' }));
+    }
+    const limited = buildStoryGraph(nodes, { sessionLimit: 12 });
+    assert(limited.sessionCount === 12, 'the opening view holds the session limit');
+    assert(limited.trimmedSessions === 28, 'and reports the rest for the "all sessions" chip');
+
+    const all = buildStoryGraph(nodes, { sessionLimit: Infinity });
+    assert(all.sessionCount === 40 && all.trimmedSessions === 0, 'asking for all of them shows all of them');
+
+    // The tail, not the head: recent sessions are what "what's happening" means.
+    const keptIds = limited.nodes.filter(n => n.isSpine).map(n => n.id);
+    assert(keptIds.includes('session-39') && !keptIds.includes('session-00'),
+      'the most recent sessions are kept and the oldest trimmed');
+  }
+
+  // Degenerate inputs must not throw — this runs on every campaign, including
+  // brand new ones.
+  {
+    assert(buildStoryGraph([]).sessionCount === 0, 'an empty campaign yields an empty story');
+    assert(buildStoryGraph([ent('npc', 'n1', 'Nobody')]).sessionCount === 0,
+      'a campaign with no sessions yields an empty story');
+    assert(buildStoryGraph(null).nodes.length === 0, 'a missing node list is handled');
   }
 }
 

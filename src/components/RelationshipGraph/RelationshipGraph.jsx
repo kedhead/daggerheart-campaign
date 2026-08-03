@@ -6,6 +6,7 @@ import GraphControls from './GraphControls';
 import {
   buildGraphEdges,
   calculateNodeImportance,
+  collectEntityNodes,
   filterGraphByTypes,
   filterIsolatedNodes,
   findConnectedComponent,
@@ -17,6 +18,7 @@ import {
   getTypeLabel,
   MIN_TAP_RADIUS_PX
 } from '../../utils/graphCalculations';
+import { buildStoryGraph, STORY_SESSION_LIMIT } from '../../utils/storyGraph';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import './RelationshipGraph.css';
 
@@ -59,6 +61,12 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   // rest. Desktop has the room, so it starts with everything.
   const [showAllNodes, setShowAllNodes] = useState(false);
   const [trimmedCount, setTrimmedCount] = useState(0);
+  // 'story' reads the campaign from session recaps and lays it out along a
+  // chronological spine; 'world' is the force-directed graph of every entity,
+  // including prep that has never been played. Story is the default because a
+  // recap is a human saying what mattered, which beats any heuristic for it.
+  const [mode, setMode] = useState('story');
+  const [storyMeta, setStoryMeta] = useState({ sessionCount: 0, trimmedSessions: 0 });
   const [highlightedEdges, setHighlightedEdges] = useState([]);
   const [draggedNode, setDraggedNode] = useState(null);
   const [edgeStrengthMap, setEdgeStrengthMap] = useState(new Map());
@@ -193,66 +201,29 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   useEffect(() => {
     if (!entities) return;
 
-    // Build graph data from entities
-    const graphNodes = [];
-    const nodeMap = new Map();
+    const collected = collectEntityNodes(entities, { isDM, currentUserId });
 
-    // Create nodes for all entities
-    const allEntityTypes = ['npcs', 'locations', 'lore', 'sessions', 'timelineEvents', 'encounters', 'notes'];
-    const entityTypeMap = {
-      npcs: 'npc',
-      locations: 'location',
-      lore: 'lore',
-      sessions: 'session',
-      timelineEvents: 'timelineEvent',
-      encounters: 'encounter',
-      notes: 'note'
-    };
-
-    allEntityTypes.forEach(entityKey => {
-      let entityArray = entities[entityKey];
-
-      // Defensive check for non-array entity lists
-      if (!Array.isArray(entityArray)) {
-        if (entityArray) console.warn(`RelationshipGraph: ${entityKey} is not an array:`, entityArray);
-        entityArray = [];
-      }
-
-      const entityType = entityTypeMap[entityKey];
-
-      entityArray.forEach(entity => {
-        // Skip hidden entities for non-DMs
-        if (!entity || (!isDM && entity.hidden)) {
-          // Special handling for notes
-          if (entityType === 'note') {
-            // Players can see their own notes, shared notes, or DM-overridden notes
-            if (entity.createdBy !== currentUserId && !entity.visibleToPlayers) {
-              return;
-            }
-          } else {
-            // For all other entity types, skip if hidden
-            return;
-          }
-        }
-
-        const nodeId = `${entityType}-${entity.id}`;
-        // Recover previous position if available; random positions are
-        // assigned below once the virtual world size is known.
-        const savedPos = nodePositionsRef.current.get(nodeId);
-
-        const node = {
-          id: nodeId,
-          name: entity.title || entity.name,
-          type: entityType,
-          data: entity,
-          x: savedPos ? savedPos.x : null,
-          y: savedPos ? savedPos.y : null,
-          vx: 0,
-          vy: 0
-        };
-        graphNodes.push(node);
-        nodeMap.set((entity.title || entity.name).toLowerCase(), node);
+    // Story mode: positions come from chronology, so there is no simulation to
+    // run and nothing to seed randomly. Everything below this branch is the
+    // world map's force-directed path.
+    if (mode === 'story') {
+      const story = buildStoryGraph(collected, {
+        sessionLimit: showAllNodes ? Infinity : STORY_SESSION_LIMIT,
       });
+      story.nodes.forEach(n => nodePositionsRef.current.set(n.id, { x: n.x, y: n.y }));
+      setEdgeStrengthMap(new Map());
+      setAllNodes(story.nodes);
+      setAllEdges(story.edges);
+      setStoryMeta({ sessionCount: story.sessionCount, trimmedSessions: story.trimmedSessions });
+      needsFitRef.current = true;
+      return;
+    }
+
+    const graphNodes = collected.map(node => {
+      // Recover previous position if available; random positions are assigned
+      // below once the virtual world size is known.
+      const savedPos = nodePositionsRef.current.get(node.id);
+      return { ...node, x: savedPos ? savedPos.x : null, y: savedPos ? savedPos.y : null, vx: 0, vy: 0 };
     });
 
     // Seed unplaced nodes randomly inside the virtual layout world
@@ -393,7 +364,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     // We will move runSimulation definition outside useEffect in next step.
 
     setAllEdges(graphEdges);
-  }, [entities, isDM, currentUserId]);
+  }, [entities, isDM, currentUserId, mode, showAllNodes]);
 
   // Apply filters whenever selection changes
   useEffect(() => {
@@ -413,9 +384,11 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
     // Then narrow to the opening view. After isolation, so the budget is spent
     // on nodes that actually connect to something; skipped entirely while
-    // focused, because you asked for that neighbourhood specifically.
+    // focused, because you asked for that neighbourhood specifically, and in
+    // story mode, where the chronological spine is what keeps it readable and
+    // the session limit has already done the trimming.
     let trimmed = 0;
-    if (!showAllNodes && !focusNode) {
+    if (!showAllNodes && !focusNode && mode === 'world') {
       const opening = selectOpeningView(nodes, edges, hubLimitFor(nodes.length));
       nodes = opening.nodes;
       edges = opening.edges;
@@ -710,12 +683,29 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   // Calculate bounding box for auto-scaling if needed, but for void view we just zoom/pan
 
   if (!entities || allNodes.length === 0) {
+    // Story mode is empty for a different reason than the world map — no
+    // session has been written up yet — and the fix is different too, so the
+    // generic "add wiki links" advice would be misleading. Offer the way out.
+    const storyEmpty = mode === 'story' && !!entities;
+
     return (
       <div className="relationship-graph-container is-empty">
         <div className="relationship-graph-empty">
           <Network size={64} style={{ opacity: 0.5, color: '#fbbf24' }} />
-          <h3>The Void Awaits</h3>
-          <p>The constellation of your world has yet to be charted. Begin scribing notes with <code>[[Wiki Links]]</code> to form the first stars.</p>
+          <h3>{storyEmpty ? 'No Chapters Yet' : 'The Void Awaits'}</h3>
+          {storyEmpty ? (
+            <p>
+              The story map is drawn from your session recaps. Write up a session —
+              its summary and highlights — and it becomes the first chapter here.
+            </p>
+          ) : (
+            <p>The constellation of your world has yet to be charted. Begin scribing notes with <code>[[Wiki Links]]</code> to form the first stars.</p>
+          )}
+          {storyEmpty && (
+            <button type="button" className="graph-scope-chip" onClick={() => setMode('world')}>
+              Show the world map instead
+            </button>
+          )}
         </div>
       </div>
     );
@@ -912,19 +902,45 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
               The Constellation
             </h2>
             <p className="graph-subtitle">
-              {displayNodes.length} Celestial Bodies
-              {hiddenCount > 0 && ` · ${hiddenCount} unlinked hidden`}
+              {mode === 'story'
+                ? `${storyMeta.sessionCount} ${storyMeta.sessionCount === 1 ? 'Session' : 'Sessions'} · ${displayNodes.length} Bodies`
+                : `${displayNodes.length} Celestial Bodies`}
+              {mode === 'world' && hiddenCount > 0 && ` · ${hiddenCount} unlinked hidden`}
               {focusNode && ' (Focused View)'}
             </p>
-            {/* The escape hatch from the hub view lives next to the count that
-                explains it, rather than as a seventh unlabelled toolbar icon. */}
-            {!focusNode && (trimmedCount > 0 || showAllNodes) && (
+
+            {/* Story reads the campaign from recaps; World shows everything
+                including prep that was never played. */}
+            <div className="graph-mode-switch" role="group" aria-label="Map mode">
+              <button
+                type="button"
+                className={mode === 'story' ? 'active' : ''}
+                onClick={() => setMode('story')}
+                aria-pressed={mode === 'story'}
+              >
+                Story
+              </button>
+              <button
+                type="button"
+                className={mode === 'world' ? 'active' : ''}
+                onClick={() => setMode('world')}
+                aria-pressed={mode === 'world'}
+              >
+                World
+              </button>
+            </div>
+
+            {/* The escape hatch lives next to the count that explains it,
+                rather than as yet another unlabelled toolbar icon. */}
+            {!focusNode && (showAllNodes || (mode === 'story' ? storyMeta.trimmedSessions > 0 : trimmedCount > 0)) && (
               <button
                 type="button"
                 className="graph-scope-chip"
                 onClick={() => setShowAllNodes(v => !v)}
               >
-                {showAllNodes ? 'Show hubs only' : `Show all ${displayNodes.length + trimmedCount}`}
+                {mode === 'story'
+                  ? (showAllNodes ? 'Recent sessions' : `All ${storyMeta.sessionCount + storyMeta.trimmedSessions} sessions`)
+                  : (showAllNodes ? 'Show hubs only' : `Show all ${displayNodes.length + trimmedCount}`)}
               </button>
             )}
           </div>
@@ -940,7 +956,9 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onReset={handleReset}
-        onSpread={handleSpread}
+        // Spread re-runs the force simulation, which would scramble the story
+        // map's chronology into the hairball this view exists to avoid.
+        onSpread={mode === 'world' ? handleSpread : null}
         onExport={handleExportSVG}
       />
 
@@ -1015,14 +1033,18 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
               const strength = edgeStrengthMap.get(edge.id) || 1;
               const isHighlighted = highlightedEdgeSet.has(edge.id);
               const isInferred = !!edge.inferred;
-              const strokeWidth = Math.min(3, 0.5 + strength * 0.4);
-              const opacity = isHighlighted ? 0.9 : (0.15 + (strength * 0.05));
+              // The spine is the campaign's chronology, not a relationship —
+              // it carries the eye from session to session and should read as
+              // the strongest line on the map.
+              const isSpine = !!edge.spine;
+              const strokeWidth = isSpine ? 2.5 : Math.min(3, 0.5 + strength * 0.4);
+              const opacity = isHighlighted ? 0.9 : (isSpine ? 0.55 : 0.15 + (strength * 0.05));
               const gradientUrl = `url(#edge-grad-${edge.id})`;
 
               return (
                 <g
                   key={edge.id}
-                  className={`edge-group${isHighlighted ? ' edge-highlighted' : ''}${isInferred ? ' edge-inferred' : ''}`}
+                  className={`edge-group${isHighlighted ? ' edge-highlighted' : ''}${isInferred ? ' edge-inferred' : ''}${isSpine ? ' edge-spine' : ''}`}
                 >
                   {/* Glow underlay - wider, blurred. Skipped for inferred
                       edges: the bloom is what makes a line read as solid, and

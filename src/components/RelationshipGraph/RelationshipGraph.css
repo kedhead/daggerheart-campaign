@@ -39,7 +39,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
@@ -51,12 +52,18 @@
 .graph-bar-header {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
+/* Wraps because the header carries four things now — title, counts, the
+   Story/World switch and the scope chip — and on a 360px phone they do not fit
+   on one line. Without this the chip is simply pushed off the right edge. */
 .graph-header-content {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  min-width: 0;
 }
 
 .graph-header-content h2 {
@@ -85,7 +92,39 @@
   padding-left: 1rem;
 }
 
-/* The way back to the whole campaign from the opening hub view. Sits with the
+/* Story (from session recaps) vs World (every entity, prep included). */
+.graph-mode-switch {
+  display: inline-flex;
+  flex-shrink: 0;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.graph-mode-switch button {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  padding: 0 0.75rem;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.graph-mode-switch button.active {
+  color: #0f1016;
+  background: #fbbf24;
+}
+
+.graph-mode-switch button:not(.active):hover {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+}
+
+/* The way back to the whole campaign from the opening view. Sits with the
    count that explains it, not buried among the toolbar icons. */
 .graph-scope-chip {
   flex-shrink: 0;
@@ -407,6 +446,16 @@
 /* Highlighting an inferred edge still says "this one is a guess". */
 .edge-highlighted.edge-inferred .edge-main-line {
   opacity: 0.75;
+}
+
+/* The chronological spine of the story map. Warm gold rather than the entity
+   type gradient, because it is time passing, not a relationship. */
+.edge-spine .edge-main-line {
+  stroke: #fbbf24 !important;
+}
+
+.edge-spine .edge-glow-line {
+  stroke: #fbbf24 !important;
 }
 
 /* Node Labels - Starmap style */

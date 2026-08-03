@@ -61,9 +61,11 @@ export default function GraphControls({
             <button className="btn-icon-bar" onClick={onReset} title="Fit To Screen" aria-label="Fit the whole map on screen">
               <Crosshair size={18} />
             </button>
-            <button className="btn-icon-bar" onClick={onSpread} title="Spread Nodes" aria-label="Spread nodes apart">
-              <Shuffle size={18} />
-            </button>
+            {onSpread && (
+              <button className="btn-icon-bar" onClick={onSpread} title="Spread Nodes" aria-label="Spread nodes apart">
+                <Shuffle size={18} />
+              </button>
+            )}
             <button className="btn-icon-bar" onClick={onZoomIn} title="Zoom In" aria-label="Zoom in">
               <ZoomIn size={18} />
             </button>
