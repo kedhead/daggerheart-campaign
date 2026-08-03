@@ -4,9 +4,10 @@ import { Network, Sparkles, X } from 'lucide-react';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import GraphControls from './GraphControls';
 import {
-  calculateConnectionStrength,
+  buildGraphEdges,
   calculateNodeImportance,
   filterGraphByTypes,
+  filterIsolatedNodes,
   findConnectedComponent,
   getNodeColor,
   getTypeLabel,
@@ -40,6 +41,11 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   ]);
   const [focusNode, setFocusNode] = useState(null);
   const [showLabels, setShowLabels] = useState(true);
+  // Unconnected nodes carry no information the map exists to show — they are
+  // just a cloud of specks around the edge. Hidden by default, with the count
+  // reported in the subtitle so nothing disappears unexplained.
+  const [hideUnlinked, setHideUnlinked] = useState(true);
+  const [hiddenCount, setHiddenCount] = useState(0);
   const [highlightedEdges, setHighlightedEdges] = useState([]);
   const [draggedNode, setDraggedNode] = useState(null);
   const [edgeStrengthMap, setEdgeStrengthMap] = useState(new Map());
@@ -161,41 +167,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
     // Build graph data from entities
     const graphNodes = [];
-    const graphEdges = [];
     const nodeMap = new Map();
-
-    // Helper to extract wiki links from text
-    const extractLinks = (text) => {
-      if (!text) return [];
-      const linkRegex = /\[\[([^\]]+)\]\]/g;
-      const links = [];
-      let match;
-      while ((match = linkRegex.exec(text)) !== null) {
-        links.push(match[1]);
-      }
-      return links;
-    };
-
-    // Helper to get all text fields from an entity
-    const getEntityTexts = (entity, type) => {
-      const texts = [];
-      if (type === 'npc') {
-        texts.push(entity.description, entity.notes, entity.firstMet, entity.location);
-      } else if (type === 'location') {
-        texts.push(entity.description, entity.notableFeatures, entity.secrets);
-      } else if (type === 'lore') {
-        texts.push(entity.content);
-      } else if (type === 'session') {
-        texts.push(entity.summary, entity.dmNotes);
-      } else if (type === 'timelineEvent') {
-        texts.push(entity.description, entity.outcome);
-      } else if (type === 'encounter') {
-        texts.push(entity.description, entity.enemies, entity.tactics, entity.rewards);
-      } else if (type === 'note') {
-        texts.push(entity.content);
-      }
-      return texts.filter(Boolean);
-    };
 
     // Create nodes for all entities
     const allEntityTypes = ['npcs', 'locations', 'lore', 'sessions', 'timelineEvents', 'encounters', 'notes'];
@@ -264,39 +236,9 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
       }
     });
 
-    // Create edges based on wiki links
-    const strengthMap = new Map();
-    graphNodes.forEach(node => {
-      const texts = getEntityTexts(node.data, node.type);
-      texts.forEach(text => {
-        const links = extractLinks(text);
-        links.forEach(linkName => {
-          const targetNode = nodeMap.get(linkName.toLowerCase());
-          if (targetNode && targetNode.id !== node.id) {
-            const edgeId = [node.id, targetNode.id].sort().join('-');
-
-            // Calculate connection strength
-            const strength = calculateConnectionStrength(node, targetNode, graphNodes);
-            const existingStrength = strengthMap.get(edgeId) || 0;
-            strengthMap.set(edgeId, Math.max(existingStrength, strength));
-
-            // Add edge (avoid duplicates)
-            const exists = graphEdges.some(e =>
-              (e.source === node.id && e.target === targetNode.id) ||
-              (e.source === targetNode.id && e.target === node.id)
-            );
-
-            if (!exists) {
-              graphEdges.push({
-                id: edgeId,
-                source: node.id,
-                target: targetNode.id
-              });
-            }
-          }
-        });
-      });
-    });
+    // Edges come from typed [[links]] plus names recognised in the prose —
+    // see buildGraphEdges for why inference is needed at all.
+    const { edges: graphEdges, strengthMap } = buildGraphEdges(graphNodes);
 
     setEdgeStrengthMap(strengthMap);
 
@@ -429,6 +371,18 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   useEffect(() => {
     let { nodes, edges } = filterGraphByTypes(allNodes, allEdges, selectedTypes);
 
+    // Order matters: isolation is judged against the types you kept, so a node
+    // whose only partner was just filtered out counts as unlinked. Runs before
+    // focus, because a focused component is connected by definition.
+    let hidden = 0;
+    if (hideUnlinked) {
+      const pruned = filterIsolatedNodes(nodes, edges);
+      nodes = pruned.nodes;
+      edges = pruned.edges;
+      hidden = pruned.hiddenCount;
+    }
+    setHiddenCount(hidden);
+
     // Apply focus mode if a node is selected
     if (focusNode) {
       const focused = findConnectedComponent(focusNode, nodes, edges);
@@ -439,7 +393,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     setDisplayNodes(nodes);
     setDisplayEdges(edges);
     displayNodesRef.current = nodes;
-  }, [allNodes, allEdges, selectedTypes, focusNode]);
+  }, [allNodes, allEdges, selectedTypes, focusNode, hideUnlinked]);
 
   // Keep refs in sync with state for use in native event handlers
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
@@ -919,6 +873,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
             </h2>
             <p className="graph-subtitle">
               {displayNodes.length} Celestial Bodies
+              {hiddenCount > 0 && ` · ${hiddenCount} unlinked hidden`}
               {focusNode && ' (Focused View)'}
             </p>
           </div>
@@ -927,6 +882,8 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
         setSelectedTypes={setSelectedTypes}
         showLabels={showLabels}
         setShowLabels={setShowLabels}
+        hideUnlinked={hideUnlinked}
+        setHideUnlinked={setHideUnlinked}
         focusNode={focusNode}
         setFocusNode={setFocusNode}
         onZoomIn={handleZoomIn}
@@ -1006,26 +963,36 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
 
               const strength = edgeStrengthMap.get(edge.id) || 1;
               const isHighlighted = highlightedEdgeSet.has(edge.id);
+              const isInferred = !!edge.inferred;
               const strokeWidth = Math.min(3, 0.5 + strength * 0.4);
               const opacity = isHighlighted ? 0.9 : (0.15 + (strength * 0.05));
               const gradientUrl = `url(#edge-grad-${edge.id})`;
 
               return (
-                <g key={edge.id} className={`edge-group${isHighlighted ? ' edge-highlighted' : ''}`}>
-                  {/* Glow underlay - wider, blurred */}
-                  <line
-                    x1={source.x}
-                    y1={source.y}
-                    x2={target.x}
-                    y2={target.y}
-                    stroke={isHighlighted ? '#fbbf24' : gradientUrl}
-                    strokeWidth={isHighlighted ? strokeWidth * 4 : strokeWidth * 3}
-                    vectorEffect="non-scaling-stroke"
-                    opacity={isHighlighted ? 0.4 : opacity * 0.5}
-                    filter="url(#edge-glow)"
-                    className="edge-glow-line"
-                  />
-                  {/* Main crisp line */}
+                <g
+                  key={edge.id}
+                  className={`edge-group${isHighlighted ? ' edge-highlighted' : ''}${isInferred ? ' edge-inferred' : ''}`}
+                >
+                  {/* Glow underlay - wider, blurred. Skipped for inferred
+                      edges: the bloom is what makes a line read as solid, and
+                      a guess should not look as certain as a typed link. */}
+                  {!isInferred && (
+                    <line
+                      x1={source.x}
+                      y1={source.y}
+                      x2={target.x}
+                      y2={target.y}
+                      stroke={isHighlighted ? '#fbbf24' : gradientUrl}
+                      strokeWidth={isHighlighted ? strokeWidth * 4 : strokeWidth * 3}
+                      vectorEffect="non-scaling-stroke"
+                      opacity={isHighlighted ? 0.4 : opacity * 0.5}
+                      filter="url(#edge-glow)"
+                      className="edge-glow-line"
+                    />
+                  )}
+                  {/* Main crisp line. The dash is in screen px because
+                      non-scaling-stroke measures the stroke in screen px —
+                      a world-space dash would dissolve as you zoom out. */}
                   <line
                     x1={source.x}
                     y1={source.y}
@@ -1034,7 +1001,8 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     stroke={isHighlighted ? '#fbbf24' : gradientUrl}
                     strokeWidth={isHighlighted ? strokeWidth * 1.5 : strokeWidth}
                     vectorEffect="non-scaling-stroke"
-                    opacity={opacity}
+                    strokeDasharray={isInferred ? '4 4' : undefined}
+                    opacity={isInferred ? opacity * 0.7 : opacity}
                     className="edge-main-line"
                   />
                 </g>

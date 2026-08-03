@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, Filter, X, ZoomIn, ZoomOut, Maximize2, Minimize2, Crosshair, Download, ChevronUp, ChevronDown, Shuffle } from 'lucide-react';
+import { Eye, EyeOff, Filter, X, ZoomIn, ZoomOut, Maximize2, Minimize2, Crosshair, Download, ChevronUp, ChevronDown, Shuffle, Link2, Link2Off } from 'lucide-react';
 import { getTypeLabel } from '../../utils/graphCalculations';
 import './RelationshipGraph.css';
 
@@ -17,7 +17,9 @@ export default function GraphControls({
   onSpread,
   onExport,
   expanded,
-  onToggleExpand
+  onToggleExpand,
+  hideUnlinked,
+  setHideUnlinked
 }) {
   const [showFilters, setShowFilters] = useState(false);
   const allTypes = ['npc', 'location', 'lore', 'session', 'timelineEvent', 'encounter', 'note'];
@@ -93,6 +95,19 @@ export default function GraphControls({
               <span className="btn-label">Filters</span>
               {showFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
+
+            {setHideUnlinked && (
+              <button
+                className={`btn-toggle ${hideUnlinked ? 'active' : ''}`}
+                onClick={() => setHideUnlinked(!hideUnlinked)}
+                title={hideUnlinked ? 'Show Unlinked' : 'Hide Unlinked'}
+                aria-pressed={!!hideUnlinked}
+                aria-label={hideUnlinked ? 'Show unlinked entities' : 'Hide unlinked entities'}
+              >
+                {hideUnlinked ? <Link2Off size={18} /> : <Link2 size={18} />}
+                <span className="btn-label">Unlinked</span>
+              </button>
+            )}
 
             {onToggleExpand && (
               <button

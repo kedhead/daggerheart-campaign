@@ -25,6 +25,10 @@ import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from '../src/dice/diceSpe
 import { usableHopeMax, usableHopeFilled, normalizeHopeSlots, isScarredSlot } from '../src/utils/daggerheartHope.js';
 import {
   findConnectedComponent,
+  filterGraphByTypes,
+  filterIsolatedNodes,
+  buildGraphEdges,
+  entityTextsFor,
   labelVisibleFor,
   worldSizeForScreenPx,
   screenSizeForWorld,
@@ -851,6 +855,114 @@ section('Relationship graph — scale invariance & focus');
 
     const lone = findConnectedComponent('z', [{ id: 'z', name: 'z' }], []);
     assert(lone.nodes.length === 1 && lone.edges.length === 0, 'an isolated node focuses to just itself');
+  }
+}
+
+// ── Why encounters floated unconnected ──
+section('Relationship graph — edge inference & unlinked nodes');
+{
+  const node = (type, id, name, data) => ({ id: `${type}-${id}`, type, name, data: { id, name, ...data } });
+
+  // The bug that started this: the graph only ever drew an edge from a typed
+  // [[link]], and the Encounter Builder stores opponents as structured
+  // adversarySlots, so builder-made encounters had almost no prose to link from.
+  {
+    const nodes = [
+      node('location', 'l1', 'Thornwood Bridge', {}),
+      node('npc', 'n1', 'Captain Vale', {}),
+      node('encounter', 'e1', 'Bridge Ambush', {
+        description: 'Bandits strike at Thornwood Bridge before dawn.',
+        adversarySlots: [{ adversaryId: 'adv-3', quantity: 2 }],
+      }),
+    ];
+    const { edges } = buildGraphEdges(nodes);
+    const bridge = edges.find(e => e.id.includes('location-l1'));
+    assert(!!bridge, 'an encounter naming a location in prose now links to it');
+    assert(bridge.inferred === true, 'and that edge is marked as inferred, not typed');
+    assert(!edges.some(e => e.id.includes('npc-n1')), 'an unmentioned NPC gets no edge');
+  }
+
+  // A typed link is a decision, not a guess — it must never be downgraded,
+  // whichever pass sees the pair first.
+  {
+    const nodes = [
+      node('location', 'l1', 'Thornwood Bridge', {}),
+      node('encounter', 'e1', 'Bridge Ambush', {
+        description: 'Fought at [[Thornwood Bridge]].',
+        tactics: 'Archers hold Thornwood Bridge from the north bank.',
+      }),
+    ];
+    const { edges } = buildGraphEdges(nodes);
+    assert(edges.length === 1, 'a pair linked from two fields still yields one edge');
+    assert(edges[0].inferred === false, 'a typed link beats a mention of the same pair');
+  }
+
+  // Short names are where inference goes wrong; autoLinkText's 3-char floor is
+  // what stops "Al" matching half the campaign.
+  {
+    const nodes = [
+      node('npc', 'n1', 'Al', {}),
+      node('note', 'x1', 'Ledger', { content: 'Al paid the toll. Also owed.' }),
+    ];
+    const { edges } = buildGraphEdges(nodes);
+    assert(edges.length === 0, 'a two-character name is never inferred');
+  }
+
+  // Self-reference and the encounter Environment field, which was silently
+  // dropped because getEntityTexts never read it.
+  {
+    const texts = entityTextsFor(
+      { description: 'd', enemies: 'e', environment: 'env', tactics: 't', rewards: 'r' },
+      'encounter'
+    );
+    assert(texts.includes('env'), 'the encounter Environment field is read for links');
+    assert(entityTextsFor({ adversarySlots: [{ adversaryId: 'a' }] }, 'encounter').length === 0,
+      'structured adversarySlots are never treated as linkable text');
+
+    const nodes = [node('npc', 'n1', 'Captain Vale', { notes: 'Captain Vale trusts nobody.' })];
+    assert(buildGraphEdges(nodes).edges.length === 0, 'an entity naming itself gets no self-edge');
+  }
+
+  // Hiding unlinked nodes must be judged against what is actually on screen —
+  // running it before the type filter would strand nodes whose only partner
+  // had just been filtered away.
+  {
+    const nodes = [
+      { id: 'npc-1', type: 'npc', name: 'A' },
+      { id: 'location-1', type: 'location', name: 'B' },
+      { id: 'encounter-1', type: 'encounter', name: 'C' },
+    ];
+    const edges = [{ id: 'e', source: 'npc-1', target: 'location-1' }];
+
+    const all = filterIsolatedNodes(nodes, edges);
+    assert(all.nodes.length === 2 && all.hiddenCount === 1,
+      'the unconnected encounter is hidden and counted');
+
+    // Now drop locations: the NPC's only partner is gone, so it is unlinked too.
+    const typed = filterGraphByTypes(nodes, edges, ['npc', 'encounter']);
+    const pruned = filterIsolatedNodes(typed.nodes, typed.edges);
+    assert(pruned.nodes.length === 0 && pruned.hiddenCount === 2,
+      'filtering out a partner makes the survivor unlinked too (order matters)');
+
+    assert(filterIsolatedNodes([], []).hiddenCount === 0, 'an empty graph hides nothing');
+  }
+
+  // Cost guard: inference builds a regex per name per text field, and this runs
+  // on every entities change alongside the existing force simulation.
+  {
+    const many = [];
+    for (let i = 0; i < 200; i++) {
+      many.push(node('npc', `n${i}`, `Wanderer ${i} of the Vale`, {
+        description: `Travelled with Wanderer ${(i + 1) % 200} of the Vale through the pass.`,
+        notes: 'No further record survives in the ledgers of the old city.',
+      }));
+    }
+    const t0 = Date.now();
+    const { edges } = buildGraphEdges(many);
+    const ms = Date.now() - t0;
+    assert(edges.length > 0, `a 200-entity campaign infers ${edges.length} edges`);
+    assert(ms < 8000, `and builds in ${ms}ms (budget 8000ms)`);
+    console.log(`  info: 200 entities -> ${edges.length} edges in ${ms}ms`);
   }
 }
 

@@ -2,6 +2,121 @@
  * Graph calculation utilities for relationship graph visualization
  */
 
+import { autoLinkText } from './autoLinkText';
+
+/** Pull `[[Wiki Link]]` targets out of a block of text. */
+export function extractWikiLinks(text) {
+  if (typeof text !== 'string') return [];
+  const linkRegex = /\[\[([^\]]+)\]\]/g;
+  const links = [];
+  let match;
+  while ((match = linkRegex.exec(text)) !== null) {
+    links.push(match[1]);
+  }
+  return links;
+}
+
+/**
+ * The linkable text fields for each entity type.
+ *
+ * These must stay in step with the WikiLinkInput fields in each entity's form —
+ * a field that accepts `[[links]]` but is missing here silently drops them,
+ * which is exactly what happened to an encounter's `environment`.
+ */
+export function entityTextsFor(entity, type) {
+  const texts = [];
+  if (!entity) return texts;
+
+  if (type === 'npc') {
+    texts.push(entity.description, entity.notes, entity.firstMet, entity.location);
+  } else if (type === 'location') {
+    texts.push(entity.description, entity.notableFeatures, entity.secrets);
+  } else if (type === 'lore') {
+    texts.push(entity.content);
+  } else if (type === 'session') {
+    texts.push(entity.summary, entity.dmNotes);
+  } else if (type === 'timelineEvent') {
+    texts.push(entity.description, entity.outcome);
+  } else if (type === 'encounter') {
+    // `enemies` only exists on hand-written encounters — the Encounter Builder
+    // replaces it with structured adversarySlots, which is why builder-made
+    // encounters have so little prose to link from.
+    texts.push(entity.description, entity.enemies, entity.environment, entity.tactics, entity.rewards);
+  } else if (type === 'note') {
+    texts.push(entity.content);
+  }
+
+  // Keep only real strings so a structured array can never be regex-matched
+  // as "[object Object]".
+  return texts.filter(t => typeof t === 'string' && t.length > 0);
+}
+
+/** Inferred edges are guesses, so they weigh less than a link someone typed. */
+export const INFERRED_EDGE_WEIGHT = 0.5;
+
+/**
+ * Build the edge list for a set of nodes.
+ *
+ * Two sources. Typed `[[links]]` used to be the only one, which left whole
+ * entity types floating unconnected — encounters worst of all, since the things
+ * they really point at (adversaries, environments) are not node types here. So
+ * an edge is also inferred when one entity's text names another, using the same
+ * matching the forms' auto-link button applies: whole words, case-insensitive,
+ * a 3-character floor, longest name first, existing links left alone.
+ *
+ * @param {Array} nodes - Nodes with { id, name, type, data }
+ * @returns {Object} { edges, strengthMap } — edges carry `inferred: boolean`
+ */
+export function buildGraphEdges(nodes) {
+  const edges = [];
+  const edgeById = new Map();
+  const strengthMap = new Map();
+
+  const nodeMap = new Map();
+  nodes.forEach(node => {
+    if (node?.name) nodeMap.set(node.name.toLowerCase(), node);
+  });
+  const canonicalNames = nodes.map(n => n?.name).filter(Boolean);
+
+  const addEdge = (node, targetNode, inferred) => {
+    if (!targetNode || targetNode.id === node.id) return;
+    const edgeId = [node.id, targetNode.id].sort().join('-');
+
+    const existing = edgeById.get(edgeId);
+    if (existing) {
+      // One deliberate link anywhere settles it: this is not a guess.
+      if (!inferred) existing.inferred = false;
+    } else {
+      const edge = { id: edgeId, source: node.id, target: targetNode.id, inferred };
+      edgeById.set(edgeId, edge);
+      edges.push(edge);
+    }
+
+    const strength = calculateConnectionStrength(node, targetNode, nodes);
+    const weighted = inferred ? strength * INFERRED_EDGE_WEIGHT : strength;
+    strengthMap.set(edgeId, Math.max(strengthMap.get(edgeId) || 0, weighted));
+  };
+
+  nodes.forEach(node => {
+    entityTextsFor(node.data, node.type).forEach(text => {
+      // Typed links first, so a later inferred pass over the same pair can only
+      // confirm the edge, never downgrade it to a guess.
+      extractWikiLinks(text).forEach(name => {
+        addEdge(node, nodeMap.get(name.toLowerCase()), false);
+      });
+
+      // autoLinkText brackets every recognised name and preserves the ones
+      // already bracketed, so re-extracting yields typed + inferred together.
+      // The typed ones were recorded above and keep their flag.
+      extractWikiLinks(autoLinkText(text, canonicalNames)).forEach(name => {
+        addEdge(node, nodeMap.get(name.toLowerCase()), true);
+      });
+    });
+  });
+
+  return { edges, strengthMap };
+}
+
 /**
  * Calculate connection strength between two entities
  * Counts how many times they reference each other
@@ -71,6 +186,28 @@ export function filterGraphByTypes(nodes, edges, selectedTypes) {
     nodes: filteredNodes,
     edges: filteredEdges
   };
+}
+
+/**
+ * Drop nodes that touch no edge.
+ *
+ * Must run AFTER type filtering, never before: a node whose only partner was
+ * just filtered out is isolated *in what you are looking at*, and computing
+ * isolation against the unfiltered edge list would leave it stranded on screen.
+ *
+ * @param {Array} nodes - Nodes already narrowed to what will be displayed
+ * @param {Array} edges - Edges already narrowed to the same set
+ * @returns {Object} { nodes, edges, hiddenCount }
+ */
+export function filterIsolatedNodes(nodes, edges) {
+  const connected = new Set();
+  edges.forEach(edge => {
+    connected.add(edge.source);
+    connected.add(edge.target);
+  });
+
+  const kept = nodes.filter(n => connected.has(n.id));
+  return { nodes: kept, edges, hiddenCount: nodes.length - kept.length };
 }
 
 /**

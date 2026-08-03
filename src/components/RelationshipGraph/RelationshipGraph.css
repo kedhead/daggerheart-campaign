@@ -375,6 +375,19 @@
   opacity: 0.95;
 }
 
+/* Inferred edges — drawn because one entity's text names another, not because
+   anyone typed a [[link]]. Dashed so a guess never passes for a decision.
+   Butt caps keep the dashes distinct; the round caps used on solid edges swell
+   each dash by half a stroke width and close the gaps. */
+.edge-inferred .edge-main-line {
+  stroke-linecap: butt;
+}
+
+/* Highlighting an inferred edge still says "this one is a guess". */
+.edge-highlighted.edge-inferred .edge-main-line {
+  opacity: 0.75;
+}
+
 /* Node Labels - Starmap style */
 .node-label {
   pointer-events: none;
