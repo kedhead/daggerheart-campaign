@@ -8,10 +8,12 @@ import {
   calculateNodeImportance,
   filterGraphByTypes,
   filterIsolatedNodes,
+  filterToTopHubs,
   findConnectedComponent,
+  layoutLabels,
+  truncateLabel,
   getNodeColor,
   getTypeLabel,
-  labelVisibleFor,
   MIN_TAP_RADIUS_PX
 } from '../../utils/graphCalculations';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -21,6 +23,14 @@ import './RelationshipGraph.css';
 // On phones the container is tiny; cramming the simulation into it stacked
 // every node against the walls. fitToView() maps the world to the screen.
 const layoutSizeFor = (count) => Math.max(900, Math.ceil(Math.sqrt(Math.max(1, count))) * 170);
+
+// How many nodes the opening view keeps. Chosen so a phone shows a readable
+// constellation rather than a hairball; "Show all" is one tap away.
+const HUB_LIMIT = 24;
+// Label budget. Collision handling alone would allow far more on a desktop,
+// but a wall of names is the thing being fixed.
+const MAX_LABELS_MOBILE = 12;
+const MAX_LABELS_DESKTOP = 30;
 
 export default function RelationshipGraph({ campaign, entities, isDM, currentUserId }) {
   const [allNodes, setAllNodes] = useState([]);
@@ -46,6 +56,11 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   // reported in the subtitle so nothing disappears unexplained.
   const [hideUnlinked, setHideUnlinked] = useState(true);
   const [hiddenCount, setHiddenCount] = useState(0);
+  // A hundred stars will not fit on a phone however well they are drawn, so
+  // open on the hubs — the shape of the campaign — and let people ask for the
+  // rest. Desktop has the room, so it starts with everything.
+  const [showAllNodes, setShowAllNodes] = useState(false);
+  const [trimmedCount, setTrimmedCount] = useState(0);
   const [highlightedEdges, setHighlightedEdges] = useState([]);
   const [draggedNode, setDraggedNode] = useState(null);
   const [edgeStrengthMap, setEdgeStrengthMap] = useState(new Map());
@@ -95,6 +110,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
   }, [displayNodes]);
   const highlightedEdgeSet = useMemo(() => new Set(highlightedEdges), [highlightedEdges]);
 
+
   // Measured container size, driving the viewBox. Measured in a LAYOUT effect
   // so it lands before the browser paints — reading containerRef during render
   // yields null on the mount pass, which used to paint one frame at a
@@ -120,6 +136,20 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     ro.observe(el);
     return () => ro.disconnect();
   }, [hasGraph]);
+
+  // Which labels survive collision, recomputed as the camera moves. Cheap: a
+  // few dozen rectangles, and only when pan/zoom/nodes change. Declared here
+  // rather than beside the other memos because it needs the measured viewport.
+  const labelIds = useMemo(() => {
+    if (!showLabels) return new Set();
+    return layoutLabels(displayNodes, {
+      zoom,
+      pan,
+      viewport: viewportSize,
+      maxLabels: isMobile ? MAX_LABELS_MOBILE : MAX_LABELS_DESKTOP,
+      showTypeLabel: zoom >= 0.7,
+    });
+  }, [displayNodes, zoom, pan, viewportSize, showLabels, isMobile]);
 
   // Opening or closing the overlay hands the canvas a completely different
   // viewport, so the previous zoom/pan is meaningless — re-fit on the next
@@ -383,6 +413,18 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     }
     setHiddenCount(hidden);
 
+    // Then narrow to hubs. After isolation, so the budget is spent on nodes
+    // that actually connect to something; skipped entirely while focused,
+    // because you asked for that neighbourhood specifically.
+    let trimmed = 0;
+    if (!showAllNodes && !focusNode) {
+      const hubs = filterToTopHubs(nodes, edges, HUB_LIMIT);
+      nodes = hubs.nodes;
+      edges = hubs.edges;
+      trimmed = hubs.trimmedCount;
+    }
+    setTrimmedCount(trimmed);
+
     // Apply focus mode if a node is selected
     if (focusNode) {
       const focused = findConnectedComponent(focusNode, nodes, edges);
@@ -393,7 +435,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
     setDisplayNodes(nodes);
     setDisplayEdges(edges);
     displayNodesRef.current = nodes;
-  }, [allNodes, allEdges, selectedTypes, focusNode, hideUnlinked]);
+  }, [allNodes, allEdges, selectedTypes, focusNode, hideUnlinked, showAllNodes]);
 
   // Keep refs in sync with state for use in native event handlers
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
@@ -876,6 +918,17 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
               {hiddenCount > 0 && ` · ${hiddenCount} unlinked hidden`}
               {focusNode && ' (Focused View)'}
             </p>
+            {/* The escape hatch from the hub view lives next to the count that
+                explains it, rather than as a seventh unlabelled toolbar icon. */}
+            {!focusNode && (trimmedCount > 0 || showAllNodes) && (
+              <button
+                type="button"
+                className="graph-scope-chip"
+                onClick={() => setShowAllNodes(v => !v)}
+              >
+                {showAllNodes ? 'Show hubs only' : `Show all ${displayNodes.length + trimmedCount}`}
+              </button>
+            )}
           </div>
         }
         selectedTypes={selectedTypes}
@@ -1022,6 +1075,11 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
               const twinkleDuration = 3 + (hash % 20) / 10; // 3-5s
               const sparkleDuration = 2 + ((hash * 3) % 20) / 10; // 2-4s
               const spikeLength = r * 2.2;
+              // Every node used to get a 3x halo, a pulsing twinkle and four
+              // diffraction spikes. At real density the halos merged into soup
+              // and the spikes read as edges. Keep the full treatment for hubs
+              // — where it means something — and let leaves be points of light.
+              const isHub = (node.importance || 0) >= 3;
 
               return (
                 <g
@@ -1051,9 +1109,9 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={r * 3}
+                    r={isHub ? r * 3 : r * 1.8}
                     fill={baseColor}
-                    opacity="0.08"
+                    opacity={isHub ? 0.08 : 0.05}
                     className="star-halo"
                   />
 
@@ -1063,7 +1121,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     cy={node.y}
                     r={r * 2}
                     fill={baseColor}
-                    opacity="0.2"
+                    opacity={isHub ? 0.2 : 0.1}
                     className="star-twinkle"
                     style={{
                       animationDelay: `${twinkleDelay}s`,
@@ -1071,7 +1129,9 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                     }}
                   />
 
-                  {/* 3. Diffraction spikes - classic 4-point star cross */}
+                  {/* 3. Diffraction spikes - classic 4-point star cross.
+                      Hubs only: on a leaf they add nothing and read as edges. */}
+                  {isHub && (
                   <g className="star-spikes" filter="url(#spike-glow)">
                     {/* Vertical spike */}
                     <line
@@ -1114,6 +1174,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                       className="spike-line-minor"
                     />
                   </g>
+                  )}
 
                   {/* 4. Core glow - main colored body */}
                   <circle
@@ -1152,9 +1213,12 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                   {/* Labels sit in world units inside the viewBox, so at the
                       fit zoom a phone settles on (~0.29, or the 0.15 floor for
                       a big campaign) a 10px label rendered under 3px. Font
-                      sizes counter-scale by 1/zoom to stay constant on screen;
-                      the cull below then keeps them from overlapping. */}
-                  {showLabels && labelVisibleFor(node, zoom) && (
+                      sizes counter-scale by 1/zoom to stay constant on screen
+                      — which then made them collide, because holding a
+                      constant size while nodes crowd together is exactly how
+                      you get a pile of overlapping names. layoutLabels packs
+                      them in screen space and drops whatever will not fit. */}
+                  {labelIds.has(node.id) && (
                     <>
                       <text
                         x={node.x}
@@ -1162,7 +1226,7 @@ export default function RelationshipGraph({ campaign, entities, isDM, currentUse
                         textAnchor="middle"
                         className="node-label"
                       >
-                        {node.name.length > 20 ? node.name.substring(0, 20) + '...' : node.name}
+                        {truncateLabel(node.name)}
                       </text>
                       {zoom >= 0.7 && (
                         <text

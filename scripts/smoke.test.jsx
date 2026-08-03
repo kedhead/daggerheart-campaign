@@ -29,7 +29,11 @@ import {
   filterIsolatedNodes,
   buildGraphEdges,
   entityTextsFor,
-  labelVisibleFor,
+  isInferrableMention,
+  filterToTopHubs,
+  layoutLabels,
+  truncateLabel,
+  LABEL_MAX_CHARS,
   worldSizeForScreenPx,
   screenSizeForWorld,
   MIN_TAP_RADIUS_PX
@@ -826,16 +830,70 @@ section('Relationship graph — scale invariance & focus');
     });
   }
 
-  // Counter-scaled labels stay readable but collide once zoomed out, so they
-  // thin by importance rather than all-or-nothing.
+  // Counter-scaling fixed label SIZE and thereby caused a label COLLISION
+  // problem: constant-size names over crowded nodes pile on top of each other.
+  // A zoom threshold controlled how many appeared but nothing about where, so
+  // placement is now packed in screen space.
   {
-    const hub = { importance: 9 };
-    const mid = { importance: 4 };
-    const leaf = { importance: 1 };
-    assert(labelVisibleFor(leaf, 1) && labelVisibleFor(hub, 1), 'zoomed in, everything is labelled');
-    assert(labelVisibleFor(mid, 0.5) && !labelVisibleFor(leaf, 0.5), 'mid zoom keeps connected nodes only');
-    assert(labelVisibleFor(hub, 0.2) && !labelVisibleFor(mid, 0.2), 'zoomed out, only the hubs keep names');
-    assert(!labelVisibleFor(undefined, 0.2), 'a missing node never claims a label');
+    const opts = { zoom: 1, pan: { x: 0, y: 0 }, viewport: { w: 800, h: 600 } };
+
+    // Two nodes on the same spot: one label, not two stacked.
+    const stacked = [
+      { id: 'a', name: 'Thornwood Bridge', x: 400, y: 300, radius: 8, importance: 9 },
+      { id: 'b', name: 'Thornwood Bridge Approach', x: 402, y: 302, radius: 8, importance: 2 },
+    ];
+    const shown = layoutLabels(stacked, opts);
+    assert(shown.size === 1, `overlapping labels collapse to one (got ${shown.size})`);
+    assert(shown.has('a'), 'and the better-connected node is the one that keeps its name');
+
+    // Far apart: both fit.
+    const apart = [
+      { id: 'a', name: 'Alpha', x: 100, y: 100, radius: 8, importance: 5 },
+      { id: 'b', name: 'Beta', x: 600, y: 500, radius: 8, importance: 5 },
+    ];
+    assert(layoutLabels(apart, opts).size === 2, 'labels far apart are both drawn');
+
+    // The budget is a hard cap regardless of room.
+    const many = Array.from({ length: 40 }, (_, i) => ({
+      id: `n${i}`, name: `Node ${i}`, x: 20 + i * 19, y: 40 + (i % 8) * 70, radius: 6, importance: 40 - i,
+    }));
+    assert(layoutLabels(many, { ...opts, maxLabels: 12 }).size <= 12, 'the label budget is respected');
+
+    // Offscreen labels must not eat the budget.
+    const offscreen = [
+      { id: 'far', name: 'Way Off Screen', x: 90000, y: 90000, radius: 8, importance: 99 },
+      { id: 'near', name: 'On Screen', x: 400, y: 300, radius: 8, importance: 1 },
+    ];
+    const culled = layoutLabels(offscreen, { ...opts, maxLabels: 1 });
+    assert(culled.has('near') && !culled.has('far'),
+      'an offscreen label is skipped so a visible one can use the budget');
+
+    assert(layoutLabels([], opts).size === 0, 'an empty graph draws no labels');
+    assert(layoutLabels(stacked, { ...opts, zoom: 0 }).size >= 1, 'a degenerate zoom still places labels');
+
+    // Truncation at 20 chars made "THE SAGEWILDS CORRUP…" and "THE CORRUPTED
+    // HEART…" near-indistinguishable on a real campaign.
+    assert(truncateLabel('Short') === 'Short', 'a short name is left alone');
+    assert(truncateLabel('The Sagewilds Corruption Spreads').length === LABEL_MAX_CHARS + 1,
+      'a long name is cut to the limit plus an ellipsis');
+    assert(LABEL_MAX_CHARS > 20, 'and the limit is looser than the old 20 characters');
+  }
+
+  // Opening view: 99 stars never fit a phone, so start on the best-connected.
+  {
+    const nodes = Array.from({ length: 30 }, (_, i) => ({ id: `n${i}`, name: `N${i}`, importance: i }));
+    const edges = [
+      { id: 'e1', source: 'n29', target: 'n28' },   // both survive the cut
+      { id: 'e2', source: 'n29', target: 'n0' },    // n0 is trimmed away
+    ];
+    const hubs = filterToTopHubs(nodes, edges, 5);
+    assert(hubs.nodes.length === 5 && hubs.trimmedCount === 25, 'the top 5 hubs are kept and the rest counted');
+    assert(hubs.nodes.every(n => n.importance >= 25), 'and they really are the best-connected ones');
+    assert(hubs.edges.length === 1, 'edges to trimmed nodes are dropped, leaving no dangling ends');
+
+    const small = filterToTopHubs(nodes.slice(0, 3), [], 5);
+    assert(small.nodes.length === 3 && small.trimmedCount === 0,
+      'a campaign smaller than the limit is left completely alone');
   }
 
   // Tap-to-focus feeds findConnectedComponent, which was imported and wired but
@@ -856,6 +914,46 @@ section('Relationship graph — scale invariance & focus');
     const lone = findConnectedComponent('z', [{ id: 'z', name: 'z' }], []);
     assert(lone.nodes.length === 1 && lone.edges.length === 0, 'an isolated node focuses to just itself');
   }
+}
+
+// ── Inference had to be tightened after seeing it on a real campaign ──
+section('Relationship graph — inference strictness');
+{
+  const node = (type, id, name, data) => ({ id: `${type}-${id}`, type, name, data: { id, name, ...data } });
+
+  // autoLinkText's 3-character floor suits a button you can undo. Silent
+  // inference hung a spoke off every passing mention.
+  {
+    assert(isInferrableMention('Thornwood Bridge', 'Met at Thornwood Bridge once.'),
+      'a multi-word name is distinctive enough on a single mention');
+    assert(!isInferrableMention('Sagewilds', 'The Sagewilds are burning.'),
+      'a single-word name mentioned once is not enough');
+    assert(isInferrableMention('Sagewilds', 'The Sagewilds burn. Nobody leaves the Sagewilds.'),
+      'the same name twice earns the edge');
+    assert(!isInferrableMention('Jeff', 'Jeff. Jeff. Jeff.'),
+      'a name under the length floor never qualifies, however often it appears');
+    assert(!isInferrableMention(null, 'text') && !isInferrableMention('Name', null),
+      'missing name or text is handled');
+  }
+
+  // The end-to-end effect: a one-off mention no longer creates a spoke, but a
+  // deliberate [[link]] is untouched by any of this.
+  {
+    const nodes = [
+      node('location', 'l1', 'Sagewilds', {}),
+      node('encounter', 'e1', 'Border Skirmish', { description: 'A raid in the Sagewilds.' }),
+    ];
+    assert(buildGraphEdges(nodes).edges.length === 0, 'a single mention of a one-word place infers nothing');
+
+    const typed = [
+      node('location', 'l1', 'Sagewilds', {}),
+      node('encounter', 'e1', 'Border Skirmish', { description: 'A raid in the [[Sagewilds]].' }),
+    ];
+    const edges = buildGraphEdges(typed).edges;
+    assert(edges.length === 1 && edges[0].inferred === false,
+      'tightening inference never touches a link you typed');
+  }
+
 }
 
 // ── Why encounters floated unconnected ──

@@ -55,6 +55,33 @@ export function entityTextsFor(entity, type) {
 export const INFERRED_EDGE_WEIGHT = 0.5;
 
 /**
+ * `autoLinkText`'s 3-character floor is right for an interactive button, where
+ * you see the result and can undo it. It is too loose for silent inference: on
+ * a real campaign it hung a spoke off every passing mention, and the map filled
+ * with faint one-off connections nobody meant.
+ */
+export const INFERENCE_MIN_NAME_LENGTH = 6;
+
+/**
+ * Whether a name occurring in some text is strong enough to infer a link.
+ *
+ * A multi-word name ("Thornwood Bridge", "Korvus Thal") is distinctive — one
+ * mention is a real reference. A single word ("Sagewilds", "Jeff") is the
+ * dangerous case, because it also occurs as ordinary prose, so it has to earn
+ * the edge by appearing more than once.
+ */
+export function isInferrableMention(name, text) {
+  if (typeof name !== 'string' || typeof text !== 'string') return false;
+  const trimmed = name.trim();
+  if (trimmed.length < INFERENCE_MIN_NAME_LENGTH) return false;
+  if (/\s/.test(trimmed)) return true;
+
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const matches = text.match(new RegExp(`\\b${escaped}\\b`, 'gi'));
+  return (matches ? matches.length : 0) >= 2;
+}
+
+/**
  * Build the edge list for a set of nodes.
  *
  * Two sources. Typed `[[links]]` used to be the only one, which left whole
@@ -107,9 +134,12 @@ export function buildGraphEdges(nodes) {
 
       // autoLinkText brackets every recognised name and preserves the ones
       // already bracketed, so re-extracting yields typed + inferred together.
-      // The typed ones were recorded above and keep their flag.
+      // The typed ones were recorded above and keep their flag; the rest have
+      // to clear the stricter bar in isInferrableMention.
       extractWikiLinks(autoLinkText(text, canonicalNames)).forEach(name => {
-        addEdge(node, nodeMap.get(name.toLowerCase()), true);
+        const target = nodeMap.get(name.toLowerCase());
+        if (!target || !isInferrableMention(target.name, text)) return;
+        addEdge(node, target, true);
       });
     });
   });
@@ -291,17 +321,108 @@ export function screenSizeForWorld(worldSize, zoom) {
   return worldSize * z;
 }
 
+/** Longest label drawn before an ellipsis. */
+export const LABEL_MAX_CHARS = 26;
+
+/** Roughly how wide one character is, as a fraction of font size, for Cinzel. */
+const LABEL_CHAR_WIDTH = 0.6;
+
+export function truncateLabel(name, max = LABEL_MAX_CHARS) {
+  const text = typeof name === 'string' ? name : '';
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
 /**
- * Whether a node keeps its label at this zoom.
+ * Decide which labels to draw, in screen space, so that none overlap.
  *
- * Counter-scaled labels stay readable but start colliding once zoomed out, so
- * thin them by importance. The old rule kept every node with degree ≥ 3 —
- * exactly the hubs, exactly where labels pile up worst.
+ * Labels were previously thinned by a zoom threshold alone, which controlled
+ * *how many* appeared but nothing about *where*. On a real campaign the names
+ * landed on top of each other and on the stars, and counter-scaling made it
+ * worse by holding each label at a constant size while the nodes crowded
+ * together. So place them in importance order and drop any that would collide
+ * with one already placed: fewer names, every one readable.
+ *
+ * Pure and screen-space, so it is testable without a DOM.
+ *
+ * @returns {Set<string>} ids of the nodes that should show a label
  */
-export function labelVisibleFor(node, zoom, { hubThreshold = 6 } = {}) {
-  if (zoom >= 0.7) return true;
-  if (zoom >= 0.35) return (node?.importance || 0) >= 3;
-  return (node?.importance || 0) >= hubThreshold;
+export function layoutLabels(nodes, { zoom, pan, viewport, fontPx = 10, maxLabels = Infinity, showTypeLabel = false } = {}) {
+  const shown = new Set();
+  if (!Array.isArray(nodes) || !nodes.length) return shown;
+
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  const panX = pan?.x || 0;
+  const panY = pan?.y || 0;
+  const vw = viewport?.w || 0;
+  const vh = viewport?.h || 0;
+
+  // The type line sits above the name, so reserve its height too or the two
+  // stacked lines collide with whatever is placed above them.
+  const lineH = fontPx * 1.25;
+  const boxH = showTypeLabel ? lineH * 2.2 : lineH;
+  const pad = 2;
+
+  const ranked = [...nodes].sort((a, b) =>
+    (b.importance || 0) - (a.importance || 0) ||
+    String(a.name || '').localeCompare(String(b.name || ''))
+  );
+
+  const placed = [];
+  for (const node of ranked) {
+    if (shown.size >= maxLabels) break;
+
+    const sx = (node.x - panX) * z;
+    const sy = (node.y - panY) * z;
+    const r = (node.radius || 8) * z;
+    const w = truncateLabel(node.name).length * fontPx * LABEL_CHAR_WIDTH;
+
+    const box = {
+      x: sx - w / 2 - pad,
+      y: sy - r - 8 - boxH - pad,
+      w: w + pad * 2,
+      h: boxH + pad * 2,
+    };
+
+    // Offscreen labels cost nothing to skip and free the budget for visible ones.
+    if (vw && vh && (box.x + box.w < 0 || box.x > vw || box.y + box.h < 0 || box.y > vh)) continue;
+
+    const hits = placed.some(p =>
+      box.x < p.x + p.w && p.x < box.x + box.w &&
+      box.y < p.y + p.h && p.y < box.y + box.h
+    );
+    if (hits) continue;
+
+    placed.push(box);
+    shown.add(node.id);
+  }
+
+  return shown;
+}
+
+/**
+ * Narrow a graph to its best-connected nodes.
+ *
+ * 99 stars will not fit on a 390px phone however well they are drawn, so the
+ * map opens on the shape of the campaign — the hubs and what joins them — and
+ * lets you ask for the rest.
+ *
+ * @returns {Object} { nodes, edges, trimmedCount }
+ */
+export function filterToTopHubs(nodes, edges, limit) {
+  if (!Array.isArray(nodes) || nodes.length <= limit) {
+    return { nodes, edges, trimmedCount: 0 };
+  }
+
+  const ranked = [...nodes].sort((a, b) =>
+    (b.importance || 0) - (a.importance || 0) ||
+    String(a.name || '').localeCompare(String(b.name || ''))
+  );
+  const keep = new Set(ranked.slice(0, limit).map(n => n.id));
+
+  const keptNodes = nodes.filter(n => keep.has(n.id));
+  const keptEdges = edges.filter(e => keep.has(e.source) && keep.has(e.target));
+
+  return { nodes: keptNodes, edges: keptEdges, trimmedCount: nodes.length - keptNodes.length };
 }
 
 export function calculateForceDirectedLayout(nodes, edges, width, height, iterations = 50) {

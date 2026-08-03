@@ -85,6 +85,27 @@
   padding-left: 1rem;
 }
 
+/* The way back to the whole campaign from the opening hub view. Sits with the
+   count that explains it, not buried among the toolbar icons. */
+.graph-scope-chip {
+  flex-shrink: 0;
+  font-family: 'Crimson Text', serif;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  min-height: 32px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.graph-scope-chip:hover {
+  background: rgba(251, 191, 36, 0.2);
+}
+
 /* Grouping Actions */
 .graph-bar-actions {
   display: flex;
