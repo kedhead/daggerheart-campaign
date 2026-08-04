@@ -556,6 +556,25 @@ export const getEnvironmentsByType = (type) =>
 
 export const ENVIRONMENT_TYPES = ['exploration', 'social', 'combat', 'traversal', 'event'];
 
+/**
+ * Every feature type used by the official environments above.
+ *
+ * Canonical here because it was previously written out separately in the form
+ * and the card, and both had drifted: they listed four types while the data
+ * uses six. `reaction` (27 uses) and `countdown` (6) were missing, so editing
+ * an imported SRD environment offered no matching option and silently coerced
+ * the type on save. Anything that validates or renders a feature type must
+ * import this rather than restate it.
+ */
+export const ENVIRONMENT_FEATURE_TYPES = [
+  'passive',
+  'action',
+  'reaction',
+  'hazard',
+  'countdown',
+  'encounter',
+];
+
 export const ENVIRONMENT_TIERS = [1, 2, 3, 4];
 
 export default DAGGERHEART_ENVIRONMENTS;

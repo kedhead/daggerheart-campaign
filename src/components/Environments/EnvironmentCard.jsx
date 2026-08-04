@@ -1,4 +1,4 @@
-import { Edit2, Trash2, ChevronDown, ChevronRight, AlertTriangle, Eye, Zap, Shield } from 'lucide-react';
+import { Edit2, Trash2, ChevronDown, ChevronRight, AlertTriangle, Eye, Zap, Shield, CornerUpLeft, Timer } from 'lucide-react';
 
 const TYPE_COLORS = {
   exploration: 'var(--hope-color)',
@@ -16,10 +16,15 @@ const TYPE_ICONS = {
   event: '⚡'
 };
 
+// Must cover every type in ENVIRONMENT_FEATURE_TYPES. `reaction` and
+// `countdown` were missing while the official SRD data in this repo uses them
+// 27 and 6 times respectively, so those features rendered with no icon.
 const FEATURE_ICONS = {
   passive: <Eye size={14} />,
   hazard: <AlertTriangle size={14} />,
   action: <Zap size={14} />,
+  reaction: <CornerUpLeft size={14} />,
+  countdown: <Timer size={14} />,
   encounter: <Shield size={14} />
 };
 

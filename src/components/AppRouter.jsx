@@ -148,6 +148,9 @@ export default function AppRouter({
 
   // Encounter to auto-open when navigating to the encounters view (e.g. from a session's encounter link)
   const [targetEncounterId, setTargetEncounterId] = useState(null);
+  // An unsaved encounter handed over from the environment builder, so
+  // "Save & Build Encounter" lands in the encounter builder prefilled.
+  const [pendingEncounterDraft, setPendingEncounterDraft] = useState(null);
 
   const publishedStorybookChapters = storybookChapters?.filter(c => c.status === 'published') || [];
 
@@ -484,6 +487,8 @@ export default function AppRouter({
           characters={characters}
           targetEncounterId={targetEncounterId}
           onTargetEncounterHandled={() => setTargetEncounterId(null)}
+          pendingEncounterDraft={pendingEncounterDraft}
+          onPendingEncounterHandled={() => setPendingEncounterDraft(null)}
         />
       );
 
@@ -607,6 +612,31 @@ export default function AppRouter({
           updateEnvironment={updateEnvironment}
           deleteEnvironment={deleteEnvironment}
           isDM={isDM}
+          userId={currentUserId}
+          adversaries={adversaries}
+          campaignFrame={campaignFrame}
+          npcs={npcs}
+          locations={locations}
+          lore={lore}
+          sessions={sessions}
+          characters={characters}
+          encounters={encounters}
+          items={items}
+          maps={maps}
+          storybookChapters={publishedStorybookChapters}
+          onBuildEncounter={(environment, draft) => {
+            // `draft` carries the AI-proposed, BP-costed roster when one could
+            // be generated; without it the builder still opens on the right
+            // environment so the roster can be filled in by hand.
+            setPendingEncounterDraft(draft || {
+              name: `${environment?.name || 'New'} Encounter`,
+              description: environment?.description || '',
+              environmentId: environment?.id || '',
+              adversarySlots: [],
+              partySize: characters.length || 4,
+            });
+            setCurrentView('encounters');
+          }}
         />
       );
 

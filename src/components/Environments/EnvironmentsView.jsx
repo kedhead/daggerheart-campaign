@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Download, Check, TreePine, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import EnvironmentCard from './EnvironmentCard';
 import EnvironmentForm from './EnvironmentForm';
 import Modal from '../Modal';
 import { DAGGERHEART_ENVIRONMENTS, getEnvironmentsByTier, ENVIRONMENT_TYPES } from '../../data/daggerheartEnvironments';
 import { sourceOf, CONTENT_SOURCES } from '../../data/sources';
+import { buildCampaignContext } from '../../services/campaignContext';
+import { generateEnvironmentEncounter } from '../../services/environmentGenerator';
+import { useAPIKey } from '../../hooks/useAPIKey';
 import './EnvironmentsView.css';
 
 export default function EnvironmentsView({
@@ -13,8 +16,40 @@ export default function EnvironmentsView({
   addEnvironment,
   updateEnvironment,
   deleteEnvironment,
-  isDM
+  isDM,
+  userId,
+  adversaries = [],
+  onBuildEncounter = null,
+  // Collections for the campaign brain the AI builder writes against — the
+  // same set AdversariesView receives.
+  campaignFrame = null,
+  npcs = [],
+  locations = [],
+  lore = [],
+  sessions = [],
+  characters = [],
+  encounters = [],
+  items = [],
+  maps = [],
+  storybookChapters = []
 }) {
+  const [buildingEncounter, setBuildingEncounter] = useState(false);
+
+  const { getEffectiveKey } = useAPIKey(userId || campaign?.createdBy);
+  const anthropicInfo = getEffectiveKey('anthropic');
+  const openaiInfo = getEffectiveKey('openai');
+  const aiProvider = anthropicInfo?.key ? 'anthropic' : 'openai';
+  const aiKey = anthropicInfo?.key || openaiInfo?.key;
+
+  const campaignContext = useMemo(
+    () => buildCampaignContext(campaign, {
+      characters, npcs, adversaries, locations, lore, sessions, encounters,
+      campaignFrame, items, maps, storybookChapters, environments,
+    }),
+    [campaign, characters, npcs, adversaries, locations, lore, sessions,
+     encounters, campaignFrame, items, maps, storybookChapters, environments]
+  );
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
   const [filterType, setFilterType] = useState('all');
@@ -105,6 +140,51 @@ export default function EnvironmentsView({
       await addEnvironment({ ...data, isOfficial: false });
     }
     closeEditModal();
+  };
+
+  // An encounter references an environment by id, which only exists once the
+  // environment is stored — so save first, then generate the roster against it.
+  const handleBuildEncounter = async (data) => {
+    setBuildingEncounter(true);
+    try {
+      let saved;
+      if (editingEnvironment?.id) {
+        const { id, ...updates } = { ...data };
+        await updateEnvironment(editingEnvironment.id, updates);
+        saved = { ...data, id: editingEnvironment.id };
+      } else {
+        const created = await addEnvironment({ ...data, isOfficial: false });
+        // addEnvironment implementations differ in what they return, so accept
+        // either a record or a bare id rather than building an encounter that
+        // points at nothing.
+        const id = created?.id || created;
+        saved = { ...data, id: typeof id === 'string' ? id : undefined };
+      }
+
+      let draft = null;
+      if (aiKey && adversaries.length) {
+        try {
+          draft = await generateEnvironmentEncounter({
+            environment: saved,
+            adversaries,
+            partySize: characters.length || 4,
+            apiKey: aiKey,
+            provider: aiProvider,
+            campaignContext,
+          });
+        } catch (e) {
+          // A failed roster must not lose the environment that was just saved,
+          // so fall through to an empty draft the builder can be filled in by
+          // hand instead of surfacing this as a total failure.
+          console.warn('Encounter roster generation failed:', e);
+        }
+      }
+
+      closeEditModal();
+      onBuildEncounter?.(saved, draft);
+    } finally {
+      setBuildingEncounter(false);
+    }
   };
 
   // Filter environments
@@ -375,6 +455,12 @@ export default function EnvironmentsView({
             onSave={handleSaveEnvironment}
             onCancel={closeEditModal}
             isDM={isDM}
+            userId={userId || campaign?.createdBy}
+            campaignEnvironments={environments}
+            campaignAdversaries={adversaries}
+            campaignContext={campaignContext}
+            onBuildEncounter={onBuildEncounter ? handleBuildEncounter : null}
+            buildingEncounter={buildingEncounter}
           />
         )}
       </Modal>

@@ -39,6 +39,14 @@ import {
   screenSizeForWorld,
   MIN_TAP_RADIUS_PX
 } from '../src/utils/graphCalculations.js';
+import { ENVIRONMENT_FEATURE_TYPES } from '../src/data/daggerheartEnvironments.js';
+import {
+  ENVIRONMENT_TIER_BENCHMARKS,
+  normalizeGeneratedEnvironment,
+  fallbackEnvironmentStats,
+  resolveAdversarySlots,
+  fitRosterToBudget
+} from '../src/services/environmentGenerator.js';
 import {
   buildStoryGraph,
   sortSessionsByDate,
@@ -1241,6 +1249,147 @@ section('Story map — recap-driven graph');
       'a campaign with no sessions yields an empty story');
     assert(buildStoryGraph(null).nodes.length === 0, 'a missing node list is handled');
   }
+}
+
+// ── Environment builder ──
+section('Environment generator');
+{
+  // Benchmarks must match the SRD content actually shipped in this repo, or the
+  // prompt teaches the model numbers the rest of the app disagrees with.
+  {
+    const srdByTier = {};
+    DAGGERHEART_ENVIRONMENTS.forEach(e => {
+      if (e.difficulty > 0) (srdByTier[e.tier] ||= []).push(e.difficulty);
+    });
+    Object.entries(ENVIRONMENT_TIER_BENCHMARKS).forEach(([tier, b]) => {
+      const actual = srdByTier[tier] || [];
+      const lo = Math.min(...actual);
+      const hi = Math.max(...actual);
+      assert(b.difficulty[0] === lo && b.difficulty[1] === hi,
+        `tier ${tier} benchmark ${b.difficulty.join('-')} matches the SRD's ${lo}-${hi}`);
+    });
+    assert(ENVIRONMENT_TIER_BENCHMARKS[4].difficulty[0] > ENVIRONMENT_TIER_BENCHMARKS[1].difficulty[1],
+      'tier 4 is unambiguously harder than tier 1');
+  }
+
+  // Every feature type the official data uses must be renderable and selectable.
+  {
+    const used = new Set();
+    DAGGERHEART_ENVIRONMENTS.forEach(e => (e.features || []).forEach(f => used.add(f.type)));
+    const missing = [...used].filter(t => !ENVIRONMENT_FEATURE_TYPES.includes(t));
+    assert(missing.length === 0,
+      `the feature type list covers everything the SRD uses (missing: ${missing.join(', ') || 'none'})`);
+    assert(ENVIRONMENT_FEATURE_TYPES.includes('reaction') && ENVIRONMENT_FEATURE_TYPES.includes('countdown'),
+      'including reaction and countdown, which the form and card used to drop');
+  }
+
+  // Parsing model output is where the bugs live — the network call is not.
+  {
+    const env = normalizeGeneratedEnvironment({
+      name: 'The Drowned Archive',
+      tier: 2, type: 'exploration', difficulty: 14,
+      description: 'Flooded stacks of a sunken library.',
+      impulses: ['Swallow the careless', '  ', 'Offer forbidden knowledge'],
+      features: [
+        { name: 'Rising Water', type: 'countdown', description: 'A clock ticks toward full submersion.' },
+        { name: 'Grasping Current', type: 'reaction', description: 'Anyone who swims must make a Difficulty 14 Spirit save or be pulled under.' },
+        { name: 'Invented', type: 'sorcery', description: 'Nonsense type.' },
+        { name: 'Costly', type: 'action', cost: '  ', description: 'No real cost.' },
+      ],
+      potentialAdversaries: ['Drowned Scribe', ''],
+    }, { tier: 2, type: 'exploration' });
+
+    assert(env.features[0].type === 'countdown' && env.features[1].type === 'reaction',
+      'countdown and reaction features survive validation');
+    assert(env.features[2].type === 'passive', 'an invented feature type falls back to passive');
+    assert(!('cost' in env.features[3]), 'a blank Fear cost is dropped rather than stored');
+    assert(env.impulses.length === 2, 'blank impulses are stripped');
+    assert(env.potentialAdversaries.length === 1, 'blank adversary suggestions are stripped');
+
+    // The same D&D-ism sanitizer the adversary generator uses, applied here too:
+    // hazard and reaction text is exactly where "Spirit save" creeps in.
+    assert(!/save/i.test(env.features[1].description) && /Reaction Roll/.test(env.features[1].description),
+      `the sanitizer rewrites saves in feature text (got "${env.features[1].description}")`);
+  }
+
+  // difficulty 0 is meaningful for events — two official tier 1 entries use it,
+  // and `|| fallback` would silently overwrite a correct answer.
+  {
+    const event = normalizeGeneratedEnvironment({ name: 'Ambushed', type: 'event', difficulty: 0 }, { tier: 1, type: 'event' });
+    assert(event.difficulty === 0, 'an event may keep difficulty 0 rather than being coerced');
+
+    const missing = normalizeGeneratedEnvironment({ name: 'Nameless' }, { tier: 3, type: 'exploration' });
+    assert(missing.difficulty === 17, `a missing difficulty falls back to the tier median (got ${missing.difficulty})`);
+
+    const negative = normalizeGeneratedEnvironment({ name: 'Bad', difficulty: -5 }, { tier: 1, type: 'exploration' });
+    assert(negative.difficulty > 0, 'a negative difficulty is rejected');
+    assert(normalizeGeneratedEnvironment({}, {}).name === 'Unnamed Environment', 'empty output still yields a usable object');
+  }
+
+  // The model picks adversaries by name; ids are resolved here. A hallucinated
+  // id would save as a dangling reference the encounter tracker skips silently.
+  {
+    const adversaries = [
+      { id: 'a1', name: 'Dire Wolf', role: 'standard' },
+      { id: 'a2', name: 'Bandit Minion', role: 'minion' },
+      { id: 'a3', name: 'Bear', role: 'bruiser' },
+    ];
+    const { slots, unmatched } = resolveAdversarySlots([
+      { name: 'Dire Wolf', quantity: 2 },
+      { name: 'dire wolf', quantity: 1 },      // same adversary, different case
+      { name: 'Kraken', quantity: 1 },         // not in this campaign
+      { name: '', quantity: 3 },
+    ], adversaries);
+
+    assert(slots.length === 1 && slots[0].adversaryId === 'a1', 'names resolve to real campaign adversary ids');
+    assert(slots[0].quantity === 3, 'the same adversary named twice merges into one slot');
+    assert(unmatched.join() === 'Kraken', 'an adversary the campaign does not have is reported, not invented');
+    assert(slots.every(s => adversaries.some(a => a.id === s.adversaryId)), 'no slot ever carries a dangling id');
+    assert(resolveAdversarySlots(null, adversaries).slots.length === 0, 'missing model output yields no slots');
+  }
+
+  // Budget is enforced in code. The model is not asked to be a calculator.
+  {
+    const adversaries = [
+      { id: 'solo', name: 'Kraken', role: 'solo' },       // 5 BP each
+      { id: 'std', name: 'Soldier', role: 'standard' },   // 2 BP each
+      { id: 'min', name: 'Rabble', role: 'minion' },      // 1 BP per party-size group
+    ];
+    const partySize = 4;
+    const budget = calculateBPBudget(partySize);          // 14
+
+    const over = [
+      { adversaryId: 'solo', quantity: 3 },   // 15
+      { adversaryId: 'std', quantity: 4 },    // 8  → 23 total
+    ];
+    const fitted = fitRosterToBudget(over, adversaries, partySize);
+    assert(fitted.usedBP <= fitted.budget,
+      `an over-budget roster is trimmed to fit (${fitted.usedBP} <= ${fitted.budget})`);
+    assert(fitted.trimmed > 0, 'and reports that it trimmed something');
+    assert(fitted.slots.length > 1, 'trimming keeps variety rather than collapsing to one adversary');
+
+    const under = [{ adversaryId: 'std', quantity: 2 }];
+    const kept = fitRosterToBudget(under, adversaries, partySize);
+    assert(kept.trimmed === 0 && kept.usedBP === 4, 'a roster already within budget is left alone');
+
+    // Minions cost per group of party-size, so trimming one at a time must not
+    // loop forever on a slot whose cost does not change.
+    const minions = [{ adversaryId: 'min', quantity: 200 }];
+    const trimmedMinions = fitRosterToBudget(minions, adversaries, partySize);
+    assert(trimmedMinions.usedBP <= trimmedMinions.budget,
+      `a huge minion group is trimmed within budget (${trimmedMinions.usedBP} <= ${trimmedMinions.budget})`);
+
+    assert(fitRosterToBudget([], adversaries, partySize).usedBP === 0, 'an empty roster costs nothing');
+    assert(fitRosterToBudget(null, adversaries, partySize).slots.length === 0, 'a missing roster is handled');
+
+    // The budget argument is honoured, so encounter adjustments flow through.
+    const harder = fitRosterToBudget(over, adversaries, partySize, 2);
+    assert(harder.budget === budget + 2, 'a difficulty adjustment raises the budget');
+  }
+
+  assert(typeof fallbackEnvironmentStats(9, 'nonsense').tier === 'number',
+    'out-of-range tiers and unknown types still produce usable fallbacks');
+  assert(fallbackEnvironmentStats(9, 'nonsense').type === 'exploration', 'an unknown type falls back to exploration');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

@@ -361,6 +361,113 @@
   }
 }
 
+/* Manual / AI Build / Template — the same three-way the adversary builder has. */
+.environment-mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.environment-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  min-height: 40px;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: rgba(226, 232, 240, 0.7);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.environment-mode-tab.active {
+  color: var(--hope-color);
+  background: color-mix(in srgb, var(--hope-color) 20%, transparent);
+  border-color: color-mix(in srgb, var(--hope-color) 40%, transparent);
+}
+
+.environment-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.environment-template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.environment-template-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.environment-template-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.environment-template-meta small {
+  color: rgba(226, 232, 240, 0.55);
+  font-size: 0.75rem;
+}
+
+.environment-template-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.environment-template-buttons button,
+.environment-form-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  min-height: 40px;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(226, 232, 240, 0.85);
+}
+
+.environment-template-buttons .btn-primary,
+.environment-form-actions .btn-primary {
+  color: #0f1016;
+  background: var(--hope-color);
+  border-color: var(--hope-color);
+}
+
+.environment-form-actions button:disabled,
+.environment-template-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .environment-feature-editor {
   display: flex;
   flex-direction: column;

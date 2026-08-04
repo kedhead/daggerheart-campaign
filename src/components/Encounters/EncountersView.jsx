@@ -14,7 +14,7 @@ const SORTS = {
   name: (a, b) => (a.name || '').localeCompare(b.name || ''),
 };
 
-export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, addAdversary, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [], targetEncounterId = null, onTargetEncounterHandled }) {
+export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, addAdversary, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [], targetEncounterId = null, onTargetEncounterHandled, pendingEncounterDraft = null, onPendingEncounterHandled }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -23,6 +23,10 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [useBuilder, setUseBuilder] = useState(true); // Use new BP builder by default
   const [showTracker, setShowTracker] = useState(false);
+  // A prefilled but unsaved encounter, e.g. one generated from an environment.
+  // Kept separate from `editingEncounter` because that field decides whether
+  // handleSave updates or creates — a draft has no id yet and must create.
+  const [draftEncounter, setDraftEncounter] = useState(null);
 
   // Active encounter hook
   const { activeEncounter, startEncounter } = useActiveEncounter(campaign?.id);
@@ -38,6 +42,18 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     onTargetEncounterHandled?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetEncounterId, encounters, isDM]);
+
+  // Open the builder prefilled when we arrive here from "Save & Build
+  // Encounter" on an environment.
+  useEffect(() => {
+    if (!pendingEncounterDraft) return;
+    setEditingEncounter(null);
+    setDraftEncounter(pendingEncounterDraft);
+    setUseBuilder(true);
+    setIsModalOpen(true);
+    onPendingEncounterHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingEncounterDraft]);
 
   // Check if this is a Daggerheart campaign (BP builder is Daggerheart-specific)
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
@@ -72,6 +88,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     }
     setIsModalOpen(false);
     setEditingEncounter(null);
+    setDraftEncounter(null);
   };
 
   const handleDelete = async (encounterId) => {
@@ -404,6 +421,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
         onClose={() => {
           setIsModalOpen(false);
           setEditingEncounter(null);
+          setDraftEncounter(null);
         }}
         title={editingEncounter ? 'Edit Scenario' : 'New Scenario'}
         size={useBuilder && isDaggerheart ? 'large' : 'medium'}
@@ -430,11 +448,12 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
 
         {useBuilder && isDaggerheart ? (
           <EncounterBuilder
-            encounter={editingEncounter}
+            encounter={editingEncounter || draftEncounter}
             onSave={handleSave}
             onCancel={() => {
               setIsModalOpen(false);
               setEditingEncounter(null);
+              setDraftEncounter(null);
             }}
             campaign={campaign}
             adversaries={adversaries}
@@ -445,11 +464,12 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
           />
         ) : (
           <EncounterForm
-            encounter={editingEncounter}
+            encounter={editingEncounter || draftEncounter}
             onSave={handleSave}
             onCancel={() => {
               setIsModalOpen(false);
               setEditingEncounter(null);
+              setDraftEncounter(null);
             }}
             campaign={campaign}
             entities={entitiesData}

@@ -41,7 +41,8 @@ export function buildCampaignContext(campaign, {
   campaignFrame = null,
   items       = [],
   maps        = [],
-  storybookChapters = []
+  storybookChapters = [],
+  environments = []
 } = {}) {
   if (!campaign) return '';
 
@@ -116,6 +117,21 @@ export function buildCampaignContext(campaign, {
       lines.push(line);
     });
     if (visibleAdversaries.length > 40) lines.push(`  *(…and ${visibleAdversaries.length - 40} more)*`);
+  }
+
+  // ── Environments ───────────────────────────────────────────────────────────
+  // Previously absent entirely, so every generator was free to propose an
+  // environment name the campaign already had.
+  const visibleEnvironments = environments.filter(e => e.name);
+  if (visibleEnvironments.length > 0) {
+    lines.push(`\n### Environments (${visibleEnvironments.length})`);
+    visibleEnvironments.slice(0, 30).forEach(e => {
+      let line = `- **${e.name}** — Tier ${e.tier} ${e.type}`;
+      if (e.description) line += `: ${_truncate(e.description, 80)}`;
+      if (e.hidden)      line += ' *(hidden from players)*';
+      lines.push(line);
+    });
+    if (visibleEnvironments.length > 30) lines.push(`  *(…and ${visibleEnvironments.length - 30} more)*`);
   }
 
   // ── Items ──────────────────────────────────────────────────────────────────
