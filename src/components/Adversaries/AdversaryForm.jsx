@@ -95,9 +95,12 @@ export default function AdversaryForm({
   const { getEffectiveKey } = useAPIKey(userId);
   const anthropicInfo = getEffectiveKey('anthropic');
   const openaiInfo = getEffectiveKey('openai');
-  const hasAI = !!(anthropicInfo?.key || openaiInfo?.key);
-  const aiProvider = anthropicInfo?.key ? 'anthropic' : 'openai';
-  const aiKey = anthropicInfo?.key || openaiInfo?.key;
+  // A null key is valid: /api/generate falls back to the server's
+  // ANTHROPIC_API_KEY / OPENAI_API_KEY, so the panel is never gated on the
+  // user having saved one. (A `hasAI` flag used to be computed here and never
+  // read — copying it into the environment builder is what gated that one.)
+  const aiKey = anthropicInfo?.key || openaiInfo?.key || null;
+  const aiProvider = openaiInfo?.key && !anthropicInfo?.key ? 'openai' : 'anthropic';
 
   // ── Form helpers ────────────────────────────────────────────────────────────
 

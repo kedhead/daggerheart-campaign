@@ -38,8 +38,9 @@ export default function EnvironmentsView({
   const { getEffectiveKey } = useAPIKey(userId || campaign?.createdBy);
   const anthropicInfo = getEffectiveKey('anthropic');
   const openaiInfo = getEffectiveKey('openai');
-  const aiProvider = anthropicInfo?.key ? 'anthropic' : 'openai';
-  const aiKey = anthropicInfo?.key || openaiInfo?.key;
+  // May be null — the server supplies its own key in that case.
+  const aiKey = anthropicInfo?.key || openaiInfo?.key || null;
+  const aiProvider = openaiInfo?.key && !anthropicInfo?.key ? 'openai' : 'anthropic';
 
   const campaignContext = useMemo(
     () => buildCampaignContext(campaign, {
@@ -162,7 +163,10 @@ export default function EnvironmentsView({
       }
 
       let draft = null;
-      if (aiKey && adversaries.length) {
+      // No `aiKey &&` here: a null key is valid, and /api/generate falls back
+      // to the server's env keys. Gating on a personal key silently returned
+      // an empty roster on deployments where the AI otherwise works.
+      if (adversaries.length) {
         try {
           draft = await generateEnvironmentEncounter({
             environment: saved,

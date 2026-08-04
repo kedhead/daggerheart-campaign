@@ -56,12 +56,24 @@ export default function EnvironmentForm({
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateSource, setTemplateSource] = useState('srd'); // 'srd' | 'campaign'
 
+  // A client-side key is optional. /api/generate falls back to the server's
+  // ANTHROPIC_API_KEY / OPENAI_API_KEY when none is sent, so gating the panel
+  // on a personal key refused requests the server would have answered. Same
+  // resolution LocationsView and FilesView already use.
   const { getEffectiveKey } = useAPIKey(userId);
   const anthropicInfo = getEffectiveKey('anthropic');
   const openaiInfo = getEffectiveKey('openai');
-  const hasAI = !!(anthropicInfo?.key || openaiInfo?.key);
-  const aiProvider = anthropicInfo?.key ? 'anthropic' : 'openai';
-  const aiKey = anthropicInfo?.key || openaiInfo?.key;
+  const aiKey = anthropicInfo?.key || openaiInfo?.key || null;
+  const aiProvider = openaiInfo?.key && !anthropicInfo?.key ? 'openai' : 'anthropic';
+
+  // The one genuine block: a shared key exists but this user has spent their
+  // allowance. Falling through to the server's env key there would quietly
+  // bypass the limit the shared-key system exists to enforce.
+  const sharedLimitReason = !aiKey
+    ? (anthropicInfo?.usageCheck && !anthropicInfo.usageCheck.allowed && anthropicInfo.usageCheck.reason)
+      || (openaiInfo?.usageCheck && !openaiInfo.usageCheck.allowed && openaiInfo.usageCheck.reason)
+      || null
+    : null;
 
   const handleGenerate = async (templateEnvironment = null) => {
     if (!aiConcept.trim()) { setAiError('Describe the environment concept first.'); return; }
@@ -208,11 +220,8 @@ export default function EnvironmentForm({
           {modeTab('template', 'Template', <BookOpen size={16} />)}
         </div>
 
-        {!hasAI ? (
-          <p className="form-hint">
-            No AI provider is configured. Add an Anthropic or OpenAI key in Settings to
-            generate environments.
-          </p>
+        {sharedLimitReason ? (
+          <p className="form-hint">{sharedLimitReason}</p>
         ) : (
           <>
             <div className="form-row">
@@ -310,7 +319,7 @@ export default function EnvironmentForm({
                 <button type="button" className="btn-secondary" onClick={() => applyTemplate(env)}>
                   Use as-is
                 </button>
-                {hasAI && (
+                {!sharedLimitReason && (
                   <button
                     type="button"
                     className="btn-primary"
