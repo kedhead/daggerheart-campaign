@@ -59,6 +59,10 @@ import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/da
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
 import { DAGGERHEART_WEAPONS, DAGGERHEART_ARMOR, DAGGERHEART_EQUIPMENT, DAGGERHEART_CONSUMABLES } from '../src/data/daggerheartItems.js';
 import { HF_TRANSFORMATIONS, HF_DOMAIN_CARDS, HF_CAMPAIGN_FRAMES } from '../src/data/hopeFear.js';
+import * as hopeFearReal from '../src/data/hopeFear.js';
+import * as hopeFearStub from '../src/data/hopeFear.empty.js';
+import Dice2DRoll from '../src/dice/Dice2D.jsx';
+import { shouldUse3D } from '../src/dice/webglSupport.js';
 import { sourceOf, isSourceEnabled, filterBySource, withSource, CONTENT_SOURCES } from '../src/data/sources.js';
 import {
   validateAdversary, validateDomainCard, validateClass, validateSubclass,
@@ -1390,6 +1394,61 @@ section('Environment generator');
   assert(typeof fallbackEnvironmentStats(9, 'nonsense').tier === 'number',
     'out-of-range tiers and unknown types still produce usable fallbacks');
   assert(fallbackEnvironmentStats(9, 'nonsense').type === 'exploration', 'an unknown type falls back to exploration');
+}
+
+// ── Mobile build: content stub stays in lockstep with the real module ──
+//
+// The mobile target aliases hopeFear.js to hopeFear.empty.js so expansion
+// content never enters an app-store binary. Seven data modules destructure
+// those exports at module load, so a name added to the real file but not the
+// stub isn't a missing-content bug — it's a boot crash on mobile only, which
+// the web build and the web tests would both stay silent about.
+section('Mobile content stub');
+{
+  const missing = Object.keys(hopeFearReal).filter(k => !(k in hopeFearStub));
+  assert(missing.length === 0,
+    `stub covers every hopeFear export (missing: ${missing.join(', ') || 'none'})`);
+
+  const wrongShape = Object.keys(hopeFearReal).filter(k => {
+    const real = hopeFearReal[k];
+    const stub = hopeFearStub[k];
+    if (Array.isArray(real)) return !Array.isArray(stub);
+    if (typeof real === 'object' && real !== null) return typeof stub !== 'object' || stub === null;
+    return typeof stub !== typeof real;
+  });
+  assert(wrongShape.length === 0,
+    `stub shapes match the real module (wrong: ${wrongShape.join(', ') || 'none'})`);
+
+  const nonEmpty = Object.entries(hopeFearStub).filter(([, v]) =>
+    (Array.isArray(v) && v.length > 0) || (v && typeof v === 'object' && Object.keys(v).length > 0));
+  assert(nonEmpty.length === 0,
+    `stub ships no expansion content (leaked: ${nonEmpty.map(([k]) => k).join(', ') || 'none'})`);
+}
+
+// ── Mobile build: 2D dice fallback ──
+section('Dice fallback');
+{
+  // An explicit 2D preference must win even where WebGL is available, and
+  // must never depend on a DOM probe — this runs in node with no canvas.
+  assert(shouldUse3D('2d') === false, 'a 2D preference forces the flat tray');
+  assert(shouldUse3D('auto') === false, 'no WebGL means no 3D tray');
+  assert(shouldUse3D('3d') === false, 'even an explicit 3D request needs real WebGL');
+
+  // The flat tray reads faces off the canonical document, so unlike the 3D
+  // dice its numbers can be trusted to match the total on the banner.
+  const roll = {
+    id: 'r1',
+    dice: [
+      { groupId: 'hope', sides: 12, value: 9, color: '#eab308' },
+      { groupId: 'fear', sides: 12, value: 4, color: '#a855f7' },
+    ],
+    total: 13,
+  };
+  const html = strip(renderToString(<Dice2DRoll roll={roll} />));
+  assert(html.includes('>9<') && html.includes('>4<'), 'flat dice render their canonical face values');
+  assert(html.includes('d12'), 'flat dice show which die was rolled');
+  assert(strip(renderToString(<Dice2DRoll roll={{ id: 'r2', dice: [] }} />)) === '',
+    'a roll with no dice renders nothing');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

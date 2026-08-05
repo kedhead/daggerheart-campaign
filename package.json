@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "esbuild scripts/smoke.test.jsx --bundle --platform=node --jsx=automatic --loader:.js=jsx --loader:.css=empty --outfile=node_modules/.cache/smoke.test.cjs --log-level=error && node node_modules/.cache/smoke.test.cjs",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "build:mobile": "vite build --mode mobile"
   },
   "dependencies": {
     "@3d-dice/dice-box": "^1.1.4",

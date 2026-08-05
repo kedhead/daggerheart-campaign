@@ -1,0 +1,25 @@
+{
+  "name": "lorelich-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "pin-versions": "expo install --fix",
+    "build:preview": "eas build --profile preview",
+    "build:production": "eas build --profile production",
+    "submit": "eas submit --profile production"
+  },
+  "dependencies": {
+    "expo": "latest",
+    "expo-constants": "latest",
+    "expo-haptics": "latest",
+    "expo-status-bar": "latest",
+    "react": "latest",
+    "react-native": "latest",
+    "react-native-webview": "latest"
+  },
+  "//": "Versions are intentionally unpinned on first checkout. Run `npm run pin-versions` (expo install --fix) once, which resolves every package to the exact version the installed Expo SDK expects and rewrites this file. Do not hand-pick React Native versions — SDK compatibility is the constraint, not npm latest."
+}

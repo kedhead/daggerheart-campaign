@@ -23,18 +23,30 @@
 // side by side. This relies on dice-box's `add()` rather than `roll()`:
 // `roll()` calls clear() first, so a second roll erased the first mid-tumble.
 
+// dice-box is imported dynamically, not statically. It carries ~2MB of
+// renderer and physics, and the 2D path exists precisely for devices that
+// can't run it — a static import would make those devices download the whole
+// thing before falling back. See shouldUse3D() for how the choice is made.
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import DiceBox from '@3d-dice/dice-box';
 import { initAudio, playRollSound, playCritSound, playDoublesSound } from '../utils/diceAudio.js';
 import SpecialResultOverlay from '../components/DiceRoller/SpecialResultOverlay.jsx';
 import RollResultBanner from './RollResultBanner.jsx';
+import Dice2DRoll from './Dice2D.jsx';
 import { useLiveRoll } from './useLiveRoll.js';
+import { shouldUse3D } from './webglSupport.js';
 import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from './diceSpec.js';
 
 const CONTAINER_ID = 'dice-tray-canvas';
 const BANNER_DURATION = 3000;
 const SPECIAL_OVERLAY_DURATION = 2500;
+// How long the 2D dice tumble before showing as settled.
+const FLAT_ROLL_DURATION = 700;
+// A WebView that reports WebGL but then hangs initialising the physics
+// worker would otherwise leave the tray in 'pending' forever, silently
+// swallowing rolls the way the pre-fallback version did on init failure.
+const INIT_TIMEOUT_MS = 8000;
 // If dice-box never resolves a roll, that roll would sit on the table
 // forever holding the scrim up over the whole screen — and, now that rolls
 // are concurrent, blocking everyone else's cleanup too. Force it through.
@@ -46,11 +58,16 @@ const ROLL_WATCHDOG_MS = 15000;
 // meant four queued 3D simulations (+ banners) on every device, no names
 // attached. Shared displays (the table TV) pass animateRemote to keep the
 // full spectacle.
-export default function DiceTray({ campaignId, currentUserId = null, animateRemote = false }) {
+export default function DiceTray({ campaignId, currentUserId = null, animateRemote = false, renderMode = 'auto' }) {
   const containerRef = useRef(null);
   const boxRef = useRef(null);
   const readyRef = useRef(false);
-  // Rolls that arrived before dice-box finished initialising.
+  // 'pending' until the engine choice resolves, then '3d' or '2d'.
+  // modeRef is authoritative for playRoll (which can fire in the same tick as
+  // the decision); `mode` state only drives rendering.
+  const modeRef = useRef('pending');
+  const [mode, setMode] = useState('pending');
+  // Rolls that arrived before the engine choice resolved.
   const pendingRef = useRef([]);
   const groupTimerRef = useRef(null);
   const specialTimerRef = useRef(null);
@@ -160,7 +177,8 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
   }, [armGroupTimer, commitEntries]);
 
   const playRoll = useCallback(async (roll) => {
-    if (!boxRef.current || !readyRef.current) {
+    // Engine choice hasn't landed yet — hold the roll, don't drop it.
+    if (modeRef.current === 'pending') {
       pendingRef.current.push(roll);
       return;
     }
@@ -177,12 +195,26 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     initAudio();
     playRollSound();
 
+    // Generic hook for a host shell. The Expo WebView listens for this to
+    // fire haptics, so a roll is felt as well as heard. A plain DOM event
+    // keeps the native concern out of here: in a browser nothing listens and
+    // this costs one dispatch.
+    try {
+      window.dispatchEvent(new CustomEvent('lorelich:roll', {
+        detail: { crit: !!roll.flags?.isCrit, critFail: !!roll.flags?.isCritFail },
+      }));
+    } catch (err) { /* CustomEvent unavailable — nothing depends on it */ }
+
     showSpecialFor(roll);
 
     watchdogsRef.current.set(roll.id, setTimeout(() => {
       console.warn('[DiceTray] roll never settled, retiring it:', roll.id);
       settleRoll(roll.id, null);
     }, ROLL_WATCHDOG_MS));
+
+    // In 2D the dice are React-rendered, so Dice2DRoll reports its own
+    // settle via onSettled and there's no engine call to await here.
+    if (modeRef.current === '2d') return;
 
     let results = null;
     try {
@@ -196,32 +228,72 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     settleRoll(roll.id, results);
   }, [pushToFeed, commitEntries, settleRoll, showSpecialFor]);
 
-  // Lazy-init dice-box once the portal target is in the DOM.
+  // Settle on an engine, then drain whatever queued up while deciding.
+  //
+  // Every exit from this effect MUST land on a concrete mode. The version
+  // before the 2D fallback existed had one path that didn't — an init()
+  // rejection left readyRef false forever, so the player's rolls queued
+  // invisibly while the rest of the table saw them land. Hence the timeout
+  // and the catch below both fall back rather than just logging.
   useEffect(() => {
-    if (boxRef.current) return undefined;
-    const box = new DiceBox({
-      container: `#${CONTAINER_ID}`,
-      assetPath: '/assets/dice-box/',
-      scale: 6,
-      throwForce: 6,
-      gravity: 3,
-      theme: THEME_RUNES,
-      themeColor: '#3b82f6',
-      offscreen: false,
-    });
+    if (modeRef.current !== 'pending') return undefined;
     let cancelled = false;
-    box.init().then(() => {
-      if (cancelled) return;
-      boxRef.current = box;
-      readyRef.current = true;
-      // Play anything that arrived while we were initialising.
+
+    const commitMode = (next) => {
+      if (cancelled || modeRef.current !== 'pending') return;
+      modeRef.current = next;
+      setMode(next);
       const queued = pendingRef.current;
       pendingRef.current = [];
       for (const roll of queued) playRoll(roll);
-    }).catch(err => console.error('[DiceTray] dice-box init failed:', err));
-    return () => { cancelled = true; };
+    };
+
+    if (!shouldUse3D(renderMode)) {
+      // Straight to 2D without importing dice-box at all — the whole point
+      // of the dynamic import.
+      commitMode('2d');
+      return () => { cancelled = true; };
+    }
+
+    const timeout = setTimeout(() => {
+      console.warn('[DiceTray] 3D init timed out, using 2D dice');
+      commitMode('2d');
+    }, INIT_TIMEOUT_MS);
+
+    import('@3d-dice/dice-box')
+      .then(({ default: DiceBox }) => {
+        if (cancelled) return null;
+        const box = new DiceBox({
+          container: `#${CONTAINER_ID}`,
+          assetPath: '/assets/dice-box/',
+          scale: 6,
+          throwForce: 6,
+          gravity: 3,
+          theme: THEME_RUNES,
+          themeColor: '#3b82f6',
+          offscreen: false,
+        });
+        return box.init().then(() => {
+          clearTimeout(timeout);
+          // A slow init can land AFTER the timeout already fell back. Adopting
+          // the box then would leave boxRef pointing at a renderer whose
+          // canvas host is no longer mounted, and clear()/remove() would be
+          // called against it on every subsequent roll. Stay in 2D.
+          if (cancelled || modeRef.current !== 'pending') return;
+          boxRef.current = box;
+          readyRef.current = true;
+          commitMode('3d');
+        });
+      })
+      .catch(err => {
+        console.error('[DiceTray] 3D dice unavailable, using 2D dice:', err);
+        clearTimeout(timeout);
+        commitMode('2d');
+      });
+
+    return () => { cancelled = true; clearTimeout(timeout); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [renderMode]);
 
   // Receive new canonical rolls from Firestore.
   useLiveRoll(campaignId, useCallback((roll) => {
@@ -258,11 +330,26 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
   }, [commitEntries]);
 
   const banners = entries.filter(e => e.settled);
+  const flat = mode === '2d';
 
   return createPortal(
     <>
       <div className={`dice-tray ${show ? 'is-visible' : ''}`} onClick={dismiss}>
-        <div id={CONTAINER_ID} ref={containerRef} className="dice-tray-canvas" />
+        {/* The 3D canvas host is only mounted in 3D mode; dice-box binds to
+            this element by id at init, so it must not exist twice. */}
+        {!flat && <div id={CONTAINER_ID} ref={containerRef} className="dice-tray-canvas" />}
+        {flat && entries.length > 0 && (
+          <div className="d2d-stack">
+            {entries.map(e => (
+              <Dice2DRoll
+                key={e.roll.id}
+                roll={e.roll}
+                duration={FLAT_ROLL_DURATION}
+                onSettled={() => settleRoll(e.roll.id, null)}
+              />
+            ))}
+          </div>
+        )}
         {banners.length > 0 && (
           <div className={`dice-banner-stack ${banners.length > 1 ? 'is-multi' : ''}`}>
             {banners.map(e => <RollResultBanner key={e.roll.id} roll={e.roll} />)}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, User, UserPlus, Chrome } from 'lucide-react';
+import { SUPPORTS_OAUTH_POPUP } from '../../config/platform';
 import './Auth.css';
 
 export default function Signup({ onToggleForm }) {
@@ -142,19 +143,23 @@ export default function Signup({ onToggleForm }) {
         </button>
       </form>
 
-      <div className="auth-divider">
-        <span>or</span>
-      </div>
+      {SUPPORTS_OAUTH_POPUP && (
+        <>
+          <div className="auth-divider">
+            <span>or</span>
+          </div>
 
-      <button
-        type="button"
-        className="btn btn-secondary full-width"
-        onClick={handleGoogleSignIn}
-        disabled={loading}
-      >
-        <Chrome size={18} />
-        Continue with Google
-      </button>
+          <button
+            type="button"
+            className="btn btn-secondary full-width"
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+          >
+            <Chrome size={18} />
+            Continue with Google
+          </button>
+        </>
+      )}
 
       <p className="auth-footer">
         Already have an account?{' '}

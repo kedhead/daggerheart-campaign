@@ -29,6 +29,90 @@
   height: 100% !important;
 }
 
+/* =========================================================================
+   Dice2D (fallback tray — no WebGL)
+   =========================================================================
+   Used when the device can't run the 3D tray, or when the player has asked
+   for the fast path. Unlike the 3D dice these show real face values, because
+   they're drawn straight from the canonical roll document. */
+.d2d-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  max-height: 100%;
+  overflow-y: auto;
+}
+.d2d-roll {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+.d2d-die {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  animation: d2d-tumble 0.7s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+.d2d-roll.is-dense .d2d-die { width: 52px; height: 52px; }
+
+.d2d-die svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.d2d-die svg polygon,
+.d2d-die svg rect {
+  fill: color-mix(in srgb, var(--d2d-color) 22%, #0b0a14);
+  stroke: var(--d2d-color);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.d2d-die.is-settled svg polygon,
+.d2d-die.is-settled svg rect {
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--d2d-color) 55%, transparent));
+}
+.d2d-value {
+  position: relative;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  line-height: 1;
+}
+.d2d-roll.is-dense .d2d-value { font-size: 1.1rem; }
+
+.d2d-sides {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--d2d-color);
+  opacity: 0.85;
+}
+.d2d-roll.is-dense .d2d-sides { display: none; }
+
+@keyframes d2d-tumble {
+  0%   { transform: scale(0.4) rotate(-140deg); opacity: 0; }
+  60%  { transform: scale(1.08) rotate(12deg);  opacity: 1; }
+  100% { transform: scale(1) rotate(0deg);      opacity: 1; }
+}
+
+/* The animation is decoration over a number that's already decided, so
+   reduced-motion can drop it entirely without losing information. */
+@media (prefers-reduced-motion: reduce) {
+  .d2d-die { animation: none; opacity: 1; }
+}
+
 /* Holds one card per settled roll. Several players rolling at once get
    their results side by side rather than one replacing the next. */
 .dice-banner-stack {
