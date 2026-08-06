@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { TRAIT_ABBREV, getWeaponDamage, parseDamageString } from '../../../utils/daggerheartRollUtils';
 import { getFeatureName, getFeatureDescription } from '../../../utils/itemFeatures';
+import { getDamageDiceMods, describeDamageDiceMods } from '../../../utils/daggerheartDamageMods';
+import { isParryWeapon, getParryDice, formatParryDice } from '../../../utils/daggerheartParry';
+import ParryModal from '../../Characters/ParryModal';
 import { getBaseProficiency } from '../../../data/systems/daggerheart';
 
 const BONUS_OPTS = [
@@ -10,7 +13,7 @@ const BONUS_OPTS = [
 ];
 
 function RollPill({ label, formula, onClick, kind, isRolling }) {
-  const colorMap = { weapon: '#f5c543', spell: '#a78bfa', stat: '#60a5fa', generic: '#eab308' };
+  const colorMap = { weapon: '#f5c543', spell: '#a78bfa', stat: '#60a5fa', parry: '#6eeaaa', generic: '#eab308' };
   const c = colorMap[kind] || colorMap.generic;
   return (
     <button onClick={onClick} className={`lrp-roll-pill${isRolling ? ' lrp-rolling' : ''}`}
@@ -24,10 +27,22 @@ function RollPill({ label, formula, onClick, kind, isRolling }) {
 
 export default function ActionsTab({ character, rollBonus, setRollBonus, roll, rollDamage, campaignId, items }) {
   const [rollingKey, setRollingKey] = useState(null);
+  // Reroll abilities read "you CAN reroll", so the player keeps the switch.
+  // Defaults on: rerolling a 1 or a 2 is never the worse bet.
+  const [useRerollAbility, setUseRerollAbility] = useState(true);
+  const [parryWeapon, setParryWeapon] = useState(null);
 
   const traits = character.traits || {};
   const level = character.level || 1;
   const proficiency = character.proficiency || getBaseProficiency(level);
+
+  // Damage-dice abilities from the LOADOUT only — a vaulted card is inactive.
+  const damageMods = useMemo(() => {
+    const vaulted = character.vaultCards || [];
+    const loadout = (character.domainCards || []).filter(name => !vaulted.includes(name));
+    return getDamageDiceMods(loadout);
+  }, [character.domainCards, character.vaultCards]);
+  const activeDamageMods = useRerollAbility ? damageMods : { rerollBelow: 0, sources: [] };
 
   // Resolve equippedItems refs against the catalog, filter to weapons only
   const weapons = Array.isArray(character.equippedItems)
@@ -61,7 +76,12 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
     const parsed = dmgStr ? parseDamageString(dmgStr) : null;
     if (!parsed) return;
     setRollingKey(`dmg-${weapon.id}`);
-    await rollDamage({ label: `${weapon.name} Damage`, ...parsed });
+    await rollDamage({
+      label: `${weapon.name} Damage`,
+      ...parsed,
+      rerollBelow: activeDamageMods.rerollBelow,
+      rerollSource: activeDamageMods.sources[0] || '',
+    });
     setRollingKey(null);
   };
 
@@ -82,6 +102,30 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
           })}
         </div>
       </div>
+
+      {/* Damage-dice ability (Not Good Enough) — tap to skip it on a roll */}
+      {damageMods.sources.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setUseRerollAbility(v => !v)}
+          title={describeDamageDiceMods(damageMods)}
+          style={{
+            alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '5px 11px', borderRadius: 999, fontSize: 11, fontWeight: 700,
+            fontFamily: 'inherit', cursor: 'pointer',
+            background: useRerollAbility ? 'rgba(139,92,246,0.16)' : 'rgba(139,92,246,0.06)',
+            border: `1px solid rgba(139,92,246,${useRerollAbility ? 0.55 : 0.22})`,
+            color: useRerollAbility ? '#c4b5fd' : 'rgba(196,181,253,0.55)',
+          }}
+        >
+          🎲 {damageMods.sources.join(' · ')}
+          <span style={{ fontWeight: 600, opacity: 0.75 }}>
+            {useRerollAbility
+              ? `rerolling ${damageMods.rerollBelow === 1 ? '1s' : `1s–${damageMods.rerollBelow}s`}`
+              : 'off'}
+          </span>
+        </button>
+      )}
 
       {/* Weapons */}
       {weapons.length > 0 && (
@@ -156,8 +200,14 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
                       onClick={() => handleWeaponAttack(weapon)} />
                     {dmg && (
                       <RollPill kind="weapon" label={dmg}
+                        formula={activeDamageMods.rerollBelow ? `↻${activeDamageMods.rerollBelow}` : ''}
                         isRolling={rollingKey === `dmg-${weapon.id}`}
                         onClick={() => handleWeaponDamage(weapon)} />
+                    )}
+                    {isParryWeapon(weapon) && getParryDice(weapon, level, proficiency) && (
+                      <RollPill kind="parry" label="Parry"
+                        formula={formatParryDice(getParryDice(weapon, level, proficiency))}
+                        onClick={() => setParryWeapon(weapon)} />
                     )}
                   </div>
                 </div>
@@ -184,6 +234,17 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
           ))}
         </div>
       </div>
+
+      {/* Parry (Parrying Dagger) */}
+      {parryWeapon && campaignId && (
+        <ParryModal
+          campaignId={campaignId}
+          weapon={parryWeapon}
+          level={level}
+          proficiency={proficiency}
+          onClose={() => setParryWeapon(null)}
+        />
+      )}
     </div>
   );
 }

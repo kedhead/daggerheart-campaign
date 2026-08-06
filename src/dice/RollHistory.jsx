@@ -45,9 +45,21 @@ function summarize(roll) {
     );
   }
   const values = (roll.dice || []).map(d => d.value).join(',');
+  // A parry's own total is meaningless — what the table needs from the log is
+  // what the incoming damage came down to.
+  if (roll.parry) {
+    return (
+      <span className="rh-summary">
+        [{values}] 🛡️ {roll.parry.discardedCount} cut ={' '}
+        <s style={{ opacity: 0.5 }}>{roll.parry.originalTotal}</s>{' '}
+        <strong>{roll.parry.reducedTotal}</strong>
+      </span>
+    );
+  }
   return (
     <span className="rh-summary">
       [{values}] = <strong>{roll.total}</strong>
+      {roll.reroll?.count > 0 && ` ↻${roll.reroll.count}`}
       {roll.flags?.isCrit && ' 🎯'}
       {roll.flags?.isCritFail && ' 💥'}
     </span>

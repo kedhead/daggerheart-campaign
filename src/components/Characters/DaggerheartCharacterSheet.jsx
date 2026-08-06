@@ -6,6 +6,8 @@ import { getCardByName } from '../../data/daggerheartDomainCards';
 import { splitCardFeatures } from '../../utils/domainCardText';
 import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
+import { getDamageDiceMods, isDamageDiceText, describeDamageDiceMods, DAMAGE_DICE_ABILITIES } from '../../utils/daggerheartDamageMods';
+import { isParryWeapon, getParryDice, formatParryDice } from '../../utils/daggerheartParry';
 import { scarCount, normalizeHopeSlots, usableHopeFilled } from '../../utils/daggerheartHope';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -14,6 +16,7 @@ import LevelUpWizard from './LevelUpWizard';
 import RestModal from './RestModal';
 import DeathMoveModal from './DeathMoveModal';
 import BeastformPanel from './BeastformPanel';
+import ParryModal from './ParryModal';
 import TransformationPanel from './TransformationPanel';
 import CompanionSheet from './CompanionSheet';
 import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
@@ -89,6 +92,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   //   'advantage' → add 1d6 to the total (Daggerheart help)
   //   'hindrance' → subtract 1d6 from the total (hinder)
   const [rollBonus, setRollBonus] = useState(null);
+  // Reroll abilities read "you CAN reroll", so the player keeps the switch.
+  // It defaults on because rerolling a 1 or a 2 is never the worse bet.
+  const [useRerollAbility, setUseRerollAbility] = useState(true);
+  const [parryWeapon, setParryWeapon] = useState(null); // weapon whose Parry modal is open
   const rollResultTimer = useRef(null);
 
   const { roll, rollDamage } = useDice(campaign?.id);
@@ -128,9 +135,9 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         isDoubles: !!data.flags?.isDoubles,
       };
     } else {
-      const rolls = (data.dice || []).map(d => d.value);
+      const rolls = (data.dice || []).map(d => ({ value: d.value, rerolledFrom: d.rerolledFrom ?? null }));
       const dieType = data.dice?.[0]?.sides;
-      view = { label, type, rolls, dieType, modifier: data.modifier, total: data.total };
+      view = { label, type, rolls, dieType, modifier: data.modifier, total: data.total, reroll: data.reroll || null };
     }
     setLastRoll(view);
     rollResultTimer.current = setTimeout(() => setLastRoll(null), 6000);
@@ -264,6 +271,11 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     () => domainCards.filter(c => vaultCardNames.includes(c.name)),
     [domainCards, vaultCardNames]
   );
+
+  // Loadout abilities that change how damage dice are rolled (Not Good
+  // Enough). Vaulted cards are inactive, so this reads the loadout only.
+  const damageMods = useMemo(() => getDamageDiceMods(loadoutCards), [loadoutCards]);
+  const activeDamageMods = useRerollAbility ? damageMods : { rerollBelow: 0, sources: [] };
 
   const domainCardsGrouped = useMemo(() => {
     const grouped = {};
@@ -452,7 +464,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (!parsed) return;
     const label = `Damage: ${weapon.name}`;
     flashRoll(`dmg-${weapon.id}`);
-    const result = await rollDamage({ label, ...parsed });
+    const result = await rollDamage({
+      label,
+      ...parsed,
+      rerollBelow: activeDamageMods.rerollBelow,
+      rerollSource: activeDamageMods.sources[0] || '',
+    });
     if (result) showRollResult(label, 'generic', result);
   };
 
@@ -467,7 +484,15 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const handleAbilityDiceRoll = async (card, parsed) => {
     const label = `${card.name}`;
     flashRoll(`card-${card.name}`);
-    const result = await rollDamage({ label, ...parsed });
+    // Reroll abilities cover damage dice specifically — a card that rolls a
+    // d6 on a foraging table isn't rolling damage, so it doesn't get them.
+    const isDamage = isDamageDiceText(card.description);
+    const result = await rollDamage({
+      label,
+      ...parsed,
+      rerollBelow: isDamage ? activeDamageMods.rerollBelow : 0,
+      rerollSource: isDamage ? (activeDamageMods.sources[0] || '') : '',
+    });
     if (result) showRollResult(label, 'generic', result);
   };
 
@@ -823,6 +848,20 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
       {/* Active Weapons */}
       <div className="dh-section-label">Active Weapons</div>
+      {damageMods.sources.length > 0 && (
+        <button
+          type="button"
+          className={`dh-damage-mod-toggle ${useRerollAbility ? 'is-on' : ''}`}
+          onClick={() => setUseRerollAbility(v => !v)}
+          title={`${describeDamageDiceMods(damageMods)}. Click to ${useRerollAbility ? 'skip it on' : 'apply it to'} your next damage roll.`}
+        >
+          <Dices size={12} />
+          {damageMods.sources.join(' · ')}
+          <span className="dh-damage-mod-state">
+            {useRerollAbility ? `rerolling ${damageMods.rerollBelow === 1 ? '1s' : `1s–${damageMods.rerollBelow}s`}` : 'off'}
+          </span>
+        </button>
+      )}
       <div className="dh-weapons-grid">
         {equippedWeapons.map(weapon => {
           const sd = weapon.systemData || {};
@@ -831,6 +870,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           const traitName = (sd.trait || '').toLowerCase();
           const traitMod = traits[traitName] ?? 0;
           const atkModTotal = traitMod;
+          const parryDice = isParryWeapon(weapon) ? getParryDice(weapon, level, proficiency) : null;
           return (
             <div key={weapon.id} className="dh-weapon-card">
               <div className="dh-weapon-card-header">
@@ -884,9 +924,21 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                     <button
                       className={`dh-weapon-roll-btn dh-weapon-roll-dmg ${rollingKey === `dmg-${weapon.id}` ? 'dh-roll-flash' : ''}`}
                       onClick={() => handleWeaponDamage(weapon)}
-                      title={`Damage roll: ${dmg}`}
+                      title={activeDamageMods.rerollBelow
+                        ? `Damage roll: ${dmg} — ${describeDamageDiceMods(activeDamageMods)}`
+                        : `Damage roll: ${dmg}`}
                     >
                       <Sword size={12} /> {dmg}
+                      {activeDamageMods.rerollBelow > 0 && <span className="dh-weapon-roll-tag">↻{activeDamageMods.rerollBelow}</span>}
+                    </button>
+                  )}
+                  {parryDice && (
+                    <button
+                      className="dh-weapon-roll-btn dh-weapon-roll-parry"
+                      onClick={() => setParryWeapon(weapon)}
+                      title={`Parry an incoming attack with ${formatParryDice(parryDice)}`}
+                    >
+                      <Shield size={12} /> Parry
                     </button>
                   )}
                 </div>
@@ -1097,6 +1149,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                               </span>
                             )}
                             <span className="dh-domain-card-level">Lv {card.level}</span>
+                            {DAMAGE_DICE_ABILITIES[card.name] && (
+                              <span
+                                className={`dh-domain-card-auto ${useRerollAbility ? '' : 'is-off'}`}
+                                title={`${DAMAGE_DICE_ABILITIES[card.name].blurb} — applied automatically to your damage rolls. Toggle it on the Active Weapons list.`}
+                              >
+                                {useRerollAbility ? 'Auto ↻' : 'Auto off'}
+                              </span>
+                            )}
                             {card.recallCost != null && (
                               <span className="dh-domain-card-recall" title={`Recall Cost: mark ${card.recallCost} Stress to bring back from the vault mid-session`}>
                                 ⚡{card.recallCost}
@@ -1276,6 +1336,16 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                           title={`Damage: ${dmg}`}
                         >
                           <Sword size={12} /> {dmg}
+                          {activeDamageMods.rerollBelow > 0 && <span className="dh-weapon-roll-tag">↻{activeDamageMods.rerollBelow}</span>}
+                        </button>
+                      )}
+                      {isParryWeapon(weapon) && getParryDice(weapon, level, proficiency) && (
+                        <button
+                          className="dh-weapon-roll-btn dh-weapon-roll-parry"
+                          onClick={() => setParryWeapon(weapon)}
+                          title="Parry an incoming attack"
+                        >
+                          <Shield size={12} /> Parry
                         </button>
                       )}
                     </div>
@@ -1489,17 +1559,29 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           ) : (
             <>
               <div className="dh-roll-result-dice-row dh-roll-generic-dice">
-                {lastRoll.rolls?.map((r, i) => (
-                  <div key={i} className="dh-roll-die dh-roll-die-dmg">
-                    <span className="dh-roll-die-label">d{lastRoll.dieType}</span>
-                    <span className="dh-roll-die-val">{typeof r === 'object' ? r.result : r}</span>
-                  </div>
-                ))}
+                {lastRoll.rolls?.map((r, i) => {
+                  const value = typeof r === 'object' ? (r.value ?? r.result) : r;
+                  const from = typeof r === 'object' ? r.rerolledFrom : null;
+                  return (
+                    <div key={i} className={`dh-roll-die dh-roll-die-dmg ${from != null ? 'dh-roll-die-rerolled' : ''}`}>
+                      <span className="dh-roll-die-label">
+                        {from != null ? <s>{from}</s> : `d${lastRoll.dieType}`}
+                      </span>
+                      <span className="dh-roll-die-val">{value}</span>
+                    </div>
+                  );
+                })}
                 {lastRoll.modifier !== 0 && (
                   <span className="dh-roll-modifier">{lastRoll.modifier >= 0 ? '+' : ''}{lastRoll.modifier}</span>
                 )}
               </div>
               <div className="dh-roll-result-total">{lastRoll.total}</div>
+              {lastRoll.reroll?.count > 0 && (
+                <div className="dh-roll-reroll-note">
+                  ↻ {lastRoll.reroll.source || 'Reroll'} — rerolled {lastRoll.reroll.count}{' '}
+                  {lastRoll.reroll.count === 1 ? 'die' : 'dice'}
+                </div>
+              )}
             </>
           )}
         </div>,
@@ -1533,6 +1615,17 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           onRollHopeDie={rollDeathHopeDie}
           onRollDuality={rollDeathDuality}
           onClose={() => setShowDeathMove(false)}
+        />
+      )}
+
+      {/* Parry (Parrying Dagger) */}
+      {parryWeapon && campaign?.id && (
+        <ParryModal
+          campaignId={campaign.id}
+          weapon={parryWeapon}
+          level={level}
+          proficiency={proficiency}
+          onClose={() => setParryWeapon(null)}
         />
       )}
     </div>

@@ -38,6 +38,12 @@ export async function publishRoll({ campaignId, system, config = {}, rollerInfo,
     outcome: result.outcome ?? null,
     mode: result.mode ?? null,
     flags: result.flags,
+    // Ability riders on a generic roll. Null unless the roll used one, so
+    // every reader can check a single field instead of guessing from labels.
+    //   reroll — { threshold, count, source } from a reroll ability
+    //   parry  — the comparison against the incoming damage roll it cancelled
+    reroll: result.reroll ?? null,
+    parry: result.parry ?? null,
     label: String(label || ''),
     isPrivate: !!isPrivate,
     rollerId: roller.rollerId,

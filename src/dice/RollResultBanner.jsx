@@ -72,17 +72,39 @@ export default function RollResultBanner({ roll }) {
     );
   }
 
-  // Generic
+  // Generic. A die that a reroll ability replaced shows both faces — the
+  // player needs to see the ability earning its keep, and the struck-out
+  // original is the only proof the 1 was ever there.
   const breakdown = (roll.dice || []).map((d, i) => (
     <span key={i} style={{ color: d.color }}>
+      {d.rerolledFrom != null && <s className="banner-rerolled">{d.rerolledFrom}</s>}
       {d.value}{i < (roll.dice.length - 1) ? ', ' : ''}
     </span>
   ));
+  const parry = roll.parry;
   return (
     <div className={`dice-result-banner ${roll.flags?.isCrit ? 'is-crit' : ''} ${roll.flags?.isCritFail ? 'is-critfail' : ''}`}>
       <Roller roll={roll} />
       <div className="banner-dice">[{breakdown}]{modSuffix}</div>
-      <div className="banner-total">{roll.total}</div>
+      {parry ? (
+        <div className="banner-total">
+          <s className="banner-parry-before">{parry.originalTotal}</s> {parry.reducedTotal}
+        </div>
+      ) : (
+        <div className="banner-total">{roll.total}</div>
+      )}
+      {parry && (
+        <div className={`banner-outcome ${parry.discardedCount > 0 ? 'parry' : ''}`}>
+          {parry.discardedCount > 0
+            ? `🛡️ PARRIED ${parry.discardedCount} ${parry.discardedCount === 1 ? 'DIE' : 'DICE'}`
+            : '🛡️ NO MATCH'}
+        </div>
+      )}
+      {roll.reroll?.count > 0 && (
+        <div className="banner-reroll">
+          ↻ {roll.reroll.source || 'Reroll'} — {roll.reroll.count} rerolled
+        </div>
+      )}
       {roll.flags?.isCrit && <div className="banner-outcome crit">🎯 CRITICAL HIT</div>}
       {roll.flags?.isCritFail && <div className="banner-outcome critfail">💥 CRITICAL FAIL</div>}
       {roll.label && <div className="banner-label">{roll.label}</div>}

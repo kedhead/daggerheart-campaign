@@ -16,6 +16,7 @@ export {
   rollStarWarsD6,
   rollGeneric,
   rollForSystem,
+  resolveParry,
   parseDamageNotation,
   SYSTEM_LABELS,
   DICE_COLOR,

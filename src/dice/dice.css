@@ -113,6 +113,28 @@
 .banner-outcome.crit { color: #22c55e; }
 .banner-outcome.critfail { color: #ef4444; }
 .banner-outcome.complication { color: #f59e0b; }
+.banner-outcome.parry { color: #6eeaaa; }
+
+/* The face a reroll ability replaced, shown next to the one that stands. */
+.banner-rerolled {
+  opacity: 0.45;
+  margin-right: 0.2em;
+  font-size: 0.85em;
+}
+/* The attacker's total before a parry knocked dice out of it. */
+.banner-parry-before {
+  opacity: 0.45;
+  font-size: 0.55em;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.banner-reroll {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #c4b5fd;
+}
 .banner-label {
   margin-top: 0.5rem;
   font-size: 0.85rem;

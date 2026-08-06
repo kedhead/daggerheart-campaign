@@ -1,0 +1,159 @@
+/* ─── Parry modal (Parrying Dagger) ───
+   Shares the wizard shell (.luw-*) and adds only the dice-comparison bits. */
+
+.pry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.pry-option {
+  width: 100%;
+  text-align: left;
+  background: #151935;
+  border: 1px solid #2a3055;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.pry-option:hover { border-color: #445; }
+.pry-option.selected {
+  border-color: #c8a44e;
+  background: rgba(200, 164, 78, 0.1);
+}
+
+.pry-option-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pry-option-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e4e8f0;
+}
+
+.pry-option-total {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #c8a44e;
+  font-variant-numeric: tabular-nums;
+}
+
+.pry-option-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+  font-size: 0.72rem;
+  color: #8899aa;
+}
+
+.pry-dice-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.pry-die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.3rem;
+  border-radius: 6px;
+  background: #232948;
+  border: 1px solid #343b63;
+  color: #e4e8f0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.pry-die-mine {
+  background: rgba(200, 164, 78, 0.16);
+  border-color: rgba(200, 164, 78, 0.45);
+  color: #e8c876;
+}
+
+/* A discarded attacker die — struck out, not removed, so the player can see
+   exactly which face the parry cancelled. */
+.pry-die-out {
+  opacity: 0.45;
+  text-decoration: line-through;
+  border-color: rgba(110, 234, 170, 0.5);
+  color: #6eeaaa;
+}
+
+.pry-mod {
+  font-size: 0.75rem;
+  color: #8899aa;
+}
+
+.pry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #232948;
+}
+
+.pry-row-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8899aa;
+  flex-shrink: 0;
+}
+
+.pry-total {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pry-total-before {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #8899aa;
+  text-decoration: line-through;
+}
+
+.pry-total-arrow { color: #6ea; }
+
+.pry-total-after {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #6eeaaa;
+}
+
+.pry-total-unit {
+  font-size: 0.8rem;
+  color: #8899aa;
+  align-self: flex-end;
+  padding-bottom: 0.35rem;
+}
+
+.pry-error {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: #e88;
+}
+
+@media (max-width: 600px) {
+  .pry-option-meta { flex-direction: column; align-items: flex-start; }
+  /* 16px stops iOS Safari zooming the page on focus. */
+  .pry-list + .luw-input-group .luw-input { font-size: 16px; }
+}

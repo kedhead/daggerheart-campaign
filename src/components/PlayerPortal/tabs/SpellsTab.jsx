@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { getCardByName } from '../../../data/daggerheartDomainCards';
 import { extractCardDice } from '../../../utils/daggerheartRollUtils';
+import { getDamageDiceMods, isDamageDiceText } from '../../../utils/daggerheartDamageMods';
 import { splitCardFeatures } from '../../../utils/domainCardText';
 
 function parseGrimoireEntries(description) {
@@ -78,7 +79,17 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId, upd
 
   const handleDiceRoll = async (card, parsed) => {
     if (!campaignId || !parsed) return;
-    await rollDamage({ label: card.name, ...parsed });
+    // Reroll abilities (Not Good Enough) apply to DAMAGE dice — a card that
+    // rolls a d6 on a foraging table isn't rolling damage.
+    const mods = isDamageDiceText(card.description)
+      ? getDamageDiceMods(loadout)
+      : { rerollBelow: 0, sources: [] };
+    await rollDamage({
+      label: card.name,
+      ...parsed,
+      rerollBelow: mods.rerollBelow,
+      rerollSource: mods.sources[0] || '',
+    });
   };
 
   return (

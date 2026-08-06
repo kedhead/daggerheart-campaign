@@ -22,6 +22,11 @@ import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/co
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { useBattleMapStore } from '../src/stores/battleMapStore.js';
 import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from '../src/dice/diceSpec.js';
+import { rollGeneric, resolveParry } from '../src/dice/systems.js';
+import { getDamageDiceMods, isDamageDiceText } from '../src/utils/daggerheartDamageMods.js';
+import {
+  isParryWeapon, getParryDice, formatParryDice, isParryableRoll, parryTargetFromManualDice,
+} from '../src/utils/daggerheartParry.js';
 import { usableHopeMax, usableHopeFilled, normalizeHopeSlots, isScarredSlot } from '../src/utils/daggerheartHope.js';
 import {
   findConnectedComponent,
@@ -744,6 +749,156 @@ section('Dice tray (concurrent rolls)');
 
   assert(MAX_CONCURRENT_ROLLS >= 4 && MAX_CONCURRENT_ROLLS <= 12,
     `concurrency cap is a sane table size (got ${MAX_CONCURRENT_ROLLS})`);
+}
+
+
+section('Damage dice abilities (Not Good Enough)');
+{
+  // Feed rollGeneric a scripted rng so both the first faces and the rerolled
+  // ones are known — the whole point is that the second draw is what stands.
+  const scripted = (values) => {
+    let i = 0;
+    return () => values[i++];
+  };
+
+  // "When you roll your damage dice, you can reroll any 1s or 2s."
+  {
+    const roll = rollGeneric(
+      { sides: 8, quantity: 3, modifier: 2, rerollBelow: 2, rerollSource: 'Not Good Enough' },
+      scripted([1, 5, 2, /* rerolls: */ 7, 6])
+    );
+    const faces = roll.dice.map(d => d.value);
+    assert(faces.join(',') === '7,5,6', `both low dice are rerolled once (got ${faces.join(',')})`);
+    assert(roll.total === 20, `the total uses the rerolled faces (got ${roll.total})`);
+    assert(roll.reroll.count === 2, 'the roll records how many dice were rerolled');
+    assert(roll.reroll.source === 'Not Good Enough', 'the roll records which ability did it');
+    assert(roll.dice[0].rerolledFrom === 1 && roll.dice[2].rerolledFrom === 2,
+      'each rerolled die keeps the face it replaced, so the banner can show 1 → 7');
+    assert(roll.dice[1].rerolledFrom === undefined, 'a die that stood is not marked as rerolled');
+    assert(roll.dice.length === 3, 'rerolling replaces dice in place — the tray still shows three');
+  }
+
+  // A reroll can land on another 1. It stands: the SRD grants one reroll,
+  // not rerolls until you like the number.
+  {
+    const roll = rollGeneric({ sides: 6, quantity: 1, rerollBelow: 2 }, scripted([1, 1]));
+    assert(roll.dice[0].value === 1 && roll.dice[0].rerolledFrom === 1,
+      'a reroll that comes up low again stands');
+    assert(roll.reroll.count === 1, 'the reroll still counts as spent');
+  }
+
+  // Without the ability nothing is rerolled, and the rng is never drawn from
+  // a second time.
+  {
+    const roll = rollGeneric({ sides: 8, quantity: 2 }, scripted([1, 2, 99, 99]));
+    assert(roll.total === 3, `no ability leaves the low faces alone (got ${roll.total})`);
+    assert(roll.reroll === null, 'a plain damage roll carries no reroll record');
+  }
+
+  // Only the loadout is live — a vaulted card does nothing.
+  {
+    const active = getDamageDiceMods(['Not Good Enough', 'Whirlwind']);
+    assert(active.rerollBelow === 2, 'Not Good Enough rerolls 1s and 2s');
+    assert(active.sources[0] === 'Not Good Enough', 'the ability names itself as the source');
+    assert(getDamageDiceMods(['Whirlwind']).rerollBelow === 0, 'unrelated cards change nothing');
+    assert(getDamageDiceMods([]).rerollBelow === 0, 'an empty loadout changes nothing');
+    assert(getDamageDiceMods([{ name: 'Not Good Enough' }]).rerollBelow === 2,
+      'card objects work as well as bare names');
+  }
+
+  // Card dice buttons are parsed out of description text, and not every d6 in
+  // a card is damage — Forager rolls one on a foraging table.
+  {
+    assert(isDamageDiceText('Targets take 1d20+2 magic damage'), 'damage text opts in');
+    assert(!isDamageDiceText('As a downtime move, roll d6 to forage'), 'a foraging d6 is not damage');
+  }
+}
+
+
+section('Parry (Parrying Dagger)');
+{
+  const dagger = DAGGERHEART_WEAPONS.find(w => w.name === 'Parrying Dagger');
+  assert(!!dagger, 'the Parrying Dagger is in the catalog');
+  assert(isParryWeapon(dagger), 'the Parrying Dagger is recognised as a parry weapon');
+  assert(!isParryWeapon(DAGGERHEART_WEAPONS.find(w => w.name === 'Shortsword')),
+    'an ordinary weapon cannot parry');
+
+  // It rolls its damage DICE — one per point of Proficiency — and never its
+  // flat damage modifier, which could not match a die face anyway.
+  {
+    const dice = getParryDice(dagger, 1, 3);
+    assert(dice.dieType === 6 && dice.quantity === 3, `a Proficiency-3 parry rolls 3d6 (got ${formatParryDice(dice)})`);
+    assert(getParryDice(dagger, 1, 0).quantity === 1, 'proficiency floors at one die');
+  }
+
+  // "If any of the attacker's damage dice rolled the same value as your dice,
+  // the matching results are discarded before the damage you take is totaled."
+  {
+    const parry = resolveParry([4, 6, 1], {
+      rollId: 'r1', label: 'Ogre Damage',
+      dice: [{ value: 6 }, { value: 3 }, { value: 4 }], modifier: 5, total: 18,
+    });
+    assert(parry.discardedCount === 2, `two faces matched (got ${parry.discardedCount})`);
+    assert(parry.attackerDice[0].discarded && parry.attackerDice[2].discarded,
+      'the matching attacker dice are the ones marked');
+    assert(!parry.attackerDice[1].discarded, 'an unmatched attacker die survives');
+    assert(parry.originalTotal === 18, 'the attack keeps its own canonical total');
+    assert(parry.reducedTotal === 8, `the discarded faces come off the total (got ${parry.reducedTotal})`);
+    assert(parry.targetRollId === 'r1', 'the parry points back at the roll it answered');
+  }
+
+  // Matching is ONE-TO-ONE: one 5 on the dagger cancels one attacker 5, not
+  // every 5 on the table.
+  {
+    const parry = resolveParry([5], { dice: [{ value: 5 }, { value: 5 }, { value: 5 }], modifier: 0 });
+    assert(parry.discardedCount === 1, `one die matches one die (got ${parry.discardedCount})`);
+    assert(parry.reducedTotal === 10, `only one 5 comes off (got ${parry.reducedTotal})`);
+  }
+
+  // Nothing matched, and the damage stands untouched.
+  {
+    const parry = resolveParry([1, 2], { dice: [{ value: 6 }, { value: 5 }], modifier: 3, total: 14 });
+    assert(parry.discardedCount === 0, 'no matches discards nothing');
+    assert(parry.reducedTotal === 14, 'the total is untouched when nothing matched');
+  }
+
+  // Parrying every die still leaves the attacker's flat modifier — only DICE
+  // are discarded — and the result can never go negative.
+  {
+    const parry = resolveParry([3, 3], { dice: [{ value: 3 }, { value: 3 }], modifier: 4 });
+    assert(parry.reducedTotal === 4, `the flat modifier survives a full parry (got ${parry.reducedTotal})`);
+  }
+
+  // Only damage-style rolls are offered as targets; a duality attack roll and
+  // a parry itself are not things you parry.
+  {
+    assert(isParryableRoll({ system: 'generic', dice: [{ value: 4 }] }), 'a damage roll can be parried');
+    assert(!isParryableRoll({ system: 'daggerheart', dice: [{ value: 4 }] }), 'a duality roll is not damage');
+    assert(!isParryableRoll({ system: 'generic', dice: [] }), 'a roll with no dice offers nothing to match');
+    assert(!isParryableRoll({ system: 'generic', dice: [{ value: 4 }], parry: {} }), 'a parry is not itself parryable');
+  }
+
+  // Damage the GM rolled with real dice can be typed in.
+  {
+    const target = parryTargetFromManualDice('6, 4 3');
+    assert(target.dice.length === 3, 'commas and spaces both separate faces');
+    assert(target.total === 13, `the typed faces total up (got ${target.total})`);
+    assert(parryTargetFromManualDice('') === null, 'an empty entry is not a target');
+    assert(parryTargetFromManualDice('none') === null, 'text with no numbers is not a target');
+  }
+
+  // End to end through the roll pipeline: the parry rides on the roll document
+  // so every viewer reads the reduced number off the same record.
+  {
+    let i = 0;
+    const roll = rollGeneric(
+      { sides: 6, quantity: 2, parryTarget: { rollId: 'atk', label: 'Damage: Greataxe', dice: [{ value: 5 }, { value: 2 }], modifier: 1, total: 8 } },
+      () => [5, 6][i++]
+    );
+    assert(roll.parry.discardedCount === 1, 'the published roll carries its parry result');
+    assert(roll.parry.reducedTotal === 3, `8 damage minus the parried 5 is 3 (got ${roll.parry.reducedTotal})`);
+    assert(roll.total === 11, "the parry roll's own total is still just its dice");
+  }
 }
 
 

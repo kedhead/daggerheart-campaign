@@ -35,16 +35,36 @@ export function useDice(campaignId) {
   }, [campaignId, currentUser]);
 
   // Damage / generic roll: e.g. rollDamage({dieType: 8, quantity: 2, modifier: 3, label: 'Longsword'}).
-  const rollDamage = useCallback(async ({ label = '', dieType, quantity = 1, modifier = 0 } = {}) => {
+  // `rerollBelow` drives reroll abilities — Not Good Enough passes 2 so any
+  // damage die landing on a 1 or a 2 is rerolled before the total is taken.
+  const rollDamage = useCallback(async ({
+    label = '', dieType, quantity = 1, modifier = 0, rerollBelow = 0, rerollSource = '',
+  } = {}) => {
     if (!campaignId || !dieType) return null;
     return publishRoll({
       campaignId,
       system: 'generic',
-      config: { sides: dieType, quantity, modifier },
+      config: { sides: dieType, quantity, modifier, rerollBelow, rerollSource },
       rollerInfo: rollerInfoFromUser(currentUser),
       label,
     });
   }, [campaignId, currentUser]);
 
-  return { roll, rollDamage };
+  // Parry (Parrying Dagger). Rolls the dagger's damage dice against an
+  // incoming damage roll and publishes the comparison, so the table sees which
+  // of the attacker's dice were knocked out and what the damage came down to.
+  // `target` is { rollId, label, dice: [{value, sides}], modifier, total }.
+  // No modifier on the parry roll itself — only the die faces matter.
+  const rollParry = useCallback(async ({ label = 'Parry', dieType, quantity = 1, target } = {}) => {
+    if (!campaignId || !dieType || !target) return null;
+    return publishRoll({
+      campaignId,
+      system: 'generic',
+      config: { sides: dieType, quantity, modifier: 0, parryTarget: target },
+      rollerInfo: rollerInfoFromUser(currentUser),
+      label,
+    });
+  }, [campaignId, currentUser]);
+
+  return { roll, rollDamage, rollParry };
 }

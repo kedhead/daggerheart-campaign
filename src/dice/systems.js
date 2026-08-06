@@ -90,9 +90,80 @@ export function rollStarWarsD6({ modifier = 0, count = 3 } = {}, rng = defaultUn
   return { system: 'starwarsd6', dice, modifier: mod, total, outcome: null, mode: null, flags, wild };
 }
 
+// "Reroll any die that came up at or below N", the shape every Daggerheart
+// reroll ability takes (Not Good Enough: reroll any 1s or 2s on damage dice).
+// Each qualifying die is rerolled ONCE and the new face stands — the SRD has
+// no take-the-better clause, and since the threshold is always below the die's
+// average, rerolling is never the worse bet anyway.
+//
+// The die keeps its slot rather than a fresh one being appended: the 3D tray
+// tumbles one die per entry, so adding entries would put more dice on the
+// table than the player actually rolled. The original face rides along as
+// `rerolledFrom` so the banner can show "1 → 7".
+function applyRerolls(dice, threshold, rng) {
+  let count = 0;
+  const out = dice.map(d => {
+    // A d2 can't escape a "reroll 1s and 2s" threshold, so leave it alone
+    // instead of spinning it for nothing.
+    if (d.value > threshold || d.sides <= threshold) return d;
+    count += 1;
+    return { ...d, rerolledFrom: d.value, value: rng(d.sides) };
+  });
+  return { dice: out, count };
+}
+
+// Parry (Parrying Dagger): "When you are attacked, roll this weapon's damage
+// dice. If any of the attacker's damage dice rolled the same value as your
+// dice, the matching results are discarded from the attacker's damage dice
+// before the damage you take is totaled."
+//
+// Matching is ONE-TO-ONE. A single 5 on the dagger discards one attacker 5,
+// not every 5 on the table. Greedy consumption gives the maximum matching
+// here because dice match only on exact equality.
+export function resolveParry(parryValues, target = {}) {
+  const pool = (parryValues || []).map(Number).filter(Number.isFinite);
+  const attackerDice = (target.dice || []).map(d => ({
+    value: Number(d?.value) || 0,
+    sides: d?.sides ?? null,
+    discarded: false,
+  }));
+  const matchedValues = [];
+  for (const a of attackerDice) {
+    const hit = pool.indexOf(a.value);
+    if (hit === -1) continue;
+    pool.splice(hit, 1);
+    a.discarded = true;
+    matchedValues.push(a.value);
+  }
+  const mod = parseInt(target.modifier, 10) || 0;
+  const rawTotal = attackerDice.reduce((s, a) => s + a.value, 0) + mod;
+  // Trust the attacker's own canonical total when it was handed to us — the
+  // roll document is the authority on its own number, and a card feature may
+  // have added to it after the dice landed.
+  const originalTotal = Number.isFinite(Number(target.total)) ? Number(target.total) : rawTotal;
+  const discarded = attackerDice.filter(a => a.discarded).reduce((s, a) => s + a.value, 0);
+  return {
+    targetRollId: target.rollId || null,
+    targetLabel: String(target.label || ''),
+    attackerDice,
+    matchedValues,
+    discardedCount: matchedValues.length,
+    originalTotal,
+    reducedTotal: Math.max(0, originalTotal - discarded),
+  };
+}
+
 // Generic: arbitrary mix of d4..d20 from a counts object like { d6: 2, d20: 1 }
 // or a simple { sides, quantity } pair. Crit semantics apply only when d20s are present.
-export function rollGeneric({ modifier = 0, diceConfig, sides, quantity, label } = {}, rng = defaultUniformDie) {
+//
+// Optional damage-roll mechanics:
+//   rerollBelow  — reroll any die landing at or below this (Not Good Enough)
+//   parryTarget  — { rollId, label, dice, modifier, total } of an incoming
+//                  damage roll to cancel matching dice from (Parry)
+export function rollGeneric({
+  modifier = 0, diceConfig, sides, quantity, label,
+  rerollBelow = 0, rerollSource = '', parryTarget = null,
+} = {}, rng = defaultUniformDie) {
   const dice = [];
   if (diceConfig && typeof diceConfig === 'object') {
     let idx = 0;
@@ -125,16 +196,29 @@ export function rollGeneric({ modifier = 0, diceConfig, sides, quantity, label }
       });
     }
   }
+  const threshold = parseInt(rerollBelow, 10) || 0;
+  let reroll = null;
+  let finalDice = dice;
+  if (threshold > 0) {
+    const applied = applyRerolls(dice, threshold, rng);
+    finalDice = applied.dice;
+    reroll = { threshold, count: applied.count, source: String(rerollSource || '') };
+  }
+
   const mod = parseInt(modifier, 10) || 0;
-  const total = dice.reduce((s, d) => s + d.value, 0) + mod;
-  const d20s = dice.filter(d => d.sides === 20);
+  const total = finalDice.reduce((s, d) => s + d.value, 0) + mod;
+  const d20s = finalDice.filter(d => d.sides === 20);
   const flags = {
     ...emptyFlags(),
     isCrit: d20s.some(d => d.value === 20),
     isCritFail: d20s.length > 0 && d20s.every(d => d.value === 1),
-    isDoubles: dice.length >= 2 && dice.every(d => d.value === dice[0].value && d.sides === dice[0].sides),
+    isDoubles: finalDice.length >= 2 && finalDice.every(d => d.value === finalDice[0].value && d.sides === finalDice[0].sides),
   };
-  return { system: 'generic', dice, modifier: mod, total, outcome: null, mode: null, flags, label: label || '' };
+  const parry = parryTarget ? resolveParry(finalDice.map(d => d.value), parryTarget) : null;
+  return {
+    system: 'generic', dice: finalDice, modifier: mod, total,
+    outcome: null, mode: null, flags, label: label || '', reroll, parry,
+  };
 }
 
 export function rollForSystem(system, config, rng) {

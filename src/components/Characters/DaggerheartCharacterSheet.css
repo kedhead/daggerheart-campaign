@@ -2144,6 +2144,56 @@
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.2);
 }
 
+.dh-weapon-roll-parry {
+  background: rgba(110, 234, 170, 0.07);
+  border-color: rgba(110, 234, 170, 0.28);
+  color: #6eeaaa;
+}
+.dh-weapon-roll-parry:hover {
+  background: rgba(110, 234, 170, 0.16);
+  border-color: rgba(110, 234, 170, 0.55);
+  box-shadow: 0 0 8px rgba(110, 234, 170, 0.2);
+}
+
+/* Marker on a damage button when a reroll ability is riding along. */
+.dh-weapon-roll-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  background: rgba(139, 92, 246, 0.25);
+  color: #c4b5fd;
+}
+
+/* ===== Damage-dice ability toggle (Not Good Enough) ===== */
+.dh-damage-mod-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  background: rgba(139, 92, 246, 0.07);
+  color: rgba(196, 181, 253, 0.6);
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.dh-damage-mod-toggle.is-on {
+  border-color: rgba(139, 92, 246, 0.55);
+  background: rgba(139, 92, 246, 0.16);
+  color: #c4b5fd;
+}
+.dh-damage-mod-toggle:hover { border-color: rgba(139, 92, 246, 0.7); }
+.dh-damage-mod-state {
+  font-weight: 600;
+  opacity: 0.75;
+  text-transform: lowercase;
+}
+
 /* ===== Quick Roll — Flash Feedback ===== */
 @keyframes dh-roll-flash {
   0%   { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.6); transform: scale(1); }
@@ -2280,6 +2330,15 @@
 
 .dh-roll-die-dmg { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.05); }
 .dh-roll-die-dmg .dh-roll-die-val { color: #f87171; }
+/* A die a reroll ability replaced — the label slot carries the old face. */
+.dh-roll-die-rerolled { border-color: rgba(139,92,246,0.45); background: rgba(139,92,246,0.08); }
+.dh-roll-die-rerolled .dh-roll-die-label { color: #c4b5fd; opacity: 0.7; }
+.dh-roll-reroll-note {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #c4b5fd;
+}
 
 .dh-roll-die-vs {
   font-size: 0.65rem;
@@ -2348,6 +2407,23 @@
   border-radius: 10px;
   padding: 0.05rem 0.4rem;
   white-space: nowrap;
+}
+
+/* Marks a card whose mechanic the dice roller applies for you. */
+.dh-domain-card-auto {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.16);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 10px;
+  padding: 0.05rem 0.4rem;
+  white-space: nowrap;
+}
+.dh-domain-card-auto.is-off {
+  color: rgba(196, 181, 253, 0.5);
+  background: rgba(139, 92, 246, 0.06);
+  border-color: rgba(139, 92, 246, 0.2);
 }
 
 .dh-card-vault-btn {

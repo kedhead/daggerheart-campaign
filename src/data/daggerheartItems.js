@@ -772,7 +772,7 @@ export const DAGGERHEART_WEAPONS = [
   },
   {
     name: 'Parrying Dagger', type: 'weapon',
-    description: "A dagger for defense. When attacked, roll this weapon's damage dice to potentially discard matching attacker dice.",
+    description: "A dagger for defense. Parry — when you're attacked, roll this weapon's damage dice; every attacker damage die showing a value you matched is discarded before the damage you take is totaled.",
     systemData: {
       classification: 'secondary', damageType: 'physical', trait: 'finesse', range: 'melee', burden: 'one-handed', tier: 2,
       damageTier1Dice: 'd6', damageTier1Modifier: 2, damageTier2Dice: 'd6', damageTier2Modifier: 2, damageTier3Dice: 'd6', damageTier3Modifier: 2, damageTier4Dice: 'd6', damageTier4Modifier: 2, features: ['parry']
