@@ -46,5 +46,18 @@ export function useDice(campaignId) {
     });
   }, [campaignId, currentUser]);
 
-  return { roll, rollDamage };
+  // Star Wars D6 dice pool: e.g. rollD6Pool({count: 4, modifier: 2, label: 'Blaster (4D+2)'}).
+  // First die is the wild die (explodes on 6, complication on 1).
+  const rollD6Pool = useCallback(async ({ label = '', count = 3, modifier = 0 } = {}) => {
+    if (!campaignId) return null;
+    return publishRoll({
+      campaignId,
+      system: 'starwarsd6',
+      config: { count, modifier },
+      rollerInfo: rollerInfoFromUser(currentUser),
+      label,
+    });
+  }, [campaignId, currentUser]);
+
+  return { roll, rollDamage, rollD6Pool };
 }
