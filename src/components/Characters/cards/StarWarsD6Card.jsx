@@ -43,11 +43,7 @@ export default function StarWarsD6Card({ character, onEdit, onDelete, isDM, canE
             </button>
             <button
               className="btn btn-icon btn-danger"
-              onClick={() => {
-                if (confirm(`Are you sure you want to delete ${character.name}?`)) {
-                  onDelete(character.id);
-                }
-              }}
+              onClick={() => onDelete(character.id)}
               title="Delete character"
             >
               <Trash2 size={18} />

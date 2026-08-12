@@ -1,9 +1,19 @@
 import { useState } from 'react';
-import { Skull, RefreshCw, Calendar, Flame } from 'lucide-react';
+import { Skull, RefreshCw, Calendar, Flame, Trash2, Undo2 } from 'lucide-react';
 import Modal from '../Modal';
+import ConfirmDeleteCharacterModal from '../Characters/ConfirmDeleteCharacterModal';
+import { formatDeletedAt } from '../../utils/characterTrash';
 
-export default function GraveyardView({ characters, updateCharacter, isDM }) {
+export default function GraveyardView({
+  characters,
+  deletedCharacters = [],
+  updateCharacter,
+  restoreCharacter,
+  purgeCharacter,
+  isDM,
+}) {
   const [resurrectTarget, setResurrectTarget] = useState(null);
+  const [purgeTarget, setPurgeTarget] = useState(null);
 
   const fallenCharacters = characters.filter(c => c.deceased);
 
@@ -88,6 +98,106 @@ export default function GraveyardView({ characters, updateCharacter, isDM }) {
           ))}
         </div>
       )}
+
+      {/* Recently Deleted — a mis-clicked delete lands here, not in the void */}
+      {deletedCharacters.length > 0 && (
+        <div className="space-y-5 pb-20">
+          <div className="space-y-1">
+            <span
+              className="text-[11px] font-bold uppercase block"
+              style={{ color: 'var(--text-muted)', letterSpacing: '0.28em' }}
+            >
+              Recently Deleted
+            </span>
+            <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+              Deleted sheets are kept here until someone removes them for good.
+            </p>
+          </div>
+
+          <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
+            {deletedCharacters.map(character => {
+              const when = formatDeletedAt(character.deletedAt);
+              return (
+                <div
+                  key={character.id}
+                  className="flex items-center gap-4 p-4 rounded-2xl"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+                >
+                  <div
+                    className="w-12 h-12 rounded-xl shrink-0 overflow-hidden flex items-center justify-center"
+                    style={{ background: 'var(--surface-hi)', border: '1px solid var(--line-strong)' }}
+                  >
+                    {character.avatarUrl ? (
+                      <img
+                        src={character.avatarUrl}
+                        alt={character.name}
+                        className="w-full h-full object-cover"
+                        style={{ filter: 'grayscale(1) brightness(0.7)' }}
+                      />
+                    ) : (
+                      <Trash2 size={16} style={{ color: 'var(--text-dim)' }} />
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold truncate" style={{ color: 'var(--text)' }}>
+                      {character.name}
+                    </p>
+                    <p className="text-[11px] truncate" style={{ color: 'var(--text-dim)' }}>
+                      {[
+                        character.class,
+                        character.level ? `Level ${character.level}` : null,
+                        character.playerName,
+                      ].filter(Boolean).join(' • ') || 'No details recorded'}
+                    </p>
+                    <p className="text-[10px] uppercase mt-1" style={{ color: 'var(--text-dim)', letterSpacing: '0.14em' }}>
+                      Deleted{when ? ` ${when}` : ''}{character.deletedByName ? ` by ${character.deletedByName}` : ''}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-all"
+                      style={{
+                        background: 'rgba(52,211,153,0.1)',
+                        border: '1px solid rgba(52,211,153,0.3)',
+                        color: 'rgb(52,211,153)',
+                        letterSpacing: '0.14em',
+                      }}
+                      onClick={() => restoreCharacter?.(character.id)}
+                    >
+                      <Undo2 size={12} />
+                      Restore
+                    </button>
+                    {isDM && (
+                      <button
+                        className="p-2 rounded-xl transition-all"
+                        style={{
+                          background: 'rgba(80,20,20,0.3)',
+                          border: '1px solid rgba(150,40,40,0.25)',
+                          color: 'rgba(200,80,80,0.7)',
+                        }}
+                        title="Delete forever"
+                        onClick={() => setPurgeTarget(character)}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <ConfirmDeleteCharacterModal
+        character={purgeTarget}
+        isOpen={!!purgeTarget}
+        onClose={() => setPurgeTarget(null)}
+        onConfirm={() => purgeCharacter?.(purgeTarget.id)}
+        permanent
+      />
 
       {resurrectTarget && (
         <Modal

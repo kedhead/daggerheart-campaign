@@ -64,6 +64,8 @@ import {
   validateAdversary, validateDomainCard, validateClass, validateSubclass,
   validateEnvironment, validateHeritage, validateTransformation, validateCampaignFrame,
 } from '../src/data/schemas.js';
+import { isTrashed, partitionCharacters, trashFields, nameMatches, formatDeletedAt } from '../src/utils/characterTrash.js';
+import { DeleteCharacterPrompt } from '../src/components/Characters/ConfirmDeleteCharacterModal.jsx';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -1390,6 +1392,60 @@ section('Environment generator');
   assert(typeof fallbackEnvironmentStats(9, 'nonsense').tier === 'number',
     'out-of-range tiers and unknown types still produce usable fallbacks');
   assert(fallbackEnvironmentStats(9, 'nonsense').type === 'exploration', 'an unknown type falls back to exploration');
+}
+
+// ── Character trash: a delete has to be recoverable ──
+section('Character trash');
+{
+  const roster = [
+    { id: 'a', name: 'Emmanita' },
+    { id: 'b', name: 'Pippin', deletedAt: '2026-08-01T10:00:00.000Z' },
+    { id: 'c', name: 'Bram', deceased: true },
+    { id: 'd', name: 'Sela', deletedAt: '2026-08-11T10:00:00.000Z' },
+    { id: 'e', name: 'Old Flag', deleted: true },
+  ];
+  const { active, trashed } = partitionCharacters(roster);
+
+  assert(active.map(c => c.id).join(',') === 'a,c', 'the roster keeps living and fallen characters only');
+  assert(trashed.length === 3, 'every trashed character is recoverable');
+  assert(trashed[0].id === 'd' && trashed[1].id === 'b', 'trash is ordered newest deletion first');
+  assert(trashed[2].id === 'e', 'a legacy `deleted: true` flag still counts as trashed');
+  assert(!isTrashed({ name: 'Emmanita' }) && !isTrashed(null), 'an ordinary character is not trashed');
+  assert(partitionCharacters().active.length === 0, 'a missing character list is handled');
+
+  // The delete stamp has to be readable immediately — a pending serverTimestamp()
+  // reads back as null locally and would flash the character back onto the roster.
+  const stamp = trashFields({ uid: 'u1', displayName: 'Kendall' });
+  assert(typeof stamp.deletedAt === 'string' && !Number.isNaN(Date.parse(stamp.deletedAt)),
+    'the delete stamp is an immediately-readable ISO date');
+  assert(isTrashed({ ...roster[0], ...stamp }), 'stamping a character moves it to the trash');
+  assert(stamp.deletedBy === 'u1' && stamp.deletedByName === 'Kendall', 'the trash records who deleted it');
+  assert(trashFields({ email: 'gm@example.com' }).deletedByName === 'gm@example.com',
+    'a user without a display name is credited by email');
+  assert(trashFields(undefined).deletedBy === null, 'a missing user does not break the delete');
+  assert(formatDeletedAt(stamp.deletedAt) && !formatDeletedAt('not a date') && !formatDeletedAt(null),
+    'deletion dates format, and junk dates are dropped');
+
+  // Permanent deletion is gated on typing the name back.
+  assert(nameMatches('emmanita ', 'Emmanita'), 'the confirmation ignores case and stray spaces');
+  assert(!nameMatches('Emmanit', 'Emmanita') && !nameMatches('', 'Emmanita'),
+    'a partial or empty name does not unlock a permanent delete');
+}
+{
+  const character = { id: 'a', name: 'Emmanita', playerName: 'Kendall' };
+  const soft = strip(renderToString(
+    <DeleteCharacterPrompt character={character} onClose={() => {}} onConfirm={() => {}} />
+  ));
+  assert(soft.includes('Emmanita') && soft.includes('Move to Trash'), 'the delete prompt names the character');
+  assert(soft.includes('restored'), 'and promises the sheet can be restored');
+  assert(!soft.includes('disabled'), 'a recoverable delete needs no typed confirmation');
+
+  const permanent = strip(renderToString(
+    <DeleteCharacterPrompt character={character} permanent onClose={() => {}} onConfirm={() => {}} />
+  ));
+  assert(permanent.includes('to confirm') && permanent.includes('disabled'),
+    'a permanent delete starts locked until the name is typed');
+  assert(permanent.includes('cannot be undone'), 'and says plainly that it is final');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

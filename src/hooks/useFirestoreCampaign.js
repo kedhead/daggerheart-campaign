@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   collection,
   doc,
@@ -6,6 +6,7 @@ import {
   updateDoc,
   setDoc,
   deleteDoc,
+  deleteField,
   getDoc,
   onSnapshot,
   query,
@@ -16,6 +17,7 @@ import {
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useCollection } from './useCollection';
+import { partitionCharacters, trashFields } from '../utils/characterTrash';
 
 export function useFirestoreCampaign(campaignId) {
   const { currentUser } = useAuth();
@@ -29,7 +31,7 @@ export function useFirestoreCampaign(campaignId) {
   const basePath = campaignId ? `campaigns/${campaignId}` : null;
 
   // Collection subscriptions — each is a live-updating array via useCollection
-  const characters    = useCollection(basePath, 'characters');
+  const allCharacters = useCollection(basePath, 'characters');
   const lore          = useCollection(basePath, 'lore');
   const sessions      = useCollection(basePath, 'sessions', {
     queryFn: (ref) => query(ref, orderBy('number', 'desc'))
@@ -47,6 +49,13 @@ export function useFirestoreCampaign(campaignId) {
   const environments  = useCollection(basePath, 'environments');
   const maps          = useCollection(basePath, 'maps',          { waitFor: !!campaign });
   const battleMaps    = useCollection(basePath, 'battleMaps',    { waitFor: !!campaign });
+
+  // Deleted characters stay in Firestore with a trash stamp, so every consumer
+  // of `characters` sees the roster only and the trash stays recoverable.
+  const { active: characters, trashed: deletedCharacters } = useMemo(
+    () => partitionCharacters(allCharacters),
+    [allCharacters]
+  );
 
   // Track whether migration has been attempted for this campaign session
   const migrationRan = useRef(false);
@@ -208,7 +217,29 @@ export function useFirestoreCampaign(campaignId) {
     });
   };
 
+  // Move a character to the trash. Recoverable from the Graveyard view.
   const deleteCharacter = async (id) => {
+    if (!basePath) return;
+    await updateDoc(doc(db, `${basePath}/characters`, id), {
+      ...trashFields(currentUser),
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  const restoreCharacter = async (id) => {
+    if (!basePath) return;
+    await updateDoc(doc(db, `${basePath}/characters`, id), {
+      deleted: deleteField(),
+      deletedAt: deleteField(),
+      deletedBy: deleteField(),
+      deletedByName: deleteField(),
+      updatedAt: serverTimestamp()
+    });
+  };
+
+  // Actually destroy the document — only reachable from the trash, behind a
+  // type-the-name confirmation.
+  const purgeCharacter = async (id) => {
     if (!basePath) return;
     await deleteDoc(doc(db, `${basePath}/characters`, id));
   };
@@ -928,9 +959,12 @@ export function useFirestoreCampaign(campaignId) {
     campaign,
     updateCampaign,
     characters,
+    deletedCharacters,
     addCharacter,
     updateCharacter,
     deleteCharacter,
+    restoreCharacter,
+    purgeCharacter,
     lore,
     addLore,
     updateLore,

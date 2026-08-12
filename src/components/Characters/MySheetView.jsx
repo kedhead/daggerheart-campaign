@@ -3,6 +3,7 @@ import { Plus, UserPlus, Users, ArrowRight } from 'lucide-react';
 import DaggerheartCharacterSheet from './DaggerheartCharacterSheet';
 import DaggerheartCharacterForm from './DaggerheartCharacterForm';
 import CharacterCreationWizard from './CharacterCreationWizard';
+import ConfirmDeleteCharacterModal from './ConfirmDeleteCharacterModal';
 import Modal from '../Modal';
 import { getCharacterOwnerId } from '../../utils/characterOwnership';
 
@@ -34,6 +35,7 @@ export default function MySheetView({
   });
   const [showWizard, setShowWizard] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   useEffect(() => {
     if (!selectedId && myCharacters[0]) {
@@ -66,10 +68,12 @@ export default function MySheetView({
 
   const handleDelete = () => {
     if (!character) return;
-    if (confirm(`Delete ${character.name}? This cannot be undone.`)) {
-      deleteCharacter(character.id);
-      setSelectedId(null);
-    }
+    setDeleteTarget(character);
+  };
+
+  const confirmDelete = () => {
+    deleteCharacter(deleteTarget.id);
+    setSelectedId(null);
   };
 
   // Empty state: offer to create a character
@@ -259,6 +263,13 @@ export default function MySheetView({
           items={items}
         />
       )}
+
+      <ConfirmDeleteCharacterModal
+        character={deleteTarget}
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+      />
 
       {showEdit && character && (
         <Modal

@@ -67,9 +67,12 @@ export default function AppRouter({
     campaign,
     updateCampaign,
     characters,
+    deletedCharacters,
     addCharacter,
     updateCharacter,
     deleteCharacter,
+    restoreCharacter,
+    purgeCharacter,
     lore,
     addLore,
     updateLore,
@@ -205,6 +208,7 @@ export default function AppRouter({
         <CharactersView
           campaign={campaign}
           characters={characters}
+          deletedCharacters={deletedCharacters}
           addCharacter={addCharacter}
           updateCharacter={updateCharacter}
           deleteCharacter={deleteCharacter}
@@ -224,7 +228,10 @@ export default function AppRouter({
       return (
         <GraveyardView
           characters={characters}
+          deletedCharacters={deletedCharacters}
           updateCharacter={updateCharacter}
+          restoreCharacter={restoreCharacter}
+          purgeCharacter={purgeCharacter}
           isDM={isDM}
         />
       );
@@ -235,6 +242,7 @@ export default function AppRouter({
           <CharactersView
             campaign={campaign}
             characters={characters}
+            deletedCharacters={deletedCharacters}
             addCharacter={addCharacter}
             updateCharacter={updateCharacter}
             deleteCharacter={deleteCharacter}

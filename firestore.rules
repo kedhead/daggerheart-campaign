@@ -90,7 +90,14 @@ service cloud.firestore {
         allow read: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
         allow create: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
         allow update: if isAuthenticated() && isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data);
-        allow delete: if isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin());
+        // Destroying a sheet is only allowed once it is already in the trash —
+        // the app soft-deletes first (sets `deleted`), so a mis-click is always
+        // recoverable from Graveyard → Recently Deleted.
+        allow delete: if isAuthenticated() && (
+          isSuperAdmin() ||
+          (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data)
+            && resource.data.get('deleted', false) == true)
+        );
       }
 
       // Lore

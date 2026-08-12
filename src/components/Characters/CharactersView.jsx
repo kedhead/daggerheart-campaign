@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Users, LayoutGrid, FileText, Upload, Skull } from 'lucide-react';
+import { Plus, Search, Users, LayoutGrid, FileText, Upload, Skull, Trash2 } from 'lucide-react';
 import DemiplaneImportModal from './DemiplaneImportModal';
 import CharacterCardSimple from './CharacterCardSimple';
 import CharacterFormSimple from './CharacterFormSimple';
@@ -13,6 +13,7 @@ import StarWarsD6Card from './cards/StarWarsD6Card';
 import GenericForm from './forms/GenericForm';
 import GenericCard from './cards/GenericCard';
 import AssignPlayerControl from './AssignPlayerControl';
+import ConfirmDeleteCharacterModal from './ConfirmDeleteCharacterModal';
 import Modal from '../Modal';
 import { getCharacterOwnerId } from '../../utils/characterOwnership';
 import './CharactersView.css';
@@ -32,7 +33,7 @@ const CARD_COMPONENTS = {
   'generic': GenericCard
 };
 
-export default function CharactersView({ campaign, characters, addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId, items, partyInventory, addToCharacterInventory, removeFromCharacterInventory, toggleEquipped, transferToParty, onGoToGraveyard }) {
+export default function CharactersView({ campaign, characters, deletedCharacters = [], addCharacter, updateCharacter, deleteCharacter, isDM, currentUserId, items, partyInventory, addToCharacterInventory, removeFromCharacterInventory, toggleEquipped, transferToParty, onGoToGraveyard }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,6 +42,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
   const [showDemiplaneImport, setShowDemiplaneImport] = useState(false);
   const [demiplaneTarget, setDemiplaneTarget] = useState(null);
   const [markFallenTarget, setMarkFallenTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [deathDetails, setDeathDetails] = useState({ causeOfDeath: '', epitaph: '' });
 
   // Get the right form/card components for this campaign's game system
@@ -166,6 +168,25 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
                   style={{ color: 'rgba(200,80,80,0.7)', letterSpacing: '0.18em' }}
                 >
                   {fallenCount} Fallen
+                </span>
+              </button>
+            )}
+            {deletedCharacters.length > 0 && onGoToGraveyard && (
+              <button
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md shrink-0 transition-all"
+                style={{
+                  background: 'var(--surface-hi)',
+                  border: '1px solid var(--line-strong)',
+                }}
+                title="Restore a deleted character"
+                onClick={onGoToGraveyard}
+              >
+                <Trash2 size={11} style={{ color: 'var(--text-muted)' }} />
+                <span
+                  className="text-[10px] font-bold uppercase"
+                  style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
+                >
+                  {deletedCharacters.length} Deleted
                 </span>
               </button>
             )}
@@ -323,7 +344,7 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
               <CardComponent
                 character={character}
                 onEdit={() => handleEdit(character)}
-                onDelete={() => deleteCharacter(character.id)}
+                onDelete={() => setDeleteTarget(character)}
                 isDM={isDM}
                 canEdit={canEditCharacter(character)}
                 campaign={campaign}
@@ -413,6 +434,14 @@ export default function CharactersView({ campaign, characters, addCharacter, upd
         addCharacter={addCharacter}
         character={demiplaneTarget}
         updateCharacter={updateCharacter}
+      />
+
+      {/* Delete confirmation — deletes are recoverable from the Graveyard */}
+      <ConfirmDeleteCharacterModal
+        character={deleteTarget}
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => deleteCharacter(deleteTarget.id)}
       />
 
       {/* Mark as Fallen modal */}
