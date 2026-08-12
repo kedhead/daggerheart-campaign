@@ -200,6 +200,17 @@ const apiUrl = import.meta.env.VITE_API_URL
 
 **GitHub Pages**: Environment variables not supported (use build-time config)
 
+### Firebase security rules
+
+A release lands in two halves. Vercel builds and serves the app, but it knows
+nothing about `firestore.rules` and `storage.rules` — those are published by the
+**Deploy Firebase rules** GitHub Action, which runs when either rules file
+changes on `main` and can also be triggered manually from the Actions tab.
+
+So a change that pairs app code with a rules change is only fully live once both
+have gone out. If the app starts throwing permission errors right after a
+deploy, check that the rules workflow ran and succeeded.
+
 ## Post-Deployment Checklist
 
 - [ ] App loads correctly

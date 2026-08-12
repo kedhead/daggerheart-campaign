@@ -14,7 +14,16 @@ The file upload feature requires Firebase Storage to be configured with security
 
 ### 2. Deploy Storage Rules
 
-#### Option A: Using Firebase CLI (Recommended)
+#### Option A: Let CI do it (default)
+Merging a change to `storage.rules` (or `firestore.rules`) into `main` triggers
+the **Deploy Firebase rules** workflow, which publishes both rule files. You can
+also run it by hand from the repo's **Actions** tab. Nothing to do locally.
+
+The workflow needs a `FIREBASE_SERVICE_ACCOUNT` repository secret — see
+`.github/workflows/deploy-firebase-rules.yml` for the service account roles it
+expects.
+
+#### Option B: Using the Firebase CLI (local or emergency)
 ```bash
 # Install Firebase CLI if you haven't already
 npm install -g firebase-tools
@@ -25,11 +34,14 @@ firebase login
 # Initialize Firebase in your project (if not already done)
 firebase init storage
 
+# Validate without publishing
+firebase deploy --only storage --dry-run
+
 # Deploy the storage rules
 firebase deploy --only storage
 ```
 
-#### Option B: Manual Upload via Console
+#### Option C: Manual Upload via Console
 1. Go to Firebase Console > Storage
 2. Click on the "Rules" tab
 3. Copy the contents of `storage.rules` file

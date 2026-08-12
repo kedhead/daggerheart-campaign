@@ -1,0 +1,61 @@
+# Publishes firestore.rules and storage.rules to the Firebase project.
+#
+# Vercel serves the app, but nothing was deploying the security rules — they
+# were a manual `firebase deploy` someone had to remember. A rule change could
+# sit merged and inert for weeks. Now rules ship with the commit that changes
+# them.
+#
+# Requires a FIREBASE_SERVICE_ACCOUNT repository secret: the JSON key for a
+# service account holding Firebase Rules Admin (roles/firebaserules.admin) and
+# Service Usage Consumer (roles/serviceusage.serviceUsageConsumer). Without it
+# the job fails at the auth step.
+#
+# To check a rules change before merging, run the same deploy locally with
+# --dry-run:
+#   npx firebase-tools@15 deploy --only firestore:rules,storage \
+#     --project daggerheart-campaign-manager --dry-run
+name: Deploy Firebase rules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - storage.rules
+      - firebase.json
+      - .github/workflows/deploy-firebase-rules.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A rules deploy is instant and global — never let two of them race.
+concurrency:
+  group: firebase-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Writes the key to a temp file, exports GOOGLE_APPLICATION_CREDENTIALS
+      # for the Firebase CLI, and cleans up when the job ends.
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      # Pinned to a major so a breaking release can't change deploy behaviour
+      # under us. Not a devDependency: it is a large install, and adding it
+      # would slow every `npm ci` in ci.yml for a tool only this job needs.
+      - name: Deploy Firestore and Storage rules
+        run: |
+          npx --yes firebase-tools@15 deploy \
+            --only firestore:rules,storage \
+            --project daggerheart-campaign-manager \
+            --non-interactive
