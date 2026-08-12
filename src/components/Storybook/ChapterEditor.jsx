@@ -279,6 +279,11 @@ export default function ChapterEditor({
               <div className="space-y-3">
                 <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
                   Scene {idx + 1}
+                  {!scene.imageUrl && (
+                    <span className="ml-2 text-amber-300 normal-case tracking-normal">
+                      · Illustration missing{scene.failureReason ? ` — ${scene.failureReason}` : ''}
+                    </span>
+                  )}
                 </div>
                 <textarea
                   value={scene.caption || ''}

@@ -1450,6 +1450,33 @@ section('Character trash');
   assert(permanent.includes('cannot be undone'), 'and says plainly that it is final');
 }
 
+// ── Storybook: art-less scene placeholders ──
+// A scene whose illustration fails is kept on the chapter (so the DM can
+// regenerate it) rather than dropped. Every reader-facing surface must skip it,
+// or players see empty frames and the recap tries to load a null image.
+section('Storybook — scenes with failed art');
+{
+  const chapter = {
+    title: 'The Broken Siege',
+    prose: 'The gate held.\n\nThen it did not.\n\nAsh, after.',
+    scenes: [
+      { id: 's1', imageUrl: null, caption: 'Failed one', prompt: 'a gate', failed: true },
+      { id: 's2', imageUrl: 'http://x/2.jpg', caption: 'The tide-witch' },
+    ],
+  };
+  const slides = buildTimeline(chapter);
+  assert(!slides.some(s => s.kind === 'scene' && !s.imageUrl),
+    'the cinematic recap emits no scene slide for a scene with no art');
+  assert(slides.some(s => s.kind === 'scene' && s.imageUrl === 'http://x/2.jpg'),
+    'but the scenes that do have art still become slides');
+  // The reader and the shelf pick art the same way; a placeholder at index 0
+  // must not become a blank cover.
+  const cover = chapter.scenes.find(s => s?.imageUrl)?.imageUrl || null;
+  assert(cover === 'http://x/2.jpg', 'the chapter cover skips a placeholder at index 0');
+  assert(chapter.scenes.filter(s => s?.imageUrl).length === 1,
+    'reader plating counts only illustrated scenes');
+}
+
 // ── Character sheet PDF export ──
 // Only the pure mapping is covered here. The drawing half needs pdf-lib and the
 // binary template, which belong in `npm run sheet:preview` rather than a unit

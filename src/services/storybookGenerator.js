@@ -36,6 +36,12 @@ export const STORYBOOK_STYLES = [
 
 export const DEFAULT_STYLE_KEY = 'watercolor';
 
+// Scene images fail transiently often enough (provider rate limits, cold
+// starts, the odd 5xx) that one flaky request shouldn't cost the chapter an
+// illustration. Attempts are per scene, and the delay scales with the attempt.
+const SCENE_ATTEMPTS = 2;
+const SCENE_RETRY_DELAY_MS = 2500;
+
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
 async function downloadImageAsDataUrl(imageUrl) {
@@ -357,6 +363,10 @@ export async function generateChapter({
   if (!session) throw new Error('generateChapter: session is required');
   if (!campaignId) throw new Error('generateChapter: campaignId is required');
 
+  // Mirrors the server's clamp, so a shortfall is measured against what was
+  // actually asked for rather than what the user typed.
+  const requestedSceneCount = Math.max(2, Math.min(8, Number(sceneCount) || 3));
+
   const {
     characters = [],
     npcs = [],
@@ -499,42 +509,79 @@ export async function generateChapter({
     }
   }
 
-  // Generate scene illustrations sequentially to respect rate limits
+  // Generate scene illustrations sequentially to respect rate limits.
+  //
+  // Each scene gets one retry: the image providers fail transiently often
+  // enough (rate limits, cold starts, an occasional 5xx) that a single flaky
+  // request used to cost the chapter a whole illustration. A failure here is
+  // never fatal on its own, but it MUST be reported — silently returning a
+  // 4-scene chapter with 1 image is indistinguishable from "the model only
+  // wrote 1 scene", which makes the real cause impossible to diagnose.
   const scenes = [];
   const sceneErrors = [];
   const scenePromptList = chapterText.scenes || [];
   for (let i = 0; i < scenePromptList.length; i++) {
     const scenePrompt = scenePromptList[i];
-    onProgress({
-      stage: 'scenes',
-      current: i,
-      total: scenePromptList.length,
-      message: `Painting scene ${i + 1}/${scenePromptList.length}…`
-    });
-    try {
-      const scene = await generateSceneImage({
-        scene: { ...scenePrompt, id: `scene_${i}_${Date.now()}` },
-        entityDescriptions,
-        entityAncestryHints,
-        entityPortraits: entitySourcePortraits,   // original portraits as references
-        styleKey,
-        styleCustom,
-        gameSystem,
-        campaignId,
-        apiKey,
-        imageModel
+    let lastErr = null;
+    for (let attempt = 1; attempt <= SCENE_ATTEMPTS; attempt++) {
+      onProgress({
+        stage: 'scenes',
+        current: i,
+        total: scenePromptList.length,
+        message: attempt === 1
+          ? `Painting scene ${i + 1}/${scenePromptList.length}…`
+          : `Retrying scene ${i + 1}/${scenePromptList.length}…`
       });
-      scenes.push(scene);
-    } catch (err) {
-      console.error('[storybook] Scene generation failed, continuing:', err);
-      sceneErrors.push({ index: i + 1, message: err?.message || String(err) });
+      try {
+        const scene = await generateSceneImage({
+          scene: { ...scenePrompt, id: `scene_${i}_${Date.now()}` },
+          entityDescriptions,
+          entityAncestryHints,
+          entityPortraits: entitySourcePortraits,   // original portraits as references
+          styleKey,
+          styleCustom,
+          gameSystem,
+          campaignId,
+          apiKey,
+          imageModel
+        });
+        scenes.push(scene);
+        lastErr = null;
+        break;
+      } catch (err) {
+        lastErr = err;
+        console.error(`[storybook] Scene ${i + 1} attempt ${attempt}/${SCENE_ATTEMPTS} failed:`, err);
+        if (attempt < SCENE_ATTEMPTS) {
+          await new Promise(r => setTimeout(r, SCENE_RETRY_DELAY_MS * attempt));
+        }
+      }
+    }
+    if (lastErr) {
+      sceneErrors.push({ index: i + 1, message: lastErr?.message || String(lastErr) });
+      // Keep the scene as an art-less placeholder rather than dropping it.
+      // The prose and caption are still good, and the DM can hit Regenerate on
+      // it in the chapter editor — dropping it silently deleted the only copy
+      // of the prompt and left nothing to retry. Reader views skip scenes with
+      // no imageUrl, so players never see an empty frame.
+      scenes.push({
+        id: `scene_${i}_${Date.now()}`,
+        caption: scenePrompt.caption || '',
+        prompt: scenePrompt.prompt || '',
+        imageUrl: null,
+        storagePath: null,
+        featuredEntityIds: scenePrompt.featuredEntityIds || [],
+        failed: true,
+        failureReason: (lastErr?.message || String(lastErr)).slice(0, 300)
+      });
     }
   }
 
   // If every single scene failed, the run is effectively useless — throw with
   // the actual reasons so the user sees the real errors instead of a chapter
-  // with no art.
-  if (scenePromptList.length > 0 && scenes.length === 0 && sceneErrors.length > 0) {
+  // with no art. Count only scenes that actually got an image: `scenes` now
+  // also holds art-less placeholders for the failures.
+  const illustratedCount = scenes.filter(s => s.imageUrl).length;
+  if (scenePromptList.length > 0 && illustratedCount === 0 && sceneErrors.length > 0) {
     const summary = sceneErrors
       .map(e => `Scene ${e.index}: ${e.message}`)
       .slice(0, 3)
@@ -557,6 +604,26 @@ export async function generateChapter({
 
   onProgress({ stage: 'done', current: 1, total: 1, message: 'Chapter ready' });
 
+  // Report anything that quietly cost the chapter artwork. Two distinct
+  // shortfalls look identical in the finished chapter, so name them apart:
+  // the writer returning fewer scenes than asked for, and images failing.
+  const warnings = [];
+  // The server reports the count it actually clamped to; fall back to the local
+  // mirror if an older deploy doesn't send it.
+  const askedFor = chapterText.requestedScenes || requestedSceneCount;
+  if (askedFor && scenePromptList.length < askedFor) {
+    warnings.push(
+      `The chapter writer returned ${scenePromptList.length} scene${scenePromptList.length === 1 ? '' : 's'} ` +
+      `instead of the ${askedFor} requested, so fewer illustrations were possible.`
+    );
+  }
+  if (sceneErrors.length > 0) {
+    warnings.push(
+      `${sceneErrors.length} of ${scenePromptList.length} scene illustration${sceneErrors.length === 1 ? '' : 's'} failed after ` +
+      `${SCENE_ATTEMPTS} attempts: ` + sceneErrors.map(e => `Scene ${e.index}: ${e.message}`).join('  •  ')
+    );
+  }
+
   return {
     title: trimForFirestore(chapterText.title, 300),
     prose: trimForFirestore(chapterText.prose, 80_000),
@@ -565,6 +632,7 @@ export async function generateChapter({
       caption: trimForFirestore(s.caption, 600),
       prompt: trimForFirestore(s.prompt, 2_000)
     })),
+    warnings: warnings.map(w => trimForFirestore(w, 1_000)),
     spotlights: spotlights.map(s => ({
       ...s,
       moment: trimForFirestore(s.moment, 400)

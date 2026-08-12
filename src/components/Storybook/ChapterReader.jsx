@@ -91,7 +91,7 @@ export default function ChapterReader({
   const allVisuals = useMemo(() => {
     if (!currentChapter) return [];
     const pool = [];
-    (currentChapter.scenes || []).forEach(s =>
+    (currentChapter.scenes || []).filter(s => s?.imageUrl).forEach(s =>
       pool.push({ id: s.id, kind: 'image', url: s.imageUrl, caption: s.caption })
     );
     (currentChapter.media || []).forEach(m => pool.push(m));
@@ -120,7 +120,10 @@ export default function ChapterReader({
 
   // Split prose and distribute scenes inline at evenly-spaced boundaries.
   const paragraphs = (currentChapter.prose || '').split(/\n\n+/).filter(p => p.trim());
-  const scenes = currentChapter.scenes || [];
+  // A scene whose illustration failed is kept on the chapter so the DM can
+  // regenerate it from the editor, but readers should never see an empty
+  // frame — only scenes that actually have art get plated.
+  const scenes = (currentChapter.scenes || []).filter(s => s?.imageUrl);
   const blocks = interleaveProseAndScenes(paragraphs, scenes);
 
   const spotlights = currentChapter.spotlights || [];

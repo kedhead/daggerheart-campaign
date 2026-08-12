@@ -48,6 +48,10 @@ export default function GenerateChapterModal({
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState(null);
+  // Non-fatal shortfalls (missing illustrations). The chapter still saved, so
+  // these are reported without discarding it — the modal stays open so the DM
+  // actually sees why the chapter came out with less art than they asked for.
+  const [warnings, setWarnings] = useState([]);
 
   const selectedSession = completedSessions.find(s => s.id === sessionId);
   const alreadyHasChapter = selectedSession && usedSessionIds.has(selectedSession.id);
@@ -55,6 +59,7 @@ export default function GenerateChapterModal({
   const handleGenerate = async () => {
     if (!selectedSession) return;
     setError(null);
+    setWarnings([]);
     setRunning(true);
 
     try {
@@ -76,7 +81,10 @@ export default function GenerateChapterModal({
       });
 
       await addChapter(chapter);
-      onClose();
+      // The chapter is saved either way; if art went missing, stay open and say
+      // so rather than closing on what looks like a clean success.
+      if (chapter.warnings?.length) setWarnings(chapter.warnings);
+      else onClose();
     } catch (err) {
       console.error('[storybook] generate failed:', err);
       setError(err.message || 'Generation failed');
@@ -245,6 +253,25 @@ export default function GenerateChapterModal({
           </div>
         )}
 
+        {warnings.length > 0 && (
+          <div
+            className="p-3 rounded-lg text-sm space-y-1"
+            style={{
+              background: 'rgba(245, 158, 11, 0.12)',
+              border: '1px solid rgba(245, 158, 11, 0.4)',
+              color: '#fcd34d'
+            }}
+          >
+            <p className="font-bold">Chapter saved, but some artwork is missing.</p>
+            {warnings.map((w, i) => (
+              <p key={i} className="text-xs leading-relaxed">{w}</p>
+            ))}
+            <p className="text-xs leading-relaxed opacity-80">
+              You can regenerate individual scenes from the chapter view.
+            </p>
+          </div>
+        )}
+
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="button"
@@ -252,12 +279,12 @@ export default function GenerateChapterModal({
             disabled={running}
             className="px-4 py-2 rounded-lg text-white/70 font-semibold hover:text-white disabled:opacity-40"
           >
-            Cancel
+            {warnings.length > 0 ? 'Close' : 'Cancel'}
           </button>
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={running || !sessionId}
+            disabled={running || !sessionId || warnings.length > 0}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-bold disabled:opacity-40"
             style={{
               background: 'color-mix(in srgb, var(--primary) 28%, transparent)',

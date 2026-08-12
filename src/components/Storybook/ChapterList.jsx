@@ -13,7 +13,9 @@ export default function ChapterList({ chapters, isDM, onOpen, onEdit }) {
   return (
     <div className="sb-shelf">
       {sorted.map(chapter => {
-        const cover = chapter.scenes?.[0]?.imageUrl || null;
+        // First scene WITH art — scene 0 may be a placeholder whose
+        // illustration failed and is waiting to be regenerated.
+        const cover = chapter.scenes?.find(s => s?.imageUrl)?.imageUrl || null;
         const badge = BADGE[chapter.status] || BADGE.draft;
 
         return (
