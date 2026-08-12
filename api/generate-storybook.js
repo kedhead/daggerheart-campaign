@@ -141,7 +141,8 @@ STRICT RULES:
 3. For each scene prompt, focus on ACTION, SETTING, LIGHTING, MOOD, and COMPOSITION. The image model will receive each featured character's actual portrait as a reference image, so do NOT re-describe the characters' faces, builds, hair, eye colour, skin tone, or detailed clothing in the scene prompt — that would conflict with the references and produce wrong-looking characters. Refer to each character by NAME ("Yargal raises his axe"), not by physical description. You may briefly mention species/ancestry only when it's directly relevant to the action ("the halfling Yargal climbs onto the dwarf's shoulders").
 4. EVERY character who appears in a scene MUST have their id listed in that scene's featuredEntityIds array, drawn from the entity roster. If a character is not in the roster they cannot appear in the scene at all — substitute an unnamed environment / atmosphere shot instead. This is the single most important rule for likeness preservation.
 5. Title should be evocative, 2-6 words, no quotes.
-6. Return valid JSON matching the schema exactly.`;
+6. Return valid JSON matching the schema exactly.
+7. The "scenes" array MUST contain exactly ${numScenes} objects — no more, no fewer. Spread them across different beats of the chapter (an opening establishing shot, the turns of the action, the closing image) so they illustrate the whole story rather than clustering on one moment. This is a hard requirement: a chapter with the wrong number of scenes is a failed response.`;
 
   const userPrompt = `# Campaign context
 ${campaignContext || '(no campaign context provided)'}
@@ -206,7 +207,17 @@ Produce exactly ${numScenes} scenes. Return ONLY the JSON object.`;
     return res.status(502).json({ error: 'Model response missing required fields', parsed });
   }
 
+  // The model doesn't always honour the requested scene count. Report what was
+  // asked for alongside what came back so the client can tell "the writer gave
+  // us fewer scenes" apart from "the illustrations failed" — the two produce an
+  // identical-looking chapter otherwise.
+  if (parsed.scenes.length < numScenes) {
+    console.warn(`Storybook: requested ${numScenes} scenes, model returned ${parsed.scenes.length}`);
+  }
+
   return res.status(200).json({
+    requestedScenes: numScenes,
+    returnedScenes: parsed.scenes.length,
     title: parsed.title,
     prose: parsed.prose,
     scenes: parsed.scenes.slice(0, 8).map(s => ({
