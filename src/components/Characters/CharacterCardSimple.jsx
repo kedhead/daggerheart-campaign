@@ -1,17 +1,11 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles, RefreshCw, Download } from 'lucide-react';
+import { downloadUrlAs, slugify } from '../../utils/downloadBlob';
 import './CharacterCard.css';
 
 async function downloadPortrait(url, name) {
   try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = `${name.toLowerCase().replace(/\s+/g, '-')}-portrait.png`;
-    a.click();
-    URL.revokeObjectURL(objectUrl);
+    await downloadUrlAs(url, `${slugify(name, 'character')}-portrait.png`);
   } catch (err) {
     console.error('Failed to download portrait:', err);
     alert('Failed to download portrait. Try right-clicking the image and saving it manually.');

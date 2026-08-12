@@ -8,6 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "esbuild scripts/smoke.test.jsx --bundle --platform=node --jsx=automatic --loader:.js=jsx --loader:.css=empty --outfile=node_modules/.cache/smoke.test.cjs --log-level=error && node node_modules/.cache/smoke.test.cjs",
+    "sheet:template": "node scripts/extract-sheet-template.mjs",
+    "sheet:preview": "esbuild scripts/render-sheet-preview.mjs --bundle --platform=node --format=esm --loader:.js=jsx --loader:.css=empty --outfile=node_modules/.cache/sheet-preview.mjs --log-level=error && node node_modules/.cache/sheet-preview.mjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
@@ -22,6 +24,7 @@
     "konva": "^10.2.0",
     "lucide-react": "^0.468.0",
     "openai": "^6.16.0",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "playwright-core": "^1.59.1",
     "react": "^18.3.1",
