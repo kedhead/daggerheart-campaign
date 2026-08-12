@@ -281,7 +281,7 @@ export default function ChapterEditor({
                   Scene {idx + 1}
                   {!scene.imageUrl && (
                     <span className="ml-2 text-amber-300 normal-case tracking-normal">
-                      · Illustration missing{scene.failureReason ? ` — ${scene.failureReason}` : ''}
+                      · No illustration yet{scene.artNote ? ` — ${scene.artNote}` : ''}
                     </span>
                   )}
                 </div>

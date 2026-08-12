@@ -1451,16 +1451,18 @@ section('Character trash');
 }
 
 // ── Storybook: art-less scene placeholders ──
-// A scene whose illustration fails is kept on the chapter (so the DM can
-// regenerate it) rather than dropped. Every reader-facing surface must skip it,
-// or players see empty frames and the recap tries to load a null image.
-section('Storybook — scenes with failed art');
+// Every scene the writer produces is kept on the chapter whether or not it got
+// an illustration — a scene that isn't there can't be regenerated from the
+// editor. `imageUrl === null` is the single source of truth for "no art yet",
+// and every reader-facing surface must skip those, or players see empty frames
+// and the recap tries to load a null image.
+section('Storybook — scenes without art');
 {
   const chapter = {
     title: 'The Broken Siege',
     prose: 'The gate held.\n\nThen it did not.\n\nAsh, after.',
     scenes: [
-      { id: 's1', imageUrl: null, caption: 'Failed one', prompt: 'a gate', failed: true },
+      { id: 's1', imageUrl: null, caption: 'Failed one', prompt: 'a gate', artNote: 'Replicate timed out' },
       { id: 's2', imageUrl: 'http://x/2.jpg', caption: 'The tide-witch' },
     ],
   };
@@ -1475,6 +1477,29 @@ section('Storybook — scenes with failed art');
   assert(cover === 'http://x/2.jpg', 'the chapter cover skips a placeholder at index 0');
   assert(chapter.scenes.filter(s => s?.imageUrl).length === 1,
     'reader plating counts only illustrated scenes');
+  // The prompt is what makes a scene recoverable — regenerateScene rebuilds the
+  // image from scene.prompt + featuredEntityIds, so a placeholder that lost
+  // them would be dead weight.
+  const placeholder = chapter.scenes[0];
+  assert(placeholder.prompt === 'a gate' && placeholder.caption === 'Failed one',
+    'a placeholder keeps the prompt and caption needed to regenerate it');
+}
+{
+  // An all-placeholder chapter (illustrations turned off) must not blow up the
+  // recap or leave a broken cover — it simply has no scene slides yet.
+  const textOnly = {
+    title: 'Quiet Roads',
+    prose: 'They walked.\n\nNobody spoke.',
+    scenes: [
+      { id: 's1', imageUrl: null, caption: 'The road', prompt: 'a road', artNote: 'Illustrations were turned off' },
+      { id: 's2', imageUrl: null, caption: 'The camp', prompt: 'a camp', artNote: 'Illustrations were turned off' },
+    ],
+  };
+  const slides = buildTimeline(textOnly);
+  assert(!slides.some(s => s.kind === 'scene'), 'a chapter with no art yet produces no scene slides');
+  assert(slides.length > 0, 'but it still produces a watchable recap from the prose');
+  assert((textOnly.scenes.find(s => s?.imageUrl)?.imageUrl || null) === null,
+    'and its cover is null rather than a broken image');
 }
 
 // ── Character sheet PDF export ──

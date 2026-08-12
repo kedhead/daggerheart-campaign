@@ -42,6 +42,36 @@ export const DEFAULT_STYLE_KEY = 'watercolor';
 const SCENE_ATTEMPTS = 2;
 const SCENE_RETRY_DELAY_MS = 2500;
 
+/**
+ * A scene that exists on the chapter but has no art yet.
+ *
+ * Every scene the writer produced is kept, illustrated or not. A scene that
+ * isn't on the chapter can't be regenerated from the editor — dropping it threw
+ * away the only copy of its prompt, so a failed or skipped illustration became
+ * permanently unrecoverable. Reader-facing views skip scenes without an
+ * imageUrl, so an un-illustrated scene is invisible to players until its art
+ * lands.
+ *
+ * A null imageUrl is the single source of truth for "no art yet" — every
+ * consumer keys off that rather than a separate flag, so there's no way for the
+ * two to disagree. `artNote` only explains why, for the editor to display.
+ *
+ * @param {object} scenePrompt - { caption, prompt, featuredEntityIds } from the writer
+ * @param {number} index       - position in the chapter
+ * @param {string|null} artNote - why there's no art (a failure, or art was off)
+ */
+function placeholderScene(scenePrompt, index, artNote = null) {
+  return {
+    id: `scene_${index}_${Date.now()}`,
+    caption: scenePrompt.caption || '',
+    prompt: scenePrompt.prompt || '',
+    imageUrl: null,
+    storagePath: null,
+    featuredEntityIds: scenePrompt.featuredEntityIds || [],
+    artNote: artNote ? String(artNote).slice(0, 300) : null
+  };
+}
+
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
 async function downloadImageAsDataUrl(imageUrl) {
@@ -450,7 +480,12 @@ export async function generateChapter({
     return {
       title: trimForFirestore(chapterText.title, 300),
       prose: trimForFirestore(chapterText.prose, 80_000),
-      scenes: [],
+      // Keep the scene prompts the writer produced even though no art was
+      // requested, so illustrations can be added later from the editor one at a
+      // time. Discarding them made "text only" an irreversible choice.
+      scenes: (chapterText.scenes || []).map((s, i) =>
+        placeholderScene(s, i, 'Illustrations were turned off when this chapter was generated.')
+      ),
       spotlights: textOnlySpotlights,
       sessionId: session.id,
       sessionNumber: session.sessionNumber || session.number || null,
@@ -558,21 +593,7 @@ export async function generateChapter({
     }
     if (lastErr) {
       sceneErrors.push({ index: i + 1, message: lastErr?.message || String(lastErr) });
-      // Keep the scene as an art-less placeholder rather than dropping it.
-      // The prose and caption are still good, and the DM can hit Regenerate on
-      // it in the chapter editor — dropping it silently deleted the only copy
-      // of the prompt and left nothing to retry. Reader views skip scenes with
-      // no imageUrl, so players never see an empty frame.
-      scenes.push({
-        id: `scene_${i}_${Date.now()}`,
-        caption: scenePrompt.caption || '',
-        prompt: scenePrompt.prompt || '',
-        imageUrl: null,
-        storagePath: null,
-        featuredEntityIds: scenePrompt.featuredEntityIds || [],
-        failed: true,
-        failureReason: (lastErr?.message || String(lastErr)).slice(0, 300)
-      });
+      scenes.push(placeholderScene(scenePrompt, i, lastErr?.message || String(lastErr)));
     }
   }
 
