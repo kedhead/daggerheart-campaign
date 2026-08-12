@@ -39,7 +39,7 @@ function enrichFromCatalog(item) {
 // are correct, only the field names are legacy. Resolve from the equipped item's
 // own systemData, falling back to a name-match against the built-in catalog
 // (catches Demiplane imports / legacy custom armor missing the thresholds field).
-function resolveArmorBases(armor) {
+export function resolveArmorBases(armor) {
   if (!armor) return null;
   const t = armor.systemData?.thresholds;
   if (t && (t.minor > 0 || t.major > 0)) return { major: t.minor || 0, severe: t.major || 0 };

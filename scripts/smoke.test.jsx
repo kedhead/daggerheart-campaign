@@ -69,6 +69,8 @@ import { DeleteCharacterPrompt } from '../src/components/Characters/ConfirmDelet
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
+import { buildSheetFields, normalizeInventory, splitGold } from '../src/utils/daggerheartSheetFields.js';
+import { sanitizeWinAnsi, buildAppendixSections } from '../src/utils/exportCharacterSheetPdf.js';
 
 let failures = 0;
 const assert = (cond, msg) => {
@@ -1446,6 +1448,135 @@ section('Character trash');
   assert(permanent.includes('to confirm') && permanent.includes('disabled'),
     'a permanent delete starts locked until the name is typed');
   assert(permanent.includes('cannot be undone'), 'and says plainly that it is final');
+}
+
+// ── Character sheet PDF export ──
+// Only the pure mapping is covered here. The drawing half needs pdf-lib and the
+// binary template, which belong in `npm run sheet:preview` rather than a unit
+// suite.
+section('Character sheet PDF export');
+{
+  // hpSlots stores HP REMAINING; stress/armor store MARKS. The official sheet
+  // marks damage taken, so HP must be inverted on the way out and the others
+  // must not. Getting this backwards prints every healthy character at death's
+  // door, so it is the single most important assertion in this section.
+  const m = buildSheetFields({
+    hpSlots: [true, true, false, true],
+    stressSlots: [true, false, false],
+    armorSlots: [true, true, false],
+    armor: 3,
+  });
+  assert(
+    JSON.stringify(m.hp.marked) === JSON.stringify([false, false, true, false]),
+    'an unspent Hit Point is NOT marked on the exported sheet (hpSlots is inverted)'
+  );
+  assert(
+    JSON.stringify(m.stress.marked) === JSON.stringify([true, false, false]),
+    'Stress marks export as-is, not inverted'
+  );
+  assert(m.armorSlots.marked[0] === true && m.armorSlots.marked[2] === false,
+    'armor marks export as-is');
+}
+{
+  // Derived numbers must come from computeDefenses, never the stored fields.
+  const character = {
+    class: 'Guardian', level: 4,
+    traits: { agility: 1, strength: 2, finesse: 0, instinct: 1, presence: 0, knowledge: 0 },
+    evasion: 99, armor: 99, // stale values that must be ignored
+  };
+  const expected = computeDefenses(character, []);
+  const m = buildSheetFields(character);
+  assert(m.evasion === String(expected.evasion) && m.armorScore === String(expected.armorScore),
+    'evasion and armor score come from computeDefenses, not the stored fields');
+  assert(m.majorThreshold === String(expected.majorThreshold)
+    && m.severeThreshold === String(expected.severeThreshold),
+    'damage thresholds come from computeDefenses (never stored)');
+  assert(expected.majorThreshold === 9 && expected.severeThreshold === 15,
+    'an unarmored level 4 falls back to the Gambeson baseline 5+level / 11+level');
+}
+{
+  // The sheet's HERITAGE slot has no matching field — it's ancestry + community.
+  assert(buildSheetFields({ ancestry: 'Dwarf', community: 'Ridgeborne' }).heritage === 'Dwarf / Ridgeborne',
+    'heritage composes ancestry and community');
+  assert(buildSheetFields({ customAncestryData: { name: 'Tideborn' }, community: 'Wanderborne' }).heritage
+    === 'Tideborn / Wanderborne',
+    'heritage falls back to a custom ancestry name');
+  const mc = buildSheetFields({ class: 'Rogue', subclass: 'Nightwalker', multiclass: { class: 'Bard' } });
+  assert(mc.classSubclass === 'Rogue Nightwalker / Bard', 'the generic page gets class, subclass and multiclass');
+  assert(mc.subclassOnly === 'Nightwalker / Bard', 'a class page omits the class it already prints');
+}
+{
+  // Scars cross out trailing Hope slots rather than removing them.
+  const m = buildSheetFields({ hopeSlots: [true, true, true, false, false, false], scars: 2 });
+  assert(m.hope.length === 6 && m.scars === 2, 'the Hope track stays canonical length with scars counted');
+  assert(m.hope[4].scarred && m.hope[5].scarred && !m.hope[0].scarred,
+    'scars cross out the trailing Hope slots');
+  assert(m.hope.filter(h => h.filled).length === 3, 'held Hope ignores anything in a scarred slot');
+}
+{
+  // inventory is dual-shaped legacy: a string on the sheet, an array in the
+  // Firestore helpers. Both have to survive an export.
+  const items = [{ id: 'i1', name: 'Torch', type: 'equipment' }];
+  assert(normalizeInventory({ inventory: 'Torch\nRope; Chalk' }).length === 3,
+    'a free-text inventory splits on newlines and semicolons');
+  assert(normalizeInventory({ inventory: [{ itemId: 'i1', quantity: 2 }] }, items)[0] === '2x Torch',
+    'a legacy array inventory resolves item ids and quantities');
+  assert(normalizeInventory({}).length === 0, 'a missing inventory is empty, not a crash');
+  assert(normalizeInventory({ inventory: 'Torch', equippedItems: [{ itemId: 'i1', equipped: true }] }, items).length === 1,
+    'an item listed twice is not printed twice');
+}
+{
+  assert(JSON.stringify(splitGold(247)) === JSON.stringify({ total: 247, chests: 2, bags: 4, handfuls: 7 }),
+    '247 gold is 2 chests, 4 bags, 7 handfuls');
+  assert(splitGold(undefined).total === 0, 'a missing gold value is zero, not NaN');
+  // The printed track is finite; the excess has to reach the appendix.
+  const m = buildSheetFields({ gold: 900 });
+  assert(m.gold.chestsShown === 1 && m.overflow.goldRemainder,
+    'gold beyond the printed track is flagged for the appendix rather than dropped');
+}
+{
+  const m = buildSheetFields({
+    experiences: ['Old Soldier', 'Duelist'],
+    experienceBoosts: { 'Old Soldier': 2 },
+  });
+  assert(m.experiences[0].mod === '+4' && m.experiences[1].mod === '+2',
+    'an Experience is +2 plus its level-up boosts');
+}
+{
+  // More experiences than the sheet has lines: the excess must be preserved.
+  const many = Array.from({ length: 8 }, (_, i) => `Exp ${i + 1}`);
+  const m = buildSheetFields({ experiences: many });
+  assert(m.experiences.length === 5 && m.overflow.experiences.length === 3,
+    'experiences past the printed lines go to the appendix, not the bin');
+}
+{
+  const m = buildSheetFields({ class: 'Chronomancer', subclass: 'Hourkeeper' });
+  assert(m.className === 'Chronomancer' && m.classFeatures.length === 0,
+    'an unknown (homebrew) class exports without inventing feature text');
+  const bard = buildSheetFields({ class: 'Bard' });
+  assert(bard.hopeFeature && bard.classFeatures.length > 0,
+    'a known class carries its Hope and class features for the generic page');
+}
+{
+  // pdf-lib's standard fonts are WinAnsi and drawText THROWS on anything they
+  // cannot encode. CLASSES.Rogue alone ships a U+2019 apostrophe.
+  const dirty = 'Rogue’s Dodge — “Ghost”… → café';
+  const clean = sanitizeWinAnsi(dirty);
+  assert([...clean].every(ch => ch.charCodeAt(0) <= 0xff),
+    'sanitizeWinAnsi leaves no codepoint pdf-lib would throw on');
+  assert(clean.includes("Rogue's Dodge") && clean.includes('café'),
+    'and it keeps the text readable, including Latin-1 accents');
+  assert(sanitizeWinAnsi(null) === '' && sanitizeWinAnsi(undefined) === '',
+    'sanitizeWinAnsi tolerates null and undefined');
+}
+{
+  // GM notes must never ride along in a player's export.
+  const character = { name: 'Thorne', dmNotes: 'The smith is dead.', backstory: 'Held the pass.' };
+  const asPlayer = buildAppendixSections(buildSheetFields(character));
+  const asDm = buildAppendixSections(buildSheetFields(character, { includeDmNotes: true }));
+  assert(!asPlayer.some(s => s.title === 'GM Notes'), 'a player export carries no GM notes');
+  assert(asDm.some(s => s.title === 'GM Notes'), 'a DM export does carry them');
+  assert(asPlayer.some(s => s.title === 'Backstory'), 'the backstory still reaches the appendix');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

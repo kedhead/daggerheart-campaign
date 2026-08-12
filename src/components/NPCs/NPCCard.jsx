@@ -5,17 +5,11 @@ import EntityViewer from '../EntityViewer/EntityViewer';
 import InlineEdit from '../InlineEdit/InlineEdit';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import { useToast } from '../../contexts/ToastContext';
+import { downloadUrlAs, slugify } from '../../utils/downloadBlob';
 
 async function downloadPortrait(url, name) {
   try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = `${name.toLowerCase().replace(/\s+/g, '-')}-portrait.png`;
-    a.click();
-    URL.revokeObjectURL(objectUrl);
+    await downloadUrlAs(url, `${slugify(name, 'npc')}-portrait.png`);
   } catch (err) {
     console.error('Failed to download portrait:', err);
     alert('Failed to download portrait. Try right-clicking the image and saving it manually.');

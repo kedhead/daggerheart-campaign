@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.preview
 *.local
 
 # Editor directories and files
@@ -29,6 +30,8 @@ dist-ssr
 
 # Large documentation / data artifacts (keep out of the repo)
 *.pdf
+# ...except the generated character sheet template, which ships to the browser.
+!public/assets/*.pdf
 *.db
 *.mov
 *.MOV

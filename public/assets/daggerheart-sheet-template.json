@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-08-12T14:52:04.813Z",
+  "generatedBy": "scripts/extract-sheet-template.mjs",
+  "sourceLabel": "33837d60-CharacterSheetsandGuidesDaggerheartMay212025.pdf",
+  "sourceSha256": "9de5ba11922579c0f0afd5d48a4e6ff27a1cc2514971045aa658fcd6df2dae6a",
+  "pageSize": [
+    612,
+    792
+  ],
+  "pages": {
+    "Bard": 0,
+    "Druid": 1,
+    "Guardian": 2,
+    "Ranger": 3,
+    "Rogue": 4,
+    "Seraph": 5,
+    "Sorcerer": 6,
+    "Warrior": 7,
+    "Wizard": 8,
+    "__generic": 9
+  },
+  "preprinted": {
+    "0": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "1": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "2": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "3": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "4": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "5": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "6": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "7": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "8": [
+      "className",
+      "hopeFeature",
+      "classFeature"
+    ],
+    "9": []
+  }
+}

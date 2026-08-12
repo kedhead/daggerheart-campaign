@@ -16,6 +16,7 @@ import DeathMoveModal from './DeathMoveModal';
 import BeastformPanel from './BeastformPanel';
 import TransformationPanel from './TransformationPanel';
 import CompanionSheet from './CompanionSheet';
+import ExportSheetButton from './ExportSheetButton';
 import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
 import './DaggerheartCharacterSheet.css';
 
@@ -617,6 +618,9 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <Star size={14} /> Rest
           </button>
         )}
+        {/* Export is read-only, so it isn't gated on canEdit — a player viewing
+            a shared sheet should still be able to print their character. */}
+        <ExportSheetButton character={character} items={items} isDM={isDM} />
         {character.demiplaneLink && (
           <a href={character.demiplaneLink} target="_blank" rel="noopener noreferrer" className="dh-link dh-sidebar-link">
             <ExternalLink size={14} />

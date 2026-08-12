@@ -1868,6 +1868,39 @@
   background: rgba(74, 144, 164, 0.2);
 }
 
+.dh-btn-export {
+  width: 100%;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.dh-btn-export:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.85);
+}
+.dh-btn-export:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.dh-export-error {
+  margin: -0.1rem 0 0.4rem;
+  font-size: 0.65rem;
+  line-height: 1.3;
+  color: #e66;
+  text-align: center;
+}
+
+.dh-spin {
+  animation: dh-spin 1s linear infinite;
+}
+@keyframes dh-spin {
+  to { transform: rotate(360deg); }
+}
+
 .dh-btn-deathmove {
   width: 100%;
   justify-content: center;
