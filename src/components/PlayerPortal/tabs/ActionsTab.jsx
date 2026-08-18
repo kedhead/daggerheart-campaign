@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TRAIT_ABBREV, getWeaponDamage, parseDamageString } from '../../../utils/daggerheartRollUtils';
 import { getFeatureName, getFeatureDescription } from '../../../utils/itemFeatures';
-import { getBaseProficiency } from '../../../data/systems/daggerheart';
+import { getEffectiveProficiency } from '../../../data/systems/daggerheart';
 
 const BONUS_OPTS = [
   { key: null,        label: 'Normal',      color: '#eab308' },
@@ -27,7 +27,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
 
   const traits = character.traits || {};
   const level = character.level || 1;
-  const proficiency = character.proficiency || getBaseProficiency(level);
+  const proficiency = getEffectiveProficiency(character);
 
   // Resolve equippedItems refs against the catalog, filter to weapons only
   const weapons = Array.isArray(character.equippedItems)

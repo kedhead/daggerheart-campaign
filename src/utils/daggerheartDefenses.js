@@ -5,7 +5,7 @@
 // the numbers can never drift apart. All rules references are to the
 // Daggerheart core rulebook.
 
-import { CLASSES, getBaseProficiency, getTierForLevel } from '../data/systems/daggerheart';
+import { CLASSES, getEffectiveProficiency, getTierForLevel } from '../data/systems/daggerheart';
 import { computeAbilityDelta } from '../data/daggerheartAbilityEffects';
 import { getCardByName } from '../data/daggerheartDomainCards';
 import { DAGGERHEART_ARMOR, ALL_DAGGERHEART_ITEMS } from '../data/daggerheartItems';
@@ -66,7 +66,7 @@ export function computeDefenses(character, equippedItems = []) {
   const charClass = character?.class;
   const level = character?.level || 1;
   const traits = character?.traits || {};
-  const proficiency = character?.proficiency || getBaseProficiency(level);
+  const proficiency = getEffectiveProficiency(character);
 
   // Domain cards are stored as plain names; enrich them to full card objects
   // (with `name` + `domain`) so passive ability effects can be matched.

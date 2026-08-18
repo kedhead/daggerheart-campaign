@@ -9,7 +9,8 @@ import { renderToString } from 'react-dom/server';
 import { DAGGERHEART_ADVERSARIES } from '../src/data/daggerheartAdversaries.js';
 import { DOMAIN_CARDS } from '../src/data/daggerheartDomainCards.js';
 import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js';
-import { getTierForLevel, getBaseProficiency, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
+import { getTierForLevel, getBaseProficiency, getEffectiveProficiency, getProficiencyBonus, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
+import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils/daggerheartLevelUp.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments } from '../src/components/Encounters/BPCalculator.jsx';
 import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
@@ -116,6 +117,125 @@ assert(getBaseProficiency(1) === 1 && getBaseProficiency(2) === 2 && getBaseProf
   const prof = ADVANCEMENT_OPTIONS.tier3.find(o => o.id === 'proficiency');
   const mc = ADVANCEMENT_OPTIONS.tier3.find(o => o.id === 'multiclass');
   assert(prof.cost === 2 && mc.cost === 2, 'proficiency and multiclass cost both level-up slots');
+}
+
+{
+  // ── The regression this section exists for ──
+  // Proficiency is the weapon damage DICE COUNT, so quietly losing a purchased
+  // "+1 Proficiency" advancement shrinks every damage roll. It used to be folded
+  // into a stored absolute that the next level-up overwrote with the tier base.
+  const step = (char, picks, level, tier, boundary = false) => ({
+    ...char,
+    ...applyLevelUp(char, {
+      newLevel: level, newTier: tier, isTierBoundary: boundary,
+      advancements: picks, advDetails: {}, newExperience: boundary ? 'Something' : '',
+    }),
+  });
+
+  let c = { level: 4, proficiency: 2, levelHistory: [] };
+  c = step(c, ['3:proficiency'], 5, 3, true);   // tier 3 entry + buy +1 Proficiency
+  assert(c.proficiency === 4, 'buying +1 Proficiency at level 5 gives +4 (base 3 + 1)');
+  c = step(c, ['3:hp', '3:stress'], 6, 3);
+  assert(c.proficiency === 4, 'the purchased Proficiency survives the next level-up');
+  c = step(c, ['3:hp', '3:stress'], 7, 3);
+  assert(c.proficiency === 4, 'and the one after that');
+  c = step(c, ['4:evasion', '4:evasion'], 8, 4, true);
+  assert(c.proficiency === 5, 'entering tier 4 stacks the tier base on top of it (4 + 1)');
+}
+{
+  // Derivation, and the fallback for characters that have no advancement record.
+  const bought = { level: 6, levelHistory: [
+    { level: 5, advancements: [{ id: 'proficiency', fromTier: 3 }] },
+    { level: 6, advancements: [{ id: 'hp', fromTier: 3 }] },
+  ] };
+  assert(getProficiencyBonus(bought) === 1, 'the bonus is counted from levelHistory');
+  assert(getEffectiveProficiency(bought) === 4, 'effective proficiency = tier base + advancements');
+  const imported = { level: 6, proficiency: 5 };   // Demiplane import: no history
+  assert(getEffectiveProficiency(imported) === 5, 'a character with no levelHistory keeps its stored value');
+  assert(getEffectiveProficiency({ level: 3 }) === 2, 'and falls back to the tier base when it has neither');
+}
+{
+  // Tier entry bonuses fire only on the first level of a tier, and only tiers
+  // 3 and 4 clear trait marks — tier 2 explicitly does not.
+  assert(isTierBoundaryLevel(2, 2) && isTierBoundaryLevel(5, 3) && isTierBoundaryLevel(8, 4),
+    'tier bonuses land at levels 2, 5 and 8');
+  assert(!isTierBoundaryLevel(3, 2) && !isTierBoundaryLevel(6, 3),
+    'and not on the other levels of a tier');
+
+  const marked = { level: 1, markedTraits: ['agility', 'strength'], levelHistory: [] };
+  const atTwo = applyLevelUp(marked, { newLevel: 2, newTier: 2, isTierBoundary: true, newExperience: 'X' });
+  assert(atTwo.markedTraits === undefined, 'entering tier 2 does NOT clear trait marks');
+
+  const atFive = applyLevelUp({ ...marked, level: 4 }, { newLevel: 5, newTier: 3, isTierBoundary: true, newExperience: 'X' });
+  assert(Array.isArray(atFive.markedTraits) && atFive.markedTraits.length === 0,
+    'entering tier 3 clears all trait marks');
+}
+{
+  // Two trait picks in one level mark four distinct traits, and the level-5
+  // clear must win over the pre-existing marks rather than re-adding them.
+  const c = { level: 4, traits: { agility: 0, strength: 1, finesse: 0, instinct: 0, presence: 0, knowledge: 0 },
+    markedTraits: ['agility', 'strength'], levelHistory: [] };
+  const u = applyLevelUp(c, {
+    newLevel: 5, newTier: 3, isTierBoundary: true, newExperience: 'X',
+    advancements: ['3:traits', '3:traits'],
+    advDetails: { '3:traits': { traits: ['agility', 'finesse'] } },
+  });
+  // Both picks share a key here, so both read the same details — the point is
+  // that the tier clear emptied the list first.
+  assert(!u.markedTraits.includes('strength'),
+    'a trait marked before the tier-3 clear is unmarked afterwards');
+  assert(u.traits.agility === 2, 'two picks of the same trait apply +1 each');
+}
+{
+  // hpSlots stores HP REMAINING, stressSlots stores MARKS — a new slot of each
+  // must start unmarked, which means opposite booleans.
+  const c = { level: 2, hpSlots: [true, true], stressSlots: [false, false], levelHistory: [] };
+  const u = applyLevelUp(c, { newLevel: 3, newTier: 2, advancements: ['2:hp', '2:stress'], advDetails: {} });
+  assert(u.hpSlots.length === 3 && u.hpSlots[2] === true, 'a new Hit Point slot starts unmarked (true)');
+  assert(u.stressSlots.length === 3 && u.stressSlots[2] === false, 'a new Stress slot starts unmarked (false)');
+}
+{
+  // Evasion advancements accumulate in a persistent bonus, the pattern
+  // Proficiency now follows.
+  const c = { level: 2, baseEvasionBonus: 1, levelHistory: [] };
+  const u = applyLevelUp(c, { newLevel: 3, newTier: 2, advancements: ['2:evasion'], advDetails: {} });
+  assert(u.baseEvasionBonus === 2, 'Evasion advancements stack into baseEvasionBonus');
+}
+{
+  // The free per-level card and a card bought as an advancement are both kept.
+  const c = { level: 2, domainCards: ['Whirlwind'], levelHistory: [] };
+  const u = applyLevelUp(c, {
+    newLevel: 3, newTier: 2,
+    advancements: ['2:domainCard'], advDetails: { '2:domainCard': { card: 'Bare Bones' } },
+    freeDomainCard: 'Get Back Up',
+  });
+  assert(u.domainCards.length === 3 && u.domainCards.includes('Bare Bones') && u.domainCards.includes('Get Back Up'),
+    'the free card and an advancement card are both added');
+}
+{
+  // The sheet caps the tier 2 card box at level 4 and tier 3's at level 7. That
+  // only bites when a later level spends an earlier tier's box.
+  const t2 = ADVANCEMENT_OPTIONS.tier2.find(o => o.id === 'domainCard');
+  const t3 = ADVANCEMENT_OPTIONS.tier3.find(o => o.id === 'domainCard');
+  const t4 = ADVANCEMENT_OPTIONS.tier4.find(o => o.id === 'domainCard');
+  assert(maxCardLevelFor(t2, 6) === 4, 'a tier 2 card box spent at level 6 is still capped at level 4');
+  assert(maxCardLevelFor(t3, 9) === 7, 'a tier 3 card box spent at level 9 is capped at level 7');
+  assert(maxCardLevelFor(t4, 9) === 9, 'the tier 4 box has no cap beyond character level');
+  assert(maxCardLevelFor(t2, 3) === 3, 'and within its own tier the character level still binds');
+}
+{
+  // levelHistory records what was taken, which is what makes Proficiency
+  // derivable and per-tier slot pools countable.
+  const u = applyLevelUp({ level: 4, levelHistory: [] }, {
+    newLevel: 5, newTier: 3, isTierBoundary: true, newExperience: 'Tracker',
+    advancements: ['2:hp', '3:evasion'], advDetails: {},
+  });
+  const entry = u.levelHistory[0];
+  assert(entry.advancements.map(a => a.fromTier).join() === '2,3',
+    'each advancement records which tier pool it was spent from');
+  assert(entry.achievements.includes('clearMarks') && entry.achievements.includes('experience'),
+    'tier entry achievements are recorded');
+  assert(u.experiences.includes('Tracker'), 'the tier-entry Experience is added');
 }
 
 // ── Battle Points (SRD Battle Guide) ──
