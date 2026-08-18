@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Sword, Plus, Trash2 } from 'lucide-react';
 import { WEAPON_FEATURES } from '../../../data/systems/daggerheart';
-import { splitFeatures, toggleStandardFeature, hasFeatureName } from '../../../utils/itemFeatures';
+import { splitFeatures, toggleStandardFeature, hasFeatureName, promoteUnknownFeatures } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 const TRAITS = [
@@ -44,7 +44,7 @@ export default function DaggerheartWeaponForm({ item, formData, setFormData, onS
       damageTier4Modifier: item?.systemData?.damageTier4Modifier || 9,
       tier: item?.systemData?.tier || 1,
       rarity: item?.systemData?.rarity || '',
-      features: item?.systemData?.features || []
+      features: promoteUnknownFeatures(item?.systemData?.features)
     }
   });
 

@@ -1,4 +1,5 @@
 import { aiService } from './aiService';
+import { getFeatureEntry } from '../data/daggerheartFeatures';
 
 const TYPE_GUIDANCE = {
   weapon: `A weapon with tiered damage dice. Return systemData fields:
@@ -56,9 +57,12 @@ ${TYPE_GUIDANCE[type]}
 
 FEATURES format:
   features is an array. Each element is EITHER:
-    - A plain string matching an SRD feature from this list:
+    - A plain string ONLY if it exactly matches an SRD feature from this list
+      (its rules text is already known, so no description is needed):
         ${std.length ? std.join(', ') : '(none — equipment uses custom features only)'}
     - OR a custom feature object: { "name": "Feature Name", "description": "Mechanical effect in 1-2 sentences using Daggerheart terms." }
+  Any name NOT on that list MUST be an object with a description. A bare string
+  that isn't an SRD feature leaves the reader with no idea what it does.
 
 Prefer 0-2 SRD strings (if any) + 1-3 custom features for flavor. Relics/legendary items should lean heavily on flavorful custom features.
 
@@ -83,7 +87,15 @@ Return ONLY a raw JSON object. No markdown fences, no commentary.
 function coerceFeatures(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.map(f => {
-    if (typeof f === 'string') return f;
+    if (typeof f === 'string') {
+      const name = f.trim();
+      if (!name) return null;
+      // A bare string only carries meaning if it names a known feature — the
+      // rules text then comes from the glossary. An invented name kept as a
+      // string has nowhere to put its effect and shows as a chip that explains
+      // nothing, so promote it to an object the editor can fill in.
+      return getFeatureEntry(name) ? name : { name, description: '' };
+    }
     if (f && typeof f === 'object') {
       return {
         name: String(f.name || '').trim(),

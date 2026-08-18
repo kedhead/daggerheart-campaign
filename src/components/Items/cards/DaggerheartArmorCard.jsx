@@ -1,16 +1,8 @@
 import { useState } from 'react';
 import StashButton from '../StashButton';
 import { ChevronDown, ChevronUp, Edit2, Trash2, Shield, EyeOff } from 'lucide-react';
-import { getFeatureName, getFeatureDescription, isCustomFeature, hasFeatureName } from '../../../utils/itemFeatures';
+import { resolveFeature } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
-
-const FEATURE_DESCRIPTIONS = {
-  'Deflecting': 'Mark armor slot for Evasion bonus equal to available slots',
-  'Sheltering': 'Armor reduces damage for nearby allies too',
-  'Barrier': '+5 Armor Score, -1 Evasion',
-  'Resilient': 'Roll d6; on 6, avoid marking last armor slot',
-  'Fortified': 'Additional armor slots'
-};
 
 const RARITY_COLORS = {
   common: '#9ca3af',
@@ -149,11 +141,8 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, onDeposit
               <h4>Features</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {features.map((feature, i) => {
-                  const name = getFeatureName(feature);
+                  const { name, description: desc, source } = resolveFeature(feature);
                   if (!name) return null;
-                  const desc = isCustomFeature(feature)
-                    ? getFeatureDescription(feature)
-                    : FEATURE_DESCRIPTIONS[name];
                   return (
                     <div
                       key={i}
@@ -165,9 +154,13 @@ export default function DaggerheartArmorCard({ item, onEdit, onDelete, onDeposit
                       }}
                     >
                       <span style={{ fontWeight: '600', color: '#3b82f6' }}>{name}</span>
-                      {desc && (
+                      {desc ? (
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                           {desc}
+                        </p>
+                      ) : source === 'unknown' && (
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', opacity: 0.6, fontStyle: 'italic' }}>
+                          No description — add one in Edit.
                         </p>
                       )}
                     </div>

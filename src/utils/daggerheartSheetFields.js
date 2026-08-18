@@ -14,7 +14,7 @@ import { getCardByName } from '../data/daggerheartDomainCards';
 import { computeDefenses, resolveArmorBases } from './daggerheartDefenses';
 import { normalizeHopeSlots, scarCount, usableHopeMax } from './daggerheartHope';
 import { getWeaponDamage, formatTraitValue } from './daggerheartRollUtils';
-import { getFeatureName, getFeatureDescription, featureNameList, hasFeatureName } from './itemFeatures';
+import { resolveFeature, featureNameList, hasFeatureName } from './itemFeatures';
 import { TRAIT_ORDER, SLOT_TRACKS, RULED_LINES } from './daggerheartSheetLayout';
 
 // Gold on the sheet is three denominations. The rulebook's conversion is
@@ -120,10 +120,13 @@ function describeWeapon(weapon, level, proficiency) {
   const sd = weapon.systemData || {};
   const traitRange = [cap(sd.trait), cap(sd.range)].filter(Boolean).join(' ');
   const damage = [getWeaponDamage(weapon, level, proficiency), sd.damageType].filter(Boolean).join(' ');
+  // Prefer real rules text (authored or from the glossary); fall back to bare
+  // names. The printed FEATURE box is two lines, so drawFitted truncates.
   const standard = featureNameList(sd.features);
   const custom = (sd.features || [])
-    .filter(f => getFeatureDescription(f))
-    .map(f => `${getFeatureName(f)}: ${getFeatureDescription(f)}`);
+    .map(resolveFeature)
+    .filter(r => r.name && r.description)
+    .map(r => `${r.name}: ${r.description}`);
   return {
     name: weapon.name || '',
     traitRange,
@@ -225,8 +228,9 @@ export function buildSheetFields(character, { items = [], includeDmNotes = false
   const armorBases = resolveArmorBases(armorItem);
   const armorSd = armorItem?.systemData || {};
   const armorCustom = (armorSd.features || [])
-    .filter(f => getFeatureDescription(f))
-    .map(f => `${getFeatureName(f)}: ${getFeatureDescription(f)}`);
+    .map(resolveFeature)
+    .filter(r => r.name && r.description)
+    .map(r => `${r.name}: ${r.description}`);
   const activeArmor = {
     name: armorItem?.name || c.armorName || c.equippedArmor || '',
     baseThresholds: armorBases ? `${armorBases.major} / ${armorBases.severe}` : '',

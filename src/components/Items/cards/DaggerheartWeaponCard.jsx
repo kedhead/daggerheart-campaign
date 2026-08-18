@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import StashButton from '../StashButton';
 import { ChevronDown, ChevronUp, Edit2, Trash2, Sword, EyeOff } from 'lucide-react';
-import { getFeatureName, getFeatureDescription, isCustomFeature } from '../../../utils/itemFeatures';
+import { resolveFeature } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 const RARITY_COLORS = {
@@ -164,18 +164,20 @@ export default function DaggerheartWeaponCard({ item, onEdit, onDelete, onDeposi
               <h4>Features</h4>
               <div className="dh-features-detailed">
                 {features.map((feature, i) => {
-                  const name = getFeatureName(feature);
-                  const desc = getFeatureDescription(feature);
+                  const { name, description, source } = resolveFeature(feature);
                   if (!name) return null;
-                  if (isCustomFeature(feature)) {
-                    return (
-                      <div key={i} className="dh-custom-feature">
-                        <span className="dh-custom-feature-name">{name}</span>
-                        {desc && <p className="dh-custom-feature-desc">{desc}</p>}
-                      </div>
-                    );
-                  }
-                  return <span key={i} className="dh-feature">{name}</span>;
+                  return (
+                    <div key={i} className="dh-custom-feature">
+                      <span className="dh-custom-feature-name">{name}</span>
+                      {description
+                        ? <p className="dh-custom-feature-desc">{description}</p>
+                        : source === 'unknown' && (
+                            <p className="dh-custom-feature-desc dh-feature-undescribed">
+                              No description — add one in Edit.
+                            </p>
+                          )}
+                    </div>
+                  );
                 })}
               </div>
             </div>

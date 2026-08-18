@@ -59,6 +59,9 @@ import { applyDiceColors, DUALITY_SETS, PLAYER_COLORS } from '../src/dice/player
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, DOMAINS } from '../src/data/systems/daggerheart.js';
 import { CAMPAIGN_FRAME_TEMPLATES } from '../src/data/campaignFrameTemplates.js';
 import { DAGGERHEART_WEAPONS, DAGGERHEART_ARMOR, DAGGERHEART_EQUIPMENT, DAGGERHEART_CONSUMABLES } from '../src/data/daggerheartItems.js';
+import { WEAPON_FEATURES, ARMOR_FEATURES } from '../src/data/systems/daggerheart.js';
+import { DAGGERHEART_FEATURES, getFeatureEntry } from '../src/data/daggerheartFeatures.js';
+import { resolveFeature, splitFeatures, promoteUnknownFeatures } from '../src/utils/itemFeatures.js';
 import { HF_TRANSFORMATIONS, HF_DOMAIN_CARDS, HF_CAMPAIGN_FRAMES } from '../src/data/hopeFear.js';
 import { sourceOf, isSourceEnabled, filterBySource, withSource, CONTENT_SOURCES } from '../src/data/sources.js';
 import {
@@ -236,6 +239,79 @@ assert(getBaseProficiency(1) === 1 && getBaseProficiency(2) === 2 && getBaseProf
   assert(entry.achievements.includes('clearMarks') && entry.achievements.includes('experience'),
     'tier entry achievements are recorded');
   assert(u.experiences.includes('Tracker'), 'the tier-entry Experience is added');
+}
+
+// ── Item feature glossary ──
+// A feature used to render as a bare name chip with no indication of what it
+// does: standard features carried their rules text only in code comments, and
+// getFeatureDescription() returns '' for any string by design.
+section('Item features');
+{
+  assert(getFeatureEntry('timebending')?.description.includes('after making your attack roll'),
+    'timebending resolves to its rulebook text (the reported case)');
+  // The item catalog stores 'reliable'; the pickers offer 'Reliable'.
+  assert(getFeatureEntry('reliable') && getFeatureEntry('Reliable'),
+    'lookup is case-insensitive, because the catalog and the pickers disagree on case');
+  // Multi-word names are hyphenated in data ('very-heavy') and spaced in the book.
+  assert(getFeatureEntry('very-heavy') && getFeatureEntry('Very Heavy'),
+    'hyphenated and spaced spellings of a multi-word feature both resolve');
+}
+{
+  const g = resolveFeature('brutal');
+  assert(g.source === 'glossary' && g.description.length > 10, 'a bare string gains text from the glossary');
+  assert(g.name === 'Brutal', 'and is displayed with its proper label, not the stored lowercase');
+
+  const authored = resolveFeature({ name: 'Brutal', description: 'This item does something else.' });
+  assert(authored.source === 'custom' && authored.description === 'This item does something else.',
+    "an author's own wording wins over the glossary");
+
+  const emptyDesc = resolveFeature({ name: 'brutal', description: '' });
+  assert(emptyDesc.source === 'glossary',
+    'an object with an empty description still falls back to the glossary');
+
+  const unknown = resolveFeature('madeupthing');
+  assert(unknown.source === 'unknown' && unknown.description === '' && unknown.name === 'madeupthing',
+    'an undefined name resolves as unknown rather than throwing or inventing text');
+  assert(resolveFeature(null).name === '' && resolveFeature(undefined).name === '',
+    'and a missing feature is handled');
+}
+{
+  // Every name the pickers offer must be explainable, or the UI shows a chip it
+  // cannot describe. This guards the lists and the glossary against drifting.
+  const missing = [...WEAPON_FEATURES, ...ARMOR_FEATURES].filter(n => !getFeatureEntry(n));
+  assert(missing.length === 0, `every pickable feature has glossary text (missing: ${missing.join(', ') || 'none'})`);
+}
+{
+  // Same guard for the shipped item catalog.
+  const used = new Set();
+  [...DAGGERHEART_WEAPONS, ...DAGGERHEART_ARMOR].forEach(i =>
+    (i.systemData?.features || []).forEach(f => typeof f === 'string' && used.add(f)));
+  const undescribed = [...used].filter(n => !getFeatureEntry(n));
+  assert(undescribed.length === 0,
+    `every feature on a catalog item resolves (missing: ${undescribed.join(', ') || 'none'})`);
+  assert(used.size > 20, `the catalog actually exercises the glossary (${used.size} distinct features)`);
+}
+{
+  // An unrecognised string used to fall through every bucket the item forms
+  // render, so it showed on the card but could not be edited or deleted.
+  const split = splitFeatures(['reliable', 'madeupthing', { name: 'X', description: 'd' }]);
+  assert(split.standard.length === 1 && split.custom.length === 1 && split.unknown.length === 1,
+    'splitFeatures separates known, authored and unrecognised features');
+
+  const promoted = promoteUnknownFeatures(['reliable', 'madeupthing']);
+  assert(promoted[0] === 'reliable', 'a known feature stays a plain string');
+  assert(typeof promoted[1] === 'object' && promoted[1].name === 'madeupthing' && promoted[1].description === '',
+    'an unrecognised one becomes an editable object so the form can reach it');
+  assert(promoteUnknownFeatures(undefined).length === 0, 'and a missing list is tolerated');
+}
+{
+  const glossaryCount = Object.keys(DAGGERHEART_FEATURES).length;
+  assert(glossaryCount > 50, `the glossary is populated (${glossaryCount} entries)`);
+  const paraphrased = Object.values(DAGGERHEART_FEATURES).filter(f => f.paraphrase).length;
+  assert(paraphrased > 0 && paraphrased < 10,
+    `only the handful of app-only names are flagged as paraphrase (${paraphrased})`);
+  assert(Object.values(DAGGERHEART_FEATURES).every(f => f.description && f.label && f.category),
+    'every glossary entry has a label, category and description');
 }
 
 // ── Battle Points (SRD Battle Guide) ──

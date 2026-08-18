@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Shield, Plus, Trash2 } from 'lucide-react';
 import { ARMOR_FEATURES } from '../../../data/systems/daggerheart';
-import { splitFeatures, toggleStandardFeature, hasFeatureName, featureNameList } from '../../../utils/itemFeatures';
+import { splitFeatures, toggleStandardFeature, hasFeatureName, featureNameList, promoteUnknownFeatures } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 export default function DaggerheartArmorForm({ item, formData, setFormData, onSave, onCancel, onChangeType, isDM }) {
   // Fix for legacy database items exported with the buggy default of 6 slots
   const initialArmorScore = item?.systemData?.armorScore || 2;
-  const initialFeatures = item?.systemData?.features || [];
+  const initialFeatures = promoteUnknownFeatures(item?.systemData?.features);
   let initialArmorSlots = item?.systemData?.armorSlots || initialArmorScore;
 
   if (initialArmorSlots === 6 && initialArmorScore !== 6 && !hasFeatureName(initialFeatures, 'Fortified')) {

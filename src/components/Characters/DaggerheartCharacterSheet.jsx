@@ -4,7 +4,7 @@ import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, U
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getEffectiveProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
 import { splitCardFeatures } from '../../utils/domainCardText';
-import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
+import { getFeatureName, resolveFeature, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
 import { scarCount, normalizeHopeSlots, usableHopeFilled } from '../../utils/daggerheartHope';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
@@ -862,12 +862,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                   })}
                 </div>
               )}
-              {sd.features?.some(f => getFeatureDescription(f)) && (
+              {sd.features?.some(f => resolveFeature(f).description) && (
                 <div className="dh-item-custom-features">
-                  {sd.features.filter(f => getFeatureDescription(f)).map((f, i) => (
+                  {sd.features.filter(f => resolveFeature(f).description).map((f, i) => (
                     <div key={i} className="dh-item-custom-feature">
-                      <span className="dh-item-custom-feature-name">{getFeatureName(f)}:</span>
-                      {' '}{getFeatureDescription(f)}
+                      <span className="dh-item-custom-feature-name">{resolveFeature(f).name}:</span>
+                      {' '}{resolveFeature(f).description}
                     </div>
                   ))}
                 </div>
@@ -1251,12 +1251,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                       })}
                     </div>
                   )}
-                  {sd.features?.some(f => getFeatureDescription(f)) && (
+                  {sd.features?.some(f => resolveFeature(f).description) && (
                     <div className="dh-item-custom-features">
-                      {sd.features.filter(f => getFeatureDescription(f)).map((f, i) => (
+                      {sd.features.filter(f => resolveFeature(f).description).map((f, i) => (
                         <div key={i} className="dh-item-custom-feature">
-                          <span className="dh-item-custom-feature-name">{getFeatureName(f)}:</span>
-                          {' '}{getFeatureDescription(f)}
+                          <span className="dh-item-custom-feature-name">{resolveFeature(f).name}:</span>
+                          {' '}{resolveFeature(f).description}
                         </div>
                       ))}
                     </div>
@@ -1318,12 +1318,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                       })}
                     </div>
                   )}
-                  {sd.features?.some(f => getFeatureDescription(f)) && (
+                  {sd.features?.some(f => resolveFeature(f).description) && (
                     <div className="dh-item-custom-features">
-                      {sd.features.filter(f => getFeatureDescription(f)).map((f, i) => (
+                      {sd.features.filter(f => resolveFeature(f).description).map((f, i) => (
                         <div key={i} className="dh-item-custom-feature">
-                          <span className="dh-item-custom-feature-name">{getFeatureName(f)}:</span>
-                          {' '}{getFeatureDescription(f)}
+                          <span className="dh-item-custom-feature-name">{resolveFeature(f).name}:</span>
+                          {' '}{resolveFeature(f).description}
                         </div>
                       ))}
                     </div>
@@ -1359,12 +1359,12 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                       })}
                     </div>
                   )}
-                  {sd.features?.some(f => getFeatureDescription(f)) && (
+                  {sd.features?.some(f => resolveFeature(f).description) && (
                     <div className="dh-item-custom-features">
-                      {sd.features.filter(f => getFeatureDescription(f)).map((f, i) => (
+                      {sd.features.filter(f => resolveFeature(f).description).map((f, i) => (
                         <div key={i} className="dh-item-custom-feature">
-                          <span className="dh-item-custom-feature-name">{getFeatureName(f)}:</span>
-                          {' '}{getFeatureDescription(f)}
+                          <span className="dh-item-custom-feature-name">{resolveFeature(f).name}:</span>
+                          {' '}{resolveFeature(f).description}
                         </div>
                       ))}
                     </div>

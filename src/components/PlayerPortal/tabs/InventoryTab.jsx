@@ -1,4 +1,4 @@
-import { getFeatureName, getFeatureDescription } from '../../../utils/itemFeatures';
+import { getFeatureName, resolveFeature } from '../../../utils/itemFeatures';
 
 const TYPE_ICON = { weapon: '⚔', armor: '🛡', equipment: '✦' };
 const TYPE_COLOR = { weapon: '#f5c543', armor: '#60a5fa', equipment: '#a78bfa' };
@@ -30,7 +30,7 @@ function ItemStats({ item }) {
 function ItemCard({ item, onRemove, onEquip, onUnequip, onStash }) {
   const sd = item.systemData || {};
   const features = sd.features || [];
-  const customFeatures = features.filter(f => getFeatureDescription(f));
+  const describedFeatures = features.map(resolveFeature).filter(r => r.name && r.description);
   const tc = TYPE_COLOR[item.type] || '#a78bfa';
 
   return (
@@ -80,12 +80,12 @@ function ItemCard({ item, onRemove, onEquip, onUnequip, onStash }) {
       )}
 
       {/* Custom feature descriptions */}
-      {customFeatures.length > 0 && (
+      {describedFeatures.length > 0 && (
         <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 5 }}>
-          {customFeatures.map((f, fi) => (
+          {describedFeatures.map((f, fi) => (
             <div key={fi} style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.45 }}>
-              <span style={{ fontWeight: 700, color: tc }}>{getFeatureName(f)}:</span>
-              {' '}{getFeatureDescription(f)}
+              <span style={{ fontWeight: 700, color: tc }}>{f.name}:</span>
+              {' '}{f.description}
             </div>
           ))}
         </div>

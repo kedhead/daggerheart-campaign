@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { TRAIT_ABBREV, getWeaponDamage, parseDamageString } from '../../../utils/daggerheartRollUtils';
-import { getFeatureName, getFeatureDescription } from '../../../utils/itemFeatures';
+import { getFeatureName, resolveFeature } from '../../../utils/itemFeatures';
 import { getEffectiveProficiency } from '../../../data/systems/daggerheart';
 
 const BONUS_OPTS = [
@@ -95,7 +95,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
               const traitMod = (traits[traitKey] ?? 0) + proficiency;
               const atkLabel = `${TRAIT_ABBREV[traitKey] || sd.trait || 'AGI'} ${traitMod >= 0 ? '+' : ''}${traitMod}`;
               const features = sd.features || [];
-              const customFeatures = features.filter(f => getFeatureDescription(f));
+              const describedFeatures = features.map(resolveFeature).filter(r => r.name && r.description);
               return (
                 <div key={weapon.id || idx} className="lrp-card" style={{ borderColor: 'rgba(245,197,67,0.22)', padding: '14px 14px 12px' }}>
                   {/* Name + stats row */}
@@ -113,7 +113,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
 
                   {/* Feature badges */}
                   {features.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: customFeatures.length ? 10 : 0 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: describedFeatures.length ? 10 : 0 }}>
                       {features.map((f, fi) => {
                         const name = getFeatureName(f);
                         if (!name) return null;
@@ -131,12 +131,12 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
                   )}
 
                   {/* Custom feature descriptions */}
-                  {customFeatures.length > 0 && (
+                  {describedFeatures.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                      {customFeatures.map((f, fi) => (
+                      {describedFeatures.map((f, fi) => (
                         <div key={fi} style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.45 }}>
-                          <span style={{ fontWeight: 700, color: '#c4b5fd' }}>{getFeatureName(f)}:</span>
-                          {' '}{getFeatureDescription(f)}
+                          <span style={{ fontWeight: 700, color: '#c4b5fd' }}>{f.name}:</span>
+                          {' '}{f.description}
                         </div>
                       ))}
                     </div>
