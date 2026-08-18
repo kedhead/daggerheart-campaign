@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import StashButton from '../StashButton';
 import { ChevronDown, ChevronUp, Edit2, Trash2, Backpack, EyeOff, Sparkles, Zap, Heart } from 'lucide-react';
-import { getFeatureName, getFeatureDescription, isCustomFeature } from '../../../utils/itemFeatures';
+import { resolveFeature } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 const RARITY_COLORS = {
@@ -202,9 +202,8 @@ export default function DaggerheartEquipmentCard({ item, onEdit, onDelete, onDep
               <h4>Features</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {features.map((feature, i) => {
-                  const name = getFeatureName(feature);
+                  const { name, description: desc, source } = resolveFeature(feature);
                   if (!name) return null;
-                  const desc = getFeatureDescription(feature);
                   return (
                     <div
                       key={i}
@@ -216,9 +215,13 @@ export default function DaggerheartEquipmentCard({ item, onEdit, onDelete, onDep
                       }}
                     >
                       <span style={{ fontWeight: '600', color: categoryConfig.color }}>{name}</span>
-                      {desc && (
+                      {desc ? (
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                           {desc}
+                        </p>
+                      ) : source === 'unknown' && (
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', opacity: 0.6, fontStyle: 'italic' }}>
+                          No description — add one in Edit.
                         </p>
                       )}
                     </div>

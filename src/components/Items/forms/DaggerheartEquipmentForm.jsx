@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Backpack, Plus, Trash2 } from 'lucide-react';
 import { EQUIPMENT_CATEGORIES } from '../../../data/systems/daggerheart';
-import { splitFeatures } from '../../../utils/itemFeatures';
+import { splitFeatures, promoteUnknownFeatures } from '../../../utils/itemFeatures';
 import '../ItemsView.css';
 
 export default function DaggerheartEquipmentForm({ item, formData, setFormData, onSave, onCancel, onChangeType, isDM }) {
@@ -18,7 +18,7 @@ export default function DaggerheartEquipmentForm({ item, formData, setFormData, 
       uses: item?.systemData?.uses ?? -1,
       hopeCost: item?.systemData?.hopeCost || 0,
       stressCost: item?.systemData?.stressCost || 0,
-      features: item?.systemData?.features || []
+      features: promoteUnknownFeatures(item?.systemData?.features)
     }
   });
 
