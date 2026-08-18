@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
-import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency, getTierForLevel } from '../../data/systems/daggerheart';
+import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getEffectiveProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
 import { splitCardFeatures } from '../../utils/domainCardText';
 import { getFeatureName, getFeatureDescription, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
@@ -223,7 +223,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const ancestry = character.ancestry || '';
   const community = character.community || '';
   const level = character.level || 1;
-  const proficiency = character.proficiency || getBaseProficiency(level);
+  const proficiency = getEffectiveProficiency(character);
   const isDruid = charClass === 'Druid' || character.multiclass?.class === 'Druid';
   const isBeastbound = charClass === 'Ranger' && subclass === 'Beastbound';
   const subclassLevel = character.subclassLevel || 'foundation';

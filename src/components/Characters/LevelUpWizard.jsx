@@ -3,15 +3,12 @@ import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, AlertCircle } from 'lucide-react';
 import {
   CLASSES, SUBCLASSES, DOMAINS, ADVANCEMENT_OPTIONS,
-  getBaseProficiency, getTierForLevel, getAdvancementTier
+  getBaseProficiency, getProficiencyBonus, getTierForLevel, getAdvancementTier
 } from '../../data/systems/daggerheart';
 import { getCardsForCharacter, getCardsForMulticlass, getCardByName } from '../../data/daggerheartDomainCards';
+import { applyLevelUp, maxCardLevelFor, TRAIT_NAMES, TIER_BOUNDARY_LEVELS } from '../../utils/daggerheartLevelUp';
 import { COMPANION_UPGRADES, EXAMPLE_COMPANION_EXPERIENCES } from '../../data/daggerheartCompanion';
 import './LevelUpWizard.css';
-
-const TRAIT_NAMES = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'];
-
-const TIER_BOUNDARY_LEVELS = { 2: 2, 3: 5, 4: 8 };
 
 export default function LevelUpWizard({ character, items, onComplete, onClose }) {
   const currentLevel = character.level || 1;
@@ -80,7 +77,7 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
     const list = [];
     if (isTierBoundary) {
       list.push({ type: 'experience', label: 'Gain a new Experience (starts at +2)' });
-      list.push({ type: 'proficiency', label: `Proficiency increases to +${getBaseProficiency(newLevel)}` });
+      list.push({ type: 'proficiency', label: `Proficiency increases to +${getBaseProficiency(newLevel) + getProficiencyBonus(character)}` });
       if (newTier >= 3) {
         list.push({ type: 'clearMarks', label: 'Clear all trait marks (allows re-upgrading traits)' });
       }
@@ -133,7 +130,10 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
           if (currentSubclassLevel === 'specialization' && hasMulticlass) crossedOut = true;
         }
         if (opt.id === 'experiences' && (character.experiences || []).length === 0) crossedOut = true;
-        if (opt.id === 'domainCard' && availableDomainCards.length === 0) crossedOut = true;
+        // An earlier tier's card box is capped below the character's level, so
+        // it can run dry while higher-level cards are still on offer.
+        if (opt.id === 'domainCard'
+          && !availableDomainCards.some(c => c.level <= maxCardLevelFor(opt, newLevel))) crossedOut = true;
         // Hide exhausted or crossed-out options from earlier tiers to reduce noise
         if (t !== newTier && (remaining <= 0 || crossedOut)) return;
         opts.push({ ...opt, key, fromTier: t, used, remaining, crossedOut });
@@ -236,125 +236,22 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
     }
   };
 
-  // Build the final update object
-  const buildUpdates = () => {
-    const updates = {};
-    const newLevelEntry = {
-      level: newLevel,
-      tier: newTier,
-      achievements: achievements.map(a => a.type),
-      advancements: advancements.map(key => ({
-        id: key.split(':')[1],
-        fromTier: Number(key.split(':')[0]),
-        details: advDetails[key] || {}
-      })),
-      domainCard: freeDomainCard,
-      companionUpgrade: companionUpgrade,
-    };
-
-    // Base level update
-    updates.level = newLevel;
-    updates.proficiency = getBaseProficiency(newLevel);
-    updates.levelHistory = [...levelHistory, newLevelEntry];
-
-    // Achievements
-    if (isTierBoundary && newExperience.trim()) {
-      updates.experiences = [...(character.experiences || []), newExperience.trim()];
-    }
-    if (isTierBoundary && newTier >= 3) {
-      updates.markedTraits = []; // Clear marks
-    }
-
-    // Apply advancements
-    let subclassChain = currentSubclassLevel;
-    advancements.forEach(key => {
-      const advId = key.split(':')[1];
-      const details = advDetails[key] || {};
-      switch (advId) {
-        case 'traits': {
-          const traits = { ...(updates.traits || character.traits || {}) };
-          const marked = [...(updates.markedTraits || character.markedTraits || [])];
-          (details.traits || []).forEach(t => {
-            traits[t] = (traits[t] || 0) + 1;
-            if (!marked.includes(t)) marked.push(t);
-          });
-          updates.traits = traits;
-          updates.markedTraits = marked;
-          break;
-        }
-        case 'hp': {
-          const current = updates.hpSlots || character.hpSlots || [true, true, true, true, true, true];
-          updates.hpSlots = [...current, true];
-          break;
-        }
-        case 'stress': {
-          const current = updates.stressSlots || character.stressSlots || [false, false, false, false, false, false];
-          updates.stressSlots = [...current, false];
-          break;
-        }
-        case 'evasion': {
-          updates.baseEvasionBonus = (updates.baseEvasionBonus || character.baseEvasionBonus || 0) + 1;
-          break;
-        }
-        case 'experiences': {
-          // +1 to two existing experiences — tracked via experienceBoosts
-          const boosts = { ...(updates.experienceBoosts || character.experienceBoosts || {}) };
-          (details.experiences || []).forEach(exp => {
-            boosts[exp] = (boosts[exp] || 0) + 1;
-          });
-          updates.experienceBoosts = boosts;
-          break;
-        }
-        case 'subclassUpgrade': {
-          subclassChain = subclassChain === 'foundation' ? 'specialization' : 'mastery';
-          updates.subclassLevel = subclassChain;
-          break;
-        }
-        case 'proficiency': {
-          updates.proficiency = (updates.proficiency || getBaseProficiency(newLevel)) + 1;
-          break;
-        }
-        case 'multiclass': {
-          updates.multiclass = {
-            class: mcClass,
-            subclass: mcSubclass,
-            domain: mcDomain,
-          };
-          break;
-        }
-        default:
-          break;
-      }
-    });
-
-    // Free domain card
-    if (freeDomainCard) {
-      updates.domainCards = [...(character.domainCards || []), freeDomainCard];
-    }
-
-    // Domain card(s) from advancement picks
-    advancements.forEach(key => {
-      if (!key.endsWith(':domainCard')) return;
-      const card = advDetails[key]?.card;
-      if (!card) return;
-      const cards = updates.domainCards || [...(character.domainCards || [])];
-      if (!cards.includes(card)) {
-        updates.domainCards = [...cards, card];
-      }
-    });
-
-    // Companion upgrade
-    if (isBeastbound && companionUpgrade && character.companion) {
-      const comp = { ...character.companion };
-      comp.upgrades = [...(comp.upgrades || []), companionUpgrade];
-      if (companionUpgrade === 'intelligent' && companionUpgradeDetail) {
-        comp.upgradeDetails = { ...(comp.upgradeDetails || {}), intelligent: companionUpgradeDetail };
-      }
-      updates.companion = comp;
-    }
-
-    return updates;
-  };
+  // Build the final update object. The rules live in daggerheartLevelUp so they
+  // can be unit-tested; this component only gathers the choices.
+  const buildUpdates = () => applyLevelUp(character, {
+    newLevel,
+    newTier,
+    isTierBoundary,
+    advancements,
+    advDetails,
+    newExperience,
+    freeDomainCard,
+    multiclass: (mcClass && mcSubclass && mcDomain)
+      ? { class: mcClass, subclass: mcSubclass, domain: mcDomain }
+      : null,
+    companionUpgrade: isBeastbound ? companionUpgrade : null,
+    companionUpgradeDetail,
+  });
 
   const handleComplete = () => {
     onComplete(buildUpdates());
@@ -505,7 +402,11 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
 
                 {picked && opt.id === 'domainCard' && (
                   <div className="luw-detail-panel">
-                    <label className="luw-label">Pick a domain card:</label>
+                    <label className="luw-label">
+                      Pick a domain card
+                      {maxCardLevelFor(opt, newLevel) < newLevel
+                        && ` (Tier ${opt.fromTier} box — level ${maxCardLevelFor(opt, newLevel)} or lower)`}:
+                    </label>
                     <select
                       className="luw-select"
                       value={advDetails[opt.key]?.card || ''}
@@ -513,6 +414,7 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
                     >
                       <option value="">Select a card...</option>
                       {availableDomainCards
+                        .filter(c => c.level <= maxCardLevelFor(opt, newLevel))
                         .filter(c => c.name === advDetails[opt.key]?.card || !cardsClaimed.has(c.name))
                         .map(c => (
                           <option key={c.name} value={c.name}>{c.name} (Lv {c.level} {c.domain}){c.source === 'hope-fear' ? ' — Hope & Fear' : ''}</option>
@@ -683,7 +585,7 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
           </div>
           <div className="luw-summary-item">
             <span className="luw-summary-label">Proficiency</span>
-            <span className="luw-summary-value">+{updates.proficiency || getBaseProficiency(newLevel)}</span>
+            <span className="luw-summary-value">+{updates.proficiency}</span>
           </div>
 
           {isTierBoundary && newExperience.trim() && (

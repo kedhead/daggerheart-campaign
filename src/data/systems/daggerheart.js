@@ -282,7 +282,7 @@ const ADVANCEMENT_OPTIONS = {
     { id: 'hp', label: '+1 Hit Point slot', slots: 2, cost: 1 },
     { id: 'stress', label: '+1 Stress slot', slots: 2, cost: 1 },
     { id: 'experiences', label: '+1 to two Experiences', slots: 1, cost: 1 },
-    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1 },
+    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1, maxCardLevel: 4 },
     { id: 'evasion', label: '+1 Evasion', slots: 1, cost: 1 },
   ],
   tier3: [
@@ -290,7 +290,7 @@ const ADVANCEMENT_OPTIONS = {
     { id: 'hp', label: '+1 Hit Point slot', slots: 2, cost: 1 },
     { id: 'stress', label: '+1 Stress slot', slots: 2, cost: 1 },
     { id: 'experiences', label: '+1 to two Experiences', slots: 1, cost: 1 },
-    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1 },
+    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1, maxCardLevel: 7 },
     { id: 'evasion', label: '+1 Evasion', slots: 1, cost: 1 },
     { id: 'subclassUpgrade', label: 'Upgraded subclass card', slots: 1, cost: 1 },
     { id: 'proficiency', label: '+1 Proficiency', slots: 1, cost: 2 },
@@ -301,7 +301,7 @@ const ADVANCEMENT_OPTIONS = {
     { id: 'hp', label: '+1 Hit Point slot', slots: 2, cost: 1 },
     { id: 'stress', label: '+1 Stress slot', slots: 2, cost: 1 },
     { id: 'experiences', label: '+1 to two Experiences', slots: 1, cost: 1 },
-    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1 },
+    { id: 'domainCard', label: 'Additional domain card', slots: 1, cost: 1, maxCardLevel: null },
     { id: 'evasion', label: '+1 Evasion', slots: 1, cost: 1 },
     { id: 'subclassUpgrade', label: 'Upgraded subclass card', slots: 1, cost: 1 },
     { id: 'proficiency', label: '+1 Proficiency', slots: 1, cost: 2 },
@@ -323,6 +323,43 @@ const getTierForLevel = (level) => {
   if (level <= 4) return 2;
   if (level <= 7) return 3;
   return 4;
+};
+
+// ── Proficiency ──────────────────────────────────────────────────────────────
+//
+// Proficiency has two sources: the automatic bump on entering tiers 2/5/8
+// (getBaseProficiency), and the optional "Increase your Proficiency by +1"
+// advancement available in tiers 3 and 4.
+//
+// The advancement bonus is DERIVED from levelHistory rather than stored. It used
+// to be folded into a stored absolute, which every subsequent level-up then
+// overwrote with the tier base — silently deleting a purchased advancement, and
+// with it a damage die (Proficiency is the weapon damage dice count). Deriving
+// it means the number cannot drift, and characters who already lost the bonus
+// get it back as soon as they're read.
+
+/** How many "+1 Proficiency" advancements a character has bought. */
+const getProficiencyBonus = (character) => {
+  const history = character?.levelHistory;
+  if (!Array.isArray(history)) return 0;
+  return history.reduce((n, entry) => (
+    n + (entry?.advancements || []).filter(a => a?.id === 'proficiency').length
+  ), 0);
+};
+
+/**
+ * A character's actual Proficiency.
+ *
+ * Characters with a levelHistory get tier base + purchased advancements.
+ * Characters without one (Demiplane imports, hand-built sheets) have no
+ * advancement record to derive from, so their stored value is authoritative.
+ */
+const getEffectiveProficiency = (character) => {
+  const level = character?.level || 1;
+  if (!Array.isArray(character?.levelHistory)) {
+    return character?.proficiency ?? getBaseProficiency(level);
+  }
+  return getBaseProficiency(level) + getProficiencyBonus(character);
 };
 
 // Get the advancement tier key for a given level
@@ -940,6 +977,8 @@ export {
   EQUIPMENT_CATEGORIES,
   ADVANCEMENT_OPTIONS,
   getBaseProficiency,
+  getProficiencyBonus,
+  getEffectiveProficiency,
   getTierForLevel,
   getAdvancementTier
 };

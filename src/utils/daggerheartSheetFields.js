@@ -9,7 +9,7 @@
 // calculator the on-screen sheet and the Player Portal use, so an exported PDF
 // can never disagree with what the player sees.
 
-import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getBaseProficiency } from '../data/systems/daggerheart';
+import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getEffectiveProficiency } from '../data/systems/daggerheart';
 import { getCardByName } from '../data/daggerheartDomainCards';
 import { computeDefenses, resolveArmorBases } from './daggerheartDefenses';
 import { normalizeHopeSlots, scarCount, usableHopeMax } from './daggerheartHope';
@@ -149,7 +149,7 @@ function weaponFromString(str) {
 export function buildSheetFields(character, { items = [], includeDmNotes = false } = {}) {
   const c = character || {};
   const level = c.level || 1;
-  const proficiency = c.proficiency || getBaseProficiency(level);
+  const proficiency = getEffectiveProficiency(c);
   const charClass = c.class || '';
   const classData = charClass ? CLASSES[charClass] : null;
 
