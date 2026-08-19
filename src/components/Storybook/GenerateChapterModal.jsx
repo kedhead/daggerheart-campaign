@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Wand2, Sparkles } from 'lucide-react';
 import Modal from '../Modal';
 import { generateChapter, STORYBOOK_STYLES, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
+import { sessionNotesText, mentionedEntityIds } from '../../utils/storybookCast';
 
 export default function GenerateChapterModal({
   isOpen,
@@ -54,6 +55,36 @@ export default function GenerateChapterModal({
   const [warnings, setWarnings] = useState([]);
 
   const selectedSession = completedSessions.find(s => s.id === sessionId);
+
+  // ── Cast ───────────────────────────────────────────────────────────────────
+  // Only these entities are shown to the chapter writer, and only these can end
+  // up in a scene. Without this the writer saw the whole campaign and would
+  // happily cast someone the session never mentioned — whose portrait then went
+  // to the image model as a reference, so they got drawn.
+  const castPool = useMemo(() => ({
+    characters: (characters || []).filter(c => c.id && c.name),
+    npcs: (npcs || []).filter(n => n.id && n.name),
+    adversaries: (adversaries || []).filter(a => a.id && a.name),
+  }), [characters, npcs, adversaries]);
+
+  const [castIds, setCastIds] = useState([]);
+  const [castOpen, setCastOpen] = useState(false);
+
+  // Re-seed from the notes whenever the session changes. Anyone named in the
+  // notes starts ticked; deceased characters never do (mentionedEntityIds).
+  useEffect(() => {
+    setCastIds(mentionedEntityIds(castPool, sessionNotesText(selectedSession)));
+  }, [sessionId, castPool, selectedSession]);
+
+  const toggleCast = (id) => {
+    setCastIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  };
+
+  const castGroups = [
+    { key: 'characters', label: 'Characters', list: castPool.characters },
+    { key: 'npcs', label: 'NPCs', list: castPool.npcs },
+    { key: 'adversaries', label: 'Adversaries', list: castPool.adversaries },
+  ].filter(g => g.list.length > 0);
   const alreadyHasChapter = selectedSession && usedSessionIds.has(selectedSession.id);
 
   const handleGenerate = async () => {
@@ -74,6 +105,7 @@ export default function GenerateChapterModal({
         styleKey,
         styleCustom,
         sceneCount,
+        castIds,
         includeIllustrations,
         imageModel,
         generatedBy: currentUserId,
@@ -119,6 +151,61 @@ export default function GenerateChapterModal({
             <p className="text-xs text-amber-300">This session already has a chapter. Generating will create a second one.</p>
           )}
         </div>
+
+        {/* Cast — the writer only sees these entities, and only these can be
+            drawn into a scene. Seeded from names found in the session notes. */}
+        {castGroups.length > 0 && (
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => setCastOpen(o => !o)}
+              disabled={running}
+              className="w-full flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/10 text-left disabled:opacity-50"
+            >
+              <span className="text-xs font-bold uppercase tracking-widest text-white/50">
+                Cast · {castIds.length} selected
+              </span>
+              <span className="text-xs text-white/40">{castOpen ? 'Hide' : 'Edit'}</span>
+            </button>
+            <p className="text-xs text-white/40">
+              Pre-ticked from names in the session notes. Only these can appear in the chapter or its art.
+            </p>
+            {castIds.length === 0 && (
+              <p className="text-xs text-amber-300">
+                Nobody selected — scenes will be scenery only, with no characters.
+              </p>
+            )}
+            {castOpen && (
+              <div className="max-h-64 overflow-y-auto space-y-3 p-3 rounded-xl bg-black/20 border border-white/10">
+                {castGroups.map(group => (
+                  <div key={group.key} className="space-y-1.5">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-white/35">
+                      {group.label}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {group.list.map(e => (
+                        <label
+                          key={e.id}
+                          className="flex items-center gap-2 text-sm text-white/80 cursor-pointer select-none"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={castIds.includes(e.id)}
+                            onChange={() => toggleCast(e.id)}
+                            disabled={running}
+                          />
+                          <span className={e.deceased ? 'opacity-60' : ''}>
+                            {e.name}{e.deceased ? ' (fallen)' : ''}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">

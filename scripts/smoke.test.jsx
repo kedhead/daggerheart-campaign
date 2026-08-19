@@ -16,6 +16,7 @@ import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services
 import { responseParser } from '../src/services/responseParser.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration, narratableSlides } from '../src/components/Storybook/cinematicTimeline.js';
+import { sessionNotesText, nameAppearsIn, mentionedEntityIds, scopeRosters, sanitizeChapterCast } from '../src/utils/storybookCast.js';
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
@@ -239,6 +240,80 @@ assert(getBaseProficiency(1) === 1 && getBaseProficiency(2) === 2 && getBaseProf
   assert(entry.achievements.includes('clearMarks') && entry.achievements.includes('experience'),
     'tier entry achievements are recorded');
   assert(u.experiences.includes('Tracker'), 'the tier-entry Experience is added');
+}
+
+// ── Storybook cast ──
+// The chapter writer used to be handed the entire campaign, and nothing checked
+// the entity ids it returned. Those ids become reference PORTRAITS for the image
+// model, so a character the session never mentioned got drawn into the art.
+section('Storybook cast');
+{
+  const characters = [
+    { id: 'c1', name: 'Emmanita Bloom' },
+    { id: 'c2', name: 'Cosmo' },                       // never mentioned
+    { id: 'c3', name: 'Al' },                          // substring hazard
+    { id: 'c4', name: 'Thorne Ironhold', deceased: true },
+  ];
+  const npcs = [{ id: 'n1', name: 'Wayland the Smith' }];
+  const adversaries = [{ id: 'a1', name: 'Giant Spider' }];
+  const notes = sessionNotesText({
+    title: 'The Caves',
+    summary: "Emmanita's torch guttered out. Already the dark pressed in.",
+    highlights: ['A Giant Spider dropped from the ceiling', 'Wayland waited outside'],
+  });
+  const ids = mentionedEntityIds({ characters, npcs, adversaries }, notes);
+
+  assert(!ids.includes('c2'), 'a character the notes never mention is NOT cast (the reported bug)');
+  assert(ids.includes('c1'), 'a character named in the notes is cast, matched on their first name');
+  assert(!ids.includes('c3'), '"Al" is not matched by the word "Already" — matching is on word boundaries');
+  assert(!ids.includes('c4'), 'a deceased character is not auto-cast');
+  // The DM specifically needs NPCs included, and adversaries drive combat scenes.
+  assert(ids.includes('n1'), 'an NPC named in the notes is cast on the same terms as a character');
+  assert(ids.includes('a1'), 'so is an adversary');
+}
+{
+  assert(nameAppearsIn('Emmanita', "Emmanita's torch"), "a possessive still counts as a mention");
+  assert(nameAppearsIn('Cosmo', 'then COSMO arrived'), 'matching ignores case');
+  assert(!nameAppearsIn('Cosmo', 'a cosmopolitan crowd'), 'and does not match inside a longer word');
+  assert(!nameAppearsIn('', 'anything') && !nameAppearsIn('Bo', ''), 'empty names and empty notes are safe');
+}
+{
+  // Two characters sharing a first name: neither should be pulled in by it alone.
+  const characters = [{ id: 'k1', name: 'Kael Windrow' }, { id: 'k2', name: 'Kael Stonefoot' }];
+  const ids = mentionedEntityIds({ characters }, 'Kael did something notable.');
+  assert(ids.length === 0, 'an ambiguous first name casts nobody rather than guessing');
+  const exact = mentionedEntityIds({ characters }, 'Kael Windrow did something notable.');
+  assert(exact.length === 1 && exact[0] === 'k1', 'but the full name still resolves the right one');
+}
+{
+  const rosters = {
+    characters: [{ id: 'c1', name: 'A' }, { id: 'c2', name: 'B' }],
+    npcs: [{ id: 'n1', name: 'C' }],
+    adversaries: [{ id: 'a1', name: 'D' }],
+  };
+  const scoped = scopeRosters(rosters, ['c1', 'a1']);
+  assert(scoped.characters.length === 1 && scoped.characters[0].id === 'c1', 'scopeRosters keeps only cast characters');
+  assert(scoped.npcs.length === 0 && scoped.adversaries.length === 1, 'and applies to NPCs and adversaries too');
+  assert(scopeRosters(rosters, null).characters.length === 2, 'a null cast is a no-op rather than casting nobody');
+}
+{
+  // The guard that actually stops the wrong portrait reaching the image model.
+  const raw = {
+    scenes: [
+      { caption: 'ambush', prompt: 'spiders', featuredEntityIds: ['c1', 'c2'] },
+      { caption: 'aftermath', prompt: 'embers', featuredEntityIds: ['c2'] },
+    ],
+    spotlights: [{ entityId: 'c1', moment: 'held the line' }, { entityId: 'c2', moment: 'was not there' }],
+  };
+  const { chapter, removed } = sanitizeChapterCast(raw, ['c1']);
+  assert(chapter.scenes[0].featuredEntityIds.join() === 'c1', 'an out-of-cast id is stripped from a scene');
+  assert(chapter.scenes.length === 2 && chapter.scenes[1].caption === 'aftermath',
+    'a scene that loses every id is KEPT — it becomes an atmosphere shot, not a hole in the chapter');
+  assert(chapter.scenes[1].featuredEntityIds.length === 0, 'with no characters to reference');
+  assert(chapter.spotlights.length === 1 && chapter.spotlights[0].entityId === 'c1',
+    'and an out-of-cast spotlight is dropped entirely');
+  assert(removed.includes('c2'), 'removals are reported so they can be logged');
+  assert(sanitizeChapterCast(raw, null).chapter === raw, 'a null cast leaves the chapter untouched');
 }
 
 // ── Item feature glossary ──
