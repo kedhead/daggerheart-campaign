@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ArrowLeft, Save, Eye, Trash2, RefreshCw, Image as ImageIcon, Users, FileText, Wand2 } from 'lucide-react';
 import MediaUploader from './MediaUploader';
 import { regenerateScene, STORYBOOK_STYLES, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
+import { stripAppendedClauses } from '../../utils/storybookPrompt';
 
 const TABS = [
   { id: 'prose', label: 'Prose', icon: FileText },
@@ -74,10 +75,12 @@ export default function ChapterEditor({
     await storybook.updateChapter(chapter.id, { scenes: nextScenes });
   };
 
+  // Chapters generated before the composed prompt stopped being persisted carry
+  // the appended clauses in their stored text; show what the author wrote.
   const promptValue = (scene) =>
     Object.prototype.hasOwnProperty.call(editedPrompts, scene.id)
       ? editedPrompts[scene.id]
-      : (scene.prompt || '');
+      : stripAppendedClauses(scene.prompt);
 
   const handlePromptChange = (sceneId, value) => {
     setEditedPrompts(prev => ({ ...prev, [sceneId]: value }));
@@ -93,6 +96,27 @@ export default function ChapterEditor({
       delete copy[scene.id];
       return copy;
     });
+  };
+
+  // Which entities appear in a scene. This drives the reference portraits sent
+  // to the image model, so it — not the prompt text — is what actually controls
+  // who gets drawn. Naming someone in the prompt without listing them here
+  // leaves the model to invent their face.
+  const castOptions = [
+    ...(characters || []).map(c => ({ id: c.id, name: c.name, group: 'Characters' })),
+    ...(npcs || []).map(n => ({ id: n.id, name: n.name, group: 'NPCs' })),
+    ...(adversaries || []).map(a => ({ id: a.id, name: a.name, group: 'Adversaries' })),
+  ].filter(o => o.id && o.name);
+
+  const toggleSceneCast = async (scene, entityId) => {
+    const current = scene.featuredEntityIds || [];
+    const next = current.includes(entityId)
+      ? current.filter(id => id !== entityId)
+      : [...current, entityId];
+    const scenes = (chapter.scenes || []).map(s =>
+      s.id === scene.id ? { ...s, featuredEntityIds: next } : s
+    );
+    await storybook.updateChapter(chapter.id, { scenes });
   };
 
   const handleSceneRegenerate = async (scene) => {
@@ -318,6 +342,44 @@ export default function ChapterEditor({
                   />
                   <p className="text-[10px] text-white/35">
                     Edit the prompt to fine-tune the image. Regenerate uses whatever's in this box and saves it back to the chapter.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                    Who's in this scene ({(scene.featuredEntityIds || []).length})
+                  </label>
+                  <div
+                    className="flex flex-wrap gap-1.5 p-2 rounded-lg max-h-32 overflow-y-auto"
+                    style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--line)' }}
+                  >
+                    {castOptions.length === 0 && (
+                      <span className="text-[10px] text-white/35">No characters, NPCs or adversaries in this campaign yet.</span>
+                    )}
+                    {castOptions.map(opt => {
+                      const on = (scene.featuredEntityIds || []).includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => toggleSceneCast(scene, opt.id)}
+                          title={opt.group}
+                          className="text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors"
+                          style={{
+                            background: on ? 'color-mix(in srgb, var(--primary) 30%, transparent)' : 'rgba(255,255,255,0.04)',
+                            borderColor: on ? 'color-mix(in srgb, var(--primary) 60%, transparent)' : 'rgba(255,255,255,0.12)',
+                            color: on ? '#fff' : 'rgba(255,255,255,0.55)',
+                          }}
+                        >
+                          {opt.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-white/35">
+                    This is what actually controls who gets drawn — each selected character's
+                    portrait is sent to the image model as a reference. Naming someone in the
+                    prompt without selecting them here leaves the model to invent their face.
                   </p>
                 </div>
 

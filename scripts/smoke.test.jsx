@@ -16,6 +16,7 @@ import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services
 import { responseParser } from '../src/services/responseParser.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration, narratableSlides } from '../src/components/Storybook/cinematicTimeline.js';
+import { stripAppendedClauses, composeScenePrompt, REFERENCE_CLAUSE, NO_EXTRAS_CLAUSE } from '../src/utils/storybookPrompt.js';
 import { sessionNotesText, nameAppearsIn, mentionedEntityIds, scopeRosters, sanitizeChapterCast } from '../src/utils/storybookCast.js';
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
@@ -387,6 +388,52 @@ section('Item features');
     `only the handful of app-only names are flagged as paraphrase (${paraphrased})`);
   assert(Object.values(DAGGERHEART_FEATURES).every(f => f.description && f.label && f.category),
     'every glossary entry has a label, category and description');
+}
+
+// ── Scene prompt composition ──
+// generateSceneImage appends sentences describing the CURRENT call (whether
+// reference portraits were attached). Those used to be saved back to the
+// chapter, so every Regenerate appended them again — and a scene later
+// regenerated WITHOUT references still claimed "the characters in this scene
+// are the people shown in the reference images", so the model invented people
+// to match. Prompts are now stored unadorned and stripped on the way in.
+section('Storybook scene prompts');
+{
+  const author = 'A frog-demon erupts from a body in a runed crypt, torchlight, red mist.';
+  const REF = REFERENCE_CLAUSE;
+  const NOEXTRA = NO_EXTRAS_CLAUSE;
+
+  assert(stripAppendedClauses(author) === author, 'an unadorned prompt is left alone');
+  assert(stripAppendedClauses(author + REF) === author, 'the reference clause is stripped');
+  assert(stripAppendedClauses(author + REF + NOEXTRA) === author, 'so is the no-extras clause');
+  // The reported chapter had the clause twice over from repeated regeneration.
+  assert(stripAppendedClauses(author + REF + REF) === author,
+    'a prompt polluted by repeated regeneration is recovered');
+  assert(stripAppendedClauses(author + ' Characters in this scene (render their species accurately): Emmanita, a fungril.') === author,
+    'the description-based variant is stripped too');
+  // Stripping must be idempotent, since it runs on every render and every edit.
+  assert(stripAppendedClauses(stripAppendedClauses(author + REF)) === author, 'stripping is idempotent');
+  assert(stripAppendedClauses('') === '' && stripAppendedClauses(null) === '' && stripAppendedClauses(undefined) === '',
+    'missing prompts are tolerated');
+}
+{
+  const author = 'A frog-demon erupts from a body in a runed crypt.';
+  const withRefs = composeScenePrompt({ prompt: author, hasReferenceImages: true });
+  assert(withRefs.includes(REFERENCE_CLAUSE), 'reference images are declared when they are actually attached');
+
+  const noRefs = composeScenePrompt({ prompt: author, hasReferenceImages: false });
+  assert(!noRefs.includes('reference images'),
+    'a render with no references never claims there are any — this is what made the model invent people');
+  assert(noRefs.includes(NO_EXTRAS_CLAUSE), 'and every render forbids inventing extra characters');
+
+  const described = composeScenePrompt({
+    prompt: author, hasReferenceImages: false, featuredDescriptions: ['Emmanita, a fungril'],
+  });
+  assert(described.includes('Emmanita, a fungril'), 'written descriptions are used when references are unavailable');
+
+  // Composing what a previous compose produced must not stack clauses.
+  const twice = composeScenePrompt({ prompt: withRefs, hasReferenceImages: true });
+  assert(twice === withRefs, 'recomposing an already-composed prompt is stable, so Regenerate cannot stack clauses');
 }
 
 // ── Battle Points (SRD Battle Guide) ──

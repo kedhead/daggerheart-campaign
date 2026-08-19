@@ -22,6 +22,7 @@ import { storage, db } from '../config/firebase';
 import { buildCampaignContext } from './campaignContext';
 import { ANCESTRY_VISUAL_HINTS } from './portraitGenerator';
 import { scopeRosters, sanitizeChapterCast } from '../utils/storybookCast';
+import { composeScenePrompt, stripAppendedClauses } from '../utils/storybookPrompt';
 
 // ── Style presets (must stay in sync with api/generate-image.js) ──────────────
 
@@ -320,13 +321,12 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
         .slice(0, 4)
     : undefined;
 
-  const featuredClause = canUseRefImages && referenceImages?.length
-    ? ` The characters in this scene are the people shown in the reference images — preserve their exact faces, species, clothing, and gear from the references.`
-    : featuredParts.length
-      ? ` Characters in this scene (render their species accurately): ${featuredParts.join('; ')}.`
-      : '';
-
-  const fullPrompt = `${scene.prompt}${featuredClause}`;
+  const basePrompt = stripAppendedClauses(scene.prompt);
+  const fullPrompt = composeScenePrompt({
+    prompt: scene.prompt,
+    hasReferenceImages: !!(canUseRefImages && referenceImages?.length),
+    featuredDescriptions: featuredParts,
+  });
   const effectiveStyleKey = styleKey === 'custom' ? (styleCustom || 'watercolor') : styleKey;
 
   const dataUrl = await generateStylizedImage({
@@ -347,7 +347,10 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
   return {
     id: sceneId,
     caption: scene.caption || '',
-    prompt: fullPrompt,
+    // The AUTHOR'S prompt, not the composed one. Storing the composed text made
+    // every Regenerate append the clauses again, and froze a claim about
+    // reference images that a later run might not honour.
+    prompt: basePrompt,
     imageUrl: url,
     storagePath,
     featuredEntityIds: scene.featuredEntityIds || []
