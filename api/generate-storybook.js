@@ -142,7 +142,8 @@ STRICT RULES:
 4. EVERY character who appears in a scene MUST have their id listed in that scene's featuredEntityIds array, drawn from the entity roster. If a character is not in the roster they cannot appear in the scene at all — substitute an unnamed environment / atmosphere shot instead. This is the single most important rule for likeness preservation.
 5. Title should be evocative, 2-6 words, no quotes.
 6. Return valid JSON matching the schema exactly.
-7. The "scenes" array MUST contain exactly ${numScenes} objects — no more, no fewer. Spread them across different beats of the chapter (an opening establishing shot, the turns of the action, the closing image) so they illustrate the whole story rather than clustering on one moment. This is a hard requirement: a chapter with the wrong number of scenes is a failed response.`;
+7. The entity roster is the COMPLETE and EXCLUSIVE cast for this chapter. It has already been narrowed to who was actually present. Do not name, describe, or feature anyone who is not on it — not even if they appear in the campaign context or a previous chapter. If the notes imply someone who isn't rostered, refer to them only in the abstract ("a courier", "an old friend") with no name and no featuredEntityIds entry.
+8. The "scenes" array MUST contain exactly ${numScenes} objects — no more, no fewer. Spread them across different beats of the chapter (an opening establishing shot, the turns of the action, the closing image) so they illustrate the whole story rather than clustering on one moment. This is a hard requirement: a chapter with the wrong number of scenes is a failed response.`;
 
   const userPrompt = `# Campaign context
 ${campaignContext || '(no campaign context provided)'}
@@ -215,23 +216,48 @@ Produce exactly ${numScenes} scenes. Return ONLY the JSON object.`;
     console.warn(`Storybook: requested ${numScenes} scenes, model returned ${parsed.scenes.length}`);
   }
 
+  // The roster IS the cast. Ids outside it are dropped here rather than trusted:
+  // downstream they become reference portraits handed to the image model, so an
+  // invented or out-of-cast id gets that character drawn into the scene.
+  const rosterIds = new Set(
+    ['characters', 'npcs', 'adversaries', 'locations']
+      .flatMap(k => (Array.isArray(entityRoster[k]) ? entityRoster[k] : []))
+      .map(e => e && e.id)
+      .filter(Boolean)
+  );
+  const inCast = (id) => rosterIds.size === 0 || rosterIds.has(id);
+  let droppedIds = 0;
+
+  const scenes = parsed.scenes.slice(0, 8).map(s => {
+    const raw = Array.isArray(s.featuredEntityIds) ? s.featuredEntityIds.filter(Boolean) : [];
+    const kept = raw.filter(inCast);
+    droppedIds += raw.length - kept.length;
+    return { caption: s.caption || '', prompt: s.prompt || '', featuredEntityIds: kept };
+  });
+
+  const spotlights = (Array.isArray(parsed.spotlights) ? parsed.spotlights : [])
+    .filter(s => {
+      if (s.entityId && !inCast(s.entityId)) { droppedIds += 1; return false; }
+      return true;
+    })
+    .slice(0, 4)
+    .map(s => ({
+      entityId: s.entityId || '',
+      entityType: s.entityType || 'npc',
+      moment: s.moment || ''
+    }));
+
+  if (droppedIds > 0) {
+    console.warn(`Storybook: dropped ${droppedIds} entity reference(s) not in the supplied roster`);
+  }
+
   return res.status(200).json({
     requestedScenes: numScenes,
     returnedScenes: parsed.scenes.length,
     title: parsed.title,
     prose: parsed.prose,
-    scenes: parsed.scenes.slice(0, 8).map(s => ({
-      caption: s.caption || '',
-      prompt: s.prompt || '',
-      featuredEntityIds: Array.isArray(s.featuredEntityIds) ? s.featuredEntityIds.filter(Boolean) : []
-    })),
-    spotlights: Array.isArray(parsed.spotlights)
-      ? parsed.spotlights.slice(0, 4).map(s => ({
-          entityId: s.entityId || '',
-          entityType: s.entityType || 'npc',
-          moment: s.moment || ''
-        }))
-      : [],
+    scenes,
+    spotlights,
     model: 'gpt-4o'
   });
 }

@@ -21,6 +21,7 @@ import { doc, updateDoc, addDoc, collection, serverTimestamp, getDocs, orderBy, 
 import { storage, db } from '../config/firebase';
 import { buildCampaignContext } from './campaignContext';
 import { ANCESTRY_VISUAL_HINTS } from './portraitGenerator';
+import { scopeRosters, sanitizeChapterCast } from '../utils/storybookCast';
 
 // ── Style presets (must stay in sync with api/generate-image.js) ──────────────
 
@@ -385,6 +386,7 @@ export async function generateChapter({
   styleKey = DEFAULT_STYLE_KEY,
   styleCustom = '',
   sceneCount = 3,
+  castIds = null,
   includeIllustrations = true,
   imageModel = '',
   generatedBy = 'manual',
@@ -412,17 +414,26 @@ export async function generateChapter({
 
   onProgress({ stage: 'text', current: 0, total: 1, message: 'Writing chapter…' });
 
+  // The cast bounds who the writer may use. Scoping the ROSTER alone isn't
+  // enough — buildCampaignContext also names every character, and the prompt
+  // lets the model draw on "the session notes or campaign context", so an
+  // unscoped context re-authorises exactly the people the cast excluded.
+  const cast = scopeRosters({ characters, npcs, adversaries }, castIds);
+
   // Note: storybookChapters intentionally omitted here — a chapter shouldn't
   // cite itself, and prior chapters are already summarized separately below.
   const campaignContext = buildCampaignContext(campaign, {
-    characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame,
+    characters: cast.characters,
+    npcs: cast.npcs,
+    adversaries: cast.adversaries,
+    locations, lore, sessions, encounters, campaignFrame,
     items, maps
   });
 
   const entityRoster = {
-    characters: characters.filter(c => c.name).slice(0, 30).map(c => ({ id: c.id, name: c.name, tag: c.characterClass, ancestry: c.ancestry || '' })),
-    npcs: npcs.filter(n => n.name).slice(0, 30).map(n => ({ id: n.id, name: n.name, tag: n.occupation, ancestry: n.ancestry || '' })),
-    adversaries: adversaries.filter(a => a.name).slice(0, 30).map(a => ({ id: a.id, name: a.name, tag: a.role })),
+    characters: cast.characters.filter(c => c.name).slice(0, 30).map(c => ({ id: c.id, name: c.name, tag: c.characterClass, ancestry: c.ancestry || '' })),
+    npcs: cast.npcs.filter(n => n.name).slice(0, 30).map(n => ({ id: n.id, name: n.name, tag: n.occupation, ancestry: n.ancestry || '' })),
+    adversaries: cast.adversaries.filter(a => a.name).slice(0, 30).map(a => ({ id: a.id, name: a.name, tag: a.role })),
     locations: locations.filter(l => l.name).slice(0, 30).map(l => ({ id: l.id, name: l.name, tag: l.type }))
   };
 
@@ -457,7 +468,17 @@ export async function generateChapter({
     const err = await textRes.json().catch(() => ({ error: textRes.statusText }));
     throw new Error(err.error || `Chapter text generation failed: ${textRes.statusText}`);
   }
-  const chapterText = await textRes.json();
+  const rawChapterText = await textRes.json();
+
+  // Drop anyone the cast doesn't include, BEFORE featuredIds is collected below.
+  // This is the load-bearing guard: an out-of-cast id that survives to that point
+  // gets a portrait, and that portrait is handed to the image model as a "this is
+  // who is in the scene" reference — which is how a character nobody mentioned
+  // ends up drawn into the art.
+  const { chapter: chapterText, removed: removedCastIds } = sanitizeChapterCast(rawChapterText, castIds);
+  if (removedCastIds.length) {
+    console.warn('[storybook] dropped out-of-cast entity references:', [...new Set(removedCastIds)]);
+  }
 
   // Stop here if illustrations are disabled
   if (!includeIllustrations) {
