@@ -182,7 +182,7 @@ function buildCharacterPortraitPrompt(character, gameSystem = 'daggerheart') {
  * @returns {string} Image prompt
  */
 function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
-  const { name, description, occupation, relationship, ancestry } = npc;
+  const { name, description, occupation, relationship, ancestry, species } = npc;
 
   // Base style based on game system
   let styleBase = '';
@@ -195,11 +195,17 @@ function buildNPCPortraitPrompt(npc, gameSystem = 'daggerheart') {
   // Enrich ancestry with visual description so the model renders the correct race
   // Ancestry hint goes FIRST so the model prioritises it over generic human defaults
   let ancestryDesc = '';
-  if (ancestry && gameSystem === 'daggerheart') {
-    const visualHint = ANCESTRY_VISUAL_HINTS[ancestry];
-    if (visualHint) {
-      ancestryDesc = `Subject is ${visualHint}.`;
+  if (gameSystem === 'daggerheart') {
+    if (ancestry) {
+      const visualHint = ANCESTRY_VISUAL_HINTS[ancestry];
+      // A homebrew ancestry has no hint, but naming it still beats saying
+      // nothing and letting the model default to a human.
+      ancestryDesc = visualHint ? `Subject is ${visualHint}.` : `Subject is a ${ancestry}.`;
     }
+  } else if (species) {
+    // Star Wars NPCs store their race as `species`, which never reached the
+    // portrait prompt at all — so they came out human too.
+    ancestryDesc = `Subject is a ${species}.`;
   }
 
   // Build character description (sanitise to avoid safety rejections)

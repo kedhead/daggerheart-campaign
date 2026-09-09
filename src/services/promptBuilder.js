@@ -148,14 +148,23 @@ Game System: ${gameSystem.name}`;
       const defaultAncestries = ['Clank', 'Daemon', 'Drakona', 'Dwarf', 'Elf', 'Faerie', 'Faun', 'Firbolg', 'Fungril', 'Galapa', 'Giant', 'Goblin', 'Halfling', 'Human', 'Inferis', 'Katari', 'Orc', 'Ribbet', 'Simiah'];
       const availableAncestries = (campaignFrame?.ancestries?.length > 0) ? campaignFrame.ancestries : defaultAncestries;
 
-      prompt += `\n\nAVAILABLE ANCESTRIES: ${availableAncestries.join(', ')}`;
-      prompt += `\nIMPORTANT: Assign this NPC a random ancestry from the list above. Do NOT default to Human.`;
+      // When the DM has chosen an ancestry it is a requirement, not a suggestion.
+      // Asking for a *random* one (and steering away from ancestries already in
+      // use) is what made the generator ignore an explicitly requested race.
+      if (requirements.ancestry) {
+        prompt += `\n\nREQUIRED ANCESTRY: ${requirements.ancestry}`;
+        prompt += `\nThis NPC's ancestry is ${requirements.ancestry}. Use it exactly — do not substitute, vary, or "improve" on it, even if other NPCs already share it.`;
+        prompt += `\nThe description MUST include the distinctive physical traits of a ${requirements.ancestry}.`;
+      } else {
+        prompt += `\n\nAVAILABLE ANCESTRIES: ${availableAncestries.join(', ')}`;
+        prompt += `\nIMPORTANT: Assign this NPC a random ancestry from the list above. Do NOT default to Human.`;
 
-      const usedAncestries = existingNPCs.map(n => n.ancestry).filter(Boolean);
-      if (usedAncestries.length > 0) {
-        prompt += `\nAncestries already used: [${usedAncestries.join(', ')}]. Pick a DIFFERENT one for variety.`;
+        const usedAncestries = existingNPCs.map(n => n.ancestry).filter(Boolean);
+        if (usedAncestries.length > 0) {
+          prompt += `\nAncestries already used: [${usedAncestries.join(', ')}]. Pick a DIFFERENT one for variety.`;
+        }
+        prompt += `\nInclude ancestry-appropriate physical traits in the description.`;
       }
-      prompt += `\nInclude ancestry-appropriate physical traits in the description.`;
     }
 
     // Available locations for NPC placement

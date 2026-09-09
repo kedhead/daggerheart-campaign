@@ -6,6 +6,7 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateNPCPortrait } from '../../services/portraitGenerator';
 import { generateNPC } from '../../services/npcGenerator';
 import { STARWARS_SPECIES_GROUPS } from '../../data/starwarsd6Species';
+import { ANCESTRIES } from '../../data/systems/daggerheart';
 import './NPCsView.css';
 
 export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isDM, campaignContext = '', initialMode = 'manual' }) {
@@ -15,6 +16,11 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
   const [formData, setFormData] = useState(npc || {
     name: '',
     species: '',
+    // Daggerheart's race field. The portrait builder injects
+    // ANCESTRY_VISUAL_HINTS[ancestry] so the model renders the right species
+    // instead of defaulting to a human, so leaving this unset is what produced
+    // generically-human NPCs.
+    ancestry: '',
     occupation: '',
     location: '',
     relationship: 'neutral',
@@ -26,6 +32,11 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
   });
 
   const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
+  // Mirror the list the generator prompt offers, so the dropdown and the AI
+  // never disagree about what's available in this campaign.
+  const availableAncestries = entities?.campaignFrame?.ancestries?.length
+    ? entities.campaignFrame.ancestries
+    : Object.keys(ANCESTRIES);
 
   const [mode, setMode] = useState(initialMode); // 'manual' | 'ai'
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -57,6 +68,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
     try {
       const result = await generateNPC({
         concept: aiConcept,
+        ancestry: formData.ancestry || '',
         campaign,
         campaignFrame: entities?.campaignFrame || null,
         existingNPCs: entities?.npcs || [],
@@ -65,7 +77,14 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
         provider: aiProvider,
         campaignContext
       });
-      setFormData(prev => ({ ...prev, ...result, avatarUrl: prev.avatarUrl }));
+      // Keep the DM's ancestry choice: it was a requirement of the generation,
+      // and letting the response overwrite it is how the wrong race comes back.
+      setFormData(prev => ({
+        ...prev,
+        ...result,
+        avatarUrl: prev.avatarUrl,
+        ancestry: prev.ancestry || result.ancestry || '',
+      }));
       setMode('manual');
     } catch (e) {
       setAiError(e.message || 'Generation failed. Please try again.');
@@ -272,6 +291,26 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
           required
         />
       </div>
+
+      {!isStarWarsD6 && (
+        <div className="input-group">
+          <label>Ancestry</label>
+          <select
+            value={formData.ancestry || ''}
+            onChange={(e) => handleChange('ancestry', e.target.value)}
+          >
+            <option value="">— Any / unspecified —</option>
+            {availableAncestries.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <small className="form-hint">
+            Sets the NPC's race. Pick one and both the AI description and the
+            generated portrait must use it — leave it blank and the generator
+            picks a random ancestry for you.
+          </small>
+        </div>
+      )}
 
       {isStarWarsD6 && (
         <div className="input-group">

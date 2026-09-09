@@ -14,6 +14,7 @@ import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments } from '../src/components/Encounters/BPCalculator.jsx';
 import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
+import { promptBuilder } from '../src/services/promptBuilder.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration, narratableSlides } from '../src/components/Storybook/cinematicTimeline.js';
 import { stripAppendedClauses, composeScenePrompt, REFERENCE_CLAUSE, NO_EXTRAS_CLAUSE } from '../src/utils/storybookPrompt.js';
@@ -434,6 +435,54 @@ section('Storybook scene prompts');
   // Composing what a previous compose produced must not stack clauses.
   const twice = composeScenePrompt({ prompt: withRefs, hasReferenceImages: true });
   assert(twice === withRefs, 'recomposing an already-composed prompt is stable, so Regenerate cannot stack clauses');
+}
+
+// ── NPC ancestry ──
+// Asking for a goblin merchant produced something else entirely: the prompt
+// instructed the model to assign a RANDOM ancestry, and to avoid ancestries
+// already in use "for variety", so an explicitly requested race was actively
+// steered away from. A chosen ancestry is now a requirement.
+section('NPC ancestry');
+{
+  const campaign = { name: 'Lorelich', gameSystem: 'daggerheart' };
+  const existingNPCs = [{ name: 'Old Bram', ancestry: 'Goblin' }];
+
+  const free = promptBuilder.buildNPCPrompt({ campaign, existingNPCs, requirements: { description: 'a merchant' } });
+  assert(free.includes('random ancestry'), 'with no ancestry chosen the generator still picks one at random');
+  assert(free.includes('AVAILABLE ANCESTRIES'), 'and is shown the list to choose from');
+
+  const pinned = promptBuilder.buildNPCPrompt({
+    campaign, existingNPCs,
+    requirements: { description: 'a merchant', ancestry: 'Goblin' },
+  });
+  assert(pinned.includes('REQUIRED ANCESTRY: Goblin'), 'a chosen ancestry is stated as required');
+  assert(!pinned.includes('random ancestry'),
+    'and the instruction to randomise is gone — this is what overrode the request');
+  assert(!pinned.includes('Pick a DIFFERENT one'),
+    'nor is the model told to avoid an ancestry another NPC already has');
+  assert(pinned.includes('distinctive physical traits of a Goblin'),
+    'the description is required to show the race, which is what the portrait keys off');
+}
+{
+  // A campaign frame can narrow the roster; the dropdown and the prompt read the
+  // same list, so they cannot disagree about what this campaign allows.
+  const prompt = promptBuilder.buildNPCPrompt({
+    campaign: { name: 'X', gameSystem: 'daggerheart' },
+    campaignFrame: { ancestries: ['Ribbet', 'Fungril'] },
+    requirements: { description: 'a swamp guide' },
+  });
+  assert(prompt.includes('Ribbet, Fungril'), 'a campaign frame narrows the offered ancestries');
+  assert(!prompt.includes('Drakona'), 'and ancestries it excludes are not offered');
+}
+{
+  // Star Wars campaigns have no ancestry section at all — species is a separate
+  // field there, and injecting Daggerheart ancestries would be nonsense.
+  const sw = promptBuilder.buildNPCPrompt({
+    campaign: { name: 'Rim', gameSystem: 'starwarsd6' },
+    requirements: { description: 'a smuggler' },
+  });
+  assert(!sw.includes('AVAILABLE ANCESTRIES') && !sw.includes('REQUIRED ANCESTRY'),
+    'a Star Wars campaign gets no Daggerheart ancestry instructions');
 }
 
 // ── Battle Points (SRD Battle Guide) ──
