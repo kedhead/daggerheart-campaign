@@ -2001,7 +2001,7 @@ section('Character sheet PDF export');
 }
 
 
-// ── Personalized weapon and armor names ──
+// ── Personalized item names ──
 // A player's name for their gear lives on their own equippedItems entry, never
 // on the shared catalog item — renaming "Longsword" for one character must not
 // rename it for the rest of the table, and must not touch the item's rules.
@@ -2024,8 +2024,10 @@ section('Custom item names');
   assert(normalizeCustomName('  The   Kings  Own  ') === 'The Kings Own', 'names are trimmed and collapsed');
   assert(normalizeCustomName('x'.repeat(200)).length === MAX_CUSTOM_NAME_LENGTH, 'names are capped');
   assert(normalizeCustomName(undefined) === '' && normalizeCustomName(42) === '', 'non-strings normalize to empty');
-  assert(isRenameable({ type: 'weapon' }) && isRenameable({ type: 'armor' }), 'weapons and armor are renameable');
-  assert(!isRenameable({ type: 'equipment' }) && !isRenameable(null), 'nothing else is');
+  assert(['weapon', 'armor', 'equipment', 'consumable'].every(type => isRenameable({ type, name: 'Thing' })),
+    'anything a character carries can be renamed, whatever its type');
+  assert(isRenameable({ itemId: 'i1' }), 'an entry resolved by id alone is renameable');
+  assert(!isRenameable(null) && !isRenameable({}), 'a row with no item behind it is not');
 }
 {
   // Equipped and carried copies of the same item must not collide — the same

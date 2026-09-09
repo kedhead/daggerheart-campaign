@@ -292,10 +292,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
   const equippedEquipment = equippedItems.filter(i => i.type === 'equipment');
 
-  // Players can give a weapon or a set of armor their own name ("Widowmaker"
-  // rather than "Longsword"). The name lives on this character's inventory
-  // entry, so the shared catalog item — and every other character holding one —
-  // is untouched.
+  // Players can give anything they carry their own name — "Widowmaker" rather
+  // than "Longsword", "Gran's Lantern" rather than "Lantern". The name lives on
+  // this character's inventory entry, so the shared catalog item — and every
+  // other character holding one — is untouched.
   const canRename = !!canEdit && !!updateCharacter;
   const handleRenameItem = (item, name) => {
     if (!canRename || !isRenameable(item)) return;
@@ -1381,7 +1381,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               <div key={eq.id} className="dh-equipped-item">
                 <Star size={14} className="dh-equipped-item-icon" />
                 <div style={{ flex: 1 }}>
-                  <div className="dh-equipped-item-name">{eq.name}</div>
+                  <ItemName
+                    item={eq}
+                    className="dh-equipped-item-name"
+                    showOriginal
+                    canRename={canRename}
+                    onRename={(name) => handleRenameItem(eq, name)}
+                  />
                   {sd.mechanicalEffect && <div className="dh-equipped-item-stats">{sd.mechanicalEffect}</div>}
                   {sd.features?.length > 0 && (
                     <div className="dh-weapon-features">

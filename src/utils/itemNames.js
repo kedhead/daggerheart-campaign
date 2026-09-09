@@ -1,8 +1,8 @@
 /**
  * Personalized item names.
  *
- * Weapons and armor live in the shared campaign item catalog, so renaming the
- * catalog entry would rename it for everyone at the table. A player's chosen
+ * Items live in the shared campaign item catalog, so renaming a catalog entry
+ * would rename it for everyone at the table. A player's chosen
  * name is stored on their own `equippedItems` entry as `customName` instead,
  * which every resolver already merges over the catalog item ({...item, ...ei}).
  * Anything that shows an item name reads it through `displayItemName`, so the
@@ -10,9 +10,6 @@
  */
 
 export const MAX_CUSTOM_NAME_LENGTH = 60;
-
-/** Item types a player may personalize. */
-export const RENAMEABLE_TYPES = ['weapon', 'armor'];
 
 /** Trim, collapse whitespace and cap a player-entered name. '' clears it. */
 export function normalizeCustomName(name) {
@@ -32,9 +29,13 @@ export function hasCustomName(item) {
   return !!custom && custom !== (item?.name || '');
 }
 
-/** Only weapons and armor can be renamed. */
+/**
+ * Anything a character actually carries can be renamed — a weapon, a set of
+ * armor, a lantern, a potion. The only thing that can't is a row with no item
+ * behind it, since there'd be no catalog name to fall back to.
+ */
 export function isRenameable(item) {
-  return RENAMEABLE_TYPES.includes(item?.type);
+  return !!item && (!!item.name || !!item.itemId);
 }
 
 /**
