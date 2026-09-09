@@ -699,6 +699,10 @@ export function useFirestoreCampaign(campaignId) {
       equippedItems[stackIdx] = {
         ...equippedItems[stackIdx],
         quantity: (equippedItems[stackIdx].quantity || 1) + transferQuantity,
+        // An unnamed stack adopts the name the stashed copy carried.
+        ...(!equippedItems[stackIdx].customName && partyItem.customName
+          ? { customName: partyItem.customName }
+          : {}),
       };
     } else {
       equippedItems.push({
@@ -707,6 +711,8 @@ export function useFirestoreCampaign(campaignId) {
         equipped: false,
         slot: null,
         notes: partyItem.notes || '',
+        // A personal name given to the gear survives a trip through the stash.
+        ...(partyItem.customName ? { customName: partyItem.customName } : {}),
         acquiredAt: new Date().toISOString(),
       });
     }
@@ -761,6 +767,8 @@ export function useFirestoreCampaign(campaignId) {
       itemId,
       quantity: moveQty,
       notes: entry.notes || '',
+      // Keep the owner's name for it so handing gear around doesn't erase it.
+      ...(entry.customName ? { customName: entry.customName } : {}),
       addedBy: currentUser.uid,
       addedByName: currentUser.displayName || currentUser.email,
       addedAt: serverTimestamp(),

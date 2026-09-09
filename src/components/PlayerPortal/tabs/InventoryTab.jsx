@@ -1,4 +1,6 @@
 import { getFeatureName, resolveFeature } from '../../../utils/itemFeatures';
+import { isRenameable, renameEquippedItem } from '../../../utils/itemNames';
+import ItemName from '../../Items/ItemName';
 
 const TYPE_ICON = { weapon: '⚔', armor: '🛡', equipment: '✦' };
 const TYPE_COLOR = { weapon: '#f5c543', armor: '#60a5fa', equipment: '#a78bfa' };
@@ -27,7 +29,7 @@ function ItemStats({ item }) {
   );
 }
 
-function ItemCard({ item, onRemove, onEquip, onUnequip, onStash }) {
+function ItemCard({ item, onRemove, onEquip, onUnequip, onStash, onRename }) {
   const sd = item.systemData || {};
   const features = sd.features || [];
   const describedFeatures = features.map(resolveFeature).filter(r => r.name && r.description);
@@ -40,7 +42,14 @@ function ItemCard({ item, onRemove, onEquip, onUnequip, onStash }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 13 }}>{TYPE_ICON[item.type] || '✦'}</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#fdf6dc' }}>{item.name}</span>
+            <ItemName
+              item={item}
+              style={{ fontSize: 14, fontWeight: 700, color: '#fdf6dc' }}
+              wrapperStyle={{ flex: 1, minWidth: 0 }}
+              showOriginal
+              canRename={!!onRename && isRenameable(item)}
+              onRename={onRename}
+            />
           </div>
           <ItemStats item={item} />
         </div>
@@ -194,6 +203,15 @@ export default function InventoryTab({ character, items, updateCharacter, stashF
     updateCharacter(character.id, { equippedItems: arr });
   };
 
+  // Give an item the player's own name. Stored on this character's inventory
+  // entry only — the shared catalog item keeps its rulebook name.
+  const handleRename = (item) => (name) => {
+    if (!updateCharacter) return;
+    updateCharacter(character.id, {
+      equippedItems: renameEquippedItem(character.equippedItems, item, name),
+    });
+  };
+
   // Move an item to the party stash. `wasEquipped` disambiguates when the
   // player holds both an equipped and a carried copy of the same item.
   const handleStash = (item) => {
@@ -225,6 +243,7 @@ export default function InventoryTab({ character, items, updateCharacter, stashF
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {equipped.map((it, i) => (
               <ItemCard key={it.id || i} item={it}
+                onRename={updateCharacter ? handleRename(it) : undefined}
                 onUnequip={updateCharacter ? () => setEquipped(it, false) : undefined}
                 onStash={stashFromCharacter ? () => handleStash(it) : undefined} />
             ))}
@@ -238,6 +257,7 @@ export default function InventoryTab({ character, items, updateCharacter, stashF
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {carried.map((it, i) => (
               <ItemCard key={it.id || i} item={it}
+                onRename={updateCharacter ? handleRename(it) : undefined}
                 onEquip={updateCharacter ? () => setEquipped(it, true) : undefined}
                 onStash={stashFromCharacter ? () => handleStash(it) : undefined} />
             ))}
@@ -251,6 +271,7 @@ export default function InventoryTab({ character, items, updateCharacter, stashF
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {consumable.map((it, i) => (
               <ItemCard key={it.id || i} item={it}
+                onRename={updateCharacter ? handleRename(it) : undefined}
                 onRemove={() => handleExpend(it)}
                 onStash={stashFromCharacter ? () => handleStash(it) : undefined} />
             ))}

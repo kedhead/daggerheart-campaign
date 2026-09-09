@@ -9,6 +9,7 @@ import StatsTab from './tabs/StatsTab';
 import InventoryTab from './tabs/InventoryTab';
 import FeaturesTab from './tabs/FeaturesTab';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
+import { displayItemName } from '../../utils/itemNames';
 import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
 import RestModal from '../Characters/RestModal';
 import DeathMoveModal from '../Characters/DeathMoveModal';
@@ -122,7 +123,12 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
     });
   };
 
-  const armorName = character.armorName || (character.armorItems?.[0]?.name) || '';
+  // Prefer the equipped armor (with the player's own name for it, if they set
+  // one); the legacy fields stay as fallbacks for sheets that predate the
+  // item catalog.
+  const equippedArmorItem = equippedItems.find(i => i.type === 'armor');
+  const armorName = (equippedArmorItem && displayItemName(equippedArmorItem))
+    || character.armorName || (character.armorItems?.[0]?.name) || '';
 
   // Scars permanently cross out Hope slots — reduce the usable Hope max to match
   // the DM sheet so a scarred character shows the right number in the portal.

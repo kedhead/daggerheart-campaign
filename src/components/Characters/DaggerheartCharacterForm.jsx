@@ -5,6 +5,8 @@ import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
 import { getCardsForCharacter, getCardByName } from '../../data/daggerheartDomainCards';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
+import { isRenameable, renameEquippedItem } from '../../utils/itemNames';
+import ItemName from '../Items/ItemName';
 import './CharacterForm.css';
 
 const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 };
@@ -731,7 +733,13 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
                     <div className="dh-form-equipped-group-label">
                       <Icon size={11} /> {label}
                     </div>
-                    {itemsOfType.map(({ item, itemId }) => {
+                    {itemsOfType.map((entry) => {
+                      const { item, itemId } = entry;
+                      // The entry's own fields (quantity, equipped, customName)
+                      // win over the catalog item's, the same way every reader
+                      // of equippedItems resolves them.
+                      const { item: _catalog, ...ei } = entry;
+                      const resolvedItem = { ...item, ...ei };
                       const sd = item.systemData || {};
                       const statBits = [
                         sd.trait,
@@ -744,7 +752,16 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
                       return (
                         <div key={itemId} className="dh-form-equipped-item">
                           <div className="dh-form-equipped-item-main">
-                            <span className="dh-form-equipped-item-name">{item.name}</span>
+                            <ItemName
+                              item={resolvedItem}
+                              className="dh-form-equipped-item-name"
+                              showOriginal
+                              canRename={isRenameable(resolvedItem)}
+                              onRename={(name) => setFormData(prev => ({
+                                ...prev,
+                                equippedItems: renameEquippedItem(prev.equippedItems, resolvedItem, name),
+                              }))}
+                            />
                             {statBits.length > 0 && (
                               <span className="dh-form-equipped-item-stats">{statBits.join(' · ')}</span>
                             )}

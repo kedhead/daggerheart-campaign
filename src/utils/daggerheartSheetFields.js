@@ -15,6 +15,7 @@ import { computeDefenses, resolveArmorBases } from './daggerheartDefenses';
 import { normalizeHopeSlots, scarCount, usableHopeMax } from './daggerheartHope';
 import { getWeaponDamage, formatTraitValue } from './daggerheartRollUtils';
 import { resolveFeature, featureNameList, hasFeatureName } from './itemFeatures';
+import { displayItemName } from './itemNames';
 import { TRAIT_ORDER, SLOT_TRACKS, RULED_LINES } from './daggerheartSheetLayout';
 
 // Gold on the sheet is three denominations. The rulebook's conversion is
@@ -93,7 +94,8 @@ export function normalizeInventory(character, items = []) {
     .filter(i => i.type !== 'weapon' && i.type !== 'armor')
     .forEach(i => {
       const qty = i.quantity || 1;
-      lines.push(qty > 1 ? `${qty}x ${i.name}` : i.name);
+      const name = displayItemName(i);
+      lines.push(qty > 1 ? `${qty}x ${name}` : name);
     });
 
   const seen = new Set();
@@ -128,7 +130,7 @@ function describeWeapon(weapon, level, proficiency) {
     .filter(r => r.name && r.description)
     .map(r => `${r.name}: ${r.description}`);
   return {
-    name: weapon.name || '',
+    name: displayItemName(weapon),
     traitRange,
     damage,
     burden: sd.burden || '',
@@ -232,7 +234,7 @@ export function buildSheetFields(character, { items = [], includeDmNotes = false
     .filter(r => r.name && r.description)
     .map(r => `${r.name}: ${r.description}`);
   const activeArmor = {
-    name: armorItem?.name || c.armorName || c.equippedArmor || '',
+    name: displayItemName(armorItem) || c.armorName || c.equippedArmor || '',
     baseThresholds: armorBases ? `${armorBases.major} / ${armorBases.severe}` : '',
     baseScore: armorSd.armorScore != null ? String(armorSd.armorScore) : '',
     feature: armorCustom.length ? armorCustom.join(' · ') : featureNameList(armorSd.features).join(', '),

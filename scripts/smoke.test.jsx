@@ -77,6 +77,8 @@ import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
 import { buildSheetFields, normalizeInventory, splitGold } from '../src/utils/daggerheartSheetFields.js';
+import { displayItemName, hasCustomName, isRenameable, normalizeCustomName, renameEquippedItem, MAX_CUSTOM_NAME_LENGTH } from '../src/utils/itemNames.js';
+import ItemName from '../src/components/Items/ItemName.jsx';
 import { sanitizeWinAnsi, buildAppendixSections } from '../src/utils/exportCharacterSheetPdf.js';
 
 let failures = 0;
@@ -1996,6 +1998,92 @@ section('Character sheet PDF export');
   assert(!asPlayer.some(s => s.title === 'GM Notes'), 'a player export carries no GM notes');
   assert(asDm.some(s => s.title === 'GM Notes'), 'a DM export does carry them');
   assert(asPlayer.some(s => s.title === 'Backstory'), 'the backstory still reaches the appendix');
+}
+
+
+// ── Personalized weapon and armor names ──
+// A player's name for their gear lives on their own equippedItems entry, never
+// on the shared catalog item — renaming "Longsword" for one character must not
+// rename it for the rest of the table, and must not touch the item's rules.
+section('Custom item names');
+{
+  const catalog = { id: 'w1', name: 'Longsword', type: 'weapon', systemData: { trait: 'agility' } };
+  const entry = { itemId: 'w1', equipped: true, customName: 'Widowmaker' };
+  const resolved = { ...catalog, ...entry };
+  assert(displayItemName(resolved) === 'Widowmaker', 'a personalized name wins over the catalog name');
+  assert(displayItemName(catalog) === 'Longsword', 'an unnamed item still shows its catalog name');
+  assert(displayItemName({ ...catalog, customName: '   ' }) === 'Longsword',
+    'a whitespace-only name falls back to the catalog name');
+  assert(hasCustomName(resolved) && !hasCustomName(catalog), 'hasCustomName spots the renamed one');
+  assert(!hasCustomName({ ...catalog, customName: 'Longsword' }),
+    'retyping the catalog name is not a rename');
+  assert(resolved.systemData.trait === 'agility' && resolved.type === 'weapon',
+    'renaming leaves the rules data alone');
+}
+{
+  assert(normalizeCustomName('  The   Kings  Own  ') === 'The Kings Own', 'names are trimmed and collapsed');
+  assert(normalizeCustomName('x'.repeat(200)).length === MAX_CUSTOM_NAME_LENGTH, 'names are capped');
+  assert(normalizeCustomName(undefined) === '' && normalizeCustomName(42) === '', 'non-strings normalize to empty');
+  assert(isRenameable({ type: 'weapon' }) && isRenameable({ type: 'armor' }), 'weapons and armor are renameable');
+  assert(!isRenameable({ type: 'equipment' }) && !isRenameable(null), 'nothing else is');
+}
+{
+  // Equipped and carried copies of the same item must not collide — the same
+  // ambiguity the equip toggle resolves by matching on equipped state too.
+  const equippedItems = [
+    { itemId: 'w1', equipped: true },
+    { itemId: 'w1', equipped: false },
+  ];
+  const renamed = renameEquippedItem(equippedItems, { itemId: 'w1', equipped: true }, 'Widowmaker');
+  assert(renamed[0].customName === 'Widowmaker' && renamed[1].customName === undefined,
+    'only the matching copy is renamed');
+  assert(equippedItems[0].customName === undefined, 'the original array is not mutated');
+
+  const cleared = renameEquippedItem(renamed, { itemId: 'w1', equipped: true }, '  ');
+  assert(!('customName' in cleared[0]), 'a blank name drops the field, restoring the catalog name');
+
+  const missing = renameEquippedItem(equippedItems, { itemId: 'nope', equipped: true }, 'Ghost');
+  assert(missing.length === 2 && !missing.some(e => e.customName), 'an unmatched item changes nothing');
+  assert(renameEquippedItem(undefined, { itemId: 'w1' }, 'x').length === 0, 'a missing inventory is tolerated');
+}
+{
+  // The printed sheet has to agree with the screen.
+  const items = [
+    { id: 'w1', name: 'Longsword', type: 'weapon', systemData: { trait: 'agility', range: 'melee', damageTier1Dice: 'd10', damageTier1Modifier: 3 } },
+    { id: 'a1', name: 'Chainmail Armor', type: 'armor', systemData: { armorScore: 4, armorSlots: 4 } },
+    { id: 'e1', name: 'Rope', type: 'equipment' },
+  ];
+  const character = {
+    level: 1,
+    equippedItems: [
+      { itemId: 'w1', equipped: true, customName: 'Widowmaker' },
+      { itemId: 'a1', equipped: true, customName: "Dawn's Bulwark" },
+      { itemId: 'e1', equipped: true, customName: 'Old Faithful' },
+    ],
+  };
+  const m = buildSheetFields(character, { items });
+  assert(m.primaryWeapon.name === 'Widowmaker', 'the exported sheet prints the personalized weapon name');
+  assert(m.primaryWeapon.damage.startsWith('1d10') || m.primaryWeapon.damage.includes('d10'),
+    'and still prints the catalog weapon damage');
+  assert(m.activeArmor.name === "Dawn's Bulwark", 'the exported sheet prints the personalized armor name');
+  assert(m.activeArmor.baseScore === '4', 'and keeps the armor score from the catalog item');
+  assert(normalizeInventory(character, items).includes('Old Faithful'),
+    'the inventory list uses the personalized name too');
+}
+
+{
+  // The rename control renders the player's name, keeps the catalog name
+  // visible as a reminder, and only offers the pencil when renaming is allowed.
+  const item = { itemId: 'w1', name: 'Longsword', type: 'weapon', customName: 'Widowmaker' };
+  const editable = strip(renderToString(
+    <ItemName item={item} showOriginal canRename onRename={() => {}} />
+  ));
+  assert(editable.includes('Widowmaker') && editable.includes('Longsword'),
+    'the rename control shows the personalized name alongside the original');
+  assert(editable.includes('Rename'), 'and offers a rename affordance when the sheet is editable');
+  const readOnly = strip(renderToString(<ItemName item={item} showOriginal />));
+  assert(readOnly.includes('Widowmaker') && !readOnly.includes('Rename'),
+    'a read-only viewer sees the name but no rename affordance');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

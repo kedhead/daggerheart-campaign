@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TRAIT_ABBREV, getWeaponDamage, parseDamageString } from '../../../utils/daggerheartRollUtils';
 import { getFeatureName, resolveFeature } from '../../../utils/itemFeatures';
+import { displayItemName } from '../../../utils/itemNames';
 import { getEffectiveProficiency } from '../../../data/systems/daggerheart';
 
 const BONUS_OPTS = [
@@ -47,7 +48,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
     if (rollBonus) setRollBonus(null);
     setRollingKey(`atk-${weapon.id}`);
     const doc = await roll({
-      label: `${weapon.name} Attack`,
+      label: `${displayItemName(weapon)} Attack`,
       modifier: mod,
       advantage: bonus === 'advantage',
       disadvantage: bonus === 'hindrance',
@@ -61,7 +62,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
     const parsed = dmgStr ? parseDamageString(dmgStr) : null;
     if (!parsed) return;
     setRollingKey(`dmg-${weapon.id}`);
-    await rollDamage({ label: `${weapon.name} Damage`, ...parsed });
+    await rollDamage({ label: `${displayItemName(weapon)} Damage`, ...parsed });
     setRollingKey(null);
   };
 
@@ -100,7 +101,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
                 <div key={weapon.id || idx} className="lrp-card" style={{ borderColor: 'rgba(245,197,67,0.22)', padding: '14px 14px 12px' }}>
                   {/* Name + stats row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#fdf6dc' }}>{weapon.name}</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#fdf6dc' }}>{displayItemName(weapon)}</div>
                     {sd.tier && (
                       <span style={{ fontSize: 10, fontWeight: 800, color: '#eab308', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: 6, padding: '2px 7px', letterSpacing: '0.05em', flexShrink: 0 }}>
                         T{sd.tier}

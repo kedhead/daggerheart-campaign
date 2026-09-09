@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Backpack, Search, Plus, Package, Trash2, ArrowRight } from 'lucide-react';
+import { displayItemName, hasCustomName } from '../../utils/itemNames';
 import Modal from '../Modal';
 import TransferModal from './TransferModal';
 import './PartyInventoryView.css';
@@ -47,8 +48,10 @@ export default function PartyInventoryView({
   const filteredInventory = partyInventory.filter(entry => {
     const item = getItemById(entry.itemId);
     if (!item) return false;
-    return item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+    const term = searchTerm.toLowerCase();
+    return item.name?.toLowerCase().includes(term) ||
+      entry.customName?.toLowerCase().includes(term) ||
+      entry.notes?.toLowerCase().includes(term);
   });
 
   const totalItems = partyInventory.reduce((sum, entry) => sum + (entry.quantity || 1), 0);
@@ -214,8 +217,10 @@ export default function PartyInventoryView({
           style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}
         >
           {filteredInventory.map(entry => {
-            const item = getItemById(entry.itemId);
-            if (!item) return null;
+            const catalogItem = getItemById(entry.itemId);
+            if (!catalogItem) return null;
+            // A name a player gave the gear rides along on the stash entry.
+            const item = { ...catalogItem, customName: entry.customName };
             const rarity = getItemRarity(item);
             const tone = RARITY_VAR[rarity];
             const isLegendary = rarity === 'legendary';
@@ -254,8 +259,16 @@ export default function PartyInventoryView({
                         letterSpacing: '-0.01em',
                       }}
                     >
-                      {item.name}
+                      {displayItemName(item)}
                     </h4>
+                    {hasCustomName(item) && (
+                      <div
+                        className="truncate text-[11px] italic"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        {item.name}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <span
                         className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md"

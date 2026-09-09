@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Package, ArrowRight, User } from 'lucide-react';
 import Modal from '../Modal';
+import { displayItemName } from '../../utils/itemNames';
 import './PartyInventoryView.css';
 
 export default function TransferModal({
@@ -40,7 +41,7 @@ export default function TransferModal({
             <Package size={24} />
           </div>
           <div className="item-details">
-            <h4>{item.name}</h4>
+            <h4>{displayItemName({ ...item, customName: entry.customName })}</h4>
             <p>
               <span className={`item-type-badge ${item.type}`}>{item.type}</span>
               {' '} • Available: {entry.quantity || 1}

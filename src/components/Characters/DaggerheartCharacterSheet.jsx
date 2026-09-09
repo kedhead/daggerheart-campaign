@@ -6,6 +6,8 @@ import { getCardByName } from '../../data/daggerheartDomainCards';
 import { splitCardFeatures } from '../../utils/domainCardText';
 import { getFeatureName, resolveFeature, hasFeatureName, featureNameList } from '../../utils/itemFeatures';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
+import { displayItemName, isRenameable, renameEquippedItem } from '../../utils/itemNames';
+import ItemName from '../Items/ItemName';
 import { scarCount, normalizeHopeSlots, usableHopeFilled } from '../../utils/daggerheartHope';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -290,6 +292,18 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
   const equippedEquipment = equippedItems.filter(i => i.type === 'equipment');
 
+  // Players can give a weapon or a set of armor their own name ("Widowmaker"
+  // rather than "Longsword"). The name lives on this character's inventory
+  // entry, so the shared catalog item — and every other character holding one —
+  // is untouched.
+  const canRename = !!canEdit && !!updateCharacter;
+  const handleRenameItem = (item, name) => {
+    if (!canRename || !isRenameable(item)) return;
+    updateCharacter(character.id, {
+      equippedItems: renameEquippedItem(character.equippedItems, item, name),
+    });
+  };
+
   // Derived defenses (Armor Score, Evasion, damage thresholds) come from one
   // shared calculator so the full sheet and the Player Portal never disagree.
   // It applies armor features (Protective/Barrier/Double Duty, Heavy/Flexible)
@@ -433,7 +447,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const traitName = (weapon.systemData?.trait || '').toLowerCase();
     const traitMod = traits[traitName] ?? 0;
     const baseMod = traitMod;
-    const baseLabel = `Attack: ${weapon.name}`;
+    const baseLabel = `Attack: ${displayItemName(weapon)}`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`atk-${weapon.id}`);
     const result = await roll({ label, modifier: mod });
@@ -451,7 +465,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const dmgStr = getWeaponDamage(weapon, level, proficiency);
     const parsed = parseDamageString(dmgStr);
     if (!parsed) return;
-    const label = `Damage: ${weapon.name}`;
+    const label = `Damage: ${displayItemName(weapon)}`;
     flashRoll(`dmg-${weapon.id}`);
     const result = await rollDamage({ label, ...parsed });
     if (result) showRollResult(label, 'generic', result);
@@ -581,7 +595,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
         <div className="dh-sidebar-vital-group">
           <div className="dh-sidebar-vital-header">
             <span className="dh-sidebar-vital-label">
-              Armor{equippedArmorItems.length > 0 ? ` · ${equippedArmorItems[0].name}` : ''}
+              Armor{equippedArmorItems.length > 0 ? ` · ${displayItemName(equippedArmorItems[0])}` : ''}
             </span>
             <span className="dh-sidebar-vital-count">
               {armorSlots.filter(Boolean).length}/{armorSlots.length}
@@ -839,7 +853,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <div key={weapon.id} className="dh-weapon-card">
               <div className="dh-weapon-card-header">
                 <Sword size={16} className="dh-weapon-icon" />
-                <span className="dh-weapon-name">{weapon.name}</span>
+                <ItemName
+                  item={weapon}
+                  className="dh-weapon-name"
+                  wrapperStyle={{ flex: 1, minWidth: 0 }}
+                  canRename={canRename}
+                  onRename={(name) => handleRenameItem(weapon, name)}
+                />
                 <span className="dh-item-tier">T{tier}</span>
               </div>
               <div className="dh-weapon-stats">
@@ -1232,7 +1252,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                 <Sword size={14} className="dh-equipped-item-icon" />
                 <div style={{ flex: 1 }}>
                   <div className="dh-equipped-item-header">
-                    <span className="dh-equipped-item-name">{weapon.name}</span>
+                    <ItemName
+                      item={weapon}
+                      className="dh-equipped-item-name"
+                      wrapperStyle={{ flex: 1, minWidth: 0 }}
+                      showOriginal
+                      canRename={canRename}
+                      onRename={(name) => handleRenameItem(weapon, name)}
+                    />
                     <span className="dh-item-tier">T{tier}</span>
                   </div>
                   <div className="dh-equipped-item-stats">
@@ -1302,7 +1329,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                 <Shield size={14} className="dh-equipped-item-icon" />
                 <div>
                   <div className="dh-equipped-item-header">
-                    <span className="dh-equipped-item-name">{armor.name}</span>
+                    <ItemName
+                      item={armor}
+                      className="dh-equipped-item-name"
+                      showOriginal
+                      canRename={canRename}
+                      onRename={(name) => handleRenameItem(armor, name)}
+                    />
                     {sd.tier != null && <span className="dh-item-tier">T{sd.tier}</span>}
                   </div>
                   <div className="dh-equipped-item-stats">
