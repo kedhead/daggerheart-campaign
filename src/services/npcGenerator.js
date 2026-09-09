@@ -12,6 +12,8 @@ import { responseParser } from './responseParser';
  *
  * @param {object} args
  * @param {string}  args.concept          - Free-text concept/description from the DM
+ * @param {string=} args.ancestry          - Ancestry the DM chose; when set it is REQUIRED,
+ *                                           not a suggestion, and is pinned onto the result
  * @param {object}  args.campaign
  * @param {object=} args.campaignFrame
  * @param {Array=}  args.existingNPCs      - For name/ancestry collision avoidance
@@ -23,6 +25,7 @@ import { responseParser } from './responseParser';
  */
 export async function generateNPC({
   concept,
+  ancestry = '',
   campaign,
   campaignFrame = null,
   existingNPCs = [],
@@ -38,7 +41,7 @@ export async function generateNPC({
     campaignFrame,
     existingNPCs,
     existingLocations,
-    requirements: { description: concept }
+    requirements: { description: concept, ancestry }
   });
 
   // Append the shared campaign-brain context (items/maps/storybook/sessions/etc.)
@@ -54,6 +57,10 @@ export async function generateNPC({
 
   return {
     ...parsed,
+    // A chosen ancestry wins over whatever came back. The prompt asks for it,
+    // but models drift, and the ancestry drives the portrait's visual hint — so
+    // silently accepting a different one is how you get the wrong race drawn.
+    ...(ancestry ? { ancestry } : {}),
     hidden: false
   };
 }
