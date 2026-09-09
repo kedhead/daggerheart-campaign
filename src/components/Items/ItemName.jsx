@@ -10,6 +10,11 @@ import { displayItemName, hasCustomName, normalizeCustomName, MAX_CUSTOM_NAME_LE
  * for the name itself and this component only owns the pencil, the input and
  * the save/cancel controls — which stay neutral enough to sit on either.
  *
+ * Editing is uncontrolled by default. Pass `editing` + `onEditingChange` to
+ * drive it from outside, which is how the portal's inventory cards open the
+ * editor from a labeled "Rename" button down in their action row: a bare
+ * pencil is too easy to miss on a phone.
+ *
  * Renaming writes to the player's own inventory entry, never the shared
  * catalog item: see utils/itemNames.js.
  */
@@ -21,27 +26,38 @@ export default function ItemName({
   style,
   wrapperStyle,
   showOriginal = false,
+  showPencil = true,
+  editing: editingProp,
+  onEditingChange,
   iconSize = 12,
 }) {
-  const [editing, setEditing] = useState(false);
+  const [editingState, setEditingState] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef(null);
 
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editing]);
+  const controlled = editingProp !== undefined;
+  const editing = controlled ? editingProp : editingState;
+
+  const setEditing = (next) => {
+    if (!controlled) setEditingState(next);
+    if (onEditingChange) onEditingChange(next);
+  };
 
   const name = displayItemName(item);
   const renamed = hasCustomName(item);
   const editable = canRename && typeof onRename === 'function';
 
-  const startEditing = () => {
+  // Seed the draft from the stored name whenever the editor opens, however it
+  // was opened — the pencil here or a Rename button somewhere else on the card.
+  useEffect(() => {
+    if (!editing) return;
     setDraft(normalizeCustomName(item?.customName));
-    setEditing(true);
-  };
+    if (inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
 
   const commit = () => {
     const next = normalizeCustomName(draft);
@@ -50,9 +66,7 @@ export default function ItemName({
     if (next !== normalizeCustomName(item?.customName)) onRename(next);
   };
 
-  const cancel = () => setEditing(false);
-
-  if (editing) {
+  if (editing && editable) {
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flex: 1, minWidth: 0, ...wrapperStyle }}>
         <input
@@ -63,27 +77,27 @@ export default function ItemName({
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => {
             if (e.key === 'Enter') { e.preventDefault(); commit(); }
-            if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+            if (e.key === 'Escape') { e.preventDefault(); setEditing(false); }
           }}
           onClick={e => e.stopPropagation()}
           aria-label={`Rename ${item?.name || 'item'}`}
           style={{
-            flex: 1, minWidth: 0, padding: '3px 7px', borderRadius: 6,
-            background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.25)',
-            color: '#fdf6dc', fontSize: 12, fontWeight: 600, fontFamily: 'inherit',
+            flex: 1, minWidth: 0, padding: '5px 8px', borderRadius: 7,
+            background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.3)',
+            color: '#fdf6dc', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
           }}
         />
         <button
-          type="button" onClick={commit} title="Save name"
-          style={{ ...BTN, color: '#4ade80', borderColor: 'rgba(74,222,128,0.35)' }}
+          type="button" onClick={commit} title="Save name" aria-label="Save name"
+          style={{ ...BTN, color: '#4ade80', background: 'rgba(74,222,128,0.12)', borderColor: 'rgba(74,222,128,0.4)' }}
         >
-          <Check size={iconSize} />
+          <Check size={iconSize + 2} />
         </button>
         <button
-          type="button" onClick={cancel} title="Cancel"
-          style={{ ...BTN, color: 'rgba(255,255,255,0.55)' }}
+          type="button" onClick={() => setEditing(false)} title="Cancel" aria-label="Cancel rename"
+          style={{ ...BTN, color: 'rgba(255,255,255,0.6)' }}
         >
-          <X size={iconSize} />
+          <X size={iconSize + 2} />
         </button>
       </span>
     );
@@ -97,12 +111,13 @@ export default function ItemName({
           {item.name}
         </span>
       )}
-      {editable && (
+      {editable && showPencil && (
         <button
           type="button"
-          onClick={startEditing}
+          onClick={() => setEditing(true)}
           title={renamed ? `Rename (currently ${item.name})` : 'Rename this item'}
-          style={{ ...BTN, color: 'rgba(255,255,255,0.35)', alignSelf: 'center' }}
+          aria-label={`Rename ${item?.name || 'item'}`}
+          style={{ ...BTN, color: 'rgba(255,255,255,0.55)', alignSelf: 'center' }}
         >
           <Pencil size={iconSize} />
         </button>
@@ -111,8 +126,10 @@ export default function ItemName({
   );
 }
 
+// Sized for a thumb, not just a mouse — the portal is used on phones.
 const BTN = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  padding: 3, borderRadius: 6, cursor: 'pointer', flexShrink: 0,
-  background: 'transparent', border: '1px solid transparent', lineHeight: 0,
+  minWidth: 26, minHeight: 26, padding: 4, borderRadius: 7,
+  cursor: 'pointer', flexShrink: 0, lineHeight: 0,
+  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.16)',
 };

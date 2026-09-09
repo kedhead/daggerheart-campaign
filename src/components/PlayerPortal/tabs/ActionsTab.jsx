@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { TRAIT_ABBREV, getWeaponDamage, parseDamageString } from '../../../utils/daggerheartRollUtils';
 import { getFeatureName, resolveFeature } from '../../../utils/itemFeatures';
-import { displayItemName } from '../../../utils/itemNames';
+import { displayItemName, isRenameable, renameEquippedItem } from '../../../utils/itemNames';
+import ItemName from '../../Items/ItemName';
 import { getEffectiveProficiency } from '../../../data/systems/daggerheart';
 
 const BONUS_OPTS = [
@@ -23,7 +24,7 @@ function RollPill({ label, formula, onClick, kind, isRolling }) {
   );
 }
 
-export default function ActionsTab({ character, rollBonus, setRollBonus, roll, rollDamage, campaignId, items }) {
+export default function ActionsTab({ character, rollBonus, setRollBonus, roll, rollDamage, campaignId, items, updateCharacter }) {
   const [rollingKey, setRollingKey] = useState(null);
 
   const traits = character.traits || {};
@@ -39,6 +40,16 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
         })
         .filter(item => item && item.type === 'weapon' && item.equipped !== false)
     : [];
+
+  // Players name their gear right here on the weapon they swing every turn,
+  // not just in the inventory tab. The name lives on this character's own
+  // inventory entry — the shared catalog item is never touched.
+  const handleRename = (weapon) => (name) => {
+    if (!updateCharacter) return;
+    updateCharacter(character.id, {
+      equippedItems: renameEquippedItem(character.equippedItems, weapon, name),
+    });
+  };
 
   const handleWeaponAttack = async (weapon) => {
     if (!campaignId) return;
@@ -101,7 +112,15 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
                 <div key={weapon.id || idx} className="lrp-card" style={{ borderColor: 'rgba(245,197,67,0.22)', padding: '14px 14px 12px' }}>
                   {/* Name + stats row */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#fdf6dc' }}>{displayItemName(weapon)}</div>
+                    <ItemName
+                      item={weapon}
+                      style={{ fontSize: 15, fontWeight: 700, color: '#fdf6dc' }}
+                      wrapperStyle={{ flex: 1, minWidth: 0 }}
+                      showOriginal
+                      iconSize={13}
+                      canRename={!!updateCharacter && isRenameable(weapon)}
+                      onRename={handleRename(weapon)}
+                    />
                     {sd.tier && (
                       <span style={{ fontSize: 10, fontWeight: 800, color: '#eab308', background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)', borderRadius: 6, padding: '2px 7px', letterSpacing: '0.05em', flexShrink: 0 }}>
                         T{sd.tier}

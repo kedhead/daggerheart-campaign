@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { getFeatureName, resolveFeature } from '../../../utils/itemFeatures';
 import { isRenameable, renameEquippedItem } from '../../../utils/itemNames';
 import ItemName from '../../Items/ItemName';
@@ -30,10 +31,14 @@ function ItemStats({ item }) {
 }
 
 function ItemCard({ item, onRemove, onEquip, onUnequip, onStash, onRename }) {
+  // Opened from the labeled Rename button in the action row below, so the
+  // control is findable on a phone instead of hiding behind a small pencil.
+  const [renaming, setRenaming] = useState(false);
   const sd = item.systemData || {};
   const features = sd.features || [];
   const describedFeatures = features.map(resolveFeature).filter(r => r.name && r.description);
   const tc = TYPE_COLOR[item.type] || '#a78bfa';
+  const canRename = !!onRename && isRenameable(item);
 
   return (
     <div className="lrp-card" style={{ borderColor: `${tc}22`, padding: '13px 14px', marginBottom: 0 }}>
@@ -47,8 +52,11 @@ function ItemCard({ item, onRemove, onEquip, onUnequip, onStash, onRename }) {
               style={{ fontSize: 14, fontWeight: 700, color: '#fdf6dc' }}
               wrapperStyle={{ flex: 1, minWidth: 0 }}
               showOriginal
-              canRename={!!onRename && isRenameable(item)}
+              showPencil={false}
+              canRename={canRename}
               onRename={onRename}
+              editing={renaming}
+              onEditingChange={setRenaming}
             />
           </div>
           <ItemStats item={item} />
@@ -114,9 +122,19 @@ function ItemCard({ item, onRemove, onEquip, onUnequip, onStash, onRename }) {
         </div>
       )}
 
-      {/* Action buttons: equip / unequip / stash / expend */}
-      {(onEquip || onUnequip || onStash || onRemove) && (
+      {/* Action buttons: rename / equip / unequip / stash / expend */}
+      {(canRename || onEquip || onUnequip || onStash || onRemove) && (
         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          {canRename && (
+            <button onClick={() => setRenaming(v => !v)} style={{
+              padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
+              background: 'rgba(245,197,67,0.12)', border: '1px solid rgba(245,197,67,0.35)',
+              color: '#f5c543', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+              textTransform: 'uppercase', fontFamily: 'inherit',
+            }}>
+              {renaming ? 'Done' : 'Rename'}
+            </button>
+          )}
           {onEquip && (
             <button onClick={onEquip} style={{
               padding: '6px 14px', borderRadius: 8, cursor: 'pointer',

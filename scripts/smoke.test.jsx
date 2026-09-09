@@ -79,6 +79,8 @@ import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
 import { buildSheetFields, normalizeInventory, splitGold } from '../src/utils/daggerheartSheetFields.js';
 import { displayItemName, hasCustomName, isRenameable, normalizeCustomName, renameEquippedItem, MAX_CUSTOM_NAME_LENGTH } from '../src/utils/itemNames.js';
 import ItemName from '../src/components/Items/ItemName.jsx';
+import InventoryTab from '../src/components/PlayerPortal/tabs/InventoryTab.jsx';
+import ActionsTab from '../src/components/PlayerPortal/tabs/ActionsTab.jsx';
 import { sanitizeWinAnsi, buildAppendixSections } from '../src/utils/exportCharacterSheetPdf.js';
 
 let failures = 0;
@@ -2086,6 +2088,42 @@ section('Custom item names');
   const readOnly = strip(renderToString(<ItemName item={item} showOriginal />));
   assert(readOnly.includes('Widowmaker') && !readOnly.includes('Rename'),
     'a read-only viewer sees the name but no rename affordance');
+}
+
+{
+  // The bug this guards: players can't reach the item catalog, so the rename
+  // has to be on their own screens — and obvious enough to find on a phone,
+  // not a bare pencil glyph.
+  const items = [
+    { id: 'w1', name: 'Longsword', type: 'weapon', systemData: { trait: 'agility', range: 'melee', damageTier1Dice: 'd10' } },
+    { id: 'a1', name: 'Chainmail Armor', type: 'armor', systemData: { armorScore: 4 } },
+  ];
+  const character = {
+    id: 'c1', name: 'Thorne', level: 1, traits: { agility: 1 },
+    equippedItems: [
+      { itemId: 'w1', equipped: true, customName: 'Widowmaker' },
+      { itemId: 'a1', equipped: false },
+    ],
+  };
+  const inventory = strip(renderToString(
+    <InventoryTab character={character} items={items} updateCharacter={() => {}} />
+  ));
+  assert(inventory.includes('Rename'), 'the portal inventory tab offers a labeled Rename control');
+  assert(inventory.includes('Widowmaker') && inventory.includes('Longsword'),
+    'and shows the personalized name over the catalog one');
+  assert((inventory.match(/Rename/g) || []).length >= 2,
+    'every carried item gets one, equipped and stowed alike');
+
+  const readOnly = strip(renderToString(<InventoryTab character={character} items={items} />));
+  assert(!readOnly.includes('Rename'), 'a portal with no write access offers none');
+
+  const actions = strip(renderToString(
+    <ActionsTab character={character} items={items} updateCharacter={() => {}}
+      roll={async () => null} rollDamage={async () => null} campaignId="camp1"
+      rollBonus={null} setRollBonus={() => {}} />
+  ));
+  assert(actions.includes('Rename Longsword'),
+    'the actions tab lets a player rename the weapon they are swinging');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);
