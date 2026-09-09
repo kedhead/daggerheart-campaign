@@ -50,8 +50,10 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
   const containerRef = useRef(null);
   const boxRef = useRef(null);
   const readyRef = useRef(false);
-  // Rolls that arrived before dice-box finished initialising.
-  const pendingRef = useRef([]);
+  // In-flight init, so simultaneous rolls share one dice-box rather than racing.
+  const initRef = useRef(null);
+  // Set when the viewport changed since the canvas was sized.
+  const staleSizeRef = useRef(false);
   const groupTimerRef = useRef(null);
   const specialTimerRef = useRef(null);
   const watchdogsRef = useRef(new Map()); // rollId -> timeout
@@ -159,11 +161,63 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     armGroupTimer();
   }, [armGroupTimer, commitEntries]);
 
-  const playRoll = useCallback(async (roll) => {
-    if (!boxRef.current || !readyRef.current) {
-      pendingRef.current.push(roll);
-      return;
+  // Create dice-box on the FIRST ROLL, not on mount.
+  //
+  // It builds a WebGL canvas that fills .dice-tray — a position:fixed, inset:0,
+  // z-index:9000 element. Initialising on mount left that surface composited
+  // over the whole app for the entire session whether or not anyone rolled,
+  // which is what made Android flicker: a large transparent GL layer over
+  // scrolling content is far more fragile there than on iOS or desktop, and
+  // worst on the big high-resolution panels of foldables, whose GPU surface is
+  // also recreated on every fold/unfold.
+  const ensureBox = useCallback(async () => {
+    if (boxRef.current) return boxRef.current;
+    if (initRef.current) return initRef.current;
+
+    initRef.current = (async () => {
+      // The tray is display:none while idle, so wait for the frame that makes
+      // it visible — dice-box measures the container during init and would
+      // otherwise size the canvas to zero.
+      await new Promise(resolve => requestAnimationFrame(() => resolve()));
+      const box = new DiceBox({
+        container: `#${CONTAINER_ID}`,
+        assetPath: '/assets/dice-box/',
+        scale: 6,
+        throwForce: 6,
+        gravity: 3,
+        theme: THEME_RUNES,
+        themeColor: '#3b82f6',
+        offscreen: false,
+      });
+      await box.init();
+      boxRef.current = box;
+      readyRef.current = true;
+      return box;
+    })();
+
+    try {
+      return await initRef.current;
+    } catch (err) {
+      console.error('[DiceTray] dice-box init failed:', err);
+      initRef.current = null;
+      return null;
     }
+  }, []);
+
+  // A viewport change (rotation, or folding/unfolding a foldable) leaves the
+  // canvas drawing buffer sized for the old screen. Flag it and resize before
+  // the next roll rather than while idle, when the canvas isn't even displayed.
+  useEffect(() => {
+    const markStale = () => { staleSizeRef.current = true; };
+    window.addEventListener('resize', markStale);
+    window.addEventListener('orientationchange', markStale);
+    return () => {
+      window.removeEventListener('resize', markStale);
+      window.removeEventListener('orientationchange', markStale);
+    };
+  }, []);
+
+  const playRoll = useCallback(async (roll) => {
     // Already on the table (a duplicate emit) — ignore.
     if (entriesRef.current.some(e => e.roll.id === roll.id)) return;
     if (entriesRef.current.length >= MAX_CONCURRENT_ROLLS) {
@@ -185,43 +239,23 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     }, ROLL_WATCHDOG_MS));
 
     let results = null;
-    try {
-      // add(), not roll() — roll() clears the table first and would wipe
-      // any dice still tumbling from another player.
-      results = await boxRef.current.add(diceSpec(roll));
-    } catch (err) {
-      console.warn('[DiceTray] dice-box.add failed:', err);
+    const box = await ensureBox();
+    if (box) {
+      try {
+        if (staleSizeRef.current) {
+          try { box.resize?.(); } catch (e) { /* not fatal */ }
+          staleSizeRef.current = false;
+        }
+        // add(), not roll() — roll() clears the table first and would wipe
+        // any dice still tumbling from another player.
+        results = await box.add(diceSpec(roll));
+      } catch (err) {
+        console.warn('[DiceTray] dice-box.add failed:', err);
+      }
     }
 
     settleRoll(roll.id, results);
-  }, [pushToFeed, commitEntries, settleRoll, showSpecialFor]);
-
-  // Lazy-init dice-box once the portal target is in the DOM.
-  useEffect(() => {
-    if (boxRef.current) return undefined;
-    const box = new DiceBox({
-      container: `#${CONTAINER_ID}`,
-      assetPath: '/assets/dice-box/',
-      scale: 6,
-      throwForce: 6,
-      gravity: 3,
-      theme: THEME_RUNES,
-      themeColor: '#3b82f6',
-      offscreen: false,
-    });
-    let cancelled = false;
-    box.init().then(() => {
-      if (cancelled) return;
-      boxRef.current = box;
-      readyRef.current = true;
-      // Play anything that arrived while we were initialising.
-      const queued = pendingRef.current;
-      pendingRef.current = [];
-      for (const roll of queued) playRoll(roll);
-    }).catch(err => console.error('[DiceTray] dice-box init failed:', err));
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pushToFeed, commitEntries, settleRoll, showSpecialFor, ensureBox]);
 
   // Receive new canonical rolls from Firestore.
   useLiveRoll(campaignId, useCallback((roll) => {
@@ -258,10 +292,13 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
   }, [commitEntries]);
 
   const banners = entries.filter(e => e.settled);
+  // Nothing on the table and nothing to read: the tray is display:none so its
+  // full-viewport layer leaves the compositor entirely.
+  const idle = !show && banners.length === 0;
 
   return createPortal(
     <>
-      <div className={`dice-tray ${show ? 'is-visible' : ''}`} onClick={dismiss}>
+      <div className={`dice-tray ${show ? 'is-visible' : ''} ${idle ? 'is-idle' : ''}`} onClick={dismiss}>
         <div id={CONTAINER_ID} ref={containerRef} className="dice-tray-canvas" />
         {banners.length > 0 && (
           <div className={`dice-banner-stack ${banners.length > 1 ? 'is-multi' : ''}`}>
