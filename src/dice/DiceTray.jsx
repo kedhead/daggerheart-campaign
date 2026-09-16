@@ -40,6 +40,52 @@ const SPECIAL_OVERLAY_DURATION = 2500;
 // are concurrent, blocking everyone else's cleanup too. Force it through.
 const ROLL_WATCHDOG_MS = 15000;
 
+// The tray is display:none while idle, so its canvas measures 0x0 until the
+// frame that reveals it has been laid out. dice-box reads clientWidth /
+// clientHeight when it builds the world and whenever it re-measures, so every
+// path that touches the canvas has to wait for that frame first — not just the
+// first one. Getting this wrong sizes the physics world to nothing.
+const nextFrame = () => new Promise(resolve => requestAnimationFrame(() => resolve()));
+
+// Wait until the tray has real dimensions. One rAF is not enough on its own:
+// rolls arrive from a Firestore listener, not a React event, so setShow(true)
+// is committed on React's scheduler rather than synchronously, and a single
+// frame can land before that commit. Polling the element settles it in one
+// frame when the layout is already there and still gives React room when it
+// isn't. Give up after a handful of frames rather than stalling the roll —
+// worst case the dice are sized as they were before, which is what used to
+// happen every time anyway.
+async function waitForLayout(el, maxFrames = 10) {
+  for (let i = 0; i < maxFrames; i += 1) {
+    await nextFrame();
+    if (el && el.clientWidth > 0 && el.clientHeight > 0) return true;
+  }
+  return false;
+}
+
+// While dice are in the air, mark the document so the rest of the app can
+// stand down (see dice.css: backdrop-filter is suppressed for the duration).
+// Counted rather than a plain toggle: more than one tray can be mounted at
+// once — player view, dashboard, the battle-map display — and the last one to
+// finish should be the one that lifts it.
+let rollingTrays = 0;
+function setTrayRolling(rolling) {
+  if (typeof document === 'undefined') return;
+  rollingTrays = Math.max(0, rollingTrays + (rolling ? 1 : -1));
+  document.body.classList.toggle('dice-rolling', rollingTrays > 0);
+}
+
+// Ask dice-box to re-measure its canvas.
+//
+// There is no public resize() on DiceBox — the earlier `box.resize?.()` here
+// was optional-chained into a silent no-op and never did anything. What the
+// library actually exposes is resizeWorld(), and even that only REGISTERS a
+// rAF-debounced window-resize handler rather than resizing on the spot. So the
+// one supported way to make it re-measure is to fire the event it listens for.
+function requestDiceResize() {
+  window.dispatchEvent(new Event('resize'));
+}
+
 // Personal devices animate ONLY the local player's rolls in 3D — everyone
 // else's land as compact attributed toasts. Before this split, every phone
 // ran full physics for every roll at the table: four simultaneous rolls
@@ -175,10 +221,6 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     if (initRef.current) return initRef.current;
 
     initRef.current = (async () => {
-      // The tray is display:none while idle, so wait for the frame that makes
-      // it visible — dice-box measures the container during init and would
-      // otherwise size the canvas to zero.
-      await new Promise(resolve => requestAnimationFrame(() => resolve()));
       const box = new DiceBox({
         container: `#${CONTAINER_ID}`,
         assetPath: '/assets/dice-box/',
@@ -187,7 +229,31 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
         gravity: 3,
         theme: THEME_RUNES,
         themeColor: '#3b82f6',
-        offscreen: false,
+        // Render on an OffscreenCanvas in a worker.
+        //
+        // world.onscreen.js drives the physics from the main thread — one
+        // stepSimulation per requestAnimationFrame — so on that path frame
+        // rate IS simulation speed: anything else competing for frames
+        // doesn't merely make the animation choppy, it makes the dice tumble
+        // in slow motion. world.offscreen.js contains no
+        // requestAnimationFrame and no stepSimulation at all; the render loop
+        // and the physics step both move into the worker, out of reach of
+        // whatever the app is doing.
+        //
+        // Measured in headless Chromium (software rendering, 2d12): ~4.7s to
+        // settle on the onscreen path, ~3.1s on this one, and the gap holds
+        // with the main thread under load. A real phone GPU should do better
+        // than that; the point is the direction, which was consistent.
+        //
+        // dice-box feature-detects this itself (OffscreenCanvas +
+        // transferControlToOffscreen) and silently falls back to the onscreen
+        // path where it isn't available, so nobody loses dice.
+        offscreen: true,
+        // Shadow maps are re-rendered every frame. They also make no visible
+        // difference here — the tray has no lit surface for dice to cast onto,
+        // just the app showing through — so this is cost with nothing bought.
+        // Screenshots with and without were indistinguishable.
+        enableShadows: false,
       });
       await box.init();
       boxRef.current = box;
@@ -204,9 +270,11 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     }
   }, []);
 
-  // A viewport change (rotation, or folding/unfolding a foldable) leaves the
-  // canvas drawing buffer sized for the old screen. Flag it and resize before
-  // the next roll rather than while idle, when the canvas isn't even displayed.
+  // A viewport change (rotation, folding/unfolding a foldable, the URL bar
+  // collapsing) while the tray is hidden is worse than a stale size: dice-box's
+  // own resize handler runs anyway and measures the display:none canvas as
+  // 0x0, leaving the physics world with no floor to land on. Flag it here and
+  // re-measure on the next roll, once the tray is back on screen.
   useEffect(() => {
     const markStale = () => { staleSizeRef.current = true; };
     window.addEventListener('resize', markStale);
@@ -216,6 +284,16 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
       window.removeEventListener('orientationchange', markStale);
     };
   }, []);
+
+  // Blur is the single most expensive thing the compositor does, and during a
+  // roll it is pure waste: every backdrop-filter layer in the app is re-blurred
+  // each frame behind a 55%-black scrim that hides the result anyway. Dropping
+  // it for the seconds a roll is on screen gives those frames back to the dice.
+  useEffect(() => {
+    if (!show) return undefined;
+    setTrayRolling(true);
+    return () => setTrayRolling(false);
+  }, [show]);
 
   const playRoll = useCallback(async (roll) => {
     // Already on the table (a duplicate emit) — ignore.
@@ -238,13 +316,25 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
       settleRoll(roll.id, null);
     }, ROLL_WATCHDOG_MS));
 
+    // Wait for the frame that actually puts the tray on screen before anything
+    // measures it. This has to happen on every roll, not only the first: the
+    // tray goes back to display:none between rolls, so roll two would
+    // otherwise size itself against a hidden, zero-width canvas.
+    await waitForLayout(containerRef.current);
+
     let results = null;
     const box = await ensureBox();
     if (box) {
       try {
         if (staleSizeRef.current) {
-          try { box.resize?.(); } catch (e) { /* not fatal */ }
+          // Order matters: the synthetic event reaches our own markStale
+          // listener synchronously, so the flag has to be cleared after the
+          // dispatch or it would immediately set itself again.
+          requestDiceResize();
           staleSizeRef.current = false;
+          // dice-box debounces its resize by a frame; let it land before we
+          // throw dice into a world that may still be the wrong size.
+          await nextFrame();
         }
         // add(), not roll() — roll() clears the table first and would wipe
         // any dice still tumbling from another player.
