@@ -602,3 +602,26 @@
   cursor: pointer;
 }
 .dr-duality-select option { background: #14162a; color: #eee; }
+
+/* =========================================================================
+   Roll-time compositor relief
+   =========================================================================
+   Set on <body> for exactly as long as dice are on the table (DiceTray).
+
+   The dice animation is driven frame by frame — with the physics stepped per
+   frame, a slow frame doesn't just look choppy, it makes the dice tumble in
+   slow motion. Backdrop blur is the most expensive thing the compositor does,
+   and while the tray is up every blurred surface in the app is being re-blurred
+   behind a 55%-black scrim that makes the blur invisible anyway. So switch it
+   off for the few seconds of the roll and switch it back after.
+
+   The universal selector and !important are deliberate: the blurs are spread
+   across a dozen stylesheets plus a handful of inline styles, and a rule that
+   misses any of them leaves the cost in place. This is scoped to rolls only,
+   so the glassmorphism everywhere else is untouched. */
+body.dice-rolling *,
+body.dice-rolling *::before,
+body.dice-rolling *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
