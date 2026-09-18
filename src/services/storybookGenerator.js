@@ -17,7 +17,7 @@
  */
 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { doc, updateDoc, addDoc, collection, serverTimestamp, getDocs, orderBy, query, limit } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { storage, db } from '../config/firebase';
 import { buildCampaignContext } from './campaignContext';
 import { ANCESTRY_VISUAL_HINTS } from './portraitGenerator';
@@ -840,78 +840,26 @@ export async function regenerateStyledPortrait({ entity, entityType, campaignId,
   });
 }
 
-/**
- * Fire-and-forget auto-draft a chapter from a freshly finalized session.
- * Called from SessionLive.handleFinalize and SessionForm save-as-completed.
- * Swallows errors so it never blocks the caller's flow.
- *
- * @returns {Promise<{ok: boolean, chapterId?: string, error?: string}>}
- */
-export async function autoDraftChapterFromSession({
-  campaign,
-  session,
-  entities,
-  campaignId,
-  apiKey,
-  gameSystem = 'daggerheart',
-  onComplete = () => {}
-}) {
-  if (!campaign || !session || !campaignId) return { ok: false, error: 'missing-args' };
-
-  try {
-    // Skip if this session already has a chapter
-    const existingSnap = await getDocs(
-      query(collection(db, `campaigns/${campaignId}/storybook`), orderBy('chapterNumber', 'desc'))
-    );
-    const existing = existingSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (existing.some(c => c.sessionId === session.id)) {
-      console.log('[storybook] auto-draft skipped: chapter already exists for session', session.id);
-      return { ok: false, error: 'already-exists' };
-    }
-
-    const priorChapters = existing.filter(c => c.status === 'published').slice(0, 2);
-    const chapterNumber = existing.length > 0
-      ? Math.max(...existing.map(c => c.chapterNumber || 0)) + 1
-      : 1;
-
-    const styleKey = campaign.storybookStyle || DEFAULT_STYLE_KEY;
-    const styleCustom = campaign.storybookStyleCustom || '';
-
-    const chapter = await generateChapter({
-      campaign,
-      session,
-      priorChapters,
-      entities,
-      campaignId,
-      apiKey,
-      gameSystem,
-      styleKey,
-      styleCustom,
-      sceneCount: 2,
-      includeIllustrations: true,
-      generatedBy: 'auto'
-    });
-
-    const docRef = await addDoc(collection(db, `campaigns/${campaignId}/storybook`), {
-      ...sanitizeChapterForFirestore(chapter),
-      chapterNumber,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    onComplete({ ok: true, chapterId: docRef.id });
-    return { ok: true, chapterId: docRef.id };
-  } catch (err) {
-    console.error('[storybook] auto-draft failed:', err);
-    return { ok: false, error: err.message };
-  }
-}
+// There was once an autoDraftChapterFromSession() here, fired on session
+// finalize and on any save that flipped a session to `completed`. It is gone
+// deliberately.
+//
+// It could not be told what the DM had chosen, so it always drafted with
+// `campaign.storybookStyle || DEFAULT_STYLE_KEY`, with castIds null (every
+// entity in the campaign in scope, undoing the cast fix) and with no image
+// model (no reference portraits, undoing the likeness fix). It wrote nothing
+// for the minutes it ran, so the chapter list looked empty and DMs generated
+// the same session by hand — then a second chapter appeared later, in a style
+// they had not picked, drawn with characters who were not in the scene.
+//
+// If drafting on finalize is wanted again, the shape is a checkbox on the
+// finalize dialog that hands generateChapter the same styleKey, castIds and
+// imageModel the modal does — not a silent background run that cannot see them.
 
 export const storybookGeneratorService = {
   generateChapter,
   regenerateScene,
   regenerateStyledPortrait,
-  autoDraftChapterFromSession,
   STORYBOOK_STYLES,
   DEFAULT_STYLE_KEY
 };
