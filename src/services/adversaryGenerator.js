@@ -16,11 +16,16 @@ const ROLE_DESCRIPTIONS = {
 // Stat benchmarks derived from the 129 official SRD adversaries. HP is driven
 // by ROLE; difficulty, attack, stress, thresholds, and damage scale with TIER.
 // Threshold field names are legacy: `minor` = Major threshold, `major` = Severe.
+// `damageExamples` are drawn from that tier's own `damage` range and span
+// several die sizes and damage types on purpose. The prompt used to print one
+// fixed ladder — "1d8+3 phy" (T1), "2d8+4 mag" (T2), "3d8+3 phy" (T3) — for
+// every tier, and models copy examples, so almost everything came back d8
+// physical no matter what was asked for.
 export const TIER_BENCHMARKS = {
-  1: { difficulty: [9, 14], attack: [-1, 3], stress: [2, 3], major: [5, 8], severe: [9, 15], damage: '1d6+2 to 1d12+3 (avg 5-10)', minionDamage: '1 to 3 flat (e.g. "2 phy")', minionGroup: '3-5' },
-  2: { difficulty: [13, 16], attack: [1, 4], stress: [3, 4], major: [8, 13], severe: [17, 25], damage: '2d6+3 to 2d10+4 (avg 10-16)', minionDamage: '4 to 6 flat (e.g. "5 phy")', minionGroup: '6-7' },
-  3: { difficulty: [15, 18], attack: [2, 5], stress: [4, 6], major: [15, 22], severe: [28, 40], damage: '3d6+3 to 3d10+5 (avg 13-22)', minionDamage: '7 to 9 flat (e.g. "8 phy")', minionGroup: '8-10' },
-  4: { difficulty: [17, 21], attack: [5, 9], stress: [4, 8], major: [25, 37], severe: [45, 70], damage: '4d8+7 to 4d12+13 (avg 25-40)', minionDamage: '10 to 12 flat (e.g. "11 phy")', minionGroup: '12-13' },
+  1: { difficulty: [9, 14], attack: [-1, 3], stress: [2, 3], major: [5, 8], severe: [9, 15], damage: '1d6+2 to 1d12+3 (avg 5-10)', damageExamples: '"1d6+2 phy", "1d10+3 mag", "1d12+3 fire"', minionDamage: '1 to 3 flat (e.g. "2 phy")', minionGroup: '3-5' },
+  2: { difficulty: [13, 16], attack: [1, 4], stress: [3, 4], major: [8, 13], severe: [17, 25], damage: '2d6+3 to 2d10+4 (avg 10-16)', damageExamples: '"2d6+3 phy", "2d8+4 lightning", "2d10+4 mag"', minionDamage: '4 to 6 flat (e.g. "5 phy")', minionGroup: '6-7' },
+  3: { difficulty: [15, 18], attack: [2, 5], stress: [4, 6], major: [15, 22], severe: [28, 40], damage: '3d6+3 to 3d10+5 (avg 13-22)', damageExamples: '"3d6+3 poison", "3d8+4 phy", "3d10+5 mag"', minionDamage: '7 to 9 flat (e.g. "8 phy")', minionGroup: '8-10' },
+  4: { difficulty: [17, 21], attack: [5, 9], stress: [4, 8], major: [25, 37], severe: [45, 70], damage: '4d8+7 to 4d12+13 (avg 25-40)', damageExamples: '"4d8+7 phy", "4d10+10 psychic", "4d12+13 mag"', minionDamage: '10 to 12 flat (e.g. "11 phy")', minionGroup: '12-13' },
 };
 
 const ROLE_HP = {
@@ -96,7 +101,12 @@ export function fallbackAdversaryStats(tier, role) {
   };
 }
 
-function buildPrompt(concept, tier, role, templateContext, campaignContext) {
+/** Exposed for tests — the prompt is the whole behaviour of this module. */
+export function buildAdversaryPrompt(concept, tier, role, templateContext, campaignContext, request) {
+  return buildPrompt(concept, tier, role, templateContext, campaignContext, request);
+}
+
+function buildPrompt(concept, tier, role, templateContext, campaignContext, request) {
   const b = TIER_BENCHMARKS[Math.min(4, Math.max(1, Number(tier) || 1))];
   const hpRange = ROLE_HP[role] || ROLE_HP.standard;
   return `You are an expert Daggerheart TTRPG game master creating a mechanically accurate adversary statblock.
@@ -104,7 +114,13 @@ function buildPrompt(concept, tier, role, templateContext, campaignContext) {
 CONCEPT: ${concept}
 TIER: ${tier} (1=novice threats, 2=seasoned, 3=formidable, 4=legendary/world-shaking)
 ROLE: ${role} — ${ROLE_DESCRIPTIONS[role] || 'Standard adversary.'}
+${request ? `
+SPECIFIC REQUEST FROM GAME MASTER: ${request}
 
+This is what the GM actually asked for. It outranks the concept where the two
+disagree, and it is the reason this adversary exists — honour it in the name,
+the features and the damage type, not just the flavour text.
+` : ''}
 ${campaignContext ? `=== CAMPAIGN CONTEXT ===\n${campaignContext}\n\nUse the campaign context to:\n- Name the adversary to fit the campaign's world and themes\n- Reference campaign locations, factions, or lore where appropriate\n- Avoid duplicating names of existing adversaries listed above\n- Match the tone and feel of the campaign\n=== END CAMPAIGN CONTEXT ===\n` : ''}${templateContext ? `TEMPLATE TO ADAPT (modify to fit the new concept while keeping role/tier appropriate stats):\n${templateContext}\n` : ''}
 
 === DAGGERHEART ADVERSARY RULES ===
@@ -121,8 +137,11 @@ STATS — calibrated to the official SRD adversaries for Tier ${tier}:
 
 ATTACK DAMAGE FORMAT: "XdY+Z type" — scale dice count with tier.
 Tier ${tier} standard attack damage: ${role === 'minion' ? b.minionDamage + ' — minions always deal small FLAT damage, no dice' : b.damage}.
-Examples: "1d8+3 phy" (T1), "2d8+4 mag" (T2), "3d8+3 phy" (T3), "4d10+10 phy" (T4)
-Damage types: phy (physical), mag (magical), fire, ice, lightning, poison, psychic${role === 'minion' ? `
+Examples: ${b.damageExamples} — all valid for Tier ${tier}. Pick the die size and
+damage type that suit THIS adversary; do not default to d8 physical.
+Damage types: phy (physical), mag (magical), fire, ice, lightning, poison, psychic
+A magic user deals magical damage — mag, or an element that matches what they
+cast. Reserve phy for adversaries that hit things with objects.${role === 'minion' ? `
 
 MINION REQUIREMENTS (Tier ${tier}):
 - hp: 1, thresholds: 0/0, small flat damage (${b.minionDamage})
@@ -204,13 +223,20 @@ Return ONLY a raw JSON object. No markdown code blocks, no explanation, no comme
 }`;
 }
 
-function buildBossPrompt(concept, tier, campaignContext) {
+function buildBossPrompt(concept, tier, campaignContext, request) {
   return `You are an expert Daggerheart TTRPG game master creating a mechanically accurate BOSS statblock with multiple phases.
 
 CONCEPT: ${concept}
 TIER: ${tier} (1=novice threats, 2=seasoned, 3=formidable, 4=legendary/world-shaking)
 ROLE: boss — The climactic threat of a session or arc. Very high HP. Multiple powerful features. Defines the encounter.
+${request ? `
+SPECIFIC REQUEST FROM GAME MASTER: ${request}
 
+This is what the GM actually asked for. It outranks the concept where the two
+disagree — honour it in the name, the phases, the features and the damage type.
+If it calls for a magic user, the boss deals magical damage (mag, fire, ice,
+lightning, poison or psychic) and its features are spells, not weapon swings.
+` : ''}
 ${campaignContext ? `=== CAMPAIGN CONTEXT ===\n${campaignContext}\n=== END CAMPAIGN CONTEXT ===\n` : ''}
 
 === DAGGERHEART BOSS RULES ===
@@ -308,12 +334,15 @@ export async function generateBossStatblock({
   tier,
   apiKey,
   provider = 'anthropic',
-  campaignContext = ''
+  campaignContext = '',
+  // See generateAdversaryStatblock — the GM's original wording, which the
+  // stub's paraphrased concept does not preserve.
+  request = ''
 }) {
   if (!concept?.trim()) throw new Error('Please describe the boss concept.');
 
   const raw = await aiService.generate(
-    buildBossPrompt(concept, tier, campaignContext),
+    buildBossPrompt(concept, tier, campaignContext, request),
     apiKey,
     provider
   );
@@ -379,7 +408,11 @@ export async function generateAdversaryStatblock({
   apiKey,
   provider = 'anthropic',
   templateAdversary = null,
-  campaignContext = ''
+  campaignContext = '',
+  // What the GM originally typed. The stub's one-sentence `concept` is the
+  // model's paraphrase of it, so without this the request is lost a second
+  // time on the way from the encounter to the statblock.
+  request = ''
 }) {
   if (!concept?.trim()) throw new Error('Please describe the adversary concept.');
 
@@ -400,7 +433,7 @@ export async function generateAdversaryStatblock({
     : '';
 
   const raw = await aiService.generate(
-    buildPrompt(concept, tier, role, templateContext, campaignContext),
+    buildPrompt(concept, tier, role, templateContext, campaignContext, request),
     apiKey,
     provider
   );

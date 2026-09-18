@@ -12,7 +12,7 @@ import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js
 import { getTierForLevel, getBaseProficiency, getEffectiveProficiency, getProficiencyBonus, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
 import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils/daggerheartLevelUp.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments } from '../src/components/Encounters/BPCalculator.jsx';
-import { fallbackAdversaryStats, sanitizeDaggerheartText } from '../src/services/adversaryGenerator.js';
+import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
 import { promptBuilder } from '../src/services/promptBuilder.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
@@ -487,6 +487,141 @@ section('NPC ancestry');
   });
   assert(!sw.includes('AVAILABLE ANCESTRIES') && !sw.includes('REQUIRED ANCESTRY'),
     'a Star Wars campaign gets no Daggerheart ancestry instructions');
+}
+
+// ── Encounter requests ──
+// The encounter builder was the only one of the four that never read
+// requirements.description. The DM's typed request reached the component, the
+// context object and the network call, and was dropped at prompt assembly. That
+// one omission is also why the same encounter kept coming back: with the request
+// gone the prompt was a pure function of campaign + difficulty + environment, so
+// two runs sent byte-identical text.
+section('Encounter requests');
+const encCampaign = { name: 'Lorelich', gameSystem: 'daggerheart' };
+{
+  const prompt = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign,
+    requirements: { description: 'an ambush by storm cultists on a rope bridge' },
+  });
+  assert(prompt.includes('an ambush by storm cultists on a rope bridge'),
+    "the DM's request reaches the prompt verbatim");
+}
+{
+  // The actual repeat bug, asserted directly rather than via its cause.
+  const a = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign, requirements: { description: 'a duel with a storm cultist' },
+  });
+  const b = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign, requirements: { description: 'goblins raiding a granary' },
+  });
+  assert(a !== b, 'two different requests produce two different prompts');
+}
+{
+  // The form has a Party Size field. It wrote to requirements.partySize while
+  // the prompt read context.partySize, so it was never read and the Battle
+  // Points budget was always 14.
+  const six = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign, requirements: { partySize: 6 },
+  });
+  assert(six.includes('Party Size: 6'), 'the party size from the form is used');
+  assert(six.includes('20 BP'), 'and the BP budget follows it (3×6+2)');
+
+  const lvl5 = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign, requirements: { partyLevel: 5 },
+  });
+  assert(lvl5.includes('Tier 3'), 'party level sets the tier');
+}
+{
+  // The prompt has always handled availableAdversaries correctly — the bug was
+  // that QuickGeneratorModal never forwarded them, even though EncountersView
+  // already hands it the campaign's roster. So this is a regression guard on
+  // the prompt, not proof of the fix; the caller side is checked by hand.
+  const prompt = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign,
+    availableAdversaries: [{ name: 'Cult Adept', role: 'standard', tier: 2 }],
+    requirements: {},
+  });
+  assert(prompt.includes('AVAILABLE ADVERSARIES'), 'a supplied roster is offered to the model');
+  assert(prompt.includes('Cult Adept'), 'by name');
+}
+{
+  // Nothing told the model what it had already written, so it happily wrote it
+  // again. The NPC builder has done this for ages.
+  const prompt = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign,
+    existingEncounters: [{ name: 'Ambush at the Weeping Gate' }],
+    requirements: { description: 'something new' },
+  });
+  assert(prompt.includes('Ambush at the Weeping Gate'),
+    'encounters already in the campaign are listed so they are not repeated');
+}
+{
+  // Daggerheart has no caster role — magic users are expressed through damage
+  // type and features — so the guidance has to say that explicitly.
+  const prompt = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign,
+    requirements: { description: 'a frost mage and her apprentices' },
+  });
+  assert(/magical damage type/i.test(prompt), 'casters get magical-damage guidance');
+  assert(prompt.includes('mag'), 'and the damage types are named');
+}
+{
+  // The named-enemy rule existed but pointed at requirements.enemyTypes, which
+  // no UI ever sets — so "a fight against Matu Palu" typed into the description
+  // could never trigger it. It has to point at the request the DM actually
+  // wrote.
+  const prompt = promptBuilder.buildEncounterPrompt({
+    campaign: encCampaign,
+    requirements: { description: 'a fight against Matu Palu' },
+  });
+  assert(prompt.includes('IMPORTANT (named enemies)'), 'the named-enemy rule is present');
+  assert(prompt.includes('SPECIFIC REQUEST FROM GAME MASTER above'),
+    'and points at the request the DM actually typed');
+}
+
+// ── Adversary statblock requests ──
+{
+  // Second hop: the stub prompt carried only the concept, so the DM's words were
+  // lost a second time on the way to the statblock.
+  const prompt = buildAdversaryPrompt('a hooded figure', 2, 'standard', '', '', 'she should hurl lightning');
+  assert(prompt.includes('she should hurl lightning'),
+    "the DM's request reaches the statblock prompt too");
+}
+{
+  // Every worked damage example was a d8 on one fixed ladder, printed
+  // identically no matter which tier was being generated. Models copy examples,
+  // so nearly everything came out d8 physical — "not varying the damage much".
+  const exampleLine = (p) => (p.split('\n').find(l => l.trim().startsWith('Examples:')) || '');
+  const t1 = exampleLine(buildAdversaryPrompt('a thug', 1, 'standard', '', '', ''));
+  const t3 = exampleLine(buildAdversaryPrompt('a thug', 3, 'standard', '', '', ''));
+  assert(t1 && t1 !== t3, 'the damage examples are specific to the tier being generated');
+
+  const dice = new Set((t1.match(/\d+d(\d+)/g) || []).map(e => e.split('d')[1]));
+  assert(dice.size > 1, `and show more than one die size within a tier (got ${[...dice].join(', ') || 'none'})`);
+
+  const types = new Set(t1.match(/\b(phy|mag|fire|ice|lightning|poison|psychic)\b/g) || []);
+  assert(types.size > 1, `and more than one damage type (got ${[...types].join(', ') || 'none'})`);
+}
+
+// ── Encounter parsing ──
+// When the model replies with prose instead of JSON, the parser falls back to
+// scraping "field: value" lines. If it scraped nothing it used to return an
+// encounter named "Unknown Encounter" with every field blank and no error at
+// all — which is exactly what "the generator is not working" looks like.
+{
+  let threw = false;
+  try {
+    responseParser.parseEncounter('I would be delighted to help you build an encounter!');
+  } catch (err) {
+    threw = /could not be read as an encounter/.test(err.message);
+  }
+  assert(threw, 'an unreadable response raises an error instead of a blank encounter');
+
+  const scraped = responseParser.parseEncounter(
+    'Name: Ambush at the Ford\nDifficulty: hard\nEnemies: four bandits'
+  );
+  assert(scraped.name === 'Ambush at the Ford', 'a readable prose response is still salvaged');
+  assert(scraped.difficulty === 'hard', 'including its difficulty');
 }
 
 // ── Battle Points (SRD Battle Guide) ──

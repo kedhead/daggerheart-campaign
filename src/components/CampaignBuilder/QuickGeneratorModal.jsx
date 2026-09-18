@@ -4,7 +4,7 @@ import DirectAPIGenerator from './generators/DirectAPIGenerator';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateNPCPortrait } from '../../services/portraitGenerator';
-import { generateAdversaryStatblock } from '../../services/adversaryGenerator';
+import { generateAdversaryStatblock, generateBossStatblock } from '../../services/adversaryGenerator';
 import { Wand2, AlertCircle, ImageIcon, Loader2, Swords, Plus, Trash2 } from 'lucide-react';
 
 /**
@@ -32,6 +32,9 @@ export default function QuickGeneratorModal({
   const [generatingAdversaries, setGeneratingAdversaries] = useState(false);
   const [adversaryProgress, setAdversaryProgress] = useState({ done: 0, total: 0 });
   const [adversaryError, setAdversaryError] = useState(null);
+  // The DM's own words for this generation, kept so the statblock hop can see
+  // them too.
+  const [lastRequest, setLastRequest] = useState('');
 
   const {
     generating,
@@ -157,11 +160,22 @@ export default function QuickGeneratorModal({
   };
 
   const handleAPIGenerate = async (requirements) => {
+    // Remember what the DM asked for: the encounter's adversary stubs come back
+    // as the model's own one-sentence paraphrase, so the original wording has to
+    // be carried separately or it's lost before the statblocks are written.
+    setLastRequest(requirements?.description || '');
+
     const context = {
       campaign,
       campaignFrame,
       existingNPCs: type === 'npc' ? existingContent : undefined,
       existingLocations: type === 'location' ? existingContent : undefined,
+      // Encounters were the odd one out: the campaign's own adversaries and the
+      // encounters it already has were both available here and neither was
+      // passed on, so the model was never shown what it could pick from nor what
+      // it had already written.
+      existingEncounters: type === 'encounter' ? existingContent : undefined,
+      availableAdversaries: type === 'encounter' ? existingAdversaries : undefined,
       requirements
     };
 
@@ -227,31 +241,61 @@ export default function QuickGeneratorModal({
       const stubResults = await Promise.all(
         validStubs.map(async (stub) => {
           try {
-            const statblock = await generateAdversaryStatblock({
-              concept: stub.concept,
-              tier: stub.tier,
-              role: stub.role,
-              apiKey,
-              provider,
-              campaignContext
-            });
+            // The encounter prompt asks for role "boss" for a climactic named
+            // villain, and there is a dedicated multi-phase generator for it.
+            // Sending a boss through the ordinary path statted it as a plain
+            // standard, because generateAdversaryStatblock has no "boss" entry
+            // in ROLE_DESCRIPTIONS and silently falls back.
+            const statblock = stub.role === 'boss'
+              ? await generateBossStatblock({
+                  concept: stub.concept,
+                  tier: stub.tier,
+                  apiKey,
+                  provider,
+                  campaignContext,
+                  request: lastRequest
+                })
+              : await generateAdversaryStatblock({
+                  concept: stub.concept,
+                  tier: stub.tier,
+                  role: stub.role,
+                  apiKey,
+                  provider,
+                  campaignContext,
+                  request: lastRequest
+                });
             const saved = await addAdversary(statblock);
             setAdversaryProgress(p => ({ ...p, done: p.done + 1 }));
             return { adversaryId: saved.id, quantity: Math.max(1, stub.quantity) };
           } catch (err) {
             console.error(`Failed to generate adversary "${stub.concept}":`, err);
             setAdversaryProgress(p => ({ ...p, done: p.done + 1 }));
-            return null;
+            return { failed: stub.concept };
           }
         })
       );
 
-      const slots = stubResults.filter(Boolean);
+      const slots = stubResults.filter(r => r && !r.failed);
+      const failed = stubResults.filter(r => r && r.failed).map(r => r.failed);
       const existingSlots = Array.isArray(editableResult.adversarySlots) ? editableResult.adversarySlots : [];
       const encounterToSave = {
         ...editableResult,
         adversarySlots: [...existingSlots, ...slots]
       };
+
+      // Saving quietly with fewer adversaries than the DM just reviewed reads
+      // as "the generator is broken". Say which ones didn't make it and let
+      // them decide, rather than closing on what looks like a clean success.
+      if (failed.length > 0) {
+        setAdversaryError(
+          `${failed.length} of ${validStubs.length} adversaries could not be statted and were left out: ` +
+          `${failed.join('; ')}. The rest are saved with the encounter — press Save again to keep it as is.`
+        );
+        setGeneratingAdversaries(false);
+        setEditableResult(encounterToSave);
+        setAdversaryStubs([]);
+        return;
+      }
 
       onSave(encounterToSave);
       onClose();
@@ -691,6 +735,11 @@ export default function QuickGeneratorModal({
                           <option value="social">Social</option>
                           <option value="leader">Leader</option>
                           <option value="solo">Solo</option>
+                          {/* Not an SRD role — a homebrew multi-phase villain,
+                              statted by generateBossStatblock. The encounter
+                              prompt asks for it by name, so it has to be
+                              selectable or a returned boss stub can't be shown. */}
+                          <option value="boss">Boss (multi-phase)</option>
                         </select>
                       </div>
                       <div>
