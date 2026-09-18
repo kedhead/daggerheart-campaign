@@ -266,13 +266,31 @@ export const responseParser = {
       return '';
     };
 
+    const name = extractField(['name', 'encounter name', 'title']);
+    const description = extractField(['description', 'scene', 'setup']);
+    const enemies = extractField(['enemies', 'adversaries', 'foes', 'opponents']);
+
+    // This path only runs when the model didn't return JSON, and it scrapes
+    // "field: value" lines. If it found none of the fields that matter, it used
+    // to hand back an encounter called "Unknown Encounter" with everything else
+    // blank — and no error. It also drops suggestedAdversaries / newAdversaries
+    // entirely, so the adversary flow silently disappears. A blank result that
+    // reports success is indistinguishable from "the generator is broken", so
+    // fail loudly instead.
+    if (!name && !description && !enemies) {
+      throw new Error(
+        'The AI response could not be read as an encounter. This usually means the ' +
+        'model replied with prose instead of JSON — try generating again.'
+      );
+    }
+
     return {
-      name: extractField(['name', 'encounter name', 'title']) || 'Unknown Encounter',
+      name: name || 'Untitled Encounter',
       difficulty: this._validateDifficulty(extractField(['difficulty', 'challenge'])),
       partyLevel: 1,
       environment: extractField(['environment', 'location', 'setting']),
-      description: extractField(['description', 'scene', 'setup']),
-      enemies: extractField(['enemies', 'adversaries', 'foes', 'opponents']),
+      description,
+      enemies,
       tactics: extractField(['tactics', 'strategy', 'behavior']),
       rewards: extractField(['rewards', 'loot', 'treasure']),
       freshCutGrassLink: ''

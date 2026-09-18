@@ -19,7 +19,6 @@ export default function SessionLive({
   currentUserId,
   entities,
   onUpdateSession,
-  onAutoDraftChapter,
   onBack
 }) {
   const {
@@ -111,15 +110,10 @@ export default function SessionLive({
       status: 'completed'
     });
 
-    // Fire-and-forget: auto-draft a Story So Far chapter from this session
-    if (onAutoDraftChapter) {
-      onAutoDraftChapter({
-        ...session,
-        summary: newSummary,
-        liveNotesCompiled: compiledSummary,
-        status: 'completed'
-      });
-    }
+    // Finalizing used to also start a Story So Far chapter in the background.
+    // It ran for minutes writing nothing, so DMs generated the same session by
+    // hand and ended up with two chapters — see storybookGenerator.js. Write
+    // the chapter from Story So Far when you want one.
 
     // Optionally clear notes after finalizing
     if (isDM) {

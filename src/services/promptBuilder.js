@@ -346,8 +346,18 @@ Return this JSON structure:
    * @returns {string} Generated prompt
    */
   buildEncounterPrompt(context) {
-    const { campaign, campaignFrame, partyLevel = 1, partySize = 4, requirements = {}, availableAdversaries = [], availableEnvironments = [] } = context;
+    const {
+      campaign, campaignFrame, requirements = {},
+      availableAdversaries = [], availableEnvironments = [], existingEncounters = []
+    } = context;
     const gameSystem = this._getGameSystemContext(campaign);
+
+    // The form writes these into `requirements`; older callers pass them at the
+    // top level. Read both, requirements first — before this, the Party Size
+    // field in the UI was read by nothing at all and the BP budget was always
+    // computed for a party of four.
+    const partySize = Number(requirements.partySize) || Number(context.partySize) || 4;
+    const partyLevel = Number(requirements.partyLevel) || Number(context.partyLevel) || 1;
 
     let prompt = `You are creating a combat encounter for a ${gameSystem.name} campaign set in a ${gameSystem.genre} setting.
 
@@ -383,6 +393,48 @@ Adversaries should be Tier ${partyTier} to match the party (a lower-tier adversa
     prompt += requirements.difficulty ? `\nDifficulty: ${requirements.difficulty}` : '\nDifficulty: Suggest appropriate difficulty (easy, medium, hard, or deadly)';
     prompt += requirements.environment ? `\nEnvironment: ${requirements.environment}` : '\nEnvironment: Suggest an environment';
     prompt += requirements.enemyTypes ? `\nEnemy Types: ${requirements.enemyTypes}` : '\nEnemy Types: Suggest appropriate enemies';
+
+    // The DM's own words. This is the whole point of the feature and it used to
+    // be dropped here: every other builder (NPC, Location, Lore) splices the
+    // description in, and only this one didn't. Without it the prompt was a
+    // pure function of campaign + difficulty + environment, so repeated runs
+    // sent byte-identical text and the model kept returning the same encounter.
+    if (requirements.description) {
+      prompt += `\n\nSPECIFIC REQUEST FROM GAME MASTER: ${requirements.description}
+
+This request outranks every generic suggestion above. If it names a creature,
+a tactic, a location or a person, build the encounter around it rather than
+around what would be typical for the campaign.`;
+    }
+
+    // Don't write the same encounter twice. The NPC builder has always done
+    // this; the encounter one never saw what it had already produced.
+    const priorNames = existingEncounters
+      .map(e => (typeof e === 'string' ? e : e?.name))
+      .filter(Boolean)
+      .slice(0, 25);
+    if (priorNames.length > 0) {
+      prompt += `\n\nENCOUNTERS THIS CAMPAIGN ALREADY HAS (do NOT repeat these, and avoid
+close variations of them — pick a different premise, not the same fight renamed):`;
+      priorNames.forEach(n => { prompt += `\n- ${n}`; });
+    }
+
+    // Daggerheart has no caster/mage role — the ten roles are minion, horde,
+    // standard, bruiser, skulk, ranged, support, social, leader and solo. A
+    // spellcaster is expressed through damage type and features instead, so
+    // asking for one has to be answered that way rather than ignored.
+    prompt += `\n\nSPELLCASTERS AND VARIED DAMAGE:
+Daggerheart has no "caster" role. If the request calls for a mage, witch,
+priest, elementalist or any other magic user, build them with one of the normal
+roles and make the magic show in the mechanics:
+- use a magical damage type — mag, fire, ice, lightning, poison or psychic —
+  rather than defaulting to phy
+- give them spell-shaped features (a ranged or area attack, a summon, a ward, a
+  curse, a teleport) instead of a plain weapon swing
+- name them so the magic reads at a glance
+Vary damage dice across the group as well. A fight where every adversary deals
+the same dXdY is flat; mix die sizes and damage types to match what each one
+actually is.`;
 
     // Include available adversaries with BP costs and roles
     if (availableAdversaries.length > 0) {
@@ -429,7 +481,7 @@ Adversaries should be Tier ${partyTier} to match the party (a lower-tier adversa
 \`\`\`
 
 ${availableAdversaries.length > 0 ? 'IMPORTANT: For suggestedAdversaries, use EXACT names from the AVAILABLE ADVERSARIES list above. Pick adversaries that fit thematically and include a quantity for each. Stay within the BP budget.' : ''}
-IMPORTANT (named enemies): If the requested enemy types name a specific character/NPC/adversary (e.g. "a fight against Matu Palu"), that named entity MUST be the enemy — never substitute a random creature. If the name is in the AVAILABLE ADVERSARIES list, put it in suggestedAdversaries. Otherwise add it as a newAdversary whose concept BEGINS with that exact name, using role "boss" for a climactic named villain.
+IMPORTANT (named enemies): If the SPECIFIC REQUEST FROM GAME MASTER above — or the requested enemy types — names a particular character/NPC/adversary (e.g. "a fight against Matu Palu"), that named entity MUST be the enemy — never substitute a random creature. If the name is in the AVAILABLE ADVERSARIES list, put it in suggestedAdversaries. Otherwise add it as a newAdversary whose concept BEGINS with that exact name, using role "boss" for a climactic named villain.
 ${availableEnvironments.length > 0 ? 'IMPORTANT: For suggestedEnvironment, use an EXACT name from the AVAILABLE ENVIRONMENTS list above that fits the encounter.' : ''}
 ${wantNewAdversaries ? `
 IMPORTANT (newAdversaries): Propose 1–4 FRESH adversary stubs for this encounter — do NOT duplicate entries in suggestedAdversaries. Each stub must include:

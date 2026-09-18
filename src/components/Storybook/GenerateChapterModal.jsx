@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Wand2, Sparkles } from 'lucide-react';
 import Modal from '../Modal';
 import { generateChapter, STORYBOOK_STYLES, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
@@ -70,11 +70,26 @@ export default function GenerateChapterModal({
   const [castIds, setCastIds] = useState([]);
   const [castOpen, setCastOpen] = useState(false);
 
-  // Re-seed from the notes whenever the session changes. Anyone named in the
-  // notes starts ticked; deceased characters never do (mentionedEntityIds).
+  // Seed from the notes when the SESSION changes — and only then. Anyone named
+  // in the notes starts ticked; deceased characters never do
+  // (mentionedEntityIds).
+  //
+  // The guard is load-bearing. `castPool` and `selectedSession` are recomputed
+  // on every render from prop arrays whose identity changes on each Firestore
+  // snapshot, so a plain dependency on them re-ran this effect constantly and
+  // silently reset the DM's own cast ticks while the modal was open. The ref
+  // records which session has been seeded; the deps stay listed so the pool is
+  // read once it has actually loaded.
+  const seededForRef = useRef(null);
+  const castPoolSize = castPool.characters.length + castPool.npcs.length + castPool.adversaries.length;
   useEffect(() => {
+    if (seededForRef.current === sessionId) return;
+    // Rosters arrive a tick after the modal opens; seeding against an empty
+    // pool would tick nobody and then never correct itself.
+    if (castPoolSize === 0) return;
+    seededForRef.current = sessionId;
     setCastIds(mentionedEntityIds(castPool, sessionNotesText(selectedSession)));
-  }, [sessionId, castPool, selectedSession]);
+  }, [sessionId, castPool, castPoolSize, selectedSession]);
 
   const toggleCast = (id) => {
     setCastIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
@@ -86,6 +101,14 @@ export default function GenerateChapterModal({
     { key: 'adversaries', label: 'Adversaries', list: castPool.adversaries },
   ].filter(g => g.list.length > 0);
   const alreadyHasChapter = selectedSession && usedSessionIds.has(selectedSession.id);
+
+  // A second chapter for the same session is allowed — an alternate take is a
+  // legitimate thing to want — but never by accident. Generate stays disabled
+  // until the DM says so, and the acknowledgement resets when they switch
+  // sessions so it can't carry over to a different one.
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
+  useEffect(() => { setConfirmDuplicate(false); }, [sessionId]);
+  const needsDuplicateConfirm = !!alreadyHasChapter && !confirmDuplicate;
 
   const handleGenerate = async () => {
     if (!selectedSession) return;
@@ -148,7 +171,23 @@ export default function GenerateChapterModal({
             ))}
           </select>
           {alreadyHasChapter && (
-            <p className="text-xs text-amber-300">This session already has a chapter. Generating will create a second one.</p>
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-400/30 space-y-2">
+              <p className="text-xs text-amber-200">
+                <strong>This session already has a chapter.</strong> Generating again
+                makes a second one — it doesn&apos;t replace the first. To change the
+                existing chapter, edit or regenerate its scenes instead.
+              </p>
+              <label className="flex items-center gap-2 text-xs text-amber-100 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={confirmDuplicate}
+                  onChange={(e) => setConfirmDuplicate(e.target.checked)}
+                  disabled={running}
+                  className="w-4 h-4 rounded border-amber-400/40 bg-black/40"
+                />
+                <span>Yes, write a second chapter for this session</span>
+              </label>
+            </div>
           )}
         </div>
 
@@ -371,7 +410,7 @@ export default function GenerateChapterModal({
           <button
             type="button"
             onClick={handleGenerate}
-            disabled={running || !sessionId || warnings.length > 0}
+            disabled={running || !sessionId || warnings.length > 0 || needsDuplicateConfirm}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-white font-bold disabled:opacity-40"
             style={{
               background: 'color-mix(in srgb, var(--primary) 28%, transparent)',

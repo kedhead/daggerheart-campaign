@@ -1,14 +1,11 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, BookOpen, ScrollText, Sparkles } from 'lucide-react';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
 import SessionLive from './SessionLive';
 import GMAssistantPanel from './GMAssistantPanel';
 import Modal from '../Modal';
-import { autoDraftChapterFromSession } from '../../services/storybookGenerator';
 import { buildCampaignContext } from '../../services/campaignContext';
-import { useAPIKey } from '../../hooks/useAPIKey';
-import { useToast } from '../../contexts/ToastContext';
 import './SessionsView.css';
 
 export default function SessionsView({
@@ -40,10 +37,6 @@ export default function SessionsView({
   addLore,
   onEncounterClick
 }) {
-  const { keys } = useAPIKey(campaign?.createdBy);
-  const { info, success, error: toastError } = useToast();
-  const openaiKey = keys?.openai || null;
-
   const mergedMaps = useMemo(() => [
     ...maps.map(m => ({ ...m, tag: 'map' })),
     ...battleMaps.map(m => ({ ...m, tag: 'battle-map' }))
@@ -59,26 +52,6 @@ export default function SessionsView({
      lore.length, sessions.length, encounters.length, items.length, mergedMaps.length,
      storybookChapters.length]
   );
-
-  const triggerAutoDraft = useCallback((session) => {
-    if (!isDM || !campaign?.id) return;
-    info(`Drafting Story So Far chapter for "${session.title}"…`);
-    // Fire-and-forget: never block session save/finalize
-    autoDraftChapterFromSession({
-      campaign,
-      session,
-      entities: { characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame, items, maps: mergedMaps },
-      campaignId: campaign.id,
-      apiKey: openaiKey,
-      gameSystem: campaign.gameSystem || 'daggerheart',
-      onComplete: (res) => {
-        if (res.ok) success('Story chapter drafted — review it in Story So Far.');
-        else if (res.error && res.error !== 'already-exists' && res.error !== 'no-api-key') toastError(`Story draft failed: ${res.error}`);
-      }
-    }).catch(err => {
-      console.error('[SessionsView] auto-draft threw:', err);
-    });
-  }, [isDM, openaiKey, campaign, characters, npcs, adversaries, locations, lore, sessions, encounters, campaignFrame, items, mergedMaps, info, success, toastError]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
@@ -105,25 +78,16 @@ export default function SessionsView({
     setIsModalOpen(true);
   };
 
+  // Saving a session saves the session. Marking one `completed` used to also
+  // kick off a Story So Far chapter in the background, which is how DMs ended
+  // up with duplicate chapters in a style they never picked — see the note in
+  // storybookGenerator.js. Chapters are now only ever made from the Generate
+  // button in Story So Far.
   const handleSave = (sessionData) => {
-    const wasCompleted = editingSession?.status === 'completed';
-    const isNowCompleted = sessionData.status === 'completed';
-
     if (editingSession) {
       updateSession(editingSession.id, sessionData);
-      // Newly completed (transitioned from planned/in_progress → completed)
-      if (isNowCompleted && !wasCompleted) {
-        triggerAutoDraft({ id: editingSession.id, ...editingSession, ...sessionData });
-      }
     } else {
-      addSession(sessionData).then?.((result) => {
-        // addSession in the hook returns the new doc reference/data — best-effort
-        if (isNowCompleted && result?.id) {
-          triggerAutoDraft({ id: result.id, ...sessionData });
-        }
-      });
-      // Also fire for void-returning addSession impls: we can only trigger with
-      // a real id once the subscription delivers it, so skip that edge case.
+      addSession(sessionData);
     }
     setIsModalOpen(false);
     setEditingSession(null);
@@ -160,7 +124,6 @@ export default function SessionsView({
         currentUserId={currentUserId}
         entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
         onUpdateSession={updateSession}
-        onAutoDraftChapter={triggerAutoDraft}
         onBack={handleExitLive}
       />
     );
