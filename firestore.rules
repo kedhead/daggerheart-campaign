@@ -327,12 +327,25 @@ service cloud.firestore {
 
       // Storybook (Story So Far — illustrated chapter chronicle)
       match /storybook/{chapterId} {
-        // Authenticated members + superadmins. Plus: when the campaign's
-        // chroniclePublic flag is on, anyone (including unauthenticated
-        // visitors hitting a share link) can read chapters. Journal entries
-        // remain private even when the chronicle is public.
+        // Authenticated members + superadmins see everything, drafts included.
+        //
+        // When the campaign's chroniclePublic flag is on, anyone holding the
+        // share link can also read — but ONLY published chapters. The
+        // published-only filter used to live in JavaScript
+        // (PublicChronicleView), which meant a visitor could fetch the
+        // collection through the Firestore REST API and read the DM's
+        // unreleased chapters. A share link is meant to circulate, so "anyone
+        // with the link" is the right threat model, and the filter belongs here.
+        //
+        // NOTE: this makes the rule document-dependent, so an unconstrained
+        // query over the collection is now rejected. PublicChronicleView must
+        // carry a matching where('status','==','published') — the two are a
+        // pair, and the composite index in firestore.indexes.json backs them.
         allow read: if (isAuthenticated() && (isMember(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) || isSuperAdmin()))
-          || get(/databases/$(database)/documents/campaigns/$(campaignId)).data.get('chroniclePublic', false) == true;
+          || (
+            get(/databases/$(database)/documents/campaigns/$(campaignId)).data.get('chroniclePublic', false) == true
+            && resource.data.get('status', '') == 'published'
+          );
         // Only DM/creator can create, edit, or delete chapters.
         allow create, update, delete: if isAuthenticated() && (
           isDM(get(/databases/$(database)/documents/campaigns/$(campaignId)).data) ||

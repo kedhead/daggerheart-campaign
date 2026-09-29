@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  doc, onSnapshot, collection, query, orderBy
+  doc, onSnapshot, collection, query, orderBy, where
 } from 'firebase/firestore';
 import { BookMarked } from 'lucide-react';
 import { db } from '../../config/firebase';
@@ -53,15 +53,20 @@ export default function PublicChronicleView({ campaignId }) {
       }
     );
 
+    // The published-only constraint is required, not an optimisation. The
+    // security rule now grants public reads only for published chapters, and
+    // Firestore rejects a query it cannot prove stays inside that — so without
+    // this `where` the whole listener fails. Drafts were previously filtered
+    // here in JavaScript, which meant anyone with the share link could read
+    // them straight from the REST API.
     chaptersUnsub = onSnapshot(
       query(
         collection(db, `campaigns/${campaignId}/storybook`),
+        where('status', '==', 'published'),
         orderBy('chapterNumber', 'asc')
       ),
       (snap) => {
-        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Public visitors only see published chapters
-        setChapters(all.filter(c => c.status === 'published'));
+        setChapters(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         setLoading(false);
       },
       (err) => {
