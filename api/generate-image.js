@@ -4,10 +4,26 @@
  * Supports: gpt-image-1, flux-dev, stable-diffusion-3, magic-art_7_0
  */
 
-// Extend timeout - 300s on Pro plan, 60s on Hobby
+// Extend timeout - 300s on Pro plan, 60s on Hobby.
+// NOTE: vercel.json caps api/*.js at 60s and the Hobby plan enforces 60s
+// regardless, so the 300 here is aspirational — a generation that runs past a
+// minute is killed, which is what the scene retry loop in storybookGenerator
+// exists to paper over.
 export const config = {
   maxDuration: 300
 };
+
+// Image quality for every gpt-image-1 request.
+//
+// Left unset, OpenAI applies its own default, which bills at the top of the
+// range — roughly a 15x spread between the cheapest and dearest setting at
+// 1536x1024. Portraits render as small circular avatars and scene art as inline
+// illustrations, so 'medium' is not visibly different in the places these are
+// actually shown, and it is the single biggest lever on image spend.
+//
+// Raise to 'high' here if chapter art ever looks soft; it's one constant and it
+// applies to portraits, scenes and battle maps alike.
+const IMAGE_QUALITY = 'medium';
 
 // Trim and tidy a third-party API error string so it's safe to surface to
 // the client without dumping a full HTML page or stack trace.
@@ -267,6 +283,7 @@ export default async function handler(req, res) {
             form.append('prompt', fullPrompt);
             form.append('size', sizeForGpt);
             form.append('n', '1');
+            form.append('quality', IMAGE_QUALITY);
             for (let i = 0; i < Math.min(refs.length, 4); i++) {
               const imgRes = await fetch(refs[i]);
               if (!imgRes.ok) continue;
@@ -287,7 +304,7 @@ export default async function handler(req, res) {
             gptRes = await fetch('https://api.openai.com/v1/images/generations', {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: imageModel, prompt: fullPrompt, size: sizeForGpt, n: 1 })
+              body: JSON.stringify({ model: imageModel, prompt: fullPrompt, size: sizeForGpt, n: 1, quality: IMAGE_QUALITY })
             });
           }
           if (!gptRes.ok) {
@@ -386,7 +403,7 @@ export default async function handler(req, res) {
       const sbResponse = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
-        body: JSON.stringify({ model: 'gpt-image-1', prompt: fullPrompt, n: 1, size: sizeForGpt })
+        body: JSON.stringify({ model: 'gpt-image-1', prompt: fullPrompt, n: 1, size: sizeForGpt, quality: IMAGE_QUALITY })
       });
       if (!sbResponse.ok) {
         const err = await sbResponse.json().catch(() => ({ error: { message: sbResponse.statusText } }));
@@ -417,7 +434,7 @@ export default async function handler(req, res) {
       const portraitResponse = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
-        body: JSON.stringify({ model: 'gpt-image-1', prompt, n: 1, size: imageSize })
+        body: JSON.stringify({ model: 'gpt-image-1', prompt, n: 1, size: imageSize, quality: IMAGE_QUALITY })
       });
       if (!portraitResponse.ok) {
         const err = await portraitResponse.json().catch(() => ({ error: { message: portraitResponse.statusText } }));
@@ -520,7 +537,8 @@ export default async function handler(req, res) {
             model: 'gpt-image-1',
             prompt: enhancedPrompt,
             n: 1,
-            size: gptSize
+            size: gptSize,
+            quality: IMAGE_QUALITY
           })
         });
 
