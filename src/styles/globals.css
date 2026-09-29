@@ -235,7 +235,11 @@ select {
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  /* Must not drop below 16px. Mobile Safari zooms the page in whenever a field
+     smaller than that takes focus, and it never zooms back out — so tapping a
+     search box left players zoomed in and panning around. This was 0.95rem
+     (15.2px), which is under the line by just enough to trigger it. */
+  font-size: 1rem;
   min-height: 44px;
   /* iOS touch target minimum */
 }

@@ -9,6 +9,7 @@ import StatsTab from './tabs/StatsTab';
 import InventoryTab from './tabs/InventoryTab';
 import FeaturesTab from './tabs/FeaturesTab';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
+import { armorSlotCount } from '../../utils/daggerheartSheetFields';
 import { displayItemName } from '../../utils/itemNames';
 import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
 import RestModal from '../Characters/RestModal';
@@ -72,15 +73,32 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
     [character, equippedItems]
   );
 
-  const [armor,  setArmor]  = useState(() => toTrack(character.armorSlots,  computedArmorScore || 0));
+  // How many armor slots the track actually has.
+  //
+  // This is NOT the same as Armor Score: armor can carry more slots than its
+  // score (the item's own `armorSlots`, and a legacy-6 correction). The portal
+  // used to use the raw score for both display and persistence, so on armor
+  // with 6 slots and a score of 4 the first tap wrote a 4-long array and marks
+  // 5 and 6 were destroyed. Share the DM sheet's and the PDF's helper so all
+  // three agree and the stored track keeps its real length.
+  const equippedArmorItems = useMemo(
+    () => equippedItems.filter(i => i.type === 'armor'),
+    [equippedItems]
+  );
+  const armorSlotsTotal = useMemo(
+    () => armorSlotCount(character, equippedArmorItems, computedArmorScore),
+    [character, equippedArmorItems, computedArmorScore]
+  );
+
+  const [armor,  setArmor]  = useState(() => toTrack(character.armorSlots,  armorSlotsTotal || 0));
 
   // Reset local state when server data changes
   useEffect(() => {
     setHp(toTrack(character.hpSlots, 6));
     setStress(toTrack(character.stressSlots, 6));
     setHope(toTrack(normalizeHopeSlots(character.hopeSlots), 6));
-    setArmor(toTrack(character.armorSlots, computedArmorScore || 0));
-  }, [character.hpSlots, character.stressSlots, character.hopeSlots, character.armorSlots, computedArmorScore]);
+    setArmor(toTrack(character.armorSlots, armorSlotsTotal || 0));
+  }, [character.hpSlots, character.stressSlots, character.hopeSlots, character.armorSlots, armorSlotsTotal]);
 
   const campaignId = campaign?.id;
   const { roll, rollDamage } = useDice(campaignId);
@@ -324,9 +342,14 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
                 onToggle={handleVitalToggle('stressSlots', stress, setStress)} />
               <PortalSlotTracker
                 label={armorName ? `Armor · ${armorName}` : 'Armor'}
-                {...armor} max={computedArmorScore || armor.max} color="armor"
-                right={`${armor.filled}/${computedArmorScore || armor.max}${computedArmorScore ? `  (${computedArmorScore})` : ''}`}
-                onToggle={handleVitalToggle('armorSlots', { ...armor, max: computedArmorScore || armor.max }, setArmor)} />
+                {...armor} max={armorSlotsTotal || armor.max} color="armor"
+                right={`${armor.filled}/${armorSlotsTotal || armor.max}${computedArmorScore ? `  (${computedArmorScore})` : ''}`}
+                onToggle={handleVitalToggle(
+                  'armorSlots',
+                  { ...armor, max: armorSlotsTotal || armor.max },
+                  setArmor,
+                  armorSlotsTotal || armor.max
+                )} />
             </div>
           </div>
 

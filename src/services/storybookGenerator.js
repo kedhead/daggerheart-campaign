@@ -23,6 +23,7 @@ import { buildCampaignContext } from './campaignContext';
 import { ANCESTRY_VISUAL_HINTS } from './portraitGenerator';
 import { scopeRosters, sanitizeChapterCast } from '../utils/storybookCast';
 import { composeScenePrompt, stripAppendedClauses } from '../utils/storybookPrompt';
+import { sourcePortraitKey, cachedPortraitKey } from '../utils/storybookPortraitCache';
 
 // ── Style presets (must stay in sync with api/generate-image.js) ──────────────
 
@@ -214,11 +215,13 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
 
   const styleSignature = styleKey === 'custom' ? `custom:${styleCustom || ''}` : styleKey;
 
-  // Cache hit: matching style + same source portrait
+  // Cache hit: matching style + same source portrait.
+  const portraitKey = sourcePortraitKey(sourcePortraitUrl);
+  const cachedKey = cachedPortraitKey(existing);
   if (
     existing &&
     existing.styleKey === styleSignature &&
-    existing.sourcePortraitUrl === sourcePortraitUrl &&
+    cachedKey === portraitKey &&
     existing.url
   ) {
     return { url: existing.url, description: existing.description || '' };
@@ -277,7 +280,9 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
             storagePath,
             styleKey: styleSignature,
             description: enrichedDescription,
-            sourcePortraitUrl: safeUrlForFirestore(sourcePortraitUrl),
+            // Fingerprint, not the URL — see sourcePortraitKey. Storing the raw
+            // value is what broke this cache for every base64 avatar.
+            sourcePortraitKey: portraitKey,
             updatedAt: new Date().toISOString()
           }
         });

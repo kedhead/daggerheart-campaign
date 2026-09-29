@@ -15,6 +15,8 @@ import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustmen
 import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
 import { promptBuilder } from '../src/services/promptBuilder.js';
+import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
+import { sourcePortraitKey, cachedPortraitKey } from '../src/utils/storybookPortraitCache.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration, narratableSlides } from '../src/components/Storybook/cinematicTimeline.js';
 import { stripAppendedClauses, composeScenePrompt, REFERENCE_CLAUSE, NO_EXTRAS_CLAUSE } from '../src/utils/storybookPrompt.js';
@@ -76,7 +78,7 @@ import { DeleteCharacterPrompt } from '../src/components/Characters/ConfirmDelet
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
-import { buildSheetFields, normalizeInventory, splitGold } from '../src/utils/daggerheartSheetFields.js';
+import { buildSheetFields, normalizeInventory, splitGold, armorSlotCount } from '../src/utils/daggerheartSheetFields.js';
 import { displayItemName, hasCustomName, isRenameable, normalizeCustomName, renameEquippedItem, MAX_CUSTOM_NAME_LENGTH } from '../src/utils/itemNames.js';
 import ItemName from '../src/components/Items/ItemName.jsx';
 import InventoryTab from '../src/components/PlayerPortal/tabs/InventoryTab.jsx';
@@ -601,6 +603,114 @@ const encCampaign = { name: 'Lorelich', gameSystem: 'daggerheart' };
 
   const types = new Set(t1.match(/\b(phy|mag|fire|ice|lightning|poison|psychic)\b/g) || []);
   assert(types.size > 1, `and more than one damage type (got ${[...types].join(', ') || 'none'})`);
+}
+
+// ── Error boundary ──
+// Without one, any exception thrown during render unmounts the whole tree and
+// leaves a blank page — no message and no way back but a manual reload. At a
+// table mid-session that reads as "the site is down".
+//
+// Note this can only check the pieces: React does not invoke error boundaries
+// during renderToString, so the catch itself is not exercised here.
+section('Error boundary');
+{
+  const passthrough = renderToString(
+    React.createElement(ErrorBoundary, null, React.createElement('p', null, 'campaign'))
+  );
+  assert(passthrough.includes('campaign'), 'children render untouched when nothing has thrown');
+  assert(!passthrough.includes('Something broke'), 'and the fallback stays out of the way');
+
+  const next = ErrorBoundary.getDerivedStateFromError(new Error('kaboom'));
+  assert(next && next.error instanceof Error, 'a thrown error is captured into state');
+  assert(next.error.message === 'kaboom', 'and keeps its message for the detail panel');
+}
+
+// ── Armor slot persistence ──
+// Same bug shape as the Hope ratchet below, on a track that never got the fix:
+// the portal persisted the armor array at Armor Score length, but a track can
+// legitimately be longer than the score (the item's own armorSlots, plus the
+// legacy-6 correction). Every tap truncated the stored array and destroyed the
+// marks past the score.
+section('Armor slot persistence');
+{
+  // `armorSlots: 6` is treated as a legacy default and collapsed to the score,
+  // so it is NOT a case where the two diverge. Use armor whose slot count is
+  // genuinely higher than its score.
+  const armor = { type: 'armor', systemData: { armorScore: 4, armorSlots: 5, features: [] } };
+  const character = { armorSlots: [true, true, true, true, true] };
+
+  const slots = armorSlotCount(character, [armor], 4);
+  assert(slots === 5, `a 5-slot armor with score 4 has a 5-long track (got ${slots})`);
+
+  // Fortified is the other divergent case: it exempts armor from the legacy-6
+  // collapse, so the track really is six.
+  const fortified = { type: 'armor', systemData: { armorScore: 4, armorSlots: 6, features: ['Fortified'] } };
+  assert(armorSlotCount(character, [fortified], 4) === 6,
+    'Fortified armor keeps all six slots rather than collapsing to its score');
+
+  const toBoolArray = (filled, max) => Array.from({ length: max }, (_, i) => i < filled);
+
+  // The regression: persist at Armor Score and the track shrinks on first tap,
+  // destroying the marks past the score.
+  const broken = toBoolArray(3, 4);
+  assert(broken.length === 4 && slots === 5,
+    'persisting at Armor Score would drop the 5th slot');
+
+  // Fixed: persist at the real slot count and repeated taps never shorten it.
+  let stored = [...character.armorSlots];
+  for (let tap = 0; tap < 5; tap += 1) {
+    const trueMax = armorSlotCount({ armorSlots: stored }, [armor], 4);
+    stored = toBoolArray(Math.min(2, trueMax), trueMax);
+  }
+  assert(stored.length === 5,
+    `five armor taps leave the track five long (got ${stored.length})`);
+
+  // With no armor equipped the stored length is what it was — no truncation.
+  assert(armorSlotCount({ armorSlots: [false, false, false, false, false] }, [], 3) === 5,
+    'an unarmored character keeps their stored track length');
+}
+
+// ── Styled-portrait cache key ──
+// The cache stored the source portrait URL itself. Base64 avatars can't be
+// written to Firestore, so they were stored as null and then compared against a
+// live `data:…` string — a comparison that can never be true. Every entity with
+// a hand-uploaded avatar regenerated its styled portrait on every chapter,
+// forever, and the cache never healed itself.
+section('Styled-portrait cache key');
+{
+  const httpUrl = 'https://firebasestorage.googleapis.com/portrait.png';
+  assert(sourcePortraitKey(httpUrl) === httpUrl, 'a Storage URL is its own cache key');
+  assert(sourcePortraitKey(null) === null, 'no portrait means no key');
+  assert(sourcePortraitKey('') === null, 'an empty portrait means no key');
+
+  const avatar = `data:image/png;base64,${'QUJDREVG'.repeat(400)}`;
+  const key = sourcePortraitKey(avatar);
+  assert(key !== null, 'a base64 avatar produces a key rather than null');
+  assert(!key.includes('QUJDREVG'), 'and the key does not carry the image bytes');
+  assert(key.length < 64, `and is short enough to store (got ${key.length} chars)`);
+  assert(sourcePortraitKey(avatar) === key, 'the key is stable across calls');
+
+  const edited = `${avatar}XY`;
+  assert(sourcePortraitKey(edited) !== key, 'a different avatar produces a different key');
+
+  // The actual bug, asserted end to end: cache the avatar, then look it up.
+  const cached = { styleKey: 'watercolor', url: 'https://…/styled.png', sourcePortraitKey: key };
+  assert(cachedPortraitKey(cached) === sourcePortraitKey(avatar),
+    'a cached base64 avatar is found again on the next chapter');
+
+  // Portraits cached before this change stored the Storage URL under the old
+  // field name; those must keep hitting rather than all regenerating once.
+  const legacy = { styleKey: 'watercolor', url: 'https://…/styled.png', sourcePortraitUrl: httpUrl };
+  assert(cachedPortraitKey(legacy) === sourcePortraitKey(httpUrl),
+    'and portraits cached under the legacy field still hit');
+
+  // This is the broken state itself: the old code ran the base64 URL through
+  // safeUrlForFirestore, which nulls data URLs, and stored that. It must read
+  // as a miss — regenerate once, store a real key, and hit from then on —
+  // rather than silently matching and serving a portrait for a different image.
+  const broken = { styleKey: 'watercolor', url: 'https://…/styled.png', sourcePortraitUrl: null };
+  assert(cachedPortraitKey(broken) !== sourcePortraitKey(avatar),
+    'a portrait cached by the old broken path misses once, then heals');
 }
 
 // ── Encounter parsing ──
