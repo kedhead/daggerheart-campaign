@@ -98,7 +98,7 @@ export default async function handler(req, res) {
     const trimmed = text.trim().slice(0, 2500);
 
     const elevenKey = process.env.ELEVENLABS_API_KEY;
-    const openaiKey = clientKey || process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+    const openaiKey = clientKey || process.env.OPENAI_API_KEY;
 
     let fallbackReason = null;
     if (elevenKey) {

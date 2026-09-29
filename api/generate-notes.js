@@ -4,8 +4,14 @@ export const config = {
   maxDuration: 60
 };
 
+// Server-side OpenAI key.
+//
+// Deliberately does NOT fall back to VITE_OPENAI_API_KEY. Vite inlines any
+// VITE_-prefixed variable into the CLIENT bundle at build time, so setting one
+// to make a server route work would ship the key to every browser. Server keys
+// must not carry that prefix.
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 export default async function handler(req, res) {

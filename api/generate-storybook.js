@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   const { action = 'chapter', apiKey: rawClientKey } = req.body || {};
   // '__shared__' = client sentinel for "use the server's shared key"
   const clientApiKey = rawClientKey === '__shared__' ? null : rawClientKey;
-  const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+  const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
   if (!effectiveKey) {
     return res.status(500).json({ error: 'No OpenAI API key available.' });
   }
