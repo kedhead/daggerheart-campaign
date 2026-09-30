@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useDualityAutomation } from '../../hooks/useDualityAutomation';
 import { createPortal } from 'react-dom';
 import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getEffectiveProficiency, getTierForLevel } from '../../data/systems/daggerheart';
@@ -155,6 +156,22 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const rawArmorSlots = localArmor || character.armorSlots || DEFAULT_ARMOR_SLOTS;
   // Normalized so a track shortened by the old portal scar bug displays whole.
   const hopeSlots = normalizeHopeSlots(localHope || character.hopeSlots || DEFAULT_HOPE_SLOTS);
+
+  // Hope and crit-Stress from action rolls. Given the tracks AS DISPLAYED —
+  // this sheet holds unsaved local copies, and reading the props instead could
+  // overwrite a pip the player tapped a moment ago. Only applied when the
+  // viewer can edit this character: someone rolling on a sheet that isn't
+  // theirs shouldn't change it.
+  const applyRollOutcome = useDualityAutomation({
+    character: { ...character, hopeSlots, stressSlots },
+    campaign,
+    updateCharacter: canEdit ? updateCharacter : null,
+  });
+  const rollAction = async (opts = {}) => {
+    const result = await roll({ ...opts, kind: 'action' });
+    applyRollOutcome(result);
+    return result;
+  };
   const slayerDice = localSlayerDice ?? character.slayerDice ?? 0;
   const traits = { ...DEFAULT_TRAITS, ...character.traits };
 
@@ -428,7 +445,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const baseLabel = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} Check`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`attr-${traitName}`);
-    const result = await roll({ label, modifier: mod });
+    const result = await rollAction({ label, modifier: mod });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
@@ -439,7 +456,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`exp-${expName}`);
     setExpPickerActive(null);
-    const result = await roll({ label, modifier: mod });
+    const result = await rollAction({ label, modifier: mod });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
@@ -450,14 +467,15 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const baseLabel = `Attack: ${displayItemName(weapon)}`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`atk-${weapon.id}`);
-    const result = await roll({ label, modifier: mod });
+    const result = await rollAction({ label, modifier: mod });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
   const handleReactionRoll = async () => {
     const label = 'Reaction Roll';
     flashRoll('reaction');
-    const result = await roll({ label, modifier: 0 });
+    // A reaction roll: generates neither Hope nor Fear, even on a critical.
+    const result = await roll({ label, modifier: 0, kind: 'reaction' });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
@@ -475,7 +493,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const baseLabel = `Spellcast: ${card.name}`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, 0);
     flashRoll(`spell-${card.name}`);
-    const result = await roll({ label, modifier: mod });
+    const result = await rollAction({ label, modifier: mod });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 

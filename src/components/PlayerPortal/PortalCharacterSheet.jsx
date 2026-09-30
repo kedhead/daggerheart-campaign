@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, ChevronLeft, Moon, ArrowUp, Skull, Palette, Heart } from 'lucide-react';
 import { useDice, DiceTray } from '../../dice';
 import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor, DUALITY_SETS, getDualitySet, setDualitySet } from '../../dice/playerColor';
@@ -11,6 +11,7 @@ import FeaturesTab from './tabs/FeaturesTab';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
 import { armorSlotCount } from '../../utils/daggerheartSheetFields';
 import { isAtDeathsDoor, hpSlotsOf } from '../../utils/daggerheartVitals';
+import { useDualityAutomation } from '../../hooks/useDualityAutomation';
 import { displayItemName } from '../../utils/itemNames';
 import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
 import RestModal from '../Characters/RestModal';
@@ -105,6 +106,17 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   const campaignId = campaign?.id;
   const { roll, rollDamage } = useDice(campaignId);
 
+  // Every roll the tabs make is an action roll — a trait check, a weapon
+  // attack, a spellcast — so they get a roll that says so and then applies
+  // the Hope it earns. The Death Move below keeps the untagged `roll`: its
+  // "Risk It All" has its own resolution and must not generate Hope or Fear.
+  const applyRollOutcome = useDualityAutomation({ character, campaign, updateCharacter });
+  const rollAction = useCallback(async (opts = {}) => {
+    const doc = await roll({ ...opts, kind: 'action' });
+    applyRollOutcome(doc);
+    return doc;
+  }, [roll, applyRollOutcome]);
+
   // `getter` is what the UI shows, which for Hope is the scar-reduced track.
   // `persistMax` is the real stored length — passing the displayed max here
   // used to shrink the saved Hope array by one slot on every single tap,
@@ -155,7 +167,7 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   // Display only: the stored track stays hope.max long (see handleVitalToggle).
   const hopeAdjusted = { filled: Math.min(hope.filled, hope.max - scars), max: Math.max(0, hope.max - scars) };
 
-  const tabProps = { character, roll, rollDamage, campaignId, campaign, rollBonus, setRollBonus, items, updateCharacter, stashFromCharacter };
+  const tabProps = { character, roll: rollAction, rollDamage, campaignId, campaign, rollBonus, setRollBonus, items, updateCharacter, stashFromCharacter };
 
   return (
     <div className="lrp-portal">
