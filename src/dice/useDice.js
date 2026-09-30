@@ -23,7 +23,11 @@ export function useDice(campaignId) {
 
   // Daggerheart Hope/Fear roll. Optional advantage/disadvantage adds an
   // extra d6 (advantage adds, disadvantage subtracts).
-  const roll = useCallback(async ({ label = '', modifier = 0, advantage = false, disadvantage = false } = {}) => {
+  //
+  // `kind` is 'action' or 'reaction'. Pass it: only action rolls generate Hope
+  // and Fear, and an untagged roll is deliberately left for the table to
+  // resolve by hand.
+  const roll = useCallback(async ({ label = '', modifier = 0, advantage = false, disadvantage = false, kind = null } = {}) => {
     if (!campaignId) return null;
     return publishRoll({
       campaignId,
@@ -31,6 +35,7 @@ export function useDice(campaignId) {
       config: { modifier, advantage, disadvantage },
       rollerInfo: rollerInfoFromUser(currentUser),
       label,
+      kind,
     });
   }, [campaignId, currentUser]);
 

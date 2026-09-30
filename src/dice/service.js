@@ -25,7 +25,7 @@ function sanitizeRoller(rollerInfo = {}) {
 
 // Roll on the local device, write the canonical record, and return it.
 // This is the ONLY place rolls are published.
-export async function publishRoll({ campaignId, system, config = {}, rollerInfo, label = '', isPrivate = false }) {
+export async function publishRoll({ campaignId, system, config = {}, rollerInfo, label = '', isPrivate = false, kind = null }) {
   if (!campaignId) throw new Error('publishRoll: campaignId required');
   const result = rollForSystem(system, config);
   const roller = sanitizeRoller(rollerInfo);
@@ -39,6 +39,9 @@ export async function publishRoll({ campaignId, system, config = {}, rollerInfo,
     mode: result.mode ?? null,
     flags: result.flags,
     label: String(label || ''),
+    // 'action' | 'reaction' | null. Only 'action' rolls generate Hope and
+    // Fear (see utils/dualityAutomation.js); untagged rolls stay manual.
+    kind: kind === 'action' || kind === 'reaction' ? kind : null,
     isPrivate: !!isPrivate,
     rollerId: roller.rollerId,
     rollerName: roller.rollerName,
