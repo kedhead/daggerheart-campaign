@@ -31,6 +31,20 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
   // Active encounter hook
   const { activeEncounter, startEncounter } = useActiveEncounter(campaign?.id);
 
+  // Open the tracker when a fight starts (or is already running when this page
+  // loads), and close it when the fight ends — but otherwise let the DM leave.
+  // This used to render the tracker whenever an encounter existed, so its Back
+  // button did nothing mid-fight and the "Resume Tracker" button below, built
+  // for exactly this, could never be reached.
+  //
+  // Keyed on a boolean, not the encounter object: that object is replaced on
+  // every HP change, and depending on it would reopen the tracker the moment
+  // the DM left it.
+  const hasActiveEncounter = !!activeEncounter;
+  useEffect(() => {
+    setShowTracker(hasActiveEncounter);
+  }, [hasActiveEncounter]);
+
   // Auto-open a specific encounter when navigated here from a session's encounter link
   useEffect(() => {
     if (!targetEncounterId) return;
@@ -124,8 +138,8 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     npcs, locations, lore, sessions, timelineEvents, encounters, notes
   }), [npcs, locations, lore, sessions, timelineEvents, encounters, notes]);
 
-  // Show tracker if there's an active encounter or user clicked "Run"
-  if (showTracker || activeEncounter) {
+  // Show the tracker when asked to — see the effect above for when that is.
+  if (showTracker) {
     return (
       <LiveEncounterTracker
         campaignId={campaign?.id}

@@ -206,6 +206,7 @@ export default function QuestsView({
               onUpdateStatus={(status) => updateQuest(quest.id, { status })}
               isDM={isDM}
               entityData={entityData}
+              campaign={campaign}
             />
           ))}
         </div>

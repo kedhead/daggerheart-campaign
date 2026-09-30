@@ -10,6 +10,7 @@ import InventoryTab from './tabs/InventoryTab';
 import FeaturesTab from './tabs/FeaturesTab';
 import { computeDefenses } from '../../utils/daggerheartDefenses';
 import { armorSlotCount } from '../../utils/daggerheartSheetFields';
+import { isAtDeathsDoor, hpSlotsOf } from '../../utils/daggerheartVitals';
 import { displayItemName } from '../../utils/itemNames';
 import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
 import RestModal from '../Characters/RestModal';
@@ -44,14 +45,15 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   const [showDeath, setShowDeath] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
 
-  const hpMarked = (character.hpSlots || []).filter(Boolean).length;
-  const hpMax = (character.hpSlots || []).length || 6;
-  const atDeathsDoor = hpMax > 0 && hpMarked >= hpMax;
+  // hpSlots holds HP REMAINING, not damage marked — see daggerheartVitals.js.
+  // This used to count true slots as marks, which offered the Death Move to a
+  // character at full health and hid it from one with no HP left.
+  const atDeathsDoor = isAtDeathsDoor(character);
   const applyUpdates = (updates) => updateCharacter && updateCharacter(character.id, updates);
   const scars = scarCount(character);
 
   // Vital track state: { filled, max }
-  const [hp,     setHp]     = useState(() => toTrack(character.hpSlots,     6));
+  const [hp,     setHp]     = useState(() => toTrack(hpSlotsOf(character)));
   const [stress, setStress] = useState(() => toTrack(character.stressSlots, 6));
   // Normalized so a character whose track was shortened by the old scar bug is
   // repaired on read, and written back whole on the next toggle.
@@ -94,7 +96,7 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
 
   // Reset local state when server data changes
   useEffect(() => {
-    setHp(toTrack(character.hpSlots, 6));
+    setHp(toTrack(hpSlotsOf(character)));
     setStress(toTrack(character.stressSlots, 6));
     setHope(toTrack(normalizeHopeSlots(character.hopeSlots), 6));
     setArmor(toTrack(character.armorSlots, armorSlotsTotal || 0));

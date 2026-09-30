@@ -16,6 +16,9 @@ import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt }
 import { responseParser } from '../src/services/responseParser.js';
 import { promptBuilder } from '../src/services/promptBuilder.js';
 import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
+import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
+import { isVisibleToPlayers, visibleTo } from '../src/utils/playerVisibility.js';
+import { isAtDeathsDoor, hpRemaining, hpMax, stressMarked, partyVitals, weaponAttackModifier } from '../src/utils/daggerheartVitals.js';
 import { sourcePortraitKey, cachedPortraitKey } from '../src/utils/storybookPortraitCache.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration, narratableSlides } from '../src/components/Storybook/cinematicTimeline.js';
@@ -603,6 +606,106 @@ const encCampaign = { name: 'Lorelich', gameSystem: 'daggerheart' };
 
   const types = new Set(t1.match(/\b(phy|mag|fire|ice|lightning|poison|psychic)\b/g) || []);
   assert(types.size > 1, `and more than one damage type (got ${[...types].join(', ') || 'none'})`);
+}
+
+// ── Vital tracks ──
+// hpSlots means HP REMAINING (true = unharmed); stressSlots means Stress MARKED.
+// The Portal's Death Move check read hpSlots backwards and offered the Death
+// Move to healthy characters while hiding it from dying ones.
+section('Vital tracks');
+{
+  const healthy = { hpSlots: [true, true, true, true, true, true] };
+  const hurt = { hpSlots: [true, true, false, false, false, false] };
+  const down = { hpSlots: [false, false, false, false, false, false] };
+
+  assert(!isAtDeathsDoor(healthy), 'a character at full HP is not at death\'s door');
+  assert(!isAtDeathsDoor(hurt), 'nor is one with HP left');
+  assert(isAtDeathsDoor(down), 'a character with no HP left is');
+
+  // The exact broken expression, kept here so the regression is visible.
+  const oldPortalCheck = (c) => {
+    const marked = (c.hpSlots || []).filter(Boolean).length;
+    const max = (c.hpSlots || []).length || 6;
+    return max > 0 && marked >= max;
+  };
+  assert(oldPortalCheck(healthy) && !oldPortalCheck(down),
+    'the old portal check had it exactly backwards (healthy → dying, dying → fine)');
+
+  // A character created before hpSlots existed is at full health, not zero —
+  // a naive "count the trues" would put every such character at death's door.
+  assert(!isAtDeathsDoor({}), 'a character with no HP track yet is at full health');
+  assert(hpRemaining({}) === 6 && hpMax({}) === 6, 'and defaults to six of six');
+
+  assert(hpRemaining(hurt) === 2 && hpMax(hurt) === 6, 'remaining HP counts the true slots');
+  assert(stressMarked({ stressSlots: [true, true, false, false, false, false] }) === 2,
+    'marked Stress counts the true slots');
+}
+{
+  // The GM Screen's party panel read currentHp/currentStress, which no
+  // Daggerheart character has, so it showed "—" for everyone.
+  const dh = { hpSlots: [true, true, true, false, false, false], stressSlots: [true, false, false, false, false, false] };
+  const v = partyVitals(dh);
+  assert(v.hp === 3 && v.maxHp === 6, `party panel shows real HP (got ${v.hp}/${v.maxHp})`);
+  assert(v.stress === 1 && v.maxStress === 6, `and real Stress (got ${v.stress}/${v.maxStress})`);
+
+  const legacy = { currentHp: 12, maxHp: 20, currentStress: 2, maxStress: 5 };
+  const lv = partyVitals(legacy);
+  assert(lv.hp === 12 && lv.maxHp === 20 && lv.stress === 2 && lv.maxStress === 5,
+    'characters from other systems keep their numeric fields');
+}
+{
+  // Proficiency is the number of damage dice, never an attack bonus. The
+  // Portal added it anyway: +1 at tier 1, rising to +4 or more at tier 4.
+  const traits = { agility: 2, strength: 1, finesse: 0 };
+  const sword = { systemData: { trait: 'Strength' } };
+  assert(weaponAttackModifier(traits, sword) === 1, 'an attack adds the weapon\'s trait');
+  assert(weaponAttackModifier(traits, sword) !== 1 + 3,
+    'and never Proficiency (a tier-3 character would have been +3 higher)');
+  assert(weaponAttackModifier(traits, {}) === 2, 'a weapon with no trait falls back to Agility');
+}
+
+// ── Player visibility ──
+// Two flags mean DM-only: `hidden` (the DM's toggle) and `dmOnly` (set by the
+// AI planner on puzzle solutions). Nothing read `dmOnly`, so solutions reached
+// the players' Lore tab; the NPC list checked neither, so hidden NPCs were
+// listed for everyone.
+section('Player visibility');
+{
+  const open = { name: 'Barkeep' };
+  const hidden = { name: 'The Spy', hidden: true };
+  const solution = { title: 'Puzzle solution: the Orrery', dmOnly: true };
+
+  assert(isVisibleToPlayers(open), 'ordinary content is visible to players');
+  assert(!isVisibleToPlayers(hidden), 'hidden content is not');
+  assert(!isVisibleToPlayers(solution), 'nor is dmOnly content — the flag nothing used to read');
+
+  const all = [open, hidden, solution];
+  assert(visibleTo(all, false).length === 1, 'a player sees only the open entry');
+  assert(visibleTo(all, true).length === 3, 'the DM sees everything');
+  assert(visibleTo(undefined, false).length === 0, 'a missing list is empty, not an error');
+}
+
+// ── Journal authorship ──
+// The journal composer matched characters on `userId` / `ownerId`, which no
+// character has. Ownership is `playerId || createdBy`, so the "my characters"
+// list was always empty and every entry posted as Anonymous.
+section('Journal authorship');
+{
+  const mine = { id: 'c1', name: 'Aria', playerId: 'u1' };
+  const madeByMe = { id: 'c2', name: 'Bram', createdBy: 'u1' };
+  const theirs = { id: 'c3', name: 'Cass', playerId: 'u2' };
+  const handedOver = { id: 'c4', name: 'Dell', createdBy: 'u1', playerId: 'u2' };
+
+  const ownedBy = (uid) => [mine, madeByMe, theirs, handedOver]
+    .filter(c => uid && getCharacterOwnerId(c) === uid).map(c => c.name);
+
+  assert(ownedBy('u1').join() === 'Aria,Bram', `a player finds their own characters (got ${ownedBy('u1').join() || 'none'})`);
+  assert(!ownedBy('u1').includes('Dell'),
+    'a sheet the GM handed to another player belongs to that player, not its creator');
+  assert(ownedBy(null).length === 0, 'a signed-out viewer owns nothing');
+
+  const oldMatch = [mine, madeByMe].filter(c => c.userId === 'u1' || c.ownerId === 'u1');
+  assert(oldMatch.length === 0, 'the old match found none of them — hence "Anonymous"');
 }
 
 // ── Error boundary ──

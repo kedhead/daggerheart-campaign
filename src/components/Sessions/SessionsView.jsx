@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import ConfirmDeleteModal from '../ConfirmDeleteModal';
 import { Plus, BookOpen, ScrollText, Sparkles } from 'lucide-react';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
@@ -53,8 +54,21 @@ export default function SessionsView({
      storybookChapters.length]
   );
 
+  // Every card here renders [[wiki links]], and a link resolves only against the
+  // entities it's given. These cards were rendered without any, so every link
+  // on this page showed as not found. Memoized so each card's registry isn't
+  // rebuilt on every render.
+  const linkEntities = useMemo(
+    () => ({ npcs, locations, lore, sessions, timelineEvents, encounters, notes }),
+    [npcs, locations, lore, sessions, timelineEvents, encounters, notes]
+  );
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null);
+  // Deletes here are permanent, so they go through a confirm first — they
+  // used to fire on a single tap.
+  const [pendingDelete, setPendingDelete] = useState(null);
+
   const [liveSession, setLiveSession] = useState(null);
   const [isGMAssistantOpen, setIsGMAssistantOpen] = useState(false);
 
@@ -205,17 +219,26 @@ export default function SessionsView({
         </div>
       ) : (
         <div className="space-y-4">
+          <ConfirmDeleteModal
+            isOpen={!!pendingDelete}
+            onClose={() => setPendingDelete(null)}
+            onConfirm={() => deleteSession(pendingDelete.id)}
+            kind="Session"
+            name={pendingDelete?.title}
+            consequence={'This is permanent, and takes the session’s recap and highlights with it. There is no trash to restore it from.'}
+          />
           {sortedSessions.map(session => (
             <SessionCard
               key={session.id}
               session={session}
               onEdit={() => handleEdit(session)}
-              onDelete={() => deleteSession(session.id)}
+              onDelete={() => setPendingDelete(session)}
               onGoLive={() => handleGoLive(session)}
               onEncounterClick={onEncounterClick}
               encounters={encounters}
               isDM={isDM}
               campaign={campaign}
+              entities={linkEntities}
             />
           ))}
         </div>

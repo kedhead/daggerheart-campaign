@@ -7,7 +7,10 @@ import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campaign, isEmbedded = false, entities }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign, entities);
+  // Pass isDM: the registry drops hidden entities for players only when told
+  // who's looking. It defaults to DM, so without this a player could tap
+  // [[a hidden NPC]] and open it.
+  const { getByName } = useEntityRegistry(campaign, entities, isDM);
 
   const getTypeStyles = (type) => {
     switch (type) {

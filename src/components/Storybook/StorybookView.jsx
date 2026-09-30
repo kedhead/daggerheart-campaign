@@ -30,6 +30,11 @@ export default function StorybookView({
   const openaiKey = keys?.openai || null;
 
   const [editingChapterId, setEditingChapterId] = useState(null);
+  // Which chapter the reader opens on. ChapterReader has always accepted
+  // `initialChapterId`, but nothing here declared or passed it, so the editor's
+  // "View" button called an undefined setter and threw. Remembering the chapter
+  // being edited also means Back returns to it instead of to chapter one.
+  const [activeChapterId, setActiveChapterId] = useState(null);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReorderOpen, setIsReorderOpen] = useState(false);
@@ -104,6 +109,10 @@ export default function StorybookView({
         </div>
       )}
 
+      {/* Nothing creates `pending_review` chapters any more — the automatic
+          session-finalize draft was removed because it produced duplicates in
+          the wrong style. This stays so a DM can approve or discard any such
+          drafts written before then, and it hides itself once there are none. */}
       {isDM && pendingCount > 0 && (
         <div style={{ maxWidth: 1280, margin: '0 auto 1.25rem' }}>
           <PendingDraftBanner
@@ -135,7 +144,11 @@ export default function StorybookView({
           isDM={isDM}
           currentUserId={currentUserId}
           storybook={storybook}
-          onEditChapter={(chapterId) => setEditingChapterId(chapterId)}
+          initialChapterId={activeChapterId}
+          onEditChapter={(chapterId) => {
+            setActiveChapterId(chapterId);
+            setEditingChapterId(chapterId);
+          }}
         />
       )}
 
@@ -193,7 +206,7 @@ function EmptyState({ isDM, onGenerate }) {
         </div>
         <p style={{ fontStyle: 'italic', color: 'var(--sb-ink-soft)', maxWidth: '48ch', margin: '0 auto' }}>
           {isDM
-            ? 'Finalize a session and the chronicler will draft a chapter from its notes — or commission one by hand from any completed session.'
+            ? 'Commission a chapter from any completed session, and the chronicler will write it from that session’s notes.'
             : 'The chronicler has yet to set down a chapter. Return after the next session to find the ink dried.'}
         </p>
         {isDM && (
