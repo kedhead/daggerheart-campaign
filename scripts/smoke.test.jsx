@@ -16,6 +16,7 @@ import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt }
 import { responseParser } from '../src/services/responseParser.js';
 import { promptBuilder } from '../src/services/promptBuilder.js';
 import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
+import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
 import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
 import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
 import { isVisibleToPlayers, visibleTo } from '../src/utils/playerVisibility.js';
@@ -2693,6 +2694,27 @@ section('Campaign memory');
   const d2 = previouslyOn({ sessions: sessions.slice(0, 4), chapters, isDM: true });
   assert(d2.chapter?.id === 'ch-b', "the DM sees that session's chapter even as a draft");
   assert(previouslyOn({}).session === null, 'a brand-new campaign has nothing to recap');
+}
+
+{
+  const sessions = [
+    { id: 's1', number: 3, title: 'The Ferry', status: 'completed', date: '2026-01-01', summary: 'Vex sold us a map.' },
+    { id: 's2', number: 4, title: 'Next Week', status: 'planned', date: '2026-02-01', summary: 'Vex ambushes the party.' },
+  ];
+  const chapters = [
+    { id: 'c2', chapterNumber: 2, title: 'Crossing', status: 'published', spotlights: [{ entityId: 'npc-vex', moment: 'betrayed the party at the ferry' }] },
+    { id: 'c3', chapterNumber: 3, title: 'Unwritten', status: 'draft', spotlights: [{ entityId: 'npc-vex', moment: 'dies' }] },
+  ];
+  const vex = { id: 'npc-vex', name: 'Vex' };
+  const player = strip(renderToString(<AppearsIn entity={vex} sessions={sessions} chapters={chapters} isDM={false} />));
+  assert(player.includes('Session 3: The Ferry') && !player.includes('Next Week'),
+    'a player sees the played session an NPC appears in, not the planned one');
+  assert(player.includes('Ch. II: Crossing') && player.includes('betrayed the party at the ferry') && !player.includes('Unwritten'),
+    'and the published chapter that spotlights them, with the moment — not the draft');
+  const dm = strip(renderToString(<AppearsIn entity={vex} sessions={sessions} chapters={chapters} isDM />));
+  assert(dm.includes('Unwritten') && dm.includes('draft'), 'the DM sees drafts, marked as drafts');
+  assert(renderToString(<AppearsIn entity={{ id: 'x', name: 'Nobody' }} sessions={sessions} />) === '',
+    'an entity with no appearances renders nothing, not an empty heading');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

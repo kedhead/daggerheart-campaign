@@ -11,7 +11,7 @@ import { visibleTo } from '../../utils/playerVisibility';
 
 export default function NPCsView({
   npcs, addNPC, updateNPC, deleteNPC, isDM, campaign, campaignFrame,
-  locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [],
+  locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [], chapters,
   adversaries = [], characters = [], items = [], maps = [], battleMaps = [], storybookChapters = []
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -186,6 +186,7 @@ export default function NPCsView({
               isDM={isDM}
               campaign={campaign}
               entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+              chapters={chapters}
             />
           ))}
         </div>

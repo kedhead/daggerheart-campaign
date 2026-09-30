@@ -432,6 +432,7 @@ export default function AppRouter({
           maps={maps}
           battleMaps={battleMaps}
           storybookChapters={publishedStorybookChapters}
+          chapters={storybookChapters}
         />
       );
 
@@ -471,6 +472,7 @@ export default function AppRouter({
           timelineEvents={timelineEvents}
           encounters={encounters}
           notes={notes}
+          chapters={storybookChapters}
         />
       );
 

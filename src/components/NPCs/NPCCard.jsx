@@ -4,6 +4,7 @@ import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import InlineEdit from '../InlineEdit/InlineEdit';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import AppearsIn from '../CampaignMemory/AppearsIn';
 import { useToast } from '../../contexts/ToastContext';
 import { downloadUrlAs, slugify } from '../../utils/downloadBlob';
 
@@ -16,11 +17,12 @@ async function downloadPortrait(url, name) {
   }
 }
 
-export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaign, isEmbedded = false, entities }) {
+export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaign, isEmbedded = false, entities, chapters }) {
   const { success, error } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign, entities);
+  // isDM: the registry hides hidden entities from players only when told.
+  const { getByName } = useEntityRegistry(campaign, entities, isDM);
 
   const getRelationshipStyles = (relationship) => {
     switch (relationship) {
@@ -151,6 +153,16 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
                 </div>
               </div>
             )}
+
+            <AppearsIn
+              entity={npc}
+              kind="npc"
+              sessions={entities?.sessions}
+              chapters={chapters}
+              isDM={isDM}
+              onOpen={setViewingEntity}
+              getByName={getByName}
+            />
 
             {isDM && !isEmbedded && (
               <div className="flex items-center gap-3 pt-6 border-t border-white/5">
