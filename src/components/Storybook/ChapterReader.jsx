@@ -8,6 +8,7 @@ import MediaLightbox from './MediaLightbox';
 import CinematicPlayer from './CinematicPlayer';
 import { interleaveProseAndScenes } from './cinematicTimeline';
 import { useAllJournals } from '../../hooks/useStorybook';
+import { getCharacterOwnerId } from '../../utils/characterOwnership';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ChapterReader — one scrolling chapter at a time, with chapter navigation.
@@ -460,8 +461,11 @@ function TOCOverlay({ chapters, currentIndex, onClose, onSelect }) {
 /* ── Journal composer ────────────────────────────────────────────────────── */
 
 function JournalComposer({ characters, currentUserId, onSubmit }) {
+  // Characters are owned by `playerId || createdBy` (characterOwnership.js).
+  // This matched `userId` / `ownerId`, which no character has, so the list was
+  // always empty and every journal entry posted as "Anonymous".
   const myCharacters = useMemo(
-    () => (characters || []).filter(c => c.userId === currentUserId || c.ownerId === currentUserId),
+    () => (characters || []).filter(c => currentUserId && getCharacterOwnerId(c) === currentUserId),
     [characters, currentUserId]
   );
   const [characterId, setCharacterId] = useState(myCharacters[0]?.id || '');
