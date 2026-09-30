@@ -475,6 +475,27 @@ export default function DashboardView({
             ))}
           </div>
 
+          {/* Hope & Fear automation — Daggerheart only */}
+          {(!campaignForm.gameSystem || campaignForm.gameSystem === 'daggerheart') && (
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-2">
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={campaignForm.autoHopeFear !== false}
+                  onChange={(e) => setCampaignForm({ ...campaignForm, autoHopeFear: e.target.checked })}
+                  className="mt-0.5 w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-xs font-bold text-white/60 group-hover:text-white transition-colors">Track Hope &amp; Fear automatically</span>
+                  <span className="block text-[10px] text-white/55 font-medium italic">
+                    Action rolls with Hope add a Hope to the roller; rolls with Fear add a Fear to your pool;
+                    a critical also clears a Stress. Reaction rolls never count. Turn off to track by hand.
+                  </span>
+                </span>
+              </label>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-6 border-t border-white/5">
             <button type="button" className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 font-black text-xs uppercase tracking-widest transition-all" onClick={() => setIsEditingCampaign(false)}>
               Cancel
