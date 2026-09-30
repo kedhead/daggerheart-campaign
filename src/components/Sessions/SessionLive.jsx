@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { Radio, Square, Star, Copy, Trash2, ArrowLeft, FileText, CheckCircle, Sparkles, Loader2 } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Radio, Square, Star, Copy, Trash2, ArrowLeft, FileText, CheckCircle, Sparkles, Loader2, UserPlus, MapPin } from 'lucide-react';
 import { useSessionLive } from '../../hooks/useSessionLive';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import { autoLinkText } from '../../utils/autoLinkText';
+import { TRANSCRIPTION_NOTE_PREFIX, starredHighlights, mergeHighlights, unresolvedLinks } from '../../utils/campaignMemory';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { summarizeSessionNotes } from '../../services/sessionSummaryGenerator';
 import LiveNoteInput from './LiveNoteInput';
@@ -19,6 +22,7 @@ export default function SessionLive({
   currentUserId,
   entities,
   onUpdateSession,
+  onCreateEntity,
   onBack
 }) {
   const {
@@ -31,14 +35,35 @@ export default function SessionLive({
     toggleHighlight,
     deleteNote,
     clearAllNotes,
+    archiveAllNotes,
     compileHighlights
   } = useSessionLive(campaignId, session?.id, isDM);
+
+  const { getByName } = useEntityRegistry(campaign, entities, isDM);
+  // The recap links the names that have pages. Only people, places and lore:
+  // linking every session title and encounter name that happens to appear in
+  // the prose would bury the links that matter.
+  const linkNames = useMemo(() => [
+    ...(entities?.npcs || []).map(n => n.name),
+    ...(entities?.locations || []).map(l => l.name),
+    ...(entities?.lore || []).map(l => l.title),
+  ].filter(Boolean), [entities?.npcs, entities?.locations, entities?.lore]);
 
   const [showFinalizeModal, setShowFinalizeModal] = useState(false);
   const [compiledSummary, setCompiledSummary] = useState('');
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summarizeError, setSummarizeError] = useState(null);
+  const [keepHighlights, setKeepHighlights] = useState(true);
+  const [creating, setCreating] = useState(null);
+  const [createError, setCreateError] = useState(null);
+
+  const starred = useMemo(() => starredHighlights(highlightedNotes), [highlightedNotes]);
+  // Names someone deliberately [[linked]] that have no page yet.
+  const missingPages = useMemo(
+    () => unresolvedLinks([compiledSummary], (name) => getByName(name)),
+    [compiledSummary, getByName]
+  );
 
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
 
@@ -63,7 +88,7 @@ export default function SessionLive({
         apiKey,
         provider
       });
-      setCompiledSummary(polished);
+      setCompiledSummary(autoLinkText(polished, linkNames));
     } catch (err) {
       setSummarizeError(err.message || 'Summarization failed.');
     } finally {
@@ -89,8 +114,22 @@ export default function SessionLive({
 
   const handleOpenFinalize = () => {
     const summary = compileHighlights();
-    setCompiledSummary(summary);
+    setCompiledSummary(autoLinkText(summary, linkNames));
+    setCreateError(null);
     setShowFinalizeModal(true);
+  };
+
+  const handleCreateEntity = async (kind, name) => {
+    if (!onCreateEntity) return;
+    setCreating(`${kind}:${name}`);
+    setCreateError(null);
+    try {
+      await onCreateEntity(kind, name);
+    } catch (err) {
+      setCreateError(`Couldn't create ${name}: ${err.message || 'unknown error'}`);
+    } finally {
+      setCreating(null);
+    }
   };
 
   const handleFinalize = async () => {
@@ -103,21 +142,26 @@ export default function SessionLive({
     const divider = existingSummary ? '\n\n--- Live Notes ---\n\n' : '';
     const newSummary = existingSummary + divider + compiledSummary;
 
-    await onUpdateSession(session.id, {
+    const updates = {
       summary: newSummary,
       isLive: false,
       liveEndedAt: new Date().toISOString(),
       status: 'completed'
-    });
+    };
+    if (keepHighlights && starred.length > 0) {
+      updates.highlights = mergeHighlights(session.highlights, starred);
+    }
+    await onUpdateSession(session.id, updates);
 
     // Finalizing used to also start a Story So Far chapter in the background.
     // It ran for minutes writing nothing, so DMs generated the same session by
     // hand and ended up with two chapters — see storybookGenerator.js. Write
     // the chapter from Story So Far when you want one.
 
-    // Optionally clear notes after finalizing
+    // Keep the notes, archived. They used to be deleted here — players'
+    // included — so anything the recap left out was lost.
     if (isDM) {
-      await clearAllNotes();
+      await archiveAllNotes();
     }
 
     setIsFinalizing(false);
@@ -236,7 +280,7 @@ export default function SessionLive({
       {isDM && (
         <div className="px-4 pt-4 shrink-0">
           <LiveTranscriptionPanel 
-            onNotesGenerated={(notes) => handleAddNote(`🎙️ **AI Transcription Notes:**\n\n${notes}`, true)} 
+            onNotesGenerated={(notes) => handleAddNote(`${TRANSCRIPTION_NOTE_PREFIX}\n\n${notes}`, true)}
           />
         </div>
       )}
@@ -299,12 +343,63 @@ export default function SessionLive({
             />
           </div>
 
+          {missingPages.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-white/60 m-0">
+                Linked in the notes, but no page yet
+              </p>
+              <ul className="flex flex-wrap gap-2 m-0 p-0 list-none">
+                {missingPages.map(name => (
+                  <li key={name} className="flex items-center gap-1 pl-3 pr-1 py-1 bg-white/5 border border-white/10 rounded-full text-sm text-white/80">
+                    <span className="mr-1">{name}</span>
+                    {onCreateEntity && (
+                      <>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-50"
+                          onClick={() => handleCreateEntity('npc', name)}
+                          disabled={!!creating}
+                          aria-label={`Create an NPC named ${name}`}
+                        >
+                          {creating === `npc:${name}` ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
+                          NPC
+                        </button>
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-50"
+                          onClick={() => handleCreateEntity('location', name)}
+                          disabled={!!creating}
+                          aria-label={`Create a location named ${name}`}
+                        >
+                          {creating === `location:${name}` ? <Loader2 size={12} className="animate-spin" /> : <MapPin size={12} />}
+                          Location
+                        </button>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {createError && <p className="text-sm text-red-400 m-0">{createError}</p>}
+            </div>
+          )}
+
+          {starred.length > 0 && (
+            <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={keepHighlights}
+                onChange={(e) => setKeepHighlights(e.target.checked)}
+              />
+              Add {starred.length === 1 ? 'the starred note' : `the ${starred.length} starred notes`} to this session’s highlights
+            </label>
+          )}
+
           <div className="p-4 bg-[var(--bg-tertiary)] rounded-lg border-l-4 border-[rgb(var(--color-primary))]">
             <p className="font-semibold text-white mb-2">This will:</p>
             <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
-              <li>Append these notes to the session summary</li>
+              <li>Append these notes to the session summary, linking names that have pages</li>
               <li>End live mode for this session</li>
-              <li>Clear the live notes</li>
+              <li>Archive the live notes — they’re kept, and the live feed starts clean next time</li>
             </ul>
           </div>
 

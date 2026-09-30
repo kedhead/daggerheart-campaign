@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { isArchivedNote } from '../utils/campaignMemory';
 
 /**
  * Hook for managing live session mode with real-time note-taking
@@ -51,11 +52,15 @@ export function useSessionLive(campaignId, sessionId, isDM = false) {
     const unsubscribe = onSnapshot(
       notesQuery,
       (snapshot) => {
-        const notes = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate() || new Date()
-        }));
+        // Notes from a finalized run of this session are archived, not
+        // deleted; the live feed starts clean if the session goes live again.
+        const notes = snapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            timestamp: doc.data().timestamp?.toDate() || new Date()
+          }))
+          .filter(note => !isArchivedNote(note));
         setLiveNotes(notes);
         setLoading(false);
       },
@@ -175,19 +180,48 @@ export function useSessionLive(campaignId, sessionId, isDM = false) {
     if (!basePath || !isDM) return false;
 
     try {
+      // Only the notes on screen: archived notes from an earlier finalize
+      // aren't shown here, so "clear all" mustn't reach them.
       const snapshot = await getDocs(collection(db, basePath));
-      if (snapshot.empty) return true;
-
-      const batch = writeBatch(db);
-      snapshot.docs.forEach(docSnapshot => {
-        batch.delete(doc(db, basePath, docSnapshot.id));
-      });
-
-      await batch.commit();
-      console.log('[useSessionLive] Cleared', snapshot.size, 'notes');
+      const live = snapshot.docs.filter(d => !isArchivedNote(d.data()));
+      for (let i = 0; i < live.length; i += 500) {
+        const batch = writeBatch(db);
+        live.slice(i, i + 500).forEach(d => batch.delete(doc(db, basePath, d.id)));
+        await batch.commit();
+      }
+      console.log('[useSessionLive] Cleared', live.length, 'notes');
       return true;
     } catch (err) {
       console.error('[useSessionLive] Error clearing notes:', err);
+      setError(err.message);
+      return false;
+    }
+  };
+
+  /**
+   * Archive every live note once the session is finalized (DM only).
+   *
+   * Finalizing used to batch-delete them — players' notes included — as soon
+   * as the recap was saved, so anything the recap left out was gone. Archived
+   * notes stay in Firestore and drop out of the live feed.
+   */
+  const archiveAllNotes = async () => {
+    if (!basePath || !isDM) return false;
+
+    try {
+      const snapshot = await getDocs(collection(db, basePath));
+      const live = snapshot.docs.filter(d => !isArchivedNote(d.data()));
+      // A batch holds at most 500 writes.
+      for (let i = 0; i < live.length; i += 500) {
+        const batch = writeBatch(db);
+        live.slice(i, i + 500).forEach(d => {
+          batch.update(doc(db, basePath, d.id), { archived: true, archivedAt: serverTimestamp() });
+        });
+        await batch.commit();
+      }
+      return true;
+    } catch (err) {
+      console.error('[useSessionLive] Error archiving notes:', err);
       setError(err.message);
       return false;
     }
@@ -239,6 +273,7 @@ export function useSessionLive(campaignId, sessionId, isDM = false) {
     updateNote,
     deleteNote,
     clearAllNotes,
+    archiveAllNotes,
     compileHighlights,
     getNotesByAuthor
   };

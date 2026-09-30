@@ -19,6 +19,7 @@ import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
 import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
 import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
 import { isVisibleToPlayers, visibleTo } from '../src/utils/playerVisibility.js';
+import { isArchivedNote, starredHighlights, TRANSCRIPTION_NOTE_PREFIX, mergeHighlights, unresolvedLinks, appearancesFor, previouslyOn } from '../src/utils/campaignMemory.js';
 import { isAtDeathsDoor, hpRemaining, hpMax, stressMarked, partyVitals, weaponAttackModifier } from '../src/utils/daggerheartVitals.js';
 import { sourcePortraitKey, cachedPortraitKey } from '../src/utils/storybookPortraitCache.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
@@ -2583,6 +2584,115 @@ section('Custom item names');
   ));
   assert(actions.includes('Rename Longsword'),
     'the actions tab lets a player rename the weapon they are swinging');
+}
+
+// ── Campaign memory ──
+section('Campaign memory');
+{
+  assert(isArchivedNote({ archived: true }) && !isArchivedNote({}) && !isArchivedNote(null),
+    'archived live notes are recognised; ordinary and missing notes are not');
+
+  const starred = starredHighlights([
+    { content: ' Vex lied ', isHighlight: true },
+    { content: 'Walked north', isHighlight: false },
+    { content: `${TRANSCRIPTION_NOTE_PREFIX}\n\nA page of recap`, isHighlight: true },
+    { content: 'Old star', isHighlight: true, archived: true },
+  ]);
+  assert(JSON.stringify(starred) === JSON.stringify(['Vex lied']),
+    `only starred, live, hand-written notes become highlights — not the transcription dump (got ${JSON.stringify(starred)})`);
+
+  assert(JSON.stringify(mergeHighlights(['Found the key'], ['found the key ', 'Vex lied', '', '  '])) ===
+    JSON.stringify(['Found the key', 'Vex lied']),
+    'starred notes join highlights once — trimmed, case-insensitive, blanks dropped, existing first');
+  assert(mergeHighlights(undefined, ['A']).length === 1 && mergeHighlights(null, null).length === 0,
+    'mergeHighlights tolerates a session with no highlights yet');
+
+  const known = new Set(['vex', 'thornwall']);
+  const missing = unresolvedLinks(
+    ['We met [[Vex]] and [[Old Marrow]] at [[Thornwall]].', 'Later [[old marrow]] fled to [[The Sunken Bell]].', null],
+    (n) => known.has(n.toLowerCase()),
+  );
+  assert(JSON.stringify(missing) === JSON.stringify(['Old Marrow', 'The Sunken Bell']),
+    `only explicit [[links]] with no page are offered, once each (got ${JSON.stringify(missing)})`);
+  assert(unresolvedLinks(['The Tuesday meeting with Brom']).length === 0,
+    'capitalised words that nobody linked are never offered as new entities');
+}
+{
+  const vex = { id: 'npc-vex', name: 'Vex' };
+  const sessions = [
+    { id: 's1', status: 'completed', date: '2026-01-01', summary: 'Vex sold us a map.' },
+    { id: 's2', status: 'completed', date: '2026-02-01', summary: 'Quiet road.', dmNotes: 'Vex is secretly the cult leader.' },
+    { id: 's3', status: 'planned', date: '2026-03-01', summary: 'Vex ambushes the party.' },
+    { id: 's4', status: 'completed', date: '2026-01-15', summary: 'Nothing.', highlights: ['Vex winked'] },
+    { id: 's5', status: 'completed', date: '2026-01-20', summary: 'Vex again.', hidden: true },
+    { id: 's6', status: 'completed', date: '2026-01-25', summary: 'The vexing riddle.' },
+  ];
+  const chapters = [
+    { id: 'c2', chapterNumber: 2, status: 'published', spotlights: [{ entityId: 'npc-vex', moment: 'betrayed the party at the ferry' }] },
+    { id: 'c1', chapterNumber: 1, status: 'published', spotlights: [{ entityId: 'npc-vex', moment: 'first appears' }] },
+    { id: 'c3', chapterNumber: 3, status: 'draft', spotlights: [{ entityId: 'npc-vex', moment: 'dies' }] },
+  ];
+
+  const player = appearancesFor(vex, { sessions, chapters, isDM: false });
+  const ids = player.sessions.map(s => s.id);
+  assert(!ids.includes('s3'), 'a PLANNED session never tells players an NPC is coming');
+  assert(!ids.includes('s2'), "players don't match on a session's DM notes");
+  assert(!ids.includes('s5'), 'hidden sessions stay hidden from players');
+  assert(!ids.includes('s6'), 'the name matches whole words only ("vexing" is not Vex)');
+  assert(JSON.stringify(ids) === JSON.stringify(['s4', 's1']),
+    `players see played sessions, newest first, including highlights (got ${JSON.stringify(ids)})`);
+  assert(JSON.stringify(player.chapters.map(c => c.chapter.id)) === JSON.stringify(['c1', 'c2']) &&
+    player.chapters[1].moment === 'betrayed the party at the ferry',
+    'players see published chapter spotlights in chapter order, with the moment');
+
+  const dm = appearancesFor(vex, { sessions, chapters, isDM: true });
+  assert(dm.sessions.some(s => s.id === 's2') && dm.sessions.some(s => s.id === 's5'),
+    'the DM also sees DM-note mentions and hidden sessions');
+  assert(!dm.sessions.some(s => s.id === 's3'), 'planned sessions are not "appearances" for the DM either');
+  assert(dm.chapters.some(c => c.chapter.id === 'c3'), 'the DM sees draft chapters');
+
+  assert(appearancesFor({ id: 'x', name: 'Al' }, { sessions: [{ status: 'completed', summary: 'Al was here' }] }).sessions.length === 0,
+    'names under three characters are skipped rather than matched inside words');
+
+  const npcs = [
+    { id: 'n1', name: 'Brom', location: 'Thornwall' },
+    { id: 'n2', name: 'Sly', location: ' thornwall ', hidden: true },
+    { id: 'n3', name: 'Ada', location: 'Elsewhere' },
+  ];
+  const place = { id: 'loc1', name: 'Thornwall' };
+  assert(JSON.stringify(appearancesFor(place, { npcs, kind: 'location' }).npcsHere.map(n => n.id)) === JSON.stringify(['n1']),
+    'a location lists the visible NPCs who live there');
+  assert(appearancesFor(place, { npcs, kind: 'location', isDM: true }).npcsHere.length === 2,
+    'the DM also sees hidden NPCs at a location');
+  assert(appearancesFor(vex, { npcs, kind: 'npc' }).npcsHere.length === 0, 'NPCs have no residents');
+}
+{
+  const sessions = [
+    { id: 'a', status: 'completed', date: '2026-01-01', title: 'One' },
+    { id: 'b', status: 'completed', date: '2026-02-01', title: 'Two' },
+    { id: 'c', status: 'planned', date: '2026-03-01', title: 'Prep' },
+    { id: 'd', status: 'planned', date: '2026-01-05', title: 'Stale plan' },
+    { id: 'e', status: 'completed', date: '2026-02-10', title: 'Secret', hidden: true },
+  ];
+  const chapters = [
+    { id: 'ch-b', sessionId: 'b', status: 'draft' },
+  ];
+  const quests = [
+    { id: 'q1', status: 'active' }, { id: 'q2', status: 'completed' }, { id: 'q3', status: 'active', hidden: true },
+    ...Array.from({ length: 6 }, (_, i) => ({ id: `qa${i}`, status: 'active' })),
+  ];
+  const p = previouslyOn({ sessions, chapters, quests, isDM: false, today: '2026-02-15' });
+  assert(p.session?.id === 'b', `"Previously on" is the last PLAYED visible session, not the prep (got ${p.session?.id})`);
+  assert(p.chapter === null, "players aren't shown a draft chapter");
+  assert(p.activeQuests.length === 5 && !p.activeQuests.some(q => q.id === 'q2' || q.id === 'q3'),
+    'up to five active, visible quests');
+  assert(p.nextSession?.id === 'c', 'the next session is the earliest planned one not already past');
+
+  const d = previouslyOn({ sessions, chapters, quests, isDM: true, today: '2026-02-15' });
+  assert(d.session?.id === 'e' && d.chapter === null, 'the DM sees hidden sessions too');
+  const d2 = previouslyOn({ sessions: sessions.slice(0, 4), chapters, isDM: true });
+  assert(d2.chapter?.id === 'ch-b', "the DM sees that session's chapter even as a draft");
+  assert(previouslyOn({}).session === null, 'a brand-new campaign has nothing to recap');
 }
 
 console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

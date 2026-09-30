@@ -116,6 +116,19 @@ export default function SessionsView({
     setLiveSession(session);
   };
 
+  // One-tap pages for names the table [[linked]] during a live session. The
+  // name is all we know, so the rest is left for the DM to fill in.
+  const handleCreateEntity = (addNPC && addLocation)
+    ? async (kind, name) => {
+        const firstMet = liveSession?.title || '';
+        if (kind === 'npc') {
+          await addNPC({ name, occupation: '', location: '', relationship: 'neutral', description: '', notes: '', firstMet, hidden: false });
+        } else if (kind === 'location') {
+          await addLocation({ name, type: 'other', region: '', description: '', notableFeatures: '', inhabitants: '', secrets: '', hidden: false });
+        }
+      }
+    : undefined;
+
   const handleExitLive = () => {
     setLiveSession(null);
   };
@@ -136,8 +149,9 @@ export default function SessionsView({
         campaignContext={campaignContext}
         isDM={isDM}
         currentUserId={currentUserId}
-        entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+        entities={linkEntities}
         onUpdateSession={updateSession}
+        onCreateEntity={handleCreateEntity}
         onBack={handleExitLive}
       />
     );
