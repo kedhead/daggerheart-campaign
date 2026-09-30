@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { fearCost } from '../../utils/dualityAutomation';
 import { Heart, Zap, Skull, ChevronDown, ChevronRight, Shield, Swords, Target, X, Check, Crown } from 'lucide-react';
 import { DAGGERHEART_CONDITIONS } from '../../hooks/useActiveEncounter';
 import { parseDamageNotation } from '../../dice';
@@ -14,7 +15,10 @@ export default function ParticipantCard({
   onRollDamage,
   isDM,
   isExpanded,
-  onToggleExpand
+  onToggleExpand,
+  // The GM's Fear pool, so features that cost Fear can be paid for in one tap.
+  fearCount = 0,
+  onSpendFear
 }) {
   const [showConditionPicker, setShowConditionPicker] = useState(false);
   const [damageInput, setDamageInput] = useState('');
@@ -520,6 +524,29 @@ export default function ParticipantCard({
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-bold text-white text-sm">{feature.name}</span>
                       <div className="flex items-center gap-1.5 shrink-0">
+                        {(() => {
+                          // A one-tap "Spend N Fear" for features that print a
+                          // fixed Fear cost — 238 of them in the core catalog.
+                          // Shown whatever the feature's type: many Fear-costing
+                          // features are reactions. Disabled when the pool can't
+                          // cover it, rather than silently clamping at zero.
+                          const cost = fearCost(`${feature.name || ''} ${feature.description || ''}`);
+                          if (!cost || !isDM || !onSpendFear) return null;
+                          const affordable = fearCount >= cost;
+                          return (
+                            <button
+                              type="button"
+                              className="px-2.5 py-1 text-[10px] font-bold bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 rounded border border-purple-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              style={{ minHeight: 28 }}
+                              disabled={!affordable}
+                              onClick={(e) => { e.stopPropagation(); onSpendFear(cost); }}
+                              aria-label={`Spend ${cost} Fear for ${feature.name}`}
+                              title={affordable ? `Spend ${cost} Fear` : `Needs ${cost} Fear — you have ${fearCount}`}
+                            >
+                              Spend {cost} Fear
+                            </button>
+                          );
+                        })()}
                         {feature.type === 'action' && isDM && onApplyDamage && (
                           <button
                             className="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors"

@@ -5,11 +5,16 @@ import EnvironmentEffectsPanel from './EnvironmentEffectsPanel';
 import PhaseTransitionModal from './PhaseTransitionModal';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
 import { useDice } from '../../dice';
+import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
+import FearControl from '../PlayerDisplay/FearControl';
+import PartyStatusPanel from '../GMScreen/panels/PartyStatusPanel';
 
 export default function LiveEncounterTracker({
   campaignId,
   isDM,
   adversaries = [],
+  characters = [],
+  campaign,
   onClose
 }) {
   const {
@@ -29,6 +34,14 @@ export default function LiveEncounterTracker({
   } = useActiveEncounter(campaignId);
 
   const { rollDamage } = useDice(campaignId);
+
+  // Fear and the party's HP live on the GM Screen, a different view — so
+  // mid-combat the DM flipped screens to spend a Fear or check who's hurt.
+  // Both are mirrored here. Declared before the loading return below: hooks
+  // must run on every render.
+  const {
+    fearCount, showFear, incrementFear, decrementFear, resetFear, toggleFear, addFear,
+  } = usePlayerDisplay(campaignId);
 
   const [expandedParticipant, setExpandedParticipant] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
@@ -218,6 +231,8 @@ export default function LiveEncounterTracker({
                     onToggleDefeated={toggleDefeated}
                     onRollDamage={rollDamage}
                     isDM={isDM}
+                    fearCount={fearCount}
+                    onSpendFear={(n) => addFear(-n)}
                     isExpanded={expandedParticipant === participant.id}
                     onToggleExpand={() => setExpandedParticipant(
                       expandedParticipant === participant.id ? null : participant.id
@@ -246,6 +261,8 @@ export default function LiveEncounterTracker({
                     onToggleDefeated={toggleDefeated}
                     onRollDamage={rollDamage}
                     isDM={isDM}
+                    fearCount={fearCount}
+                    onSpendFear={(n) => addFear(-n)}
                     isExpanded={expandedParticipant === participant.id}
                     onToggleExpand={() => setExpandedParticipant(
                       expandedParticipant === participant.id ? null : participant.id
@@ -257,8 +274,25 @@ export default function LiveEncounterTracker({
           )}
         </div>
 
-        {/* Sidebar - Environment */}
+        {/* Sidebar - Fear, party, environment */}
         <div className="lg:col-span-1 space-y-6">
+          {isDM && (
+            <>
+              <FearControl
+                fearCount={fearCount}
+                showFear={showFear}
+                onIncrement={incrementFear}
+                onDecrement={decrementFear}
+                onReset={resetFear}
+                onToggleShow={toggleFear}
+              />
+              {characters.length > 0 && (
+                <div className="bg-[var(--bg-secondary)] border border-white/5 rounded-xl overflow-hidden">
+                  <PartyStatusPanel characters={characters} campaign={campaign} />
+                </div>
+              )}
+            </>
+          )}
           {environment ? (
             <EnvironmentEffectsPanel
               environment={environment}
