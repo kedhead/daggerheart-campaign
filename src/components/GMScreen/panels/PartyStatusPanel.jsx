@@ -1,4 +1,5 @@
 import { ExternalLink, Heart, Zap } from 'lucide-react';
+import { partyVitals } from '../../../utils/daggerheartVitals';
 
 function HPBar({ current, max }) {
   if (!max) return null;
@@ -43,10 +44,15 @@ export default function PartyStatusPanel({ characters = [], campaign, onViewAll 
           <div className="gm-mini-empty">No characters in this campaign yet.</div>
         ) : (
           active.map(char => {
-            const hp = char.currentHp ?? char.maxHp ?? '—';
-            const maxHp = char.maxHp;
-            const stress = char.currentStress ?? 0;
-            const maxStress = char.maxStress ?? 6;
+            // Daggerheart characters store slot arrays (hpSlots / stressSlots),
+            // not currentHp / currentStress — reading those showed "—" for every
+            // character. partyVitals reads the slots and falls back to the
+            // numeric fields for other systems.
+            const vitals = partyVitals(char);
+            const hp = vitals.hp ?? '—';
+            const maxHp = vitals.maxHp;
+            const stress = vitals.stress;
+            const maxStress = vitals.maxStress;
             const level = char.level || char.tier;
             return (
               <div
