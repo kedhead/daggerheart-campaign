@@ -1,21 +1,24 @@
 import { useState, useEffect } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { changeFear } from '../services/fearPool';
+
+const DISPLAY_DEFAULTS = Object.freeze({
+  enabled: false,
+  fearCount: 0,
+  showFear: true,
+  showInitiative: true,
+  showNames: false, // Global toggle for showing names/captions
+  contentType: 'none',
+  contentUrl: '',
+  contentName: '',
+  contentShowName: true,
+  contentItems: [], // Array of content items for multi-display
+  videoMuted: true // DM-controlled mute for uploaded videos (default on for reliable autoplay)
+});
 
 export function usePlayerDisplay(campaignId) {
-  const [displayState, setDisplayState] = useState({
-    enabled: false,
-    fearCount: 0,
-    showFear: true,
-    showInitiative: true,
-    showNames: false, // Global toggle for showing names/captions
-    contentType: 'none',
-    contentUrl: '',
-    contentName: '',
-    contentShowName: true,
-    contentItems: [], // Array of content items for multi-display
-    videoMuted: true // DM-controlled mute for uploaded videos (default on for reliable autoplay)
-  });
+  const [displayState, setDisplayState] = useState({ ...DISPLAY_DEFAULTS });
   const [loading, setLoading] = useState(true);
 
   const basePath = campaignId ? `campaigns/${campaignId}/playerDisplay/current` : null;
@@ -32,26 +35,16 @@ export function usePlayerDisplay(campaignId) {
       (docSnapshot) => {
         if (docSnapshot.exists()) {
           const data = docSnapshot.data();
+          // Layer over defaults: writes are now partial (merge), so a document
+          // may lack fields it never had set.
           setDisplayState({
+            ...DISPLAY_DEFAULTS,
             id: docSnapshot.id,
             ...data,
             contentItems: data.contentItems || [] // Ensure array exists
           });
         } else {
-          // Initialize with defaults if document doesn't exist
-          setDisplayState({
-            enabled: false,
-            fearCount: 0,
-            showFear: true,
-            showInitiative: true,
-            showNames: false,
-            contentType: 'none',
-            contentUrl: '',
-            contentName: '',
-            contentShowName: true,
-            contentItems: [],
-            videoMuted: true
-          });
+          setDisplayState({ ...DISPLAY_DEFAULTS });
         }
         setLoading(false);
       },
@@ -64,50 +57,33 @@ export function usePlayerDisplay(campaignId) {
     return unsubscribe;
   }, [basePath]);
 
-  // Update the display state in Firestore
+  // Update the display state in Firestore.
+  //
+  // Writes ONLY the fields being changed, merged into the document. This used
+  // to rebuild the whole document from this device's local copy and overwrite
+  // it, which erased any field not in its list and re-sent fearCount on every
+  // unrelated change — so toggling "show names" on one DM device could revert
+  // a Fear added on another. fearCount is never written from here any more;
+  // it goes through the transactional helpers in services/fearPool.
   const updateDisplayState = async (updates) => {
     if (!basePath) return;
+    const { fearCount: _ignored, ...rest } = updates || {};
     try {
-      // Build clean data object with only primitive values (no nested objects)
-      const data = {
-        enabled: updates.enabled ?? displayState.enabled ?? false,
-        fearCount: updates.fearCount ?? displayState.fearCount ?? 0,
-        showFear: updates.showFear ?? displayState.showFear ?? true,
-        showInitiative: updates.showInitiative ?? displayState.showInitiative ?? true,
-        showNames: updates.showNames ?? displayState.showNames ?? false,
-        contentType: updates.contentType ?? displayState.contentType ?? 'none',
-        contentUrl: updates.contentUrl ?? displayState.contentUrl ?? '',
-        contentName: updates.contentName ?? displayState.contentName ?? '',
-        contentShowName: updates.contentShowName ?? displayState.contentShowName ?? true,
-        contentItems: updates.contentItems ?? displayState.contentItems ?? [],
-        videoMuted: updates.videoMuted ?? displayState.videoMuted ?? true,
-        updatedAt: serverTimestamp()
-      };
-
-      await setDoc(doc(db, basePath), data);
+      await setDoc(doc(db, basePath), { ...rest, updatedAt: serverTimestamp() }, { merge: true });
     } catch (error) {
       console.error('Error updating player display:', error);
       throw error;
     }
   };
 
-  // Fear counter methods
-  const incrementFear = async () => {
-    await updateDisplayState({ fearCount: (displayState.fearCount || 0) + 1 });
-  };
-
-  const decrementFear = async () => {
-    const newCount = Math.max(0, (displayState.fearCount || 0) - 1);
-    await updateDisplayState({ fearCount: newCount });
-  };
-
-  const setFearCount = async (count) => {
-    await updateDisplayState({ fearCount: Math.max(0, count) });
-  };
-
-  const resetFear = async () => {
-    await updateDisplayState({ fearCount: 0 });
-  };
+  // Fear counter methods — transactional, clamped to 0-12 (see fearPool).
+  const incrementFear = () => changeFear(campaignId, n => n + 1);
+  const decrementFear = () => changeFear(campaignId, n => n - 1);
+  const setFearCount = (count) => changeFear(campaignId, () => count);
+  const resetFear = () => changeFear(campaignId, () => 0);
+  // Add several at once (e.g. the Fear a rest grants) without reading a
+  // possibly stale local value first.
+  const addFear = (amount) => changeFear(campaignId, n => n + (Number(amount) || 0));
 
   // Toggle visibility
   const toggleFear = async () => {
@@ -209,6 +185,7 @@ export function usePlayerDisplay(campaignId) {
     decrementFear,
     setFearCount,
     resetFear,
+    addFear,
 
     // Toggle methods
     toggleFear,

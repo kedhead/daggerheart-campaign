@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
+import { useAutoFear } from './hooks/useAutoFear';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { CampaignDataProvider, useCampaignData } from './contexts/CampaignDataContext';
@@ -75,6 +76,11 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
   );
 
   const { isDM, campaignRole } = useCampaignAuth(campaign, currentUser);
+
+  // Rolls with Fear add to the GM's pool automatically. Mounted here, once per
+  // signed-in session, so it runs whichever screen the DM is on — and holds no
+  // listener at all on a player's device.
+  useAutoFear({ campaignId: campaign?.id, campaign, isDM });
   const isDaggerheart = !campaign?.gameSystem || campaign.gameSystem === 'daggerheart';
   const isStarWarsD6 = campaign?.gameSystem === 'starwarsd6';
   const hasChatBot = isDaggerheart || isStarWarsD6;
