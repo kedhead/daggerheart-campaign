@@ -142,6 +142,23 @@ export function appearancesFor(entity, { sessions = [], chapters = [], npcs = []
 // ── Previously on… ───────────────────────────────────────────────────────────
 
 /**
+ * The Dashboard's "Recent Sessions": played sessions the viewer may see, most
+ * recent first. It used to list every session by number — so next week's
+ * planned session, prep and all, sat at the top, and players saw hidden ones.
+ */
+export function recentPlayedSessions(sessions = [], { isDM = false, limit = 3 } = {}) {
+  return (sessions || [])
+    .filter(s => s && s.status !== 'planned' && (isDM || isVisibleToPlayers(s)))
+    .sort((a, b) => ((Number(b.number) || 0) - (Number(a.number) || 0)) || newestFirst(a, b))
+    .slice(0, limit);
+}
+
+/** Wiki-link markup as plain prose, for places that can't render links. */
+export function stripWikiLinks(text) {
+  return typeof text === 'string' ? text.replace(WIKI_LINK, '$1') : '';
+}
+
+/**
  * What the table needs before the next session: the last session actually
  * played, its chapter if one's been written, the open quests, and when they
  * next meet.

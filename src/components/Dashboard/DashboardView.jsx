@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { CONTENT_SOURCES } from '../../data/sources';
 import { Users, BookOpen, ScrollText, ExternalLink, Edit3, Swords, Crown, Calendar, UsersRound, MapPin } from 'lucide-react';
 import { DiceRoller } from '../../dice';
@@ -6,6 +6,7 @@ import DMSoundboard from '../Soundboard/DMSoundboard';
 import Modal from '../Modal';
 import RelationshipGraph from '../RelationshipGraph/RelationshipGraph';
 import { getGameSystem } from '../../data/systems/index.js';
+import { previouslyOn, recentPlayedSessions, stripWikiLinks } from '../../utils/campaignMemory';
 import './DashboardView.css';
 
 const ICON_MAP = {
@@ -33,6 +34,20 @@ function SectionHeading({ children }) {
     </div>
   );
 }
+
+// Session dates are plain YYYY-MM-DD. `new Date('2026-01-05')` is midnight
+// UTC, which is the evening before in the Americas — so read it as local.
+const formatSessionDate = (date, opts = { month: 'short', day: 'numeric', year: 'numeric' }) => {
+  if (typeof date !== 'string' || !date) return '';
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T00:00:00` : date);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', opts);
+};
+
+const localToday = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 function GmStat({ icon: Icon, label, value }) {
   return (
@@ -72,6 +87,9 @@ export default function DashboardView({
   timelineEvents = [],
   encounters = [],
   notes = [],
+  chapters = [],
+  quests = [],
+  onNavigate,
   currentUserId
 }) {
   // Defensive check for array props to prevent "is not iterable" errors
@@ -95,9 +113,13 @@ export default function DashboardView({
     setIsEditingCampaign(false);
   };
 
-  const recentSessions = [...safeSessions]
-    .sort((a, b) => b.number - a.number)
-    .slice(0, 3);
+  // Played sessions only: planned ones are the DM's prep for next week.
+  const recentSessions = recentPlayedSessions(safeSessions, { isDM });
+
+  const recap = useMemo(
+    () => previouslyOn({ sessions: safeSessions, chapters, quests, isDM, today: localToday() }),
+    [safeSessions, chapters, quests, isDM]
+  );
 
   const safeEncounters = Array.isArray(encounters) ? encounters : [];
   const safeNpcs = Array.isArray(npcs) ? npcs : [];
@@ -252,6 +274,93 @@ export default function DashboardView({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Column: Quick Actions & Sessions */}
         <div className="lg:col-span-8 space-y-10">
+          {recap.session && (
+            <section className="space-y-4" aria-labelledby="previously-on-heading">
+              <SectionHeading><span id="previously-on-heading">Previously On…</span></SectionHeading>
+              <div
+                className="rounded-2xl p-6 space-y-5"
+                style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}
+              >
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h3
+                      className="text-xl leading-tight"
+                      style={{ fontFamily: 'var(--font-display)', fontWeight: 600, color: 'var(--text)' }}
+                    >
+                      {recap.session.number != null && recap.session.number !== '' ? `Session ${recap.session.number}: ` : ''}
+                      {recap.session.title || 'Untitled session'}
+                    </h3>
+                    {recap.session.date && (
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {formatSessionDate(recap.session.date)}
+                      </span>
+                    )}
+                  </div>
+                  {recap.session.summary ? (
+                    <p className="text-sm leading-relaxed line-clamp-5 whitespace-pre-line" style={{ color: 'var(--text-muted)' }}>
+                      {stripWikiLinks(recap.session.summary)}
+                    </p>
+                  ) : (
+                    <p className="text-sm italic" style={{ color: 'var(--text-muted)' }}>No recap written yet.</p>
+                  )}
+                </div>
+
+                {recap.chapter && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-4" style={{ borderTop: '1px solid var(--line)' }}>
+                    <span className="text-sm" style={{ color: 'var(--text)' }}>
+                      <BookOpen size={14} className="inline -mt-0.5 mr-2" style={{ color: 'var(--primary)' }} />
+                      Chapter {recap.chapter.chapterNumber}{recap.chapter.title ? `: ${recap.chapter.title}` : ''}
+                      {isDM && recap.chapter.status !== 'published' && (
+                        <span className="ml-2 text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>(draft)</span>
+                      )}
+                    </span>
+                    {onNavigate && (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => onNavigate('storybook')}>
+                        Read the chapter
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {(recap.activeQuests.length > 0 || recap.nextSession) && (
+                  <div className="grid gap-4 sm:grid-cols-2 pt-4" style={{ borderTop: '1px solid var(--line)' }}>
+                    {recap.activeQuests.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-[11px] font-bold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}>
+                          Open Threads
+                        </h4>
+                        <ul className="space-y-1 text-sm m-0 p-0 list-none">
+                          {recap.activeQuests.map(q => (
+                            <li key={q.id} style={{ color: 'var(--text)' }}>
+                              {onNavigate ? (
+                                <button type="button" className="text-left hover:underline" onClick={() => onNavigate('quests')}>
+                                  {q.name || q.title || 'Untitled quest'}
+                                </button>
+                              ) : (q.name || q.title || 'Untitled quest')}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {recap.nextSession && (
+                      <div className="space-y-2">
+                        <h4 className="text-[11px] font-bold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}>
+                          Next Session
+                        </h4>
+                        <p className="text-sm m-0" style={{ color: 'var(--text)' }}>
+                          <Calendar size={14} className="inline -mt-0.5 mr-2" style={{ color: 'var(--primary)' }} />
+                          {formatSessionDate(recap.nextSession.date, { weekday: 'long', month: 'long', day: 'numeric' })}
+                          {/* Players see when, not what: the title is the DM's prep. */}
+                          {isDM && recap.nextSession.title ? ` — ${recap.nextSession.title}` : ''}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+
           <section className="space-y-4">
             <SectionHeading>Quick Links</SectionHeading>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -341,7 +450,7 @@ export default function DashboardView({
                           className="text-[10px] font-semibold uppercase shrink-0"
                           style={{ color: 'var(--text-dim)', letterSpacing: '0.12em' }}
                         >
-                          {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {formatSessionDate(session.date)}
                         </span>
                       </div>
                       <p className="text-xs line-clamp-1" style={{ color: 'var(--text-muted)' }}>{session.summary}</p>

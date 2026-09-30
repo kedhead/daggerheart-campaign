@@ -20,7 +20,7 @@ import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
 import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
 import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
 import { isVisibleToPlayers, visibleTo } from '../src/utils/playerVisibility.js';
-import { isArchivedNote, starredHighlights, TRANSCRIPTION_NOTE_PREFIX, mergeHighlights, unresolvedLinks, appearancesFor, previouslyOn } from '../src/utils/campaignMemory.js';
+import { isArchivedNote, starredHighlights, TRANSCRIPTION_NOTE_PREFIX, mergeHighlights, unresolvedLinks, appearancesFor, previouslyOn, recentPlayedSessions, stripWikiLinks } from '../src/utils/campaignMemory.js';
 import { isAtDeathsDoor, hpRemaining, hpMax, stressMarked, partyVitals, weaponAttackModifier } from '../src/utils/daggerheartVitals.js';
 import { sourcePortraitKey, cachedPortraitKey } from '../src/utils/storybookPortraitCache.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
@@ -2694,6 +2694,21 @@ section('Campaign memory');
   const d2 = previouslyOn({ sessions: sessions.slice(0, 4), chapters, isDM: true });
   assert(d2.chapter?.id === 'ch-b', "the DM sees that session's chapter even as a draft");
   assert(previouslyOn({}).session === null, 'a brand-new campaign has nothing to recap');
+
+  const recent = recentPlayedSessions([
+    { id: 'p', number: 9, status: 'planned' },
+    { id: 'h', number: 8, status: 'completed', hidden: true },
+    { id: 'x', number: 7, status: 'completed' },
+    { id: 'y', number: 6 },
+    { id: 'z', number: 5, status: 'completed' },
+    { id: 'w', number: 4, status: 'completed' },
+  ]);
+  assert(JSON.stringify(recent.map(s => s.id)) === JSON.stringify(['x', 'y', 'z']),
+    `Recent Sessions leaves out planned prep and, for players, hidden sessions (got ${JSON.stringify(recent.map(s => s.id))})`);
+  assert(recentPlayedSessions([{ id: 'h', number: 8, status: 'completed', hidden: true }], { isDM: true }).length === 1,
+    'the DM still sees hidden played sessions');
+  assert(stripWikiLinks('We met [[Vex]] at [[Thornwall]].') === 'We met Vex at Thornwall.' && stripWikiLinks(null) === '',
+    'wiki links flatten to their names where they cannot be clicked');
 }
 
 {
