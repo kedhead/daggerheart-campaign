@@ -34,7 +34,12 @@ export default function RollResultBanner({ roll }) {
           {dis != null && <span className="dis-chip">−{dis}</span>}
         </div>
         <div className="banner-total">{roll.total}</div>
-        {roll.outcome && (
+        {/* Doubles are a critical success whatever the total, and count as a
+            roll with Hope. The banner used to say only "WITH HOPE", so the
+            table never learned a crit had happened. */}
+        {roll.flags?.isDoubles ? (
+          <div className="banner-outcome hope crit">⚡ CRITICAL SUCCESS</div>
+        ) : roll.outcome && (
           <div className={`banner-outcome ${roll.outcome}`}>
             {roll.outcome === 'hope' ? '✨ WITH HOPE' : '💀 WITH FEAR'}
           </div>

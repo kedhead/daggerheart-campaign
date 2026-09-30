@@ -417,7 +417,9 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
 // rolled, and the outcome, with the roller's color as the accent. No 3D.
 function RollToast({ roll }) {
   const outcome = roll.system === 'daggerheart' ? roll.outcome : null;
-  const crit = roll.flags?.isCrit;
+  // isCrit is the d20 flag; a Daggerheart critical is doubles on the Duality
+  // dice. Without this, everyone else's toast called a crit plain "Hope".
+  const crit = roll.flags?.isCrit || (roll.system === 'daggerheart' && roll.flags?.isDoubles);
   const critFail = roll.flags?.isCritFail;
   return (
     <div className="dice-toast" style={{ borderLeftColor: roll.rollerColor || '#6366f1' }}>

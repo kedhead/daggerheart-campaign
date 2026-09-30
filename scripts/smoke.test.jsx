@@ -16,6 +16,7 @@ import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt }
 import { responseParser } from '../src/services/responseParser.js';
 import { promptBuilder } from '../src/services/promptBuilder.js';
 import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
+import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
 import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
 import { isVisibleToPlayers, visibleTo } from '../src/utils/playerVisibility.js';
 import { isAtDeathsDoor, hpRemaining, hpMax, stressMarked, partyVitals, weaponAttackModifier } from '../src/utils/daggerheartVitals.js';
@@ -606,6 +607,116 @@ const encCampaign = { name: 'Lorelich', gameSystem: 'daggerheart' };
 
   const types = new Set(t1.match(/\b(phy|mag|fire|ice|lightning|poison|psychic)\b/g) || []);
   assert(types.size > 1, `and more than one damage type (got ${[...types].join(', ') || 'none'})`);
+}
+
+// ── Hope and Fear automation ──
+// The dice always worked out `outcome` and `isDoubles`; nothing acted on them.
+// These are the rulebook's consequences, tested as a truth table.
+section('Hope and Fear automation');
+{
+  const action = (outcome, isDoubles = false) =>
+    ({ system: 'daggerheart', kind: 'action', outcome, flags: { isDoubles } });
+
+  const withHope = dualityEffects(action('hope'));
+  assert(withHope.hope === 1 && withHope.fear === 0 && !withHope.crit, 'an action with Hope gains the player a Hope');
+
+  const withFear = dualityEffects(action('fear'));
+  assert(withFear.fear === 1 && withFear.hope === 0, 'an action with Fear gains the GM a Fear');
+
+  const crit = dualityEffects(action('hope', true));
+  assert(crit.crit && crit.hope === 1 && crit.clearStress === 1 && crit.fear === 0,
+    'doubles are a critical: a Hope AND a cleared Stress, and no Fear');
+
+  // Reaction rolls generate nothing — including on doubles.
+  const reaction = dualityEffects({ system: 'daggerheart', kind: 'reaction', outcome: 'fear', flags: { isDoubles: false } });
+  assert(reaction.hope === 0 && reaction.fear === 0, 'a reaction roll generates neither Hope nor Fear');
+  const reactionCrit = dualityEffects({ system: 'daggerheart', kind: 'reaction', outcome: 'hope', flags: { isDoubles: true } });
+  assert(reactionCrit.hope === 0 && reactionCrit.clearStress === 0, 'nor does a critical reaction');
+
+  // Untagged rolls stay manual — the Death Move, and anything unclassified.
+  const untagged = dualityEffects({ system: 'daggerheart', outcome: 'fear', flags: {} });
+  assert(untagged.fear === 0 && untagged.hope === 0, 'an untagged roll changes nothing');
+
+  // Damage rolls are a different system entirely.
+  assert(dualityEffects({ system: 'generic', kind: 'action', outcome: null }).hope === 0, 'a damage roll changes nothing');
+}
+{
+  // Hope fills the first usable slot and respects scars.
+  const c = { hopeSlots: [true, true, false, false, false, false] };
+  const r = applyHopeStressGain(c, { hope: 1 });
+  assert(r.gainedHope && r.updates.hopeSlots.filter(Boolean).length === 3, 'gaining Hope fills one more slot');
+  assert(r.updates.hopeSlots.slice(0, 3).every(Boolean), 'the next empty slot, not a random one');
+
+  const full = { hopeSlots: [true, true, true, true, true, true] };
+  const rf = applyHopeStressGain(full, { hope: 1 });
+  assert(!rf.gainedHope && rf.updates === null, 'Hope already at 6 stays at 6 and writes nothing');
+
+  // A scar crosses out the last slot, so a scarred character caps at 5.
+  const scarred = { scars: 1, hopeSlots: [true, true, true, true, true, false] };
+  const rs = applyHopeStressGain(scarred, { hope: 1 });
+  assert(!rs.gainedHope, 'a scarred character at their reduced cap gains no Hope');
+  assert(rs.updates === null, 'and the crossed-out slot is never filled');
+
+  const noTrack = applyHopeStressGain({}, { hope: 1 });
+  assert(noTrack.gainedHope && noTrack.updates.hopeSlots.length === 6,
+    'a character with no Hope track yet gets a whole one with the new Hope in it');
+}
+{
+  // A critical clears the last marked Stress, keeping the track left-packed.
+  const c = { stressSlots: [true, true, true, false, false, false], hopeSlots: [false, false, false, false, false, false] };
+  const r = applyHopeStressGain(c, { hope: 1, clearStress: 1 });
+  assert(r.clearedStress && r.updates.stressSlots.filter(Boolean).length === 2, 'a critical clears one Stress');
+  assert(r.updates.stressSlots[0] && r.updates.stressSlots[1] && !r.updates.stressSlots[2],
+    'the last marked slot, so the track stays packed from the left');
+  assert(r.gainedHope, 'and still gains the Hope');
+
+  const calm = applyHopeStressGain({ stressSlots: [false, false, false, false, false, false], hopeSlots: [true, true, true, true, true, true] },
+    { hope: 1, clearStress: 1 });
+  assert(calm.updates === null, 'a critical with no Stress to clear and full Hope writes nothing');
+}
+{
+  // Fear is applied by the DM's client, and a DM with two devices open sees
+  // every roll twice. The ledger makes the second application a no-op.
+  const first = nextFearState({ fearCount: 3, fearAppliedRollIds: [] }, 'roll-a');
+  assert(first && first.fearCount === 4, 'a roll with Fear adds one Fear');
+  const again = nextFearState(first, 'roll-a');
+  assert(again === null, 'the same roll seen by a second DM device adds nothing');
+  const second = nextFearState(first, 'roll-b');
+  assert(second && second.fearCount === 5, 'a different roll still counts');
+
+  const atCap = nextFearState({ fearCount: 12, fearAppliedRollIds: [] }, 'roll-c');
+  assert(atCap.fearCount === 12, 'Fear stops at 12, the rulebook maximum');
+
+  let state = { fearCount: 0, fearAppliedRollIds: [] };
+  for (let i = 0; i < 80; i += 1) state = nextFearState(state, `r${i}`) || state;
+  assert(state.fearAppliedRollIds.length === FEAR_LEDGER_SIZE, `the ledger stays bounded (got ${state.fearAppliedRollIds.length})`);
+
+  assert(nextFearState({ fearCount: 1 }, null) === null, 'a roll without an id is never counted');
+  assert(clampFear(15) === 12 && clampFear(-2) === 0 && clampFear('4') === 4, 'manual Fear is clamped to 0–12');
+}
+{
+  assert(isAutoHopeFearOn({}) && isAutoHopeFearOn(null), 'automation is on unless turned off');
+  assert(!isAutoHopeFearOn({ autoHopeFear: false }), 'and the DM can turn it off');
+}
+{
+  // Spend-Fear buttons read the cost off the feature text.
+  assert(fearCost('Spend a Fear to make an attack against all targets') === 1, '"Spend a Fear" costs 1');
+  assert(fearCost('You can spend 2 Fear to summon a Minion') === 2, '"spend 2 Fear" costs 2');
+  assert(fearCost('When spending a Fear, the Bandit…') === 1, '"spending a Fear" costs 1');
+  // Not costs: a rules reminder, and a variable amount.
+  assert(fearCost('Spend Fear as usual to spotlight them.') === 0,
+    'the horde/minion "Spend Fear as usual" reminder is not the feature\'s cost');
+  assert(fearCost('spend a number of Fear equal to the HP marked') === 0,
+    'a variable amount gets no fixed button');
+  assert(fearCost('Mark a Stress to gain advantage') === 0, 'a feature with no Fear cost has none');
+
+  // Against the real catalog: every cost found is 1 or 2, and there are a
+  // lot of them — this is what the buttons are for.
+  const costs = DAGGERHEART_ADVERSARIES.flatMap(a => (a.features || []))
+    .map(f => fearCost(typeof f === 'string' ? f : `${f.name || ''} ${f.description || ''}`))
+    .filter(n => n > 0);
+  assert(costs.length >= 80, `the catalog has many Spend-Fear features (found ${costs.length})`);
+  assert(costs.every(n => n === 1 || n === 2), 'and every cost parsed is 1 or 2');
 }
 
 // ── Vital tracks ──

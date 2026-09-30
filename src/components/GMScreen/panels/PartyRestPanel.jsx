@@ -11,7 +11,7 @@ const d4 = () => Math.floor(Math.random() * 4) + 1;
  * Short-rest recovery rolls 1d4 + tier per character per selected option;
  * long-rest recovery clears everything selected.
  */
-export default function PartyRestPanel({ characters = [], updateCharacter, fearCount = 0, setFearCount }) {
+export default function PartyRestPanel({ characters = [], updateCharacter, addFear }) {
   const [restType, setRestType] = useState('long');
   const [opts, setOpts] = useState({ hp: true, stress: true, armor: true, hope: true });
   const [result, setResult] = useState(null);
@@ -61,7 +61,10 @@ export default function PartyRestPanel({ characters = [], updateCharacter, fearC
     // GM Fear
     const fearRoll = d4();
     const fearGain = restType === 'long' ? fearRoll + pcs.length : fearRoll;
-    if (setFearCount) await setFearCount(fearCount + fearGain);
+    // Atomic and capped at 12. This was `setFearCount(fearCount + fearGain)`
+    // from this device's local copy, which could lose Fear added elsewhere
+    // and could carry the pool past the rulebook maximum.
+    if (addFear) await addFear(fearGain);
     lines.push(`GM gains ${fearGain} Fear (1d4${restType === 'long' ? ` + ${pcs.length} PCs` : ''} → rolled ${fearRoll})`);
 
     setResult(lines);

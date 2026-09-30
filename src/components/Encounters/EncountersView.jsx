@@ -145,6 +145,8 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
         campaignId={campaign?.id}
         isDM={isDM}
         adversaries={adversaries}
+        characters={characters}
+        campaign={campaign}
         onClose={() => setShowTracker(false)}
       />
     );

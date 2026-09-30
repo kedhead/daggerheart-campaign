@@ -79,6 +79,7 @@ export default function GMScreenView({
     decrementFear,
     setFearCount,
     resetFear,
+    addFear,
     toggleFear,
   } = usePlayerDisplay(campaign?.id);
 
@@ -190,8 +191,7 @@ export default function GMScreenView({
                     <PartyRestPanel
                       characters={characters}
                       updateCharacter={updateCharacter}
-                      fearCount={fearCount}
-                      setFearCount={setFearCount}
+                      addFear={addFear}
                     />
                   )}
 
