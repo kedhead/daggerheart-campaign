@@ -10,7 +10,7 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateMap } from '../../services/mapGenerator';
 import './LocationsView.css';
 
-export default function LocationsView({ campaign, campaignFrame, locations = [], updateCampaign, addLocation, updateLocation, deleteLocation, isDM, userId, npcs = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
+export default function LocationsView({ campaign, campaignFrame, locations = [], updateCampaign, addLocation, updateLocation, deleteLocation, isDM, userId, npcs = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [], chapters }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -389,6 +389,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
               isDM={isDM}
               campaign={campaign}
               entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+              chapters={chapters}
             />
           ))}
         </div>

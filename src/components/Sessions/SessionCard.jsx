@@ -102,7 +102,10 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
                 {session.highlights.map((highlight, index) => (
                   <li key={index} className="flex items-start gap-2 text-sm text-white/70 bg-white/5 p-2 rounded-md border border-white/5">
                     <span className="text-[rgb(var(--color-primary))] mt-0.5">•</span>
-                    {highlight}
+                    {/* Starred live notes land here, [[links]] and all. */}
+                    <span>
+                      <WikiText text={highlight} onLinkClick={setViewingEntity} getEntity={getByName} />
+                    </span>
                   </li>
                 ))}
               </ul>

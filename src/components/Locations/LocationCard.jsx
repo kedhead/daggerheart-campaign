@@ -4,13 +4,15 @@ import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import InlineEdit from '../InlineEdit/InlineEdit';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import AppearsIn from '../CampaignMemory/AppearsIn';
 import { useToast } from '../../contexts/ToastContext';
 
-export default function LocationCard({ location, onEdit, onDelete, onUpdate, onGenerateMap, isDM, generatingMapFor, campaign, isEmbedded = false, entities }) {
+export default function LocationCard({ location, onEdit, onDelete, onUpdate, onGenerateMap, isDM, generatingMapFor, campaign, isEmbedded = false, entities, chapters }) {
   const { success, error } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign, entities);
+  // isDM: the registry hides hidden entities from players only when told.
+  const { getByName } = useEntityRegistry(campaign, entities, isDM);
   const isGeneratingMap = generatingMapFor === location.id;
 
   const getTypeStyles = (type) => {
@@ -119,6 +121,17 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
                   </div>
                 )}
               </div>
+
+              <AppearsIn
+                entity={location}
+                kind="location"
+                sessions={entities?.sessions}
+                npcs={entities?.npcs}
+                chapters={chapters}
+                isDM={isDM}
+                onOpen={setViewingEntity}
+                getByName={getByName}
+              />
 
               {location.secrets && isDM && (
                 <div className="space-y-3 p-6 rounded-3xl bg-red-500/5 border border-red-500/10 border-dashed">
