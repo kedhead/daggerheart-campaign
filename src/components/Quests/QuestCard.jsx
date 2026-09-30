@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import {
   Target,
   ChevronDown,
@@ -39,9 +40,15 @@ export default function QuestCard({
   onToggleObjective,
   onUpdateStatus,
   isDM,
+  campaign,
   entityData = {}
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  // WikiText resolves links through `getEntity`. This card handed it
+  // `entities` and `isDM` instead — props WikiText doesn't accept — so every
+  // [[link]] in a quest showed as not found. The registry also needs the
+  // campaign: given none, it returns empty and ignores the entities passed.
+  const { getByName } = useEntityRegistry(campaign, entityData, isDM);
   const { success, error } = useToast();
 
   const statusConfig = STATUS_CONFIG[quest.status] || STATUS_CONFIG.active;
@@ -144,8 +151,7 @@ export default function QuestCard({
               <div className="text-white/80 text-sm leading-relaxed">
                 <WikiText
                   text={quest.description}
-                  entities={entityData}
-                  isDM={isDM}
+                  getEntity={getByName}
                 />
               </div>
             </div>
@@ -187,8 +193,7 @@ export default function QuestCard({
               <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg">
                 <WikiText
                   text={quest.rewards}
-                  entities={entityData}
-                  isDM={isDM}
+                  getEntity={getByName}
                 />
               </div>
             </div>

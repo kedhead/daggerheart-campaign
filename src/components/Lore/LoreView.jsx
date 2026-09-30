@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import ConfirmDeleteModal from '../ConfirmDeleteModal';
 import { Plus, Search, Filter, BookOpen, Wand2 } from 'lucide-react';
 import LoreCard from './LoreCard';
 import LoreForm from './LoreForm';
@@ -7,11 +8,16 @@ import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { LORE_TYPES } from '../../data/daggerheart';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateLoreImage } from '../../services/loreGenerator';
+import { isVisibleToPlayers } from '../../utils/playerVisibility';
 import './LoreView.css';
 
 export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, campaign, campaignFrame, npcs = [], locations = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLore, setEditingLore] = useState(null);
+  // Deletes here are permanent, so they go through a confirm first — they
+  // used to fire on a single tap.
+  const [pendingDelete, setPendingDelete] = useState(null);
+
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -62,8 +68,20 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
     }
   };
 
+  // `hidden` was already honoured here, but `dmOnly` — which the AI session
+  // planner sets on puzzle solutions — was read nowhere, so solutions showed
+  // up in the players' Lore tab. isVisibleToPlayers checks both.
+  // Every card here renders [[wiki links]], and a link resolves only against the
+  // entities it's given. These cards were rendered without any, so every link
+  // on this page showed as not found. Memoized so each card's registry isn't
+  // rebuilt on every render.
+  const linkEntities = useMemo(
+    () => ({ npcs, locations, lore, sessions, timelineEvents, encounters, notes }),
+    [npcs, locations, lore, sessions, timelineEvents, encounters, notes]
+  );
+
   const visibleLore = lore.filter(entry => {
-    if (!isDM && entry.hidden) return false;
+    if (!isDM && !isVisibleToPlayers(entry)) return false;
     // Check both 'type' and 'category' for backwards compatibility
     const entryType = entry.type || entry.category;
     if (typeFilter !== 'all' && entryType !== typeFilter) return false;
@@ -263,16 +281,24 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-8 pb-20 items-start">
+          <ConfirmDeleteModal
+            isOpen={!!pendingDelete}
+            onClose={() => setPendingDelete(null)}
+            onConfirm={() => deleteLore(pendingDelete.id)}
+            kind="Lore Entry"
+            name={pendingDelete?.title}
+          />
           {visibleLore.map(entry => (
             <LoreCard
               key={entry.id}
               lore={entry}
               onEdit={() => handleEdit(entry)}
-              onDelete={() => deleteLore(entry.id)}
+              onDelete={() => setPendingDelete(entry)}
               onGenerateImage={isDM ? () => handleGenerateImage(entry) : null}
               generatingImage={generatingImageFor === entry.id}
               isDM={isDM}
               campaign={campaign}
+              entities={linkEntities}
             />
           ))}
         </div>

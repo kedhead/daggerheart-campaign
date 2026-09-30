@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import ConfirmDeleteModal from '../ConfirmDeleteModal';
 import { Plus, Search, Users, Heart, Skull, Minus, Briefcase, MapPin, Wand2 } from 'lucide-react';
 import NPCCard from './NPCCard';
 import NPCForm from './NPCForm';
@@ -6,6 +7,7 @@ import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useToast } from '../../contexts/ToastContext';
 import { buildCampaignContext } from '../../services/campaignContext';
+import { visibleTo } from '../../utils/playerVisibility';
 
 export default function NPCsView({
   npcs, addNPC, updateNPC, deleteNPC, isDM, campaign, campaignFrame,
@@ -14,6 +16,10 @@ export default function NPCsView({
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNPC, setEditingNPC] = useState(null);
+  // Deletes here are permanent, so they go through a confirm first — they
+  // used to fire on a single tap.
+  const [pendingDelete, setPendingDelete] = useState(null);
+
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [relationshipFilter, setRelationshipFilter] = useState('all');
@@ -61,7 +67,9 @@ export default function NPCsView({
     }
   };
 
-  const visibleNPCs = npcs.filter(npc => {
+  // Players never see hidden NPCs. This list checked no visibility flag at all,
+  // so the DM's hidden NPCs were listed for everyone.
+  const visibleNPCs = visibleTo(npcs, isDM).filter(npc => {
     if (relationshipFilter !== 'all' && npc.relationship !== relationshipFilter) return false;
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
@@ -161,12 +169,19 @@ export default function NPCsView({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10 items-start">
+          <ConfirmDeleteModal
+            isOpen={!!pendingDelete}
+            onClose={() => setPendingDelete(null)}
+            onConfirm={() => deleteNPC(pendingDelete.id)}
+            kind="NPC"
+            name={pendingDelete?.name}
+          />
           {visibleNPCs.map(npc => (
             <NPCCard
               key={npc.id}
               npc={npc}
               onEdit={() => handleEdit(npc)}
-              onDelete={() => deleteNPC(npc.id)}
+              onDelete={() => setPendingDelete(npc)}
               onUpdate={updateNPC}
               isDM={isDM}
               campaign={campaign}

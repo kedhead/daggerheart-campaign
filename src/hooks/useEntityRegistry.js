@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import { autoLinkText } from '../utils/autoLinkText';
+import { isVisibleToPlayers } from '../utils/playerVisibility';
 
 /**
  * Creates a searchable registry of all campaign entities
@@ -69,7 +70,8 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
     // Lore
     safeForEach(source.lore, lore => {
       // Visibility filter: skip hidden entities for non-DMs
-      if (!isDM && lore.hidden) return;
+      // dmOnly (AI puzzle solutions) is DM-only just like hidden.
+      if (!isDM && !isVisibleToPlayers(lore)) return;
 
       entities.push({
         id: lore.id,

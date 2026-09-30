@@ -8,7 +8,10 @@ import './SessionCard.css';
 export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM, campaign, isEmbedded = false, entities, onEncounterClick, encounters = [] }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
-  const { getByName } = useEntityRegistry(campaign, entities);
+  // Pass isDM: the registry drops hidden entities for players only when told
+  // who's looking. It defaults to DM, so without this a player could tap
+  // [[a hidden NPC]] and open it.
+  const { getByName } = useEntityRegistry(campaign, entities, isDM);
 
   const formattedDate = new Date(session.date).toLocaleDateString('en-US', {
     year: 'numeric',

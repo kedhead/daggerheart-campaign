@@ -123,7 +123,10 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
               </div>
             )}
 
-            {npc.notes && (
+            {/* DM-only, like a location's secrets (LocationCard). The form
+                invites DMs to write "secrets" here, and it was rendered to
+                every player under the heading "Encrypted Intel". */}
+            {npc.notes && isDM && (
               <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5 italic">
                 <h4 className="text-[10px] font-black text-amber-400/60 uppercase tracking-[0.3em] font-sans not-italic">Encrypted Intel</h4>
                 <div className="prose prose-invert prose-sm font-sans font-medium text-white/50 leading-relaxed max-w-none">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Search, Calendar, ScrollText } from 'lucide-react';
 import TimelineEventCard from './TimelineEventCard';
 import TimelineEventForm from './TimelineEventForm';
@@ -9,6 +9,15 @@ import './TimelineView.css';
 export default function TimelineView({ campaign, events = [], addEvent, updateEvent, deleteEvent, isDM, npcs = [], locations = [], lore = [], sessions = [], encounters = [], notes = [] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+
+  // Every card here renders [[wiki links]], and a link resolves only against the
+  // entities it's given. These cards were rendered without any, so every link
+  // on this page showed as not found. Memoized so each card's registry isn't
+  // rebuilt on every render.
+  const linkEntities = useMemo(
+    () => ({ npcs, locations, lore, sessions, timelineEvents: events, encounters, notes }),
+    [npcs, locations, lore, sessions, events, encounters, notes]
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [showSessions, setShowSessions] = useState(true);
@@ -233,6 +242,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
                     onDelete={() => handleDelete(item.id)}
                     isDM={isDM}
                     campaign={campaign}
+                    entities={linkEntities}
                   />
                 )}
               </div>
