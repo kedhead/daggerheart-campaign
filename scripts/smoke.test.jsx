@@ -29,6 +29,7 @@ import { buildTimeline, timelineDuration, narratableSlides } from '../src/compon
 import { stripAppendedClauses, composeScenePrompt, REFERENCE_CLAUSE, NO_EXTRAS_CLAUSE } from '../src/utils/storybookPrompt.js';
 import { sessionNotesText, nameAppearsIn, mentionedEntityIds, scopeRosters, sanitizeChapterCast } from '../src/utils/storybookCast.js';
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
+import { damageOutcome, applyDamage, armorSlotsFree } from '../src/utils/playerDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
@@ -84,6 +85,7 @@ import { isTrashed, partitionCharacters, trashFields, nameMatches, formatDeleted
 import { DeleteCharacterPrompt } from '../src/components/Characters/ConfirmDeleteCharacterModal.jsx';
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
+import TakeDamageModal from '../src/components/Characters/TakeDamageModal.jsx';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
 import { buildSheetFields, normalizeInventory, splitGold, armorSlotCount } from '../src/utils/daggerheartSheetFields.js';
 import { displayItemName, hasCustomName, isRenameable, normalizeCustomName, renameEquippedItem, MAX_CUSTOM_NAME_LENGTH } from '../src/utils/itemNames.js';
@@ -2586,6 +2588,63 @@ section('Custom item names');
   ));
   assert(actions.includes('Rename Longsword'),
     'the actions tab lets a player rename the weapon they are swinging');
+}
+
+// ── Player damage (Take Damage) ──
+section('Player damage');
+{
+  // The rulebook's guardian: Major 8, Severe 16.
+  const g = { major: 8, severe: 16 };
+  const sev = (d, o = {}) => damageOutcome(d, { ...g, ...o });
+  assert(sev(7).severity === 'minor' && sev(7).marks === 1, 'below Major (7) is Minor: mark 1 HP');
+  assert(sev(8).severity === 'major' && sev(8).marks === 2, 'at Major (8) is Major: mark 2 HP');
+  assert(sev(15).marks === 2 && sev(16).severity === 'severe' && sev(16).marks === 3, 'at Severe (16) is Severe: mark 3 HP');
+  assert(sev(32).marks === 3, 'without the optional rule, 32 is still just Severe');
+  assert(sev(32, { massiveRule: true }).severity === 'massive' && sev(32, { massiveRule: true }).marks === 4,
+    'with the Massive rule, double Severe (32) marks 4 HP');
+  assert(sev(31, { massiveRule: true }).marks === 3, 'and 31 does not');
+  assert(sev(0).marks === 0 && sev(-3).marks === 0, 'zero or negative damage marks nothing');
+
+  const res = sev(26, { resistant: true });
+  assert(res.taken === 13 && res.severity === 'major',
+    'resistance halves BEFORE thresholds: 26 becomes 13, which is Major, not Severe');
+  assert(sev(17, { resistant: true }).taken === 8, 'halving rounds down (17 → 8)');
+
+  const armored = sev(16, { useArmor: true, armorAvailable: 2 });
+  assert(armored.armorUsed && armored.rawSeverity === 'severe' && armored.severity === 'major' && armored.marks === 2,
+    'an Armor Slot drops Severe to Major');
+  assert(sev(5, { useArmor: true, armorAvailable: 1 }).marks === 0, 'and Minor to None');
+  assert(!sev(16, { useArmor: true, armorAvailable: 0 }).armorUsed, 'no free slot, no reduction');
+  assert(!sev(0, { useArmor: true, armorAvailable: 3 }).armorUsed, "a slot isn't spent on damage that does nothing");
+}
+{
+  const char = { hpSlots: [true, true, true, true, true, true], armorSlots: [true, false, false, false] };
+  const { updates, hpMarked, hpLeft } = applyDamage(char, { marks: 2, armorUsed: true }, 4);
+  assert(hpMarked === 2 && hpLeft === 4 && JSON.stringify(updates.hpSlots) === JSON.stringify([true, true, true, true, false, false]),
+    'HP is marked from the end of the track (hpSlots holds HP remaining)');
+  assert(JSON.stringify(updates.armorSlots) === JSON.stringify([true, true, false, false]),
+    'and one Armor Slot is marked, the first free one');
+
+  const dying = applyDamage({ hpSlots: [true, false, false] }, { marks: 3, armorUsed: false });
+  assert(dying.hpMarked === 1 && dying.hpLeft === 0, "you can't mark more HP than you have left");
+  assert(applyDamage({}, { marks: 1 }).updates.hpSlots.length === 6, 'a character with no HP track starts from full (6)');
+  assert(applyDamage(char, { marks: 0, armorUsed: false }).updates === null, 'nothing marked, nothing written');
+
+  const legacy = { armorSlots: [true, true, true, true, false, false] };
+  assert(armorSlotsFree(legacy, 4) === 0, 'only the slots the sheet shows count as free');
+  const kept = applyDamage({ ...legacy, armorSlots: [true, false, false, false, true, true] }, { marks: 1, armorUsed: true }, 4);
+  assert(kept.updates.armorSlots.length === 6, 'the stored armor track is never shortened');
+}
+{
+  const html = strip(renderToString(
+    <TakeDamageModal character={{ hpSlots: [true, true, true], armorSlots: [true, true] }}
+      thresholds={{ major: 8, severe: 16 }} armorTotal={2} massiveRule onApply={() => {}} onClose={() => {}} />
+  ));
+  assert(html.includes('Major 8') && html.includes('Severe 16') && html.includes('Massive 32'),
+    'Take Damage shows the character\'s thresholds, and Massive only when the table uses it');
+  assert(html.includes('(0 free'), 'with every Armor Slot marked, the armor option says none are free');
+  assert(/<button[^>]*disabled=""[^>]*>.*Apply/.test(html), 'Apply is disabled until a damage number is entered');
+  assert(html.includes('role="dialog"') && html.includes('aria-modal="true"'), 'it is announced as a dialog');
 }
 
 // ── Campaign memory ──

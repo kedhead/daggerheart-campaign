@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useDualityAutomation } from '../../hooks/useDualityAutomation';
 import { createPortal } from 'react-dom';
-import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices } from 'lucide-react';
+import { Edit3, Trash2, ExternalLink, Sword, Shield, Star, Sparkles, BookOpen, Users, ArrowUp, Wand2, Dices, HeartCrack } from 'lucide-react';
 import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES, getEffectiveProficiency, getTierForLevel } from '../../data/systems/daggerheart';
 import { getCardByName } from '../../data/daggerheartDomainCards';
 import { splitCardFeatures } from '../../utils/domainCardText';
@@ -16,6 +16,8 @@ import { useDice } from '../../dice';
 import LevelUpWizard from './LevelUpWizard';
 import RestModal from './RestModal';
 import DeathMoveModal from './DeathMoveModal';
+import TakeDamageModal from './TakeDamageModal';
+import { applyDamage } from '../../utils/playerDamage';
 import BeastformPanel from './BeastformPanel';
 import TransformationPanel from './TransformationPanel';
 import CompanionSheet from './CompanionSheet';
@@ -83,6 +85,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showRest, setShowRest] = useState(false);
   const [showDeathMove, setShowDeathMove] = useState(false);
+  const [showDamage, setShowDamage] = useState(false);
   const [freeRecall, setFreeRecall] = useState(false); // resting = free vault→loadout swaps
   const [generatingPortrait, setGeneratingPortrait] = useState(false);
   const [expPickerActive, setExpPickerActive] = useState(null); // name of experience with open trait picker
@@ -635,6 +638,11 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
       {/* Footer actions */}
       <div className="dh-sidebar-actions">
+        {canEdit && updateCharacter && (
+          <button className="dh-btn" onClick={() => setShowDamage(true)}>
+            <HeartCrack size={14} /> Take Damage
+          </button>
+        )}
         {canEdit && atDeathsDoor && (
           <button className="dh-btn dh-btn-deathmove" onClick={() => setShowDeathMove(true)}>
             💀 Death Move
@@ -1583,6 +1591,23 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           character={character}
           onApply={(updates) => updateCharacter && updateCharacter(character.id, updates)}
           onClose={() => setShowRest(false)}
+        />
+      )}
+
+      {/* Take Damage — rules in playerDamage.js; the last HP opens the Death Move */}
+      {showDamage && (
+        <TakeDamageModal
+          character={character}
+          thresholds={{ major: majorThreshold, severe: severeThreshold }}
+          armorTotal={equippedArmorSlotCount}
+          massiveRule={campaign?.massiveDamage === true}
+          onApply={(outcome) => {
+            const { updates, hpMarked, hpLeft } = applyDamage(character, outcome, equippedArmorSlotCount);
+            if (!updates || !updateCharacter) return;
+            updateCharacter(character.id, updates);
+            if (hpMarked > 0 && hpLeft === 0) setShowDeathMove(true);
+          }}
+          onClose={() => setShowDamage(false)}
         />
       )}
 
