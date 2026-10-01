@@ -127,7 +127,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-300">
       {/* Universal Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">

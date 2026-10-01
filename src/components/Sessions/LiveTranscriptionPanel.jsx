@@ -463,7 +463,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
       </div>
 
       {generatedNotes && (
-        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center justify-between">
             <h4 className="font-bold text-white flex items-center gap-2">
               <FileText size={18} className="text-[rgb(var(--color-primary))]" />

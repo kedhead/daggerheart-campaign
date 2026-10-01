@@ -516,3 +516,21 @@ select {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+/* Respect the OS "reduce motion" setting. Transitions and decorative
+   animations collapse to an instant change. The 3D dice are driven from
+   script, not CSS, so they still roll: the result is the content. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Loading spinners keep turning: a frozen spinner reads as a hang. */
+  .animate-spin {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
+}

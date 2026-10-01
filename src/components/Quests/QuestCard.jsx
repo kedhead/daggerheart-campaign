@@ -133,7 +133,7 @@ export default function QuestCard({
           {totalCount > 0 && (
             <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
               <div
-                className={`h-full transition-all duration-500 rounded-full ${quest.status === 'completed' ? 'bg-blue-500' : quest.status === 'failed' ? 'bg-red-500' : 'bg-emerald-500'}`}
+                className={`h-full transition-all duration-300 rounded-full ${quest.status === 'completed' ? 'bg-blue-500' : quest.status === 'failed' ? 'bg-red-500' : 'bg-emerald-500'}`}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>

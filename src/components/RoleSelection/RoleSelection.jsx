@@ -17,7 +17,7 @@ export default function RoleSelection({ onSelectRole }) {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[150px] rounded-full animate-pulse" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-emerald-500/5 blur-[120px] rounded-full animate-pulse delay-1000" />
 
-      <div className="relative z-10 w-full max-w-4xl space-y-12 animate-in fade-in slide-in-from-bottom-10 duration-1000">
+      <div className="relative z-10 w-full max-w-4xl space-y-12 animate-in fade-in slide-in-from-bottom-10 duration-200">
         <div className="text-center space-y-4">
           <h1 className="font-serif text-6xl font-black text-white italic lowercase tracking-tighter">
             Welcome to Lorelich
@@ -28,7 +28,7 @@ export default function RoleSelection({ onSelectRole }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <button
             className={`
-              group relative flex flex-col items-center text-center p-10 rounded-[3rem] border transition-all duration-700
+              group relative flex flex-col items-center text-center p-10 rounded-[3rem] border transition-all duration-200
               ${selectedRole === 'dm'
                 ? 'bg-indigo-500/10 border-indigo-500/30 shadow-[0_0_50px_rgba(79,70,229,0.2)]'
                 : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
@@ -36,7 +36,7 @@ export default function RoleSelection({ onSelectRole }) {
             `}
             onClick={() => setSelectedRole('dm')}
           >
-            <div className={`w-24 h-24 rounded-3xl mb-8 flex items-center justify-center transition-all duration-700 ${selectedRole === 'dm' ? 'bg-indigo-500 text-white shadow-lg' : 'bg-white/5 text-white/20 group-hover:text-white/40'}`}>
+            <div className={`w-24 h-24 rounded-3xl mb-8 flex items-center justify-center transition-all duration-200 ${selectedRole === 'dm' ? 'bg-indigo-500 text-white shadow-lg' : 'bg-white/5 text-white/20 group-hover:text-white/40'}`}>
               <Crown size={48} className="group-hover:scale-110 transition-transform" />
             </div>
             <h3 className="font-serif text-2xl font-black text-white/90 italic lowercase mb-3">Dungeon Master</h3>
@@ -50,7 +50,7 @@ export default function RoleSelection({ onSelectRole }) {
 
           <button
             className={`
-              group relative flex flex-col items-center text-center p-10 rounded-[3rem] border transition-all duration-700
+              group relative flex flex-col items-center text-center p-10 rounded-[3rem] border transition-all duration-200
               ${selectedRole === 'player'
                 ? 'bg-sky-500/10 border-sky-500/30 shadow-[0_0_50px_rgba(14,165,233,0.2)]'
                 : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10'
@@ -58,7 +58,7 @@ export default function RoleSelection({ onSelectRole }) {
             `}
             onClick={() => setSelectedRole('player')}
           >
-            <div className={`w-24 h-24 rounded-3xl mb-8 flex items-center justify-center transition-all duration-700 ${selectedRole === 'player' ? 'bg-sky-500 text-white shadow-lg' : 'bg-white/5 text-white/20 group-hover:text-white/40'}`}>
+            <div className={`w-24 h-24 rounded-3xl mb-8 flex items-center justify-center transition-all duration-200 ${selectedRole === 'player' ? 'bg-sky-500 text-white shadow-lg' : 'bg-white/5 text-white/20 group-hover:text-white/40'}`}>
               <User size={48} className="group-hover:scale-110 transition-transform" />
             </div>
             <h3 className="font-serif text-2xl font-black text-white/90 italic lowercase mb-3">Player</h3>
@@ -77,7 +77,7 @@ export default function RoleSelection({ onSelectRole }) {
             onClick={handleContinue}
             disabled={!selectedRole}
           >
-            <div className="absolute inset-0 bg-indigo-500/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+            <div className="absolute inset-0 bg-indigo-500/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
             <span className="relative z-10">Continue</span>
           </button>
 

@@ -163,7 +163,7 @@ export default function AppRouter({
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 blur-[150px] rounded-full animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-emerald-500/5 blur-[120px] rounded-full animate-pulse delay-700" />
         <div className="relative group">
-          <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-1000" />
+          <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-200" />
           <div className="relative w-20 h-20 border-t-2 border-r-2 border-indigo-500 rounded-full animate-spin shadow-[0_0_20px_rgba(79,70,229,0.5)]" />
         </div>
         <div className="text-center space-y-2 relative">

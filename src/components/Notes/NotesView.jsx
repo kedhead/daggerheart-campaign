@@ -76,7 +76,7 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
   };
 
   return (
-    <div className="min-h-screen bg-transparent p-6 space-y-8 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-transparent p-6 space-y-8 animate-in fade-in duration-200">
       {/* View Header */}
       <div className="flex items-center justify-between gap-6 pb-6 border-b border-white/5">
         <div className="space-y-1">

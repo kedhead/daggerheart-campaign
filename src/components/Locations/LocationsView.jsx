@@ -227,7 +227,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
   });
 
   return (
-    <div className="min-h-screen bg-transparent p-6 space-y-10 animate-in fade-in duration-1000">
+    <div className="min-h-screen bg-transparent p-6 space-y-10 animate-in fade-in duration-200">
       {/* Immersive Atlas Header */}
       <div className="flex items-center justify-between gap-8 pb-8 border-b border-white/5 relative">
         <div className="space-y-2 relative z-10">
@@ -254,10 +254,10 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
               <span className="font-black text-[10px] uppercase tracking-widest">AI cartography</span>
             </button>
             <button
-              className="group flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-500 shadow-xl border border-indigo-400/20 active:scale-95"
+              className="group flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-300 shadow-xl border border-indigo-400/20 active:scale-95"
               onClick={handleAdd}
             >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
               <span className="font-black text-xs uppercase tracking-[0.3em]">New Sector</span>
             </button>
           </div>
@@ -266,7 +266,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
 
       {/* High-Impact World Map Section */}
       {isDM && (
-        <div className="group relative rounded-[3rem] border border-white/5 bg-white/[0.01] backdrop-blur-sm overflow-hidden transition-all duration-700 hover:border-white/10 hover:bg-white/[0.03]">
+        <div className="group relative rounded-[3rem] border border-white/5 bg-white/[0.01] backdrop-blur-sm overflow-hidden transition-all duration-200 hover:border-white/10 hover:bg-white/[0.03]">
           <div className="p-8 border-b border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
@@ -361,7 +361,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
 
       {/* Control Module */}
       <div className="w-full max-w-2xl mx-auto relative group pt-10">
-        <Search size={22} className="absolute left-6 top-[calc(50%+20px)] -translate-y-1/2 text-white/10 group-focus-within:text-indigo-400 transition-all duration-500" />
+        <Search size={22} className="absolute left-6 top-[calc(50%+20px)] -translate-y-1/2 text-white/10 group-focus-within:text-indigo-400 transition-all duration-300" />
         <input
           type="text"
           placeholder="Locate coordinates or regional sectors..."

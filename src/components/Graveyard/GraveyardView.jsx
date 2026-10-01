@@ -257,7 +257,7 @@ function TombstoneCard({ character, isDM, onResurrect }) {
 
   return (
     <div
-      className="group relative flex flex-col overflow-hidden transition-all duration-700"
+      className="group relative flex flex-col overflow-hidden transition-all duration-200"
       style={{
         borderRadius: '2.5rem',
         background: 'rgba(10, 5, 20, 0.85)',
@@ -283,7 +283,7 @@ function TombstoneCard({ character, isDM, onResurrect }) {
           <img
             src={character.avatarUrl}
             alt={character.name}
-            className="absolute inset-0 w-full h-full object-contain z-10 transition-all duration-1000 group-hover:brightness-[0.65]"
+            className="absolute inset-0 w-full h-full object-contain z-10 transition-all duration-200 group-hover:brightness-[0.65]"
             style={{ filter: 'grayscale(1) brightness(0.45) sepia(0.25)' }}
           />
         )}

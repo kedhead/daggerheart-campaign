@@ -195,7 +195,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         className={`
           lr-sidebar-aside fixed desk:sticky top-0 left-0 h-screen z-[55]
           flex flex-col
-          transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
+          transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]
           bg-[color:var(--surface)]/60 backdrop-blur-2xl border-r border-[color:var(--line)] shadow-2xl
           ${isCollapsed ? 'w-20' : 'w-72'}
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full desk:translate-x-0'}
@@ -205,7 +205,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         {/* Sidebar Header */}
         <div className="relative p-6 flex flex-col gap-1 overflow-hidden">
           {!isCollapsed && (
-            <div className="animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="animate-in fade-in slide-in-from-left-4 duration-300">
               <h1 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/40 font-serif lowercase italic">
                 {systemName}
               </h1>
@@ -227,7 +227,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
         {currentCampaign && !isCollapsed && (
           <div className="mx-4 mb-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 group hover:bg-white/[0.05] hover:border-white/10 transition-all duration-300 cursor-pointer" onClick={onSwitchCampaign}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[color:var(--primary-soft)] flex items-center justify-center border border-[color:var(--primary)]/20 group-hover:scale-110 transition-transform duration-500">
+              <div className="w-10 h-10 rounded-xl bg-[color:var(--primary-soft)] flex items-center justify-center border border-[color:var(--primary)]/20 group-hover:scale-110 transition-transform duration-300">
                 <FolderOpen size={20} className="text-[color:var(--primary)]" />
               </div>
               <div className="flex-1 min-w-0">

@@ -103,7 +103,7 @@ export default function QuestsView({
   const entityData = { npcs, locations, items, lore, encounters, sessions, timelineEvents, notes };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
         <div className="space-y-1">

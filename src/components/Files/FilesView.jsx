@@ -553,7 +553,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               </div>
 
               {isImage(file.contentType) ? (
-                <img src={file.downloadUrl || file.dataUrl} alt={file.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img src={file.downloadUrl || file.dataUrl} alt={file.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
               ) : file.isGeneratedMap && file.mapDescription ? (
                 <div className="text-center p-6">
                   <Wand2 size={48} className="text-[var(--fear-color)] mx-auto mb-3 opacity-80" />
