@@ -86,6 +86,9 @@ import { DeleteCharacterPrompt } from '../src/components/Characters/ConfirmDelet
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import TakeDamageModal from '../src/components/Characters/TakeDamageModal.jsx';
+import PortalTableStatus from '../src/components/PlayerPortal/PortalTableStatus.jsx';
+import { bottomTabsFor } from '../src/components/Layout/BottomNav.jsx';
+import { publicCountdowns } from '../src/utils/countdowns.js';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
 import { buildSheetFields, normalizeInventory, splitGold, armorSlotCount } from '../src/utils/daggerheartSheetFields.js';
 import { displayItemName, hasCustomName, isRenameable, normalizeCustomName, renameEquippedItem, MAX_CUSTOM_NAME_LENGTH } from '../src/utils/itemNames.js';
@@ -2645,6 +2648,36 @@ section('Player damage');
   assert(html.includes('(0 free'), 'with every Armor Slot marked, the armor option says none are free');
   assert(/<button[^>]*disabled=""[^>]*>.*Apply/.test(html), 'Apply is disabled until a damage number is entered');
   assert(html.includes('role="dialog"') && html.includes('aria-modal="true"'), 'it is announced as a dialog');
+}
+
+// ── At the table: phone tabs, Fear and countdowns for players ──
+section('Table feel');
+{
+  const dm = bottomTabsFor({ isDM: true, isDaggerheart: true }).map(t => t.id);
+  assert(JSON.stringify(dm) === JSON.stringify(['dashboard', 'sessions', 'encounters', 'npcs', 'more']),
+    `the DM's phone tabs are Home / Sessions / Combat / NPCs / More, not a character sheet (got ${dm.join(',')})`);
+  const player = bottomTabsFor({ isDM: false, isDaggerheart: true }).map(t => t.id);
+  assert(player.includes('my-sheet') && player.includes('portal'), 'players keep their sheet and the portal');
+  assert(bottomTabsFor({ isDM: false, isDaggerheart: false }).some(t => t.id === 'more'), 'outside Daggerheart, players get More');
+
+  const items = [
+    { id: 'a', name: 'The ritual', value: 3, max: 6, kind: 'consequence', public: true, secretNote: 'x' },
+    { id: 'b', name: 'Assassin arrives', value: 2, max: 4, kind: 'standard' },
+    { id: 'c', name: 'Escape', value: 0, max: 4, kind: 'progress', public: true },
+  ];
+  const pub = publicCountdowns(items);
+  assert(JSON.stringify(pub.map(c => c.id)) === JSON.stringify(['a', 'c']), 'only countdowns the DM marked public reach players');
+  assert(!('secretNote' in pub[0]) && !('public' in pub[0]), 'and only the fields a player needs are copied');
+  assert(publicCountdowns(undefined).length === 0, 'no countdowns, nothing to show');
+
+  const shown = strip(renderToString(<PortalTableStatus display={{ showFear: true, fearCount: 5, publicCountdowns: pub }} />));
+  assert(shown.includes('GM Fear') && shown.includes('>5<') && shown.includes('The ritual') && shown.includes('3/6'),
+    "the portal shows the GM's Fear and the public countdowns");
+  assert(shown.includes('triggered'), 'a countdown at zero reads as triggered');
+  const hidden = renderToString(<PortalTableStatus display={{ showFear: false, fearCount: 5, publicCountdowns: [] }} />);
+  assert(hidden === '', "with Fear hidden by the DM and no public countdowns, the portal shows nothing");
+  const capped = strip(renderToString(<PortalTableStatus display={{ fearCount: 40 }} />));
+  assert(capped.includes('>12<'), 'Fear shown never exceeds the 12 maximum');
 }
 
 // ── Campaign memory ──

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Radio, Square, Star, Copy, Trash2, ArrowLeft, FileText, CheckCircle, Sparkles, Loader2, UserPlus, MapPin } from 'lucide-react';
 import { useSessionLive } from '../../hooks/useSessionLive';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
+import { useWakeLock } from '../../hooks/useWakeLock';
 import { autoLinkText } from '../../utils/autoLinkText';
 import { TRANSCRIPTION_NOTE_PREFIX, starredHighlights, mergeHighlights, unresolvedLinks } from '../../utils/campaignMemory';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -40,6 +41,8 @@ export default function SessionLive({
   } = useSessionLive(campaignId, session?.id, isDM);
 
   const { getByName } = useEntityRegistry(campaign, entities, isDM);
+  // A live session runs for hours; don't let the note-taker's screen sleep.
+  useWakeLock(true);
   // The recap links the names that have pages. Only people, places and lore:
   // linking every session title and encounter name that happens to appear in
   // the prose would bury the links that matter.

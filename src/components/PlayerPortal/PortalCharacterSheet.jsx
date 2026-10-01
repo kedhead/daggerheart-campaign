@@ -12,6 +12,9 @@ import { computeDefenses } from '../../utils/daggerheartDefenses';
 import { armorSlotCount } from '../../utils/daggerheartSheetFields';
 import { isAtDeathsDoor, hpSlotsOf } from '../../utils/daggerheartVitals';
 import { useDualityAutomation } from '../../hooks/useDualityAutomation';
+import { useWakeLock } from '../../hooks/useWakeLock';
+import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
+import PortalTableStatus from './PortalTableStatus';
 import { displayItemName } from '../../utils/itemNames';
 import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
 import RestModal from '../Characters/RestModal';
@@ -48,6 +51,8 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   const [showDeath, setShowDeath] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showDamage, setShowDamage] = useState(false);
+  // The portal is the player's sheet at the table — keep the phone awake.
+  useWakeLock(true);
 
   // hpSlots holds HP REMAINING, not damage marked — see daggerheartVitals.js.
   // This used to count true slots as marks, which offered the Death Move to a
@@ -108,6 +113,8 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
 
   const campaignId = campaign?.id;
   const { roll, rollDamage } = useDice(campaignId);
+  // The GM's Fear and any countdowns the DM made public — read-only here.
+  const { displayState: tableDisplay } = usePlayerDisplay(campaignId);
 
   // Every roll the tabs make is an action roll — a trait check, a weapon
   // attack, a spellcast — so they get a roll that says so and then applies
@@ -337,6 +344,8 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
               </button>
             )}
           </div>
+
+          <PortalTableStatus display={tableDisplay} />
 
           {/* ── Vital tracks ── */}
           <div style={{ padding: '14px 18px 0' }}>

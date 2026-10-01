@@ -6,6 +6,7 @@ import PhaseTransitionModal from './PhaseTransitionModal';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
 import { useDice } from '../../dice';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
+import { useWakeLock } from '../../hooks/useWakeLock';
 import FearControl from '../PlayerDisplay/FearControl';
 import PartyStatusPanel from '../GMScreen/panels/PartyStatusPanel';
 
@@ -17,6 +18,8 @@ export default function LiveEncounterTracker({
   campaign,
   onClose
 }) {
+  // A fight can run long; keep the DM's tablet from sleeping mid-round.
+  useWakeLock(true);
   const {
     activeEncounter,
     loading,
