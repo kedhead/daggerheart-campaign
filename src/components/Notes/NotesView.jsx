@@ -4,8 +4,10 @@ import NoteCard from './NoteCard';
 import NoteForm from './NoteForm';
 import Modal from '../Modal';
 import './NotesView.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function NotesView({ campaign, addNote, updateNote, deleteNote, currentUserId, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes: allNotesEntities = [] }) {
+  const confirm = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,7 +50,7 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
   };
 
   const handleDelete = async (noteId) => {
-    if (confirm('Are you sure you want to delete this note?')) {
+    if (await confirm({ message: 'Delete this note?', confirmLabel: 'Delete', danger: true })) {
       await deleteNote(noteId);
     }
   };
@@ -74,7 +76,7 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
   };
 
   return (
-    <div className="min-h-screen bg-transparent p-6 space-y-8 animate-in fade-in duration-700">
+    <div className="min-h-screen bg-transparent p-6 space-y-8 animate-in fade-in duration-200">
       {/* View Header */}
       <div className="flex items-center justify-between gap-6 pb-6 border-b border-white/5">
         <div className="space-y-1">

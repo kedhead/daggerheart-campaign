@@ -24,6 +24,7 @@ import CompanionSheet from './CompanionSheet';
 import ExportSheetButton from './ExportSheetButton';
 import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
 import './DaggerheartCharacterSheet.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // Parse a damage string like "d8+3" or "2d6" into parts for rolling
 const parseDamageString = (dmgStr) => {
@@ -76,6 +77,7 @@ const getWeaponDamage = (weapon, level, proficiency) => {
 };
 
 export default function DaggerheartCharacterSheet({ character, onEdit, onDelete, isDM, canEdit, campaign, updateCharacter, items }) {
+  const confirm = useConfirm();
   const [localHp, setLocalHp] = useState(null);
   const [localStress, setLocalStress] = useState(null);
   const [localArmor, setLocalArmor] = useState(null);
@@ -202,10 +204,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   // Scars are permanent by the rules, but healable through downtime or a quest
   // reward — and mistakes happen. Clicking a crossed-out slot gives it back.
-  const handleRemoveScar = () => {
+  const handleRemoveScar = async () => {
     const current = scarCount(character);
     if (!canEdit || !updateCharacter || current <= 0) return;
-    if (!confirm(`Remove one scar from ${character.name || 'this character'}? This restores a Hope slot.`)) return;
+    if (!await confirm({ message: `Remove one scar from ${character.name || 'this character'}? This restores a Hope slot.`, confirmLabel: 'Remove', danger: true })) return;
     updateCharacter(character.id, {
       scars: Math.max(0, current - 1),
       // Repair the track too, in case it was shortened by the old portal bug.

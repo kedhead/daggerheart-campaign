@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Target, Plus, Search, Filter } from 'lucide-react';
 import QuestCard from './QuestCard';
 import QuestForm from './QuestForm';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All' },
@@ -28,6 +29,7 @@ export default function QuestsView({
   timelineEvents = [],
   notes = []
 }) {
+  const confirm = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [editingQuest, setEditingQuest] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,7 +94,7 @@ export default function QuestsView({
   };
 
   const handleDeleteQuest = async (questId) => {
-    if (confirm('Are you sure you want to delete this quest?')) {
+    if (await confirm({ message: 'Delete this quest?', confirmLabel: 'Delete', danger: true })) {
       await deleteQuest(questId);
     }
   };
@@ -101,7 +103,7 @@ export default function QuestsView({
   const entityData = { npcs, locations, items, lore, encounters, sessions, timelineEvents, notes };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-300">
       {/* Header */}
       <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
         <div className="space-y-1">

@@ -126,7 +126,7 @@ export default function BPCalculator({
       <div className="relative pt-6 pb-2">
         <div className="h-4 bg-black/40 rounded-full overflow-hidden border border-white/5">
           <div
-            className={`h-full transition-all duration-500 ease-out ${isOver ? 'bg-red-500' : isBalanced ? 'bg-emerald-500' : 'bg-blue-500'}`}
+            className={`h-full transition-all duration-300 ease-out ${isOver ? 'bg-red-500' : isBalanced ? 'bg-emerald-500' : 'bg-blue-500'}`}
             style={{ width: `${fillPercent}%` }}
           />
         </div>

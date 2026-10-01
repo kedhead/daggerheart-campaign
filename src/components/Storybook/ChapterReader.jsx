@@ -9,6 +9,7 @@ import CinematicPlayer from './CinematicPlayer';
 import { interleaveProseAndScenes } from './cinematicTimeline';
 import { useAllJournals } from '../../hooks/useStorybook';
 import { getCharacterOwnerId } from '../../utils/characterOwnership';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    ChapterReader — one scrolling chapter at a time, with chapter navigation.
@@ -35,6 +36,7 @@ export default function ChapterReader({
   initialChapterId = null,
   hideJournal = false
 }) {
+  const confirm = useConfirm();
   const orderedChapters = useMemo(
     () => [...(chapters || [])].sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0)),
     [chapters]
@@ -285,8 +287,8 @@ export default function ChapterReader({
                   {(entry.authorId === currentUserId || isDM) && (
                     <button
                       type="button"
-                      onClick={() => {
-                        if (window.confirm('Delete this journal entry?')) {
+                      onClick={async () => {
+                        if (await confirm({ message: 'Delete this journal entry?', confirmLabel: 'Delete', danger: true })) {
                           storybook.deleteJournalEntry(currentChapter.id, entry.id);
                         }
                       }}

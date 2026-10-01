@@ -8,8 +8,12 @@ import {
   assetCategories
 } from '../../../services/battleMapGenerator';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
+import { useNotify } from '../../../contexts/ToastContext';
+import { useConfirm } from '../../../contexts/ConfirmContext';
 
 export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [prompt, setPrompt] = useState('');
   const [category, setCategory] = useState('creatures');
   const [removeBackground, setRemoveBackground] = useState(true);
@@ -112,7 +116,7 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
 
   const handleAddToMap = (asset) => {
     if (!mapImage) {
-      alert('Please load a map first before adding tokens');
+      notify.warning('Please load a map first before adding tokens');
       return;
     }
 
@@ -141,7 +145,7 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
   const handleDeleteSavedAsset = async (assetId) => {
     if (!campaignId) return;
 
-    if (!confirm('Are you sure you want to permanently delete this asset?')) {
+    if (!await confirm({ message: 'Permanently delete this asset?', confirmLabel: 'Delete', danger: true })) {
       return;
     }
 

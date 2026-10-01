@@ -11,6 +11,7 @@ import { persistAudio, saveAudioCache, loadAudioCache } from '../../services/aud
 import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
 import { CURATED_SOUND_EFFECTS, getRandomVariantUrl } from '../../data/soundEffectsLibrary';
 import './DMSoundboard.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 // Background music themes
 const MUSIC_THEMES = {
@@ -125,6 +126,7 @@ const SOUND_CATEGORIES = {
 };
 
 export default function DMSoundboard({ campaignId }) {
+  const notify = useNotify();
   const [activeCategory, setActiveCategory] = useState('combat');
   const [effectsVolume, setEffectsVolume] = useState(70);
   const [musicVolume, setMusicVolume] = useState(50);
@@ -249,7 +251,7 @@ export default function DMSoundboard({ campaignId }) {
       }
     } catch (error) {
       console.error('Failed to generate sound:', error);
-      alert(`Failed to generate sound: ${error.message}`);
+      notify.error(`Failed to generate sound: ${error.message}`);
     } finally {
       setGeneratingSound(null);
     }
@@ -635,7 +637,7 @@ export default function DMSoundboard({ campaignId }) {
       }
     } catch (error) {
       console.error('Failed to generate music:', error);
-      alert(`Failed to generate music: ${error.message}`);
+      notify.error(`Failed to generate music: ${error.message}`);
     } finally {
       setGeneratingMusic(null);
     }
@@ -770,7 +772,7 @@ export default function DMSoundboard({ campaignId }) {
       setAiPrompt('');
     } catch (error) {
       console.error('Failed to generate sound:', error);
-      alert(`Failed to generate sound: ${error.message}`);
+      notify.error(`Failed to generate sound: ${error.message}`);
     } finally {
       setAiGenerating(false);
     }

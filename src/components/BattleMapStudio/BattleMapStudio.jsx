@@ -41,8 +41,10 @@ import AnimationControls from './Panels/AnimationControls';
 import AssetPackImporter from './Panels/AssetPackImporter';
 import AnimatedMapLibrary from './Panels/AnimatedMapLibrary';
 import DMSoundboard from '../Soundboard/DMSoundboard';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function BattleMapStudio({ campaign, isDM }) {
+  const confirm = useConfirm();
   const campaignId = campaign?.id;
   const [activePanel, setActivePanel] = useState('assets'); // 'assets' | 'ai-assets' | 'maps' | 'grid'
   const [canvasMode, setCanvasMode] = useState('import'); // 'import' | 'ai-generate'
@@ -143,9 +145,9 @@ export default function BattleMapStudio({ campaign, isDM }) {
   };
 
   // Create new map
-  const handleNewMap = () => {
+  const handleNewMap = async () => {
     if (isDirty) {
-      if (!confirm('You have unsaved changes. Create a new map anyway?')) {
+      if (!await confirm({ message: 'You have unsaved changes. Create a new map anyway?', confirmLabel: 'Discard changes', danger: true })) {
         return;
       }
     }
@@ -155,7 +157,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
   // Load a saved map
   const handleLoadMap = async (selectedMapId) => {
     if (isDirty) {
-      if (!confirm('You have unsaved changes. Load a different map anyway?')) {
+      if (!await confirm({ message: 'You have unsaved changes. Load a different map anyway?', confirmLabel: 'Discard changes', danger: true })) {
         return;
       }
     }
@@ -186,7 +188,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
 
   // Delete a map
   const handleDeleteMap = async (mapIdToDelete) => {
-    if (confirm('Are you sure you want to delete this map?')) {
+    if (await confirm({ message: 'Delete this map?', confirmLabel: 'Delete', danger: true })) {
       await deleteMap(mapIdToDelete);
       if (mapId === mapIdToDelete) {
         resetMap();

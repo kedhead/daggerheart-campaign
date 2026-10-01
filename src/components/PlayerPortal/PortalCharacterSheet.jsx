@@ -22,6 +22,7 @@ import DeathMoveModal from '../Characters/DeathMoveModal';
 import TakeDamageModal from '../Characters/TakeDamageModal';
 import { applyDamage } from '../../utils/playerDamage';
 import LevelUpWizard from '../Characters/LevelUpWizard';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const TABS = [
   { key: 'actions',   label: 'Actions'   },
@@ -41,6 +42,7 @@ function toBoolArray(filled, max) {
 }
 
 export default function PortalCharacterSheet({ character, currentUserId, updateCharacter, stashFromCharacter, campaign, items, showBack, onBack, onExit }) {
+  const confirm = useConfirm();
   const [showDicePicker, setShowDicePicker] = useState(false);
   const [diceColor, setDiceColor] = useState(() => getPlayerDiceColor(currentUserId));
   const [dualityKey, setDualityKey] = useState(() => getDualitySet().key);
@@ -164,9 +166,9 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
 
   // Scars are permanent by the rules, but they can be healed through downtime
   // or a quest reward — and mistakes happen. Confirm, then give the slot back.
-  const handleRemoveScar = () => {
+  const handleRemoveScar = async () => {
     if (!updateCharacter || scars <= 0) return;
-    if (!confirm(`Remove one scar from ${character.name || 'this character'}? This restores a Hope slot.`)) return;
+    if (!await confirm({ message: `Remove one scar from ${character.name || 'this character'}? This restores a Hope slot.`, confirmLabel: 'Remove', danger: true })) return;
     updateCharacter(character.id, {
       scars: Math.max(0, scars - 1),
       // Repair the track at the same time, in case it was shortened before.

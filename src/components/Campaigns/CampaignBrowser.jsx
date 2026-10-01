@@ -4,8 +4,10 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, Users, UserPlus, Clock, CheckCircle, XCircle } from 'lucide-react';
 import './CampaignBrowser.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 export default function CampaignBrowser({ onClose }) {
+  const notify = useNotify();
   const { currentUser } = useAuth();
   const [publicCampaigns, setPublicCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -57,10 +59,10 @@ export default function CampaignBrowser({ onClose }) {
         updatedAt: serverTimestamp()
       });
 
-      alert(`Join request sent to "${campaignName}"! The DM will review your request.`);
+      notify.success(`Join request sent to "${campaignName}"! The DM will review your request.`);
     } catch (error) {
       console.error('Error sending join request:', error);
-      alert('Failed to send join request. Please try again.');
+      notify.error('Failed to send join request. Please try again.');
     } finally {
       setRequestingCampaign(null);
     }

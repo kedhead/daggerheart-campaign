@@ -5,6 +5,7 @@ import { useCampaignBuilder } from '../../hooks/useCampaignBuilder';
 import { getAvailableTemplates } from '../../data/campaignFrameTemplates';
 import { getGameSystem } from '../../data/systems/index.js';
 import { HOPE_FEAR_SOURCE } from '../../data/sources';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CampaignBuilderView({
   userId,
@@ -25,6 +26,7 @@ export default function CampaignBuilderView({
   addAdversary,
   addEnvironment
 }) {
+  const confirm = useConfirm();
   const [wizardStarted, setWizardStarted] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [viewingFrame, setViewingFrame] = useState(false);
@@ -58,7 +60,7 @@ export default function CampaignBuilderView({
   };
 
   const handleDeleteDraft = async () => {
-    if (confirm('Are you sure you want to delete your draft? This cannot be undone.')) {
+    if (await confirm({ message: 'Delete your draft? This cannot be undone.', confirmLabel: 'Delete', danger: true })) {
       await deleteCampaignFrameDraft();
     }
   };

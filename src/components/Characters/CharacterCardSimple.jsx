@@ -1,27 +1,29 @@
 import { useState } from 'react';
+import { useNotify } from '../../contexts/ToastContext';
 import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles, RefreshCw, Download } from 'lucide-react';
 import { downloadUrlAs, slugify } from '../../utils/downloadBlob';
 import './CharacterCard.css';
 
-async function downloadPortrait(url, name) {
+async function downloadPortrait(url, name, onError) {
   try {
     await downloadUrlAs(url, `${slugify(name, 'character')}-portrait.png`);
   } catch (err) {
     console.error('Failed to download portrait:', err);
-    alert('Failed to download portrait. Try right-clicking the image and saving it manually.');
+    onError?.('Failed to download portrait. Try right-clicking the image and saving it manually.');
   }
 }
 
 export default function CharacterCardSimple({ character, onEdit, onDelete, isDM, canEdit, campaign, onDemiplaneUpdate }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const notify = useNotify();
 
   return (
     <div className={`
-      group relative flex flex-col overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl transition-all duration-700 hover:bg-white/[0.05] hover:border-white/10 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] hover:-translate-y-2
+      group relative flex flex-col overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] transition-all duration-200 hover:bg-white/[0.05] hover:border-white/10 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] hover:-translate-y-0.5
       ${isExpanded ? 'ring-2 ring-white/10 bg-white/[0.07]' : ''}
     `}>
       {/* Heroic Visual Header */}
-      <div className="relative h-80 overflow-hidden bg-gradient-to-br from-blue-950/20 to-black/60 border-b border-white/5 group-hover:h-[22rem] transition-all duration-700">
+      <div className="relative h-80 overflow-hidden bg-gradient-to-br from-blue-950/20 to-black/60 border-b border-white/5 transition-all duration-200">
         <div className="absolute inset-0 bg-white/[0.01] flex items-center justify-center">
           <span className="text-[12rem] font-serif font-black text-white/[0.02] select-none italic lowercase transform -rotate-12">{character.name.charAt(0)}</span>
         </div>
@@ -47,7 +49,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
           <button
             className="absolute top-6 right-6 z-30 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-white/40 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
             title="Download portrait"
-            onClick={(e) => { e.stopPropagation(); downloadPortrait(character.avatarUrl, character.name); }}
+            onClick={(e) => { e.stopPropagation(); downloadPortrait(character.avatarUrl, character.name, notify.error); }}
           >
             <Download size={14} />
           </button>
@@ -84,13 +86,13 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
         </div>
 
         {isExpanded && (
-          <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-top-6 duration-700">
+          <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-top-6 duration-200">
             {character.demiplaneLink && (
               <a
                 href={character.demiplaneLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group/link block relative p-6 rounded-3xl bg-emerald-500/5 border border-emerald-500/10 hover:bg-emerald-500/10 transition-all duration-500 overflow-hidden"
+                className="group/link block relative p-6 rounded-3xl bg-emerald-500/5 border border-emerald-500/10 hover:bg-emerald-500/10 transition-all duration-300 overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="relative z-10 flex items-center justify-between">
@@ -105,7 +107,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
                   </div>
                   <ChevronRight size={20} className="text-emerald-500/40 group-hover/link:translate-x-1 transition-transform" />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/[0.02] to-emerald-500/0 -translate-x-full group-hover/link:translate-x-full transition-transform duration-1000" />
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/[0.02] to-emerald-500/0 -translate-x-full group-hover/link:translate-x-full transition-transform duration-200" />
               </a>
             )}
 
@@ -168,7 +170,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
           </div>
         )}
 
-        <div className={`absolute top-8 right-8 p-1.5 rounded-xl border border-white/5 bg-white/[0.02] text-white/10 group-hover:text-white group-hover:bg-white/10 transition-all duration-500 ${isExpanded ? 'rotate-180 bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : ''}`}>
+        <div className={`absolute top-8 right-8 p-1.5 rounded-xl border border-white/5 bg-white/[0.02] text-white/10 group-hover:text-white group-hover:bg-white/10 transition-all duration-300 ${isExpanded ? 'rotate-180 bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : ''}`}>
           <ChevronDown size={20} />
         </div>
       </div>

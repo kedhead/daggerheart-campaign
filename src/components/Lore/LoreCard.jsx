@@ -39,7 +39,7 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
 
   return (
     <div className={`
-      group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/5 bg-white/[0.03] backdrop-blur-xl transition-all duration-700 hover:bg-white/[0.06] hover:border-white/10 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:-translate-y-1
+      group relative flex flex-col overflow-hidden rounded-[2rem] border border-white/5 bg-white/[0.03] transition-all duration-200 hover:bg-white/[0.06] hover:border-white/10 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:-translate-y-0.5
       ${isExpanded ? 'ring-1 ring-white/10 bg-white/[0.08]' : ''}
       ${lore.hidden ? 'opacity-60' : ''}
     `}>
@@ -53,7 +53,7 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
         ) : lore.coverImage ? (
           <img src={lore.coverImage} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-700">
+          <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] group-hover:opacity-[0.05] transition-opacity duration-200">
             <Icon size={120} className="text-white" />
           </div>
         )}
@@ -97,7 +97,7 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
         </div>
 
         {isExpanded && (
-          <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="prose prose-invert prose-p:leading-relaxed prose-p:text-white/60 prose-p:font-medium prose-strong:text-indigo-400 prose-sm max-w-none font-sans">
               {lore.content ? (
                 <WikiText
@@ -131,7 +131,7 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
                 {onGenerateImage && (
                   <button
                     className={`
-                      w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl transition-all duration-500 group/gen
+                      w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 group/gen
                       ${generatingImage
                         ? 'bg-indigo-500/20 text-indigo-300 cursor-not-allowed border border-indigo-500/30'
                         : 'bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400/20 shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/30 active:scale-95'

@@ -7,6 +7,7 @@ import {
   STARWARSD6_AFFILIATIONS,
   STARWARSD6_SCALES
 } from '../../data/starwarsd6Adversaries';
+import { useNotify } from '../../contexts/ToastContext';
 
 const EMPTY_FORM = {
   name: '',
@@ -56,6 +57,7 @@ export default function StarWarsD6AdversaryForm({
   adversary = null,
   campaignAdversaries = []
 }) {
+  const notify = useNotify();
   const isEdit = !!adversary;
   const [mode, setMode] = useState('manual');
   const [form, setForm] = useState(() => adversary ? fromAdversary(adversary) : { ...EMPTY_FORM });
@@ -149,7 +151,7 @@ export default function StarWarsD6AdversaryForm({
   );
 
   const handleSave = async () => {
-    if (!form.name.trim()) { alert('Name is required.'); return; }
+    if (!form.name.trim()) { notify.warning('Name is required.'); return; }
     setSaving(true);
     try {
       const cleaned = {
@@ -172,7 +174,7 @@ export default function StarWarsD6AdversaryForm({
       await onSave(cleaned);
       onClose();
     } catch (e) {
-      alert('Failed to save: ' + e.message);
+      notify.error('Failed to save: ' + e.message);
     } finally {
       setSaving(false);
     }

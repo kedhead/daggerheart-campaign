@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Package, Plus, Trash2, ArrowRight, Check, X } from 'lucide-react';
 import './CharacterInventory.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CharacterInventory({
   character,
@@ -12,6 +13,7 @@ export default function CharacterInventory({
   onTransferToParty,
   canEdit = false
 }) {
+  const confirm = useConfirm();
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState('');
   const [addQuantity, setAddQuantity] = useState(1);
@@ -30,7 +32,7 @@ export default function CharacterInventory({
   };
 
   const handleRemoveItem = async (inventoryIndex) => {
-    if (confirm('Remove this item from inventory?')) {
+    if (await confirm({ message: 'Remove this item from inventory?', confirmLabel: 'Remove', danger: true })) {
       await onRemoveItem(character.id, inventoryIndex);
     }
   };

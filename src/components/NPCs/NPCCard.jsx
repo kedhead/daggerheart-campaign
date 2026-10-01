@@ -8,12 +8,12 @@ import AppearsIn from '../CampaignMemory/AppearsIn';
 import { useToast } from '../../contexts/ToastContext';
 import { downloadUrlAs, slugify } from '../../utils/downloadBlob';
 
-async function downloadPortrait(url, name) {
+async function downloadPortrait(url, name, onError) {
   try {
     await downloadUrlAs(url, `${slugify(name, 'npc')}-portrait.png`);
   } catch (err) {
     console.error('Failed to download portrait:', err);
-    alert('Failed to download portrait. Try right-clicking the image and saving it manually.');
+    onError?.('Failed to download portrait. Try right-clicking the image and saving it manually.');
   }
 }
 
@@ -34,11 +34,11 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
 
   return (
     <div className={`
-      group relative flex flex-col overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl transition-all duration-700 hover:bg-white/[0.05] hover:border-white/10 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] hover:-translate-y-2
+      group relative flex flex-col overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] transition-all duration-200 hover:bg-white/[0.05] hover:border-white/10 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] hover:-translate-y-0.5
       ${isExpanded ? 'ring-2 ring-white/10 bg-white/[0.07]' : ''}
     `}>
       {/* High Impact Visual Header */}
-      <div className="relative h-80 overflow-hidden bg-gradient-to-br from-indigo-950/20 to-black/60 border-b border-white/5 group-hover:h-[22rem] transition-all duration-700">
+      <div className="relative h-80 overflow-hidden bg-gradient-to-br from-indigo-950/20 to-black/60 border-b border-white/5 transition-all duration-200">
         <div className="absolute inset-0 bg-white/[0.02] flex items-center justify-center">
           <span className="text-9xl font-serif font-black text-white/[0.02] select-none italic lowercase transform -rotate-12">{npc.name.charAt(0)}</span>
         </div>
@@ -60,7 +60,7 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
           <button
             className="absolute top-6 right-6 z-20 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-white/40 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
             title="Download portrait"
-            onClick={(e) => { e.stopPropagation(); downloadPortrait(npc.avatarUrl, npc.name); }}
+            onClick={(e) => { e.stopPropagation(); downloadPortrait(npc.avatarUrl, npc.name, error); }}
           >
             <Download size={14} />
           </button>
@@ -111,7 +111,7 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
         </div>
 
         {isExpanded && (
-          <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-top-6 duration-700">
+          <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-top-6 duration-200">
             {npc.description && (
               <div className="space-y-3">
                 <h4 className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Observations</h4>
@@ -184,7 +184,7 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
           </div>
         )}
 
-        <div className={`absolute top-8 right-8 p-1.5 rounded-xl border border-white/5 bg-white/[0.02] text-white/10 group-hover:text-white group-hover:bg-white/10 transition-all duration-500 ${isExpanded ? 'rotate-180 bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : ''}`}>
+        <div className={`absolute top-8 right-8 p-1.5 rounded-xl border border-white/5 bg-white/[0.02] text-white/10 group-hover:text-white group-hover:bg-white/10 transition-all duration-300 ${isExpanded ? 'rotate-180 bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : ''}`}>
           <ChevronDown size={20} />
         </div>
       </div>

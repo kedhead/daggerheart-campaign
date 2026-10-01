@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Copy, Check, FileText } from 'lucide-react';
+import { useNotify } from '../../../contexts/ToastContext';
 
 /**
  * Prompt Generator Component
@@ -12,6 +13,7 @@ export default function PromptGenerator({
   onParseResponse,
   generating
 }) {
+  const notify = useNotify();
   const [promptCopied, setPromptCopied] = useState(false);
   const [responseText, setResponseText] = useState('');
 
@@ -22,7 +24,7 @@ export default function PromptGenerator({
       setTimeout(() => setPromptCopied(false), 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-      alert('Failed to copy to clipboard');
+      notify.error('Failed to copy to clipboard');
     }
   };
 

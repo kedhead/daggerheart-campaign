@@ -5,8 +5,10 @@ import TimelineEventForm from './TimelineEventForm';
 import SessionCard from '../Sessions/SessionCard';
 import Modal from '../Modal';
 import './TimelineView.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function TimelineView({ campaign, events = [], addEvent, updateEvent, deleteEvent, isDM, npcs = [], locations = [], lore = [], sessions = [], encounters = [], notes = [] }) {
+  const confirm = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
 
@@ -44,7 +46,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
   };
 
   const handleDelete = async (eventId) => {
-    if (confirm('Are you sure you want to delete this event?')) {
+    if (await confirm({ message: 'Delete this event?', confirmLabel: 'Delete', danger: true })) {
       await deleteEvent(eventId);
     }
   };
@@ -125,7 +127,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto p-6 space-y-8 animate-in fade-in duration-300">
       {/* Universal Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">

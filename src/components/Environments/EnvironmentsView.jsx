@@ -9,6 +9,7 @@ import { buildCampaignContext } from '../../services/campaignContext';
 import { generateEnvironmentEncounter } from '../../services/environmentGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import './EnvironmentsView.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function EnvironmentsView({
   campaign,
@@ -33,6 +34,7 @@ export default function EnvironmentsView({
   maps = [],
   storybookChapters = []
 }) {
+  const confirm = useConfirm();
   const [buildingEncounter, setBuildingEncounter] = useState(false);
 
   const { getEffectiveKey } = useAPIKey(userId || campaign?.createdBy);
@@ -113,7 +115,7 @@ export default function EnvironmentsView({
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this environment?')) {
+    if (await confirm({ message: 'Delete this environment?', confirmLabel: 'Delete', danger: true })) {
       await deleteEnvironment(id);
     }
   };

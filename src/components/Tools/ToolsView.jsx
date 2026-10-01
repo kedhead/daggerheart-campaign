@@ -59,7 +59,7 @@ export default function ToolsView({ campaign }) {
               rel="noopener noreferrer"
               className="bg-white/5 border border-white/10 rounded-lg backdrop-blur-sm group hover:border-[var(--hope-color)] transition-all duration-300 flex items-start gap-4 p-6 relative overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-[var(--hope-color)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-br from-[var(--hope-color)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="text-4xl select-none group-hover:scale-110 transition-transform duration-300">
                 {ICON_MAP[tool.icon] || '🔗'}
               </div>

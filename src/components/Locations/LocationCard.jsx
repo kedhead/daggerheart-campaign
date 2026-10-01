@@ -29,7 +29,7 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
 
   return (
     <div className={`
-      group relative flex flex-col overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] backdrop-blur-xl transition-all duration-700 hover:bg-white/[0.05] hover:border-white/10 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] hover:-translate-y-2
+      group relative flex flex-col overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.02] transition-all duration-200 hover:bg-white/[0.05] hover:border-white/10 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] hover:-translate-y-0.5
       ${isExpanded ? 'ring-2 ring-white/10 bg-white/[0.07]' : ''}
     `}>
       {/* High-Impact Photographic Background or Map Preview */}
@@ -81,7 +81,7 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
           />
 
           {isExpanded && (
-            <div className="space-y-10 mt-10 animate-in fade-in slide-in-from-top-6 duration-700">
+            <div className="space-y-10 mt-10 animate-in fade-in slide-in-from-top-6 duration-200">
               {location.description && (
                 <div className="space-y-3">
                   <h4 className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Topography/Atmosphere</h4>
@@ -186,7 +186,7 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
           )}
         </div>
 
-        <div className={`absolute top-8 right-8 p-1.5 rounded-xl border border-white/5 bg-white/[0.02] text-white/10 group-hover:text-white group-hover:bg-white/10 transition-all duration-500 ${isExpanded ? 'rotate-180 bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : ''}`}>
+        <div className={`absolute top-8 right-8 p-1.5 rounded-xl border border-white/5 bg-white/[0.02] text-white/10 group-hover:text-white group-hover:bg-white/10 transition-all duration-300 ${isExpanded ? 'rotate-180 bg-white/10 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : ''}`}>
           <ChevronDown size={24} />
         </div>
       </div>

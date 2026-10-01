@@ -10,6 +10,8 @@ import { ALL_STARWARSD6_ITEMS, STARWARSD6_WEAPONS, STARWARSD6_ARMOR, STARWARSD6_
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { buildCampaignContext } from '../../services/campaignContext';
 import './ItemsView.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function ItemsView({
   campaign,
@@ -34,6 +36,8 @@ export default function ItemsView({
   battleMaps = [],
   storybookChapters = []
 }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -119,7 +123,7 @@ export default function ItemsView({
   };
 
   const handleDelete = async (itemId) => {
-    if (confirm('Are you sure you want to delete this item?')) {
+    if (await confirm({ message: 'Delete this item?', confirmLabel: 'Delete', danger: true })) {
       await deleteItem(itemId);
     }
   };
@@ -201,7 +205,7 @@ export default function ItemsView({
   };
 
   const handleSyncToCatalog = async () => {
-    if (!confirm('Update all campaign items that match the official catalog? This will overwrite their systemData with the latest official values (name, description, and custom changes are preserved).')) return;
+    if (!await confirm({ message: 'Update all campaign items that match the official catalog? This will overwrite their systemData with the latest official values (name, description, and custom changes are preserved).', confirmLabel: 'Update' })) return;
     setIsSyncing(true);
     let updated = 0;
     for (const item of items) {
@@ -213,7 +217,7 @@ export default function ItemsView({
       updated++;
     }
     setIsSyncing(false);
-    alert(`Synced ${updated} item${updated !== 1 ? 's' : ''} to official catalog data.`);
+    notify.success(`Synced ${updated} item${updated !== 1 ? 's' : ''} to official catalog data.`);
   };
 
   const handleImportItems = async () => {

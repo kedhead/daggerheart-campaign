@@ -8,6 +8,7 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { isRenameable, renameEquippedItem } from '../../utils/itemNames';
 import ItemName from '../Items/ItemName';
 import './CharacterForm.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 };
 const DEFAULT_HP = [true, true, true, true, true, true];
@@ -51,6 +52,7 @@ const DEFAULT_CHARACTER = {
 const SECTION_STYLE = { color: 'var(--hope-color)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '-0.5rem', marginTop: '0.5rem' };
 
 export default function DaggerheartCharacterForm({ character, onSave, onCancel, isDM, campaign, items, addToCharacterInventory, removeFromCharacterInventory, toggleEquipped }) {
+  const notify = useNotify();
   const [formData, setFormData] = useState(() => ({
     ...DEFAULT_CHARACTER,
     ...character,
@@ -160,8 +162,8 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
   const handleAvatarUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 1 * 1024 * 1024) { alert('Avatar size must be less than 1MB'); return; }
-    if (!file.type.startsWith('image/')) { alert('Please upload an image file'); return; }
+    if (file.size > 1 * 1024 * 1024) { notify.warning('Avatar size must be less than 1MB'); return; }
+    if (!file.type.startsWith('image/')) { notify.warning('Please upload an image file'); return; }
 
     setUploadingAvatar(true);
     const reader = new FileReader();
@@ -169,7 +171,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       setFormData(prev => ({ ...prev, avatarUrl: e.target.result }));
       setUploadingAvatar(false);
     };
-    reader.onerror = () => { alert('Failed to upload avatar'); setUploadingAvatar(false); };
+    reader.onerror = () => { notify.error('Failed to upload avatar'); setUploadingAvatar(false); };
     reader.readAsDataURL(file);
   };
 
@@ -186,7 +188,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       setFormData(prev => ({ ...prev, avatarUrl: imageUrl }));
     } catch (err) {
       console.error('Avatar generation failed:', err);
-      alert('Failed to generate avatar: ' + err.message);
+      notify.error('Failed to generate avatar: ' + err.message);
     } finally {
       setGeneratingAvatar(false);
     }

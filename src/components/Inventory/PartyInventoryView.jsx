@@ -4,6 +4,7 @@ import { displayItemName, hasCustomName } from '../../utils/itemNames';
 import Modal from '../Modal';
 import TransferModal from './TransferModal';
 import './PartyInventoryView.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const RARITY_VAR = {
   common: 'var(--r-common)',
@@ -36,6 +37,7 @@ export default function PartyInventoryView({
   isDM,
   currentUserId,
 }) {
+  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [transferItem, setTransferItem] = useState(null);
@@ -67,7 +69,7 @@ export default function PartyInventoryView({
   };
 
   const handleRemove = async (entryId) => {
-    if (confirm('Remove this item from party stash?')) {
+    if (await confirm({ message: 'Remove this item from party stash?', confirmLabel: 'Remove', danger: true })) {
       await removeFromPartyInventory(entryId);
     }
   };

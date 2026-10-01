@@ -6,9 +6,13 @@ import { Upload, File, Image, Map, Trash2, Download, Eye, X, Wand2, Loader2 } fr
 import Modal from '../Modal';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateMap } from '../../services/mapGenerator';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 // import './FilesView.css';
 
 export default function FilesView({ campaign, isDM, userId, locations = [], updateCampaign }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -90,7 +94,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
     if (file) {
       // Check file size (max 5MB for Firestore storage)
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        notify.warning('File size must be less than 5MB');
         return;
       }
       setSelectedFile(file);
@@ -100,7 +104,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
   const handleUpload = async (file) => {
     if (!isDM) {
-      alert('Only DMs can upload files');
+      notify.info('Only DMs can upload files');
       return;
     }
 
@@ -139,18 +143,18 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       setSelectedFile(null);
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Failed to upload file');
+      notify.error('Failed to upload file');
       setUploading(false);
     }
   };
 
   const handleDelete = async (file) => {
     if (!isDM) {
-      alert('Only DMs can delete files');
+      notify.info('Only DMs can delete files');
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete "${file.name}"?`)) {
+    if (!await confirm({ message: `Delete "${file.name}"?`, confirmLabel: 'Delete', danger: true })) {
       return;
     }
 
@@ -176,14 +180,14 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       await loadFiles();
     } catch (error) {
       console.error('Error deleting file:', error);
-      alert('Failed to delete file');
+      notify.error('Failed to delete file');
     }
   };
 
   const handleGenerateMap = async () => {
     if (mapType === 'regional' || mapType === 'local') {
       if (!selectedLocation) {
-        alert('Please select a location for regional/local maps.');
+        notify.warning('Please select a location for regional/local maps.');
         return;
       }
     }
@@ -241,7 +245,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
           console.log('Image uploaded successfully:', imageDownloadUrl);
         } catch (error) {
           console.error('Failed to upload image to Storage:', error);
-          alert('Image upload failed, but map metadata will be saved.');
+          notify.error('Image upload failed, but map metadata will be saved.');
         }
       }
 
@@ -326,7 +330,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
       setGeneratingMap(false);
     } catch (error) {
       console.error('Error generating map:', error);
-      alert(`Failed to generate map: ${error.message}`);
+      notify.error(`Failed to generate map: ${error.message}`);
       setGeneratingMap(false);
     }
   };
@@ -549,7 +553,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
               </div>
 
               {isImage(file.contentType) ? (
-                <img src={file.downloadUrl || file.dataUrl} alt={file.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                <img src={file.downloadUrl || file.dataUrl} alt={file.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
               ) : file.isGeneratedMap && file.mapDescription ? (
                 <div className="text-center p-6">
                   <Wand2 size={48} className="text-[var(--fear-color)] mx-auto mb-3 opacity-80" />

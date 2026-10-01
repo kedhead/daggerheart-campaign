@@ -9,8 +9,12 @@ import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateMap } from '../../services/mapGenerator';
 import './LocationsView.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function LocationsView({ campaign, campaignFrame, locations = [], updateCampaign, addLocation, updateLocation, deleteLocation, isDM, userId, npcs = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [], chapters }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,7 +47,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
   };
 
   const handleDelete = async (locationId) => {
-    if (confirm('Are you sure you want to delete this location?')) {
+    if (await confirm({ message: 'Delete this location?', confirmLabel: 'Delete', danger: true })) {
       await deleteLocation(locationId);
     }
   };
@@ -54,12 +58,12 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       // Firebase Storage supports much larger files (up to 5GB)
       // But we'll keep a reasonable limit for map images
       if (file.size > 10 * 1024 * 1024) {
-        alert('Map image size must be less than 10MB');
+        notify.warning('Map image size must be less than 10MB');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file');
+        notify.warning('Please upload an image file');
         return;
       }
 
@@ -88,25 +92,25 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
             setUploadingMap(false);
           } catch (error) {
             console.error('Upload error:', error);
-            alert('Failed to upload map to Firebase Storage');
+            notify.error('Failed to upload map to Firebase Storage');
             setUploadingMap(false);
           }
         };
         reader.onerror = () => {
-          alert('Failed to read file');
+          notify.error('Failed to read file');
           setUploadingMap(false);
         };
         reader.readAsDataURL(file);
       } catch (error) {
         console.error('Error uploading map:', error);
-        alert('Failed to upload map');
+        notify.error('Failed to upload map');
         setUploadingMap(false);
       }
     }
   };
 
   const handleRemoveMap = async () => {
-    if (confirm('Are you sure you want to remove the world map?')) {
+    if (await confirm({ message: 'Remove the world map?', confirmLabel: 'Remove', danger: true })) {
       await updateCampaign({ worldMap: null });
     }
   };
@@ -123,7 +127,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
       console.error('Failed to download map:', err);
-      alert('Failed to download map. Try right-clicking the image and saving it manually.');
+      notify.error('Failed to download map. Try right-clicking the image and saving it manually.');
     }
   };
 
@@ -159,7 +163,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       }
     } catch (error) {
       console.error('Error generating world map:', error);
-      alert(`Failed to generate world map: ${error.message}`);
+      notify.error(`Failed to generate world map: ${error.message}`);
     } finally {
       setGeneratingWorldMap(false);
     }
@@ -206,7 +210,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       console.log('Map saved to location');
     } catch (error) {
       console.error('Error generating location map:', error);
-      alert(`Failed to generate map: ${error.message}`);
+      notify.error(`Failed to generate map: ${error.message}`);
     } finally {
       setGeneratingMapFor(null);
     }
@@ -223,7 +227,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
   });
 
   return (
-    <div className="min-h-screen bg-transparent p-6 space-y-10 animate-in fade-in duration-1000">
+    <div className="min-h-screen bg-transparent p-6 space-y-10 animate-in fade-in duration-200">
       {/* Immersive Atlas Header */}
       <div className="flex items-center justify-between gap-8 pb-8 border-b border-white/5 relative">
         <div className="space-y-2 relative z-10">
@@ -250,10 +254,10 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
               <span className="font-black text-[10px] uppercase tracking-widest">AI cartography</span>
             </button>
             <button
-              className="group flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-500 shadow-xl border border-indigo-400/20 active:scale-95"
+              className="group flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-300 shadow-xl border border-indigo-400/20 active:scale-95"
               onClick={handleAdd}
             >
-              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-500" />
+              <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
               <span className="font-black text-xs uppercase tracking-[0.3em]">New Sector</span>
             </button>
           </div>
@@ -262,7 +266,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
 
       {/* High-Impact World Map Section */}
       {isDM && (
-        <div className="group relative rounded-[3rem] border border-white/5 bg-white/[0.01] backdrop-blur-sm overflow-hidden transition-all duration-700 hover:border-white/10 hover:bg-white/[0.03]">
+        <div className="group relative rounded-[3rem] border border-white/5 bg-white/[0.01] backdrop-blur-sm overflow-hidden transition-all duration-200 hover:border-white/10 hover:bg-white/[0.03]">
           <div className="p-8 border-b border-white/5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
@@ -357,7 +361,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
 
       {/* Control Module */}
       <div className="w-full max-w-2xl mx-auto relative group pt-10">
-        <Search size={22} className="absolute left-6 top-[calc(50%+20px)] -translate-y-1/2 text-white/10 group-focus-within:text-indigo-400 transition-all duration-500" />
+        <Search size={22} className="absolute left-6 top-[calc(50%+20px)] -translate-y-1/2 text-white/10 group-focus-within:text-indigo-400 transition-all duration-300" />
         <input
           type="text"
           placeholder="Locate coordinates or regional sectors..."

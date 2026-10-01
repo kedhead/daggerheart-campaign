@@ -5,8 +5,12 @@ import CampaignBrowser from './CampaignBrowser';
 import GameSystemSelector from './GameSystemSelector';
 import Modal from '../Modal';
 import './CampaignSelector.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CampaignSelector({ currentCampaignId, onSelectCampaign, userRole }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const { campaigns, loading, createCampaign, deleteCampaign } = useCampaigns();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBrowseMode, setIsBrowseMode] = useState(false);
@@ -34,7 +38,7 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
       }
     } catch (error) {
       console.error('Error creating campaign:', error);
-      alert('Failed to create campaign');
+      notify.error('Failed to create campaign');
     } finally {
       setCreating(false);
     }
@@ -43,16 +47,19 @@ export default function CampaignSelector({ currentCampaignId, onSelectCampaign, 
   const handleDeleteCampaign = async (e, campaignId, campaignName) => {
     e.stopPropagation(); // Prevent selecting the campaign
 
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${campaignName}"?\n\nThis will permanently delete all characters, lore, and sessions in this campaign. This action cannot be undone.`
-    );
+    const confirmed = await confirm({
+      title: 'Delete campaign',
+      message: `Delete "${campaignName}"?\n\nThis permanently deletes all characters, lore, and sessions in this campaign. It cannot be undone.`,
+      confirmLabel: 'Delete campaign',
+      danger: true,
+    });
 
     if (confirmed) {
       try {
         await deleteCampaign(campaignId);
       } catch (error) {
         console.error('Error deleting campaign:', error);
-        alert('Failed to delete campaign');
+        notify.error('Failed to delete campaign');
       }
     }
   };

@@ -18,6 +18,8 @@ import { generateAdversaryPortrait } from '../../services/portraitGenerator';
 import { generateAdversaryStatblock, generateBossStatblock } from '../../services/adversaryGenerator';
 import { buildCampaignContext } from '../../services/campaignContext';
 import './AdversariesView.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const SORTS = {
   newest: (a, b) => ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)) || (a.name || '').localeCompare(b.name || ''),
@@ -45,6 +47,8 @@ export default function AdversariesView({
   battleMaps    = [],
   storybookChapters = [],
 }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
@@ -147,7 +151,7 @@ export default function AdversariesView({
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this adversary?')) {
+    if (await confirm({ message: 'Delete this adversary?', confirmLabel: 'Delete', danger: true })) {
       await deleteAdversary(id);
     }
   };
@@ -175,9 +179,12 @@ export default function AdversariesView({
   // refreshing older stat blocks after generator fixes.
   const handleRegenerate = async (adversary) => {
     const isBoss = adversary.isBoss || adversary.role === 'boss';
-    if (!confirm(
-      `Regenerate "${adversary.name}"?\n\nIts name and portrait are kept, but the current stats${isBoss ? ', features, and phases' : ' and features'} will be replaced with a fresh AI generation based on its concept. This can't be undone.`
-    )) return;
+    if (!await confirm({
+      title: 'Regenerate adversary',
+      message: `Regenerate "${adversary.name}"?\n\nIts name and portrait are kept, but the current stats${isBoss ? ', features, and phases' : ' and features'} will be replaced with a fresh AI generation based on its concept. This can't be undone.`,
+      confirmLabel: 'Regenerate',
+      danger: true,
+    })) return;
 
     setRegeneratingId(adversary.id);
     try {
@@ -202,7 +209,7 @@ export default function AdversariesView({
       });
     } catch (err) {
       console.error('Adversary regeneration failed:', err);
-      alert('Failed to regenerate adversary: ' + (err.message || 'Unknown error'));
+      notify.error('Failed to regenerate adversary: ' + (err.message || 'Unknown error'));
     } finally {
       setRegeneratingId(null);
     }
@@ -221,7 +228,7 @@ export default function AdversariesView({
       await updateAdversary(adversary.id, { imageUrl });
     } catch (err) {
       console.error('Image generation failed:', err);
-      alert('Failed to generate image: ' + err.message);
+      notify.error('Failed to generate image: ' + err.message);
     }
   };
 

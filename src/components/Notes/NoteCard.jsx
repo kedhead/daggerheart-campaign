@@ -29,13 +29,13 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, 
 
   return (
     <div className={`
-      group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] backdrop-blur-md transition-all duration-500 hover:bg-white/[0.06] hover:border-white/10 hover:shadow-2xl hover:-translate-y-1
+      group relative flex flex-col overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] transition-all duration-300 hover:bg-white/[0.06] hover:border-white/10 hover:shadow-2xl hover:-translate-y-0.5
       ${isExpanded ? 'ring-1 ring-white/10 bg-white/[0.08]' : ''}
     `}>
       {/* Cover Image Placeholder/Support */}
       <div className="relative h-24 overflow-hidden bg-gradient-to-br from-indigo-950/50 to-slate-900/50 border-b border-white/5">
         {note.coverImage ? (
-          <img src={note.coverImage} alt="" className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700" />
+          <img src={note.coverImage} alt="" className="w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-200" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center opacity-10">
             <StickyNote size={64} className="text-white" />

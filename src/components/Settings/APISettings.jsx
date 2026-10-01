@@ -6,8 +6,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { aiService } from '../../services/aiService';
 import './APISettings.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function APISettings({ userId, userRole, onChangeUserRole }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const { currentUser, updateUserProfile } = useAuth();
   const {
     keys,
@@ -81,9 +85,9 @@ export default function APISettings({ userId, userRole, onChangeUserRole }) {
     try {
       await saveKey('anthropic', anthropicInput.trim());
       setAnthropicInput('');
-      alert('Anthropic API key saved successfully!');
+      notify.success('Anthropic API key saved successfully!');
     } catch (err) {
-      alert('Failed to save API key: ' + err.message);
+      notify.error('Failed to save API key: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -96,16 +100,16 @@ export default function APISettings({ userId, userRole, onChangeUserRole }) {
     try {
       await saveKey('openai', openAIInput.trim());
       setOpenAIInput('');
-      alert('OpenAI API key saved successfully!');
+      notify.success('OpenAI API key saved successfully!');
     } catch (err) {
-      alert('Failed to save API key: ' + err.message);
+      notify.error('Failed to save API key: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
   const handleRemoveKey = async (provider) => {
-    if (confirm(`Are you sure you want to remove your ${provider} API key?`)) {
+    if (await confirm({ message: `Remove your ${provider} API key?`, confirmLabel: 'Remove', danger: true })) {
       await removeKey(provider);
     }
   };

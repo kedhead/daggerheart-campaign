@@ -10,8 +10,10 @@ import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateLoreImage } from '../../services/loreGenerator';
 import { isVisibleToPlayers } from '../../utils/playerVisibility';
 import './LoreView.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, campaign, campaignFrame, npcs = [], locations = [], sessions = [], timelineEvents = [], encounters = [], notes = [] }) {
+  const notify = useNotify();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLore, setEditingLore] = useState(null);
   // Deletes here are permanent, so they go through a confirm first — they
@@ -62,7 +64,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
       });
     } catch (error) {
       console.error('Error generating lore image:', error);
-      alert(`Generation failed: ${error.message}`);
+      notify.error(`Generation failed: ${error.message}`);
     } finally {
       setGeneratingImageFor(null);
     }

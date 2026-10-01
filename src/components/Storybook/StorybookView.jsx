@@ -9,6 +9,7 @@ import StorybookSettingsPanel from './StorybookSettingsPanel';
 import ReorderChaptersModal from './ReorderChaptersModal';
 import PendingDraftBanner from './PendingDraftBanner';
 import './Storybook.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function StorybookView({
   campaign,
@@ -25,6 +26,7 @@ export default function StorybookView({
   isDM,
   currentUserId
 }) {
+  const confirm = useConfirm();
   const storybook = useStorybook(campaignId, isDM);
   const { keys } = useAPIKey(campaign?.createdBy);
   const openaiKey = keys?.openai || null;
@@ -119,8 +121,8 @@ export default function StorybookView({
             drafts={storybook.pendingDrafts}
             onReview={(chapterId) => setEditingChapterId(chapterId)}
             onApprove={(chapterId) => storybook.publishChapter(chapterId)}
-            onDiscard={(chapterId) => {
-              if (window.confirm('Discard this auto-draft? The chapter will be permanently deleted.')) {
+            onDiscard={async (chapterId) => {
+              if (await confirm({ message: 'Discard this auto-draft? The chapter will be permanently deleted.', confirmLabel: 'Delete', danger: true })) {
                 storybook.deleteChapter(chapterId);
               }
             }}

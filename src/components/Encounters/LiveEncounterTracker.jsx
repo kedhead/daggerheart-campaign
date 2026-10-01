@@ -105,11 +105,11 @@ export default function LiveEncounterTracker({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6 animate-in slide-in-from-bottom-4 duration-300">
       {/* Header */}
       <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between bg-[var(--bg-secondary)] p-6 rounded-xl border border-white/5 shadow-lg relative overflow-hidden">
         {/* Living background effect */}
-        <div className={`absolute inset-0 opacity-10 pointer-events-none transition-colors duration-1000 ${status === 'active' ? 'bg-red-500/20' : 'bg-blue-500/10'}`} />
+        <div className={`absolute inset-0 opacity-10 pointer-events-none transition-colors duration-200 ${status === 'active' ? 'bg-red-500/20' : 'bg-blue-500/10'}`} />
 
         <div className="flex items-start gap-4 z-10 relative">
           {onClose && (
@@ -191,7 +191,7 @@ export default function LiveEncounterTracker({
             </div>
             <div className="h-2 bg-white/5 rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-500 transition-all duration-500 ease-out"
+                className="h-full bg-emerald-500 transition-all duration-300 ease-out"
                 style={{ width: `${hpPercent}%` }}
               />
             </div>

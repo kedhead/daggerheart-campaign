@@ -4,8 +4,10 @@ import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Users, UserPlus, Clock, CheckCircle, XCircle, ArrowRight, Swords } from 'lucide-react';
 import './JoinCampaignPage.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 export default function JoinCampaignPage({ campaignId, onJoinSuccess }) {
+  const notify = useNotify();
     const { currentUser } = useAuth();
     const [campaign, setCampaign] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -75,7 +77,7 @@ export default function JoinCampaignPage({ campaignId, onJoinSuccess }) {
             setJoinStatus('pending');
         } catch (err) {
             console.error('Error sending join request:', err);
-            alert('Failed to send join request. Please try again.');
+            notify.error('Failed to send join request. Please try again.');
         } finally {
             setRequesting(false);
         }

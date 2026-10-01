@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useRollHistory } from './useRollHistory.js';
 import { clearRollHistory } from './service.js';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 function summarize(roll) {
   if (roll.system === 'daggerheart') {
@@ -55,6 +56,7 @@ function summarize(roll) {
 }
 
 export default function RollHistory({ campaignId, count = 50, variant = 'list', isDM = false, compact = false }) {
+  const confirm = useConfirm();
   const { currentUser } = useAuth();
   const { rolls, loading } = useRollHistory(campaignId, count);
   const [open, setOpen] = useState(true);
@@ -64,7 +66,7 @@ export default function RollHistory({ campaignId, count = 50, variant = 'list', 
 
   const handleClear = async () => {
     if (!isDM) return;
-    if (!window.confirm('Clear all roll history? This cannot be undone.')) return;
+    if (!await confirm({ message: 'Clear all roll history? This cannot be undone.', confirmLabel: 'Clear', danger: true })) return;
     setClearing(true);
     try {
       await clearRollHistory(campaignId);

@@ -8,8 +8,10 @@ import { generateNPC } from '../../services/npcGenerator';
 import { STARWARS_SPECIES_GROUPS } from '../../data/starwarsd6Species';
 import { ANCESTRIES } from '../../data/systems/daggerheart';
 import './NPCsView.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isDM, campaignContext = '', initialMode = 'manual' }) {
+  const notify = useNotify();
   const { search, autoLink } = useEntityRegistry(campaign, entities);
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
 
@@ -123,12 +125,12 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
     const file = e.target.files[0];
     if (file) {
       if (file.size > 1 * 1024 * 1024) {
-        alert('Avatar size must be less than 1MB');
+        notify.warning('Avatar size must be less than 1MB');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file');
+        notify.warning('Please upload an image file');
         return;
       }
 
@@ -143,7 +145,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
         setUploadingAvatar(false);
       };
       reader.onerror = () => {
-        alert('Failed to upload avatar');
+        notify.error('Failed to upload avatar');
         setUploadingAvatar(false);
       };
       reader.readAsDataURL(file);

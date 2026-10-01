@@ -9,12 +9,14 @@ import { getCardsForCharacter } from '../../data/daggerheartDomainCards';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import './LevelUpWizard.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 const TRAIT_NAMES = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'knowledge'];
 
 const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 };
 
 export default function CharacterCreationWizard({ onComplete, onClose, isDM, campaign }) {
+  const notify = useNotify();
     const [step, setStep] = useState(0);
 
     // ── Step 1: Identity ──
@@ -231,7 +233,7 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
             setAvatarUrl(imageUrl);
         } catch (err) {
             console.error('Avatar generation failed:', err);
-            alert('Failed to generate avatar: ' + err.message);
+            notify.error('Failed to generate avatar: ' + err.message);
         } finally {
             setGeneratingAvatar(false);
         }
@@ -240,11 +242,11 @@ export default function CharacterCreationWizard({ onComplete, onClose, isDM, cam
     const handleAvatarUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (file.size > 1 * 1024 * 1024) { alert('Avatar size must be less than 1MB'); return; }
-        if (!file.type.startsWith('image/')) { alert('Please upload an image file'); return; }
+        if (file.size > 1 * 1024 * 1024) { notify.warning('Avatar size must be less than 1MB'); return; }
+        if (!file.type.startsWith('image/')) { notify.warning('Please upload an image file'); return; }
         const reader = new FileReader();
         reader.onload = (ev) => setAvatarUrl(ev.target.result);
-        reader.onerror = () => alert('Failed to upload avatar');
+        reader.onerror = () => notify.error('Failed to upload avatar');
         reader.readAsDataURL(file);
     };
 
