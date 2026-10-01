@@ -1,6 +1,6 @@
 /**
  * Battle Map Generator Service
- * Generates battle maps and assets using AI via 1min.ai
+ * Generates battle maps and map assets with OpenAI gpt-image-1 (via /api/generate-image)
  */
 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
@@ -11,7 +11,6 @@ import { storage } from '../config/firebase';
  * @param {object} options - Generation options
  * @param {string} options.prompt - Description of the map to generate
  * @param {string} options.type - Map type: 'battle-map', 'dungeon', 'outdoor', 'city'
- * @param {string} options.model - AI model to use
  * @param {string} options.size - Image size (e.g., '1024x1024')
  * @param {boolean} options.animated - Whether to generate animated/video map
  * @returns {Promise<object>} Generated map data with URL
@@ -20,7 +19,6 @@ export async function generateBattleMap(options) {
   const {
     prompt,
     type = 'battle-map',
-    model = 'gpt-image-1',  // Default to gpt-image-1 (direct OpenAI, faster than 1min.ai)
     size = '1536x1024',  // Widescreen landscape, and a size gpt-image-1 returns as asked
     style = 'vivid',
     animated = false
@@ -30,7 +28,7 @@ export async function generateBattleMap(options) {
     throw new Error('Prompt is required');
   }
 
-  console.log('Generating battle map:', { prompt, type, model, size, animated });
+  console.log('Generating battle map:', { prompt, type, size, animated });
 
   const response = await fetch('/api/generate-image', {
     method: 'POST',
@@ -40,7 +38,6 @@ export async function generateBattleMap(options) {
     body: JSON.stringify({
       prompt,
       type,
-      model,
       size,
       style,
       animated
@@ -67,7 +64,8 @@ export async function generateBattleMap(options) {
  * @param {object} options - Generation options
  * @param {string} options.prompt - Description of the asset
  * @param {string} options.category - Asset category
- * @param {boolean} options.removeBackground - Whether to remove background after generation
+ * @param {boolean} options.removeBackground - Render on a transparent background
+ *   (gpt-image-1 does this itself; there is no separate removal step any more)
  * @returns {Promise<object>} Generated asset data
  */
 export async function generateMapAsset(options) {
@@ -86,7 +84,7 @@ export async function generateMapAsset(options) {
     body: JSON.stringify({
       prompt,
       type: 'asset',
-      model: 'magic-art_7_0',
+      transparent: !!removeBackground,
       size: '1024x1024'
     })
   });
@@ -97,32 +95,7 @@ export async function generateMapAsset(options) {
   }
 
   const data = await response.json();
-  let finalUrl = data.imageUrl;
-
-  // Optionally remove background
-  if (removeBackground && finalUrl) {
-    console.log('Removing background from generated asset...');
-    try {
-      const bgResponse = await fetch('/api/remove-background', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ imageUrl: finalUrl })
-      });
-
-      if (bgResponse.ok) {
-        const bgData = await bgResponse.json();
-        finalUrl = bgData.imageUrl;
-        console.log('Background removed successfully');
-      } else {
-        console.warn('Background removal failed, using original image');
-      }
-    } catch (bgError) {
-      console.warn('Background removal error:', bgError);
-      // Continue with original image if background removal fails
-    }
-  }
+  const finalUrl = data.imageUrl;
 
   return {
     id: `ai_asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -144,20 +117,25 @@ export async function generateMapAsset(options) {
  */
 export async function saveGeneratedImage(imageUrl, campaignId, type = 'map') {
   try {
-    // Fetch the image
-    const response = await fetch('/api/download-image', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ imageUrl })
-    });
+    // gpt-image-1 returns the image inline as base64. Posting several MB of it
+    // back through the download proxy just to get it back again risks
+    // Vercel's 4.5 MB request limit, so only remote URLs take that route.
+    let dataUrl = imageUrl;
+    if (!imageUrl.startsWith('data:')) {
+      const response = await fetch('/api/download-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ imageUrl })
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to download image');
+      if (!response.ok) {
+        throw new Error('Failed to download image');
+      }
+
+      ({ dataUrl } = await response.json());
     }
-
-    const { dataUrl } = await response.json();
 
     // Upload to Firebase Storage
     const timestamp = Date.now();

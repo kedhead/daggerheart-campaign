@@ -29,7 +29,7 @@ import { fuzzyMatchAdversary } from '../utils/adversaryNameMatch';
  * @param {string}  args.campaignContext  - Output of buildCampaignContext()
  * @param {string}  args.gameSystem       - 'daggerheart' | 'starwarsd6'
  * @param {string=} args.apiKey
- * @param {string=} args.provider         - 'anthropic' | 'openai' | '1min'
+ * @param {string=} args.provider         - 'anthropic' | 'openai'
  * @returns {Promise<{ plan: object|null, raw: string }>}
  */
 export async function generateSessionPlan({

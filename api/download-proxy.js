@@ -54,7 +54,8 @@ async function handleImage(imageUrl, res) {
 }
 
 async function handleAudio(audioUrl, res) {
-  // asset.1min.ai is a private S3 bucket behind a CNAME — try the direct URL
+  // Legacy: sounds generated before 1min.ai was dropped are still saved with
+  // asset.1min.ai URLs. That host is a private S3 bucket behind a CNAME — try the direct URL
   // first, then a couple of S3 access patterns.
   const urlsToTry = [audioUrl];
   if (audioUrl.includes('asset.1min.ai') && !audioUrl.includes('amazonaws.com')) {

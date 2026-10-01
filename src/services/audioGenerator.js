@@ -1,10 +1,10 @@
 /**
  * Audio Generation Service
- * Uses Vercel API route which connects to 1min.ai (ElevenLabs) for sound effects
+ * Uses the /api/generate-sound route, which calls ElevenLabs
  */
 
 /**
- * Generate a sound effect using ElevenLabs via 1min.ai
+ * Generate a sound effect with ElevenLabs
  * @param {string} prompt - Description of the sound to generate
  * @param {string} _apiKey - Unused (API key is in Vercel env)
  * @param {object} options - Generation options
@@ -57,7 +57,7 @@ export async function generateSoundEffect(prompt, _apiKey, options = {}) {
 /**
  * Generate background music using AI
  * @param {string} theme - Theme/mood for the music (e.g., "epic battle", "peaceful tavern")
- * @param {string} apiKey - 1min.ai API key
+ * @param {string} apiKey - Unused (the server holds the key)
  * @param {object} options - Generation options
  * @returns {Promise<{ audioUrl: string, audioData: string|null }>} Generated audio result
  */

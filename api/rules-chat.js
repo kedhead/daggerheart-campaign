@@ -291,9 +291,6 @@ ${contextText}
       } else if (process.env.ANTHROPIC_API_KEY) {
         effectiveProvider = 'anthropic';
         effectiveKey = process.env.ANTHROPIC_API_KEY;
-      } else if (process.env.min_api || process.env.MIN_API_KEY) {
-        effectiveProvider = '1min';
-        effectiveKey = process.env.min_api || process.env.MIN_API_KEY;
       } else {
         return res.status(500).json({
           error: 'No API keys available. Please configure an API key in Settings, or contact the administrator.',
@@ -344,25 +341,6 @@ ${contextText}
         if (!apiResponse.ok) throw new Error(`OpenAI: ${await apiResponse.text()}`);
         const data = await apiResponse.json();
         responseText = data.choices[0]?.message?.content || '';
-
-      } else if (effectiveProvider === '1min') {
-        const key = effectiveKey || process.env.min_api || process.env.MIN_API_KEY;
-        if (!key) throw new Error('Missing 1min.ai API Key');
-
-        const fullPrompt = `${systemPrompt}\n\n---\nConversation history:\n${history.map((m) => `${m.role}: ${m.content}`).join('\n')}\n\nUser: ${message}`;
-
-        const apiResponse = await fetch('https://api.1min.ai/api/features', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'API-KEY': key },
-          body: JSON.stringify({
-            type: 'CHAT_WITH_AI',
-            model: 'gpt-4o-mini',
-            promptObject: { prompt: fullPrompt, isMixed: false },
-          }),
-        });
-        if (!apiResponse.ok) throw new Error(`1min.ai: ${await apiResponse.text()}`);
-        const data = await apiResponse.json();
-        responseText = data.aiRecord?.aiRecordDetail?.result || data.result || '';
 
       } else {
         return res.status(400).json({ error: 'Invalid provider' });

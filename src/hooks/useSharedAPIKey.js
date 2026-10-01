@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, setDoc, onSnapshot, increment, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, increment, serverTimestamp, deleteField } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 const SETTINGS_DOC = 'appSettings/sharedApiKeys';        // full config incl. keys — superadmin only
@@ -38,7 +38,6 @@ export function useSharedAPIKey(userId) {
             enabled: data.enabled || false,
             hasAnthropicKey: !!data.hasAnthropicKey,
             hasOpenaiKey: !!data.hasOpenaiKey,
-            hasOneMinAiKey: !!data.hasOneMinAiKey,
             dailyLimit: data.dailyLimit || 10,
             monthlyLimit: data.monthlyLimit || 100,
           });
@@ -170,7 +169,7 @@ export function useSharedAPIKey(userId) {
    * Get the shared API "key" for a provider (if allowed).
    * Returns a sentinel value, never a real key — the serverless API routes
    * replace the sentinel with the key from their environment variables.
-   * @param {string} provider - 'anthropic', 'openai', or '1minai'
+   * @param {string} provider - 'anthropic' or 'openai'
    * @returns {string|null} The sentinel or null
    */
   const getSharedKey = useCallback((provider) => {
@@ -181,7 +180,6 @@ export function useSharedAPIKey(userId) {
 
     if (provider === 'anthropic' && sharedConfig.hasAnthropicKey) return SHARED_KEY_SENTINEL;
     if (provider === 'openai' && sharedConfig.hasOpenaiKey) return SHARED_KEY_SENTINEL;
-    if (provider === '1minai' && sharedConfig.hasOneMinAiKey) return SHARED_KEY_SENTINEL;
 
     return null;
   }, [sharedConfig, checkUsageLimit]);
@@ -196,9 +194,8 @@ export function useSharedAPIKey(userId) {
 
     if (provider === 'anthropic') return sharedConfig.hasAnthropicKey;
     if (provider === 'openai') return sharedConfig.hasOpenaiKey;
-    if (provider === '1minai') return sharedConfig.hasOneMinAiKey;
 
-    return sharedConfig.hasAnthropicKey || sharedConfig.hasOpenaiKey || sharedConfig.hasOneMinAiKey;
+    return sharedConfig.hasAnthropicKey || sharedConfig.hasOpenaiKey;
   }, [sharedConfig]);
 
   return {
@@ -249,7 +246,6 @@ export function useSharedAPIKeyAdmin() {
             enabled: false,
             anthropicKey: '',
             openaiKey: '',
-            oneMinAiKey: '',
             dailyLimit: 10,
             monthlyLimit: 100
           });
@@ -280,6 +276,8 @@ export function useSharedAPIKeyAdmin() {
     try {
       await setDoc(configRef, {
         ...newConfig,
+        // 1min.ai is no longer used; erase any key an earlier version stored.
+        oneMinAiKey: deleteField(),
         updatedAt: serverTimestamp()
       }, { merge: true });
       const merged = { ...(config || {}), ...newConfig };
@@ -287,7 +285,6 @@ export function useSharedAPIKeyAdmin() {
         enabled: merged.enabled || false,
         hasAnthropicKey: !!merged.anthropicKey,
         hasOpenaiKey: !!merged.openaiKey,
-        hasOneMinAiKey: !!merged.oneMinAiKey,
         dailyLimit: merged.dailyLimit || 10,
         monthlyLimit: merged.monthlyLimit || 100,
         updatedAt: serverTimestamp()

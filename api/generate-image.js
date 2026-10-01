@@ -1,7 +1,12 @@
 /**
  * Vercel Serverless Function - AI Image Generation
- * Uses 1min.ai API for battle map generation
- * Supports: gpt-image-1, flux-dev, stable-diffusion-3, magic-art_7_0
+ *
+ * Battle maps, map assets, portraits and handouts render with OpenAI
+ * gpt-image-1; storybook art and scene video can also use Replicate.
+ *
+ * Battle maps and assets used to go through 1min.ai (Magic Art, Flux, SD3).
+ * That path is gone: its key leaked and was revoked. An old client that still
+ * sends one of those model names gets gpt-image-1.
  */
 
 // Extend timeout - 300s on Pro plan, 60s on Hobby.
@@ -53,9 +58,9 @@ export default async function handler(req, res) {
     const {
       prompt,
       type = 'battle-map',
-      model = 'magic-art_7_0',  // Default to Magic Art 7.0
+      model,                  // ignored beyond logging: maps and assets always use gpt-image-1
+      transparent = false,    // type 'asset' only: render on a transparent background
       size = '1024x1024',
-      animated = false,
       styleKey,               // optional: for storybook-* types
       gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
       imageModel,             // optional: 'nano-banana' | 'gpt-image-1' | 'flux-pro' | '' (gpt-image-1 fallback)
@@ -460,8 +465,13 @@ export default async function handler(req, res) {
     } else if (type === 'city') {
       enhancedPrompt = `Overhead orthographic top-down view city street battle map for D&D, ${prompt}, medieval fantasy buildings from above, flat perspective looking straight down, cobblestone streets, suitable for miniature combat, VTT ready, no text or labels, edge-to-edge rendering, fills the entire 16:9 widescreen canvas completely, absolutely no letterboxing, borders, or margins`;
     } else if (type === 'asset') {
-      // Note: Magic Art 7.0 doesn't allow "transparent" - use "plain background" instead
-      enhancedPrompt = `${prompt}, top-down view token for D&D VTT, plain solid color background, isolated object, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
+      // gpt-image-1 renders real transparency, which replaced the separate
+      // background-removal call. A sprite sheet asks for white instead: it is
+      // cut into quadrants and the gaps between items must stay visible.
+      const backdrop = transparent
+        ? 'isolated on a fully transparent background, no ground, no floor, no cast shadow'
+        : 'isolated on a plain white background';
+      enhancedPrompt = `${prompt}, top-down view token for D&D VTT, ${backdrop}, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
     }
 
     // --- Gemini 2.5 Flash Image ("nano-banana") for Handouts ---
@@ -512,334 +522,60 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- gpt-image-1 Direct: bypass 1min.ai entirely for speed & reliability ---
-    const selectedModel = model || 'gpt-image-1';
-    if (selectedModel === 'gpt-image-1' || selectedModel === 'dall-e-3') {
-      const openaiKey = process.env.OPENAI_API_KEY;
-      if (!openaiKey) {
-        // Fall through to 1min.ai if no OpenAI key
-        console.log('No OPENAI_API_KEY, falling back to 1min.ai for gpt-image-1');
-      } else {
-        console.log('Using OpenAI directly for gpt-image-1 battle map');
-
-        const gptSize = ['1024x1024', '1024x1536', '1536x1024'].includes(size) ? size
-          : size === '1792x1024' ? '1536x1024'
-          : size === '1024x1792' ? '1024x1536'
-          : '1024x1024';
-
-        const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openaiKey}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-image-1',
-            prompt: enhancedPrompt,
-            n: 1,
-            size: gptSize,
-            quality: IMAGE_QUALITY
-          })
-        });
-
-        if (!openaiResponse.ok) {
-          const err = await openaiResponse.json().catch(() => ({ error: { message: openaiResponse.statusText } }));
-          return res.status(openaiResponse.status).json({
-            error: `gpt-image-1 API error: ${err.error?.message || openaiResponse.statusText}`
-          });
-        }
-
-        const openaiData = await openaiResponse.json();
-        const b64 = openaiData.data?.[0]?.b64_json;
-        const directUrl = openaiData.data?.[0]?.url;
-
-        if (b64) {
-          return res.status(200).json({
-            imageUrl: `data:image/png;base64,${b64}`,
-            prompt: enhancedPrompt,
-            model: 'gpt-image-1',
-            animated: false
-          });
-        }
-        if (directUrl) {
-          return res.status(200).json({
-            imageUrl: directUrl,
-            prompt: enhancedPrompt,
-            model: 'gpt-image-1',
-            animated: false
-          });
-        }
-        return res.status(500).json({ error: 'No image data returned from gpt-image-1' });
-      }
-    }
-
-    // --- 1min.ai path for other models ---
-    // Get API key from environment - try multiple variable names
-    const apiKey = process.env.min_api || process.env.MIN_API_KEY || process.env.MIN_API || process.env.ONEMIN_API_KEY;
-
-    if (!apiKey) {
-      console.error('No API key found. Checked: min_api, MIN_API_KEY, MIN_API, ONEMIN_API_KEY');
+    // --- gpt-image-1 for battle maps and map assets ---
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
       return res.status(500).json({
-        error: 'Image generation API not configured',
-        hint: 'Set min_api environment variable in Vercel'
+        error: 'Image generation is not configured: OPENAI_API_KEY is not set on the server.'
+      });
+    }
+    if (model && model !== 'gpt-image-1') {
+      console.log(`Model "${model}" is no longer offered; using gpt-image-1`);
+    }
+
+    const gptSize = ['1024x1024', '1024x1536', '1536x1024'].includes(size) ? size
+      : size === '1792x1024' ? '1536x1024'
+      : size === '1024x1792' ? '1024x1536'
+      : '1024x1024';
+    const wantsTransparency = type === 'asset' && !!transparent;
+
+    const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-image-1',
+        prompt: enhancedPrompt,
+        n: 1,
+        size: gptSize,
+        quality: IMAGE_QUALITY,
+        // Transparency needs a format with an alpha channel; PNG is the default.
+        ...(wantsTransparency ? { background: 'transparent', output_format: 'png' } : {})
+      })
+    });
+
+    if (!openaiResponse.ok) {
+      const err = await openaiResponse.json().catch(() => ({ error: { message: openaiResponse.statusText } }));
+      return res.status(openaiResponse.status).json({
+        error: `gpt-image-1 API error: ${err.error?.message || openaiResponse.statusText}`
       });
     }
 
-    // Build request based on model
-    let requestBody;
-
-    if (selectedModel === 'magic-art_7_0') {
-      // Magic Art 7.0 (Midjourney-style) - matches exact format from 1min.ai docs
-      const [width, height] = size.split('x').map(Number);
-      let aspectWidth = 1, aspectHeight = 1;
-
-      // Calculate aspect ratio
-      const ratio = width / height;
-      if (Math.abs(ratio - 16/9) < 0.1) {
-        // 16:9 (2560x1440, etc.)
-        aspectWidth = 16; aspectHeight = 9;
-      } else if (Math.abs(ratio - 9/16) < 0.1) {
-        // 9:16 (vertical)
-        aspectWidth = 9; aspectHeight = 16;
-      } else if (width > height) {
-        // Other wide formats (1792x1024 ≈ 7:4)
-        aspectWidth = 7; aspectHeight = 4;
-      } else if (height > width) {
-        // Other tall formats
-        aspectWidth = 4; aspectHeight = 7;
-      }
-
-      requestBody = {
-        type: 'IMAGE_GENERATOR',
-        model: 'magic-art_7_0',
-        promptObject: {
-          prompt: enhancedPrompt,
-          mode: 'fast',   // 'fast' ~45sec (2x credits), 'relax' 1-8min (times out on Vercel)
-          n: 4,           // Magic Art 7.0 generates 4 images
-          isNiji6: false,
-          aspect_width: aspectWidth,
-          aspect_height: aspectHeight,
-          stylize: 200,
-          chaos: 25,
-          maintainModeration: false  // Disabled - "battle map" triggers false positives
-        }
-      };
-    } else if (selectedModel === 'flux-dev' || selectedModel === 'flux-schnell') {
-      // Flux models
-      requestBody = {
-        type: 'IMAGE_GENERATOR',
-        model: selectedModel,
-        promptObject: {
-          prompt: enhancedPrompt,
-          num_outputs: 1,
-          aspect_ratio: size === '1792x1024' ? '16:9' : size === '1024x1792' ? '9:16' : '1:1'
-        }
-      };
-    } else {
-      // Stable Diffusion and other models
-      requestBody = {
-        type: 'IMAGE_GENERATOR',
-        model: selectedModel,
-        promptObject: {
-          prompt: enhancedPrompt,
-          n: 1,
-          size: size,
-          quality: 'hd'
-        }
-      };
-    }
-
-    console.log('1min.ai request:', JSON.stringify(requestBody));
-
-    // Use AbortController to timeout before Vercel's limit
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 55000); // 55s timeout (Vercel limit is 60s hobby / 300s pro)
-
-    let response;
-    try {
-      response = await fetch('https://api.1min.ai/api/features', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'API-KEY': apiKey
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal
-      });
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-      if (fetchError.name === 'AbortError') {
-        return res.status(504).json({
-          error: 'Image generation timed out. Try using gpt-image-1 model which is faster, or try again.',
-          hint: 'Switch to gpt-image-1 in Advanced Options for more reliable generation'
-        });
-      }
-      throw fetchError;
-    }
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('1min.ai API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-
-      // Try to parse as JSON for better error message
-      let errorDetails = errorText;
-      let errorMessage = response.statusText;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message || errorJson.error || response.statusText;
-        errorDetails = errorJson;
-      } catch (e) {
-        // Keep as text
-      }
-
-      return res.status(response.status).json({
-        error: `Image generation failed: ${errorMessage}`,
-        status: response.status,
-        details: errorDetails
-      });
-    }
-
-    const data = await response.json();
-    console.log('1min.ai full response keys:', Object.keys(data));
-    console.log('1min.ai aiRecord keys:', data.aiRecord ? Object.keys(data.aiRecord) : 'no aiRecord');
-    console.log('1min.ai temporaryUrl:', data.aiRecord?.temporaryUrl);
-    console.log('1min.ai resultObject:', JSON.stringify(data.aiRecord?.aiRecordDetail?.resultObject));
-
-    // Extract image URL from 1min.ai response - handle many possible formats
-    let imageUrl = null;
-    let baseUrl = null;
-
-    // Check for temporaryUrl on aiRecord - might be full URL or base URL
-    if (data.aiRecord?.temporaryUrl) {
-      const tempUrl = data.aiRecord.temporaryUrl;
-      console.log('Found temporaryUrl:', tempUrl);
-
-      // If temporaryUrl is a full URL to an image, use it directly
-      if (tempUrl.startsWith('http') && /\.(png|jpg|jpeg|gif|webp)/i.test(tempUrl)) {
-        imageUrl = tempUrl;
-        console.log('Using temporaryUrl directly as image URL');
-      } else {
-        baseUrl = tempUrl;
-      }
-    }
-
-    // Format 1: aiRecord.aiRecordDetail.resultUrl (full URL)
-    if (data.aiRecord?.aiRecordDetail?.resultUrl) {
-      imageUrl = data.aiRecord.aiRecordDetail.resultUrl;
-    }
-    // Format 2: aiRecord.aiRecordDetail.result (string or array)
-    else if (data.aiRecord?.aiRecordDetail?.result) {
-      const result = data.aiRecord.aiRecordDetail.result;
-      if (Array.isArray(result)) {
-        imageUrl = result[0]?.url || result[0];
-      } else if (typeof result === 'string') {
-        imageUrl = result;
-      } else if (result?.url) {
-        imageUrl = result.url;
-      }
-    }
-    // Format 3: aiRecord.aiRecordDetail.resultObject (Magic Art 7.0 returns array of paths)
-    else if (data.aiRecord?.aiRecordDetail?.resultObject) {
-      const resultObj = data.aiRecord.aiRecordDetail.resultObject;
-      // Magic Art 7.0 returns array of image paths
-      if (Array.isArray(resultObj) && resultObj.length > 0) {
-        imageUrl = resultObj[0];
-      } else if (resultObj.data?.[0]?.url) {
-        imageUrl = resultObj.data[0].url;
-      } else if (resultObj.url) {
-        imageUrl = resultObj.url;
-      } else if (typeof resultObj === 'string') {
-        imageUrl = resultObj;
-      }
-    }
-    // Format 4: OpenAI-style data.data[].url
-    else if (data.data?.[0]?.url) {
-      imageUrl = data.data[0].url;
-    }
-    // Format 5: Direct resultUrl
-    else if (data.resultUrl) {
-      imageUrl = data.resultUrl;
-    }
-    // Format 6: Direct result
-    else if (data.result) {
-      if (Array.isArray(data.result)) {
-        imageUrl = data.result[0]?.url || data.result[0];
-      } else if (typeof data.result === 'string') {
-        imageUrl = data.result;
-      } else if (data.result?.url) {
-        imageUrl = data.result.url;
-      }
-    }
-    // Format 7: images array
-    else if (Array.isArray(data.images) && data.images[0]) {
-      imageUrl = data.images[0]?.url || data.images[0];
-    }
-    // Format 8: output
-    else if (data.output) {
-      if (Array.isArray(data.output)) {
-        imageUrl = data.output[0]?.url || data.output[0];
-      } else if (typeof data.output === 'string') {
-        imageUrl = data.output;
-      } else if (data.output?.url) {
-        imageUrl = data.output.url;
-      }
-    }
-    // Format 9: url directly on data
-    else if (data.url) {
-      imageUrl = data.url;
-    }
-    // Format 10: image_url
-    else if (data.image_url) {
-      imageUrl = data.image_url;
-    }
-
+    const openaiData = await openaiResponse.json();
+    const b64 = openaiData.data?.[0]?.b64_json;
+    const directUrl = openaiData.data?.[0]?.url;
+    const imageUrl = b64 ? `data:image/png;base64,${b64}` : directUrl;
     if (!imageUrl) {
-      console.error('Could not find image URL in response. Full response:', JSON.stringify(data));
-      return res.status(500).json({
-        error: 'Could not extract image URL from API response',
-        details: 'Check Vercel logs for full response',
-        responseKeys: Object.keys(data),
-        hasAiRecord: !!data.aiRecord
-      });
-    }
-
-    // Log the raw extracted URL before any modification
-    console.log('Raw extracted imageUrl:', imageUrl);
-    console.log('Base URL from temporaryUrl:', baseUrl);
-
-    // If we have a relative URL, we need to make it absolute
-    if (imageUrl && !imageUrl.startsWith('http')) {
-      if (baseUrl) {
-        // Use the temporaryUrl as the base - it should be the signed S3 URL base
-        // temporaryUrl might be a full URL to one image, extract the base path
-        const baseMatch = baseUrl.match(/^(https?:\/\/[^?]+\/)/);
-        if (baseMatch) {
-          const basePath = baseMatch[1];
-          // Remove the filename from base if present
-          const baseDir = basePath.replace(/[^/]+\.(png|jpg|jpeg|gif|webp)$/i, '');
-          imageUrl = baseDir + imageUrl;
-        } else {
-          // temporaryUrl might already be just the base
-          imageUrl = baseUrl.replace(/\/$/, '') + '/' + imageUrl;
-        }
-        console.log('Constructed URL from temporaryUrl:', imageUrl);
-      } else {
-        // Fallback: try the 1min.ai asset CDN
-        imageUrl = `https://asset.1min.ai/${imageUrl}`;
-        console.log('Fallback URL:', imageUrl);
-      }
+      return res.status(500).json({ error: 'No image data returned from gpt-image-1' });
     }
 
     return res.status(200).json({
       imageUrl,
       prompt: enhancedPrompt,
-      model: selectedModel,
-      animated
+      model: 'gpt-image-1',
+      animated: false
     });
 
   } catch (error) {

@@ -14,7 +14,6 @@ export default function AIMapGenerator({ campaignId }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [model, setModel] = useState('gpt-image-1');
   // Wide by default — the battle-map prompt template asks for a widescreen map.
   const [size, setSize] = useState('1536x1024');
 
@@ -39,7 +38,6 @@ export default function AIMapGenerator({ campaignId }) {
       const result = await generateBattleMap({
         prompt: prompt.trim(),
         type: mapType,
-        model,
         size
       });
 
@@ -149,17 +147,6 @@ export default function AIMapGenerator({ campaignId }) {
 
         {showAdvanced && (
           <div className="advanced-options">
-            <div className="option-row">
-              <label>Model</label>
-              <select value={model} onChange={(e) => setModel(e.target.value)}>
-                <option value="gpt-image-1">OpenAI gpt-image-1 (Recommended)</option>
-                <option value="magic-art_7_0">Magic Art 7.0 (Slow, may timeout)</option>
-                <option value="flux-dev">Flux Dev</option>
-                <option value="flux-schnell">Flux Schnell (Fast)</option>
-                <option value="stable-diffusion-3">Stable Diffusion 3</option>
-              </select>
-            </div>
-
             <div className="option-row">
               <label>Size</label>
               {/* These are the sizes the image model actually returns. The old
