@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, ChevronLeft, Moon, ArrowUp, Skull, Palette, Heart } from 'lucide-react';
+import { X, ChevronLeft, Moon, ArrowUp, Skull, Palette, Heart, HeartCrack } from 'lucide-react';
 import { useDice, DiceTray } from '../../dice';
 import { PLAYER_COLORS, getPlayerDiceColor, setPlayerDiceColor, DUALITY_SETS, getDualitySet, setDualitySet } from '../../dice/playerColor';
 import PortalSlotTracker from './PortalSlotTracker';
@@ -12,10 +12,15 @@ import { computeDefenses } from '../../utils/daggerheartDefenses';
 import { armorSlotCount } from '../../utils/daggerheartSheetFields';
 import { isAtDeathsDoor, hpSlotsOf } from '../../utils/daggerheartVitals';
 import { useDualityAutomation } from '../../hooks/useDualityAutomation';
+import { useWakeLock } from '../../hooks/useWakeLock';
+import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
+import PortalTableStatus from './PortalTableStatus';
 import { displayItemName } from '../../utils/itemNames';
 import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
 import RestModal from '../Characters/RestModal';
 import DeathMoveModal from '../Characters/DeathMoveModal';
+import TakeDamageModal from '../Characters/TakeDamageModal';
+import { applyDamage } from '../../utils/playerDamage';
 import LevelUpWizard from '../Characters/LevelUpWizard';
 
 const TABS = [
@@ -45,6 +50,9 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   const [showRest, setShowRest] = useState(false);
   const [showDeath, setShowDeath] = useState(false);
   const [showLevelUp, setShowLevelUp] = useState(false);
+  const [showDamage, setShowDamage] = useState(false);
+  // The portal is the player's sheet at the table — keep the phone awake.
+  useWakeLock(true);
 
   // hpSlots holds HP REMAINING, not damage marked — see daggerheartVitals.js.
   // This used to count true slots as marks, which offered the Death Move to a
@@ -71,7 +79,7 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
       .filter(Boolean);
   }, [items, character.equippedItems]);
 
-  const { armorScore: computedArmorScore } = useMemo(
+  const { armorScore: computedArmorScore, majorThreshold, severeThreshold } = useMemo(
     () => computeDefenses(character, equippedItems),
     [character, equippedItems]
   );
@@ -105,6 +113,8 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
 
   const campaignId = campaign?.id;
   const { roll, rollDamage } = useDice(campaignId);
+  // The GM's Fear and any countdowns the DM made public — read-only here.
+  const { displayState: tableDisplay } = usePlayerDisplay(campaignId);
 
   // Every roll the tabs make is an action roll — a trait check, a weapon
   // attack, a spellcast — so they get a roll that says so and then applies
@@ -141,6 +151,15 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
     const hope = doc?.dice?.find(d => d.groupId === 'hope')?.value;
     const fear = doc?.dice?.find(d => d.groupId === 'fear')?.value;
     return { hope: hope ?? localD12(), fear: fear ?? localD12() };
+  };
+
+  // Take Damage: the rules are in playerDamage.js. Marking the last Hit Point
+  // goes straight to the Death Move, which is what the rules say happens next.
+  const handleTakeDamage = (outcome) => {
+    const { updates, hpMarked, hpLeft } = applyDamage(character, outcome, armorSlotsTotal);
+    if (!updates || !updateCharacter) return;
+    updateCharacter(character.id, updates);
+    if (hpMarked > 0 && hpLeft === 0) setShowDeath(true);
   };
 
   // Scars are permanent by the rules, but they can be healed through downtime
@@ -306,6 +325,11 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
 
           {/* ── Quick actions: Rest / Level Up / Death Move ── */}
           <div style={{ display: 'flex', gap: 8, padding: '12px 18px 0' }}>
+            {updateCharacter && (
+              <button className="lrp-action-btn" onClick={() => setShowDamage(true)}>
+                <HeartCrack size={15} /> Damage
+              </button>
+            )}
             <button className="lrp-action-btn" onClick={() => setShowRest(true)}>
               <Moon size={15} /> Rest
             </button>
@@ -320,6 +344,8 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
               </button>
             )}
           </div>
+
+          <PortalTableStatus display={tableDisplay} />
 
           {/* ── Vital tracks ── */}
           <div style={{ padding: '14px 18px 0' }}>
@@ -400,6 +426,16 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
 
       {showRest && (
         <RestModal character={character} onApply={applyUpdates} onClose={() => setShowRest(false)} />
+      )}
+      {showDamage && (
+        <TakeDamageModal
+          character={character}
+          thresholds={{ major: majorThreshold, severe: severeThreshold }}
+          armorTotal={armorSlotsTotal}
+          massiveRule={campaign?.massiveDamage === true}
+          onApply={handleTakeDamage}
+          onClose={() => setShowDamage(false)}
+        />
       )}
       {showDeath && (
         <DeathMoveModal

@@ -1,4 +1,4 @@
-import { Home, User, BookOpen, MoreHorizontal, Compass } from 'lucide-react';
+import { Home, User, BookOpen, MoreHorizontal, Compass, ScrollText, Swords, UsersRound } from 'lucide-react';
 
 const BASE_TABS = [
   { id: 'dashboard', label: 'Home',  icon: Home,          action: 'view' },
@@ -6,14 +6,26 @@ const BASE_TABS = [
   { id: 'lore',      label: 'Lore',  icon: BookOpen,      action: 'view' },
 ];
 
+// The DM has no character sheet, and at the table reaches for sessions,
+// encounters and NPCs — not "Sheet" and "Lore", which is what they used to get.
+const DM_TABS = [
+  { id: 'dashboard',  label: 'Home',       icon: Home,       action: 'view' },
+  { id: 'sessions',   label: 'Sessions',   icon: ScrollText, action: 'view' },
+  { id: 'encounters', label: 'Combat',     icon: Swords,     action: 'view' },
+  { id: 'npcs',       label: 'NPCs',       icon: UsersRound, action: 'view' },
+];
+
 const MORE_TAB    = { id: 'more',   label: 'More',   icon: MoreHorizontal, action: 'more'   };
 const PORTAL_TAB  = { id: 'portal', label: 'Portal', icon: Compass,        action: 'portal' };
 
+/** The phone tab bar for this viewer. Pure, so the choice can be tested. */
+export function bottomTabsFor({ isDM = false, isDaggerheart = false } = {}) {
+  if (isDM) return [...DM_TABS, MORE_TAB];
+  return [...BASE_TABS, isDaggerheart ? PORTAL_TAB : MORE_TAB];
+}
+
 export default function BottomNav({ currentView, setCurrentView, onMore, isDM, isDaggerheart, onEnterPortal }) {
-  const tabs = [
-    ...BASE_TABS,
-    (!isDM && isDaggerheart) ? PORTAL_TAB : MORE_TAB,
-  ];
+  const tabs = bottomTabsFor({ isDM, isDaggerheart });
 
   return (
     <nav
@@ -28,7 +40,8 @@ export default function BottomNav({ currentView, setCurrentView, onMore, isDM, i
         display: 'flex',
         justifyContent: 'space-around',
         alignItems: 'stretch',
-        background: 'rgba(12, 14, 22, 0.88)',
+        // The theme's surface, not a fixed navy, so other game systems' themes apply.
+        background: 'color-mix(in srgb, var(--bg) 88%, transparent)',
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
         borderTop: '1px solid var(--line-strong)',

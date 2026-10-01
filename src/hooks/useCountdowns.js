@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { publicCountdowns } from '../utils/countdowns';
 
 /**
  * GM countdowns (SRD "Countdowns" — progress/consequence clocks).
  * Stored in a single DM-only doc: campaigns/{id}/gmScreen/countdowns
- * Each item: { id, name, value, max, kind: 'standard'|'progress'|'consequence'|'long-term' }
+ * Each item: { id, name, value, max, kind: 'standard'|'progress'|'consequence'|'long-term', public? }
+ *
+ * Countdowns marked `public` are mirrored into playerDisplay/current so the
+ * players' phones can show them — see utils/countdowns.js.
  */
 export function useCountdowns(campaignId) {
   const [countdowns, setCountdowns] = useState([]);
@@ -32,7 +36,13 @@ export function useCountdowns(campaignId) {
   const save = useCallback(async (items) => {
     if (!path) return;
     await setDoc(doc(db, path), { items, updatedAt: serverTimestamp() });
-  }, [path]);
+    // Merge, so this never touches Fear or anything else on the display doc.
+    await setDoc(
+      doc(db, `campaigns/${campaignId}/playerDisplay/current`),
+      { publicCountdowns: publicCountdowns(items), updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  }, [path, campaignId]);
 
   const addCountdown = useCallback((name, max, kind = 'standard') => {
     const item = {
@@ -59,5 +69,9 @@ export function useCountdowns(campaignId) {
     return save(countdowns.filter(c => c.id !== id));
   }, [countdowns, save]);
 
-  return { countdowns, loading, addCountdown, tick, resetCountdown, removeCountdown };
+  const togglePublic = useCallback((id) => {
+    return save(countdowns.map(c => (c.id === id ? { ...c, public: !c.public } : c)));
+  }, [countdowns, save]);
+
+  return { countdowns, loading, addCountdown, tick, resetCountdown, removeCountdown, togglePublic };
 }

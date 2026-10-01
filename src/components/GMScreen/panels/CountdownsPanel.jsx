@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Minus, RotateCcw, Trash2, Hourglass } from 'lucide-react';
+import { Plus, Minus, RotateCcw, Trash2, Hourglass, Eye, EyeOff } from 'lucide-react';
 import { useCountdowns } from '../../../hooks/useCountdowns';
 
 const KINDS = [
@@ -17,7 +17,7 @@ const KIND_COLORS = {
 };
 
 export default function CountdownsPanel({ campaign }) {
-  const { countdowns, loading, addCountdown, tick, resetCountdown, removeCountdown } = useCountdowns(campaign?.id);
+  const { countdowns, loading, addCountdown, tick, resetCountdown, removeCountdown, togglePublic } = useCountdowns(campaign?.id);
   const [name, setName] = useState('');
   const [max, setMax] = useState(4);
   const [kind, setKind] = useState('standard');
@@ -105,6 +105,16 @@ export default function CountdownsPanel({ campaign }) {
                   </button>
                   <button className="gm-mini-filter-btn" onClick={() => tick(cd.id, 1)} title="Tick up" disabled={cd.value >= cd.max}>
                     <Plus size={12} />
+                  </button>
+                  <button
+                    className="gm-mini-filter-btn"
+                    onClick={() => togglePublic(cd.id)}
+                    title={cd.public ? 'Shown on players\' phones — click to hide' : 'Hidden from players — click to show on their phones'}
+                    aria-label={cd.public ? `Hide ${cd.name} from players` : `Show ${cd.name} to players`}
+                    aria-pressed={!!cd.public}
+                    style={cd.public ? { color: color } : undefined}
+                  >
+                    {cd.public ? <Eye size={12} /> : <EyeOff size={12} />}
                   </button>
                   <button className="gm-mini-filter-btn" onClick={() => resetCountdown(cd.id)} title="Reset">
                     <RotateCcw size={12} />

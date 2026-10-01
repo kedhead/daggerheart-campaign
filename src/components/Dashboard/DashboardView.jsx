@@ -602,6 +602,21 @@ export default function DashboardView({
                   </span>
                 </span>
               </label>
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={campaignForm.massiveDamage === true}
+                  onChange={(e) => setCampaignForm({ ...campaignForm, massiveDamage: e.target.checked })}
+                  className="mt-0.5 w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-xs font-bold text-white/60 group-hover:text-white transition-colors">Use the Massive damage rule</span>
+                  <span className="block text-[10px] text-white/55 font-medium italic">
+                    Optional rule: damage of at least double a character&rsquo;s Severe threshold marks 4 HP.
+                    Applies to the players&rsquo; Take Damage button.
+                  </span>
+                </span>
+              </label>
             </div>
           )}
 
