@@ -1,10 +1,32 @@
+import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { useEscapeKey } from '../hooks/useKeyboardShortcut';
 import './Modal.css';
 
+// Open modals, oldest first. Escape closes only the top one: a confirm opened
+// over an editor used to close both, losing the editor's unsaved work.
+const openStack = [];
+
 export default function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
-  useEscapeKey(onClose, isOpen);
+  const id = useId();
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    openStack.push(id);
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || openStack[openStack.length - 1] !== id) return;
+      e.stopPropagation();
+      onCloseRef.current?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      const at = openStack.lastIndexOf(id);
+      if (at !== -1) openStack.splice(at, 1);
+    };
+  }, [isOpen, id]);
 
   if (!isOpen) return null;
 

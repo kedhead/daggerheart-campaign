@@ -4,8 +4,12 @@ import { db } from '../../firebase/config';
 import { Plus, Edit2, Trash2, Save, X, Calendar, Link as LinkIcon, AlertCircle } from 'lucide-react';
 import LiveTranscriptionPanel from './LiveTranscriptionPanel';
 import './SessionPlanner.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function SessionPlanner({ campaign, isDM }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [sessions, setSessions] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -51,7 +55,7 @@ export default function SessionPlanner({ campaign, isDM }) {
       resetForm();
     } catch (err) {
       console.error('Error saving session:', err);
-      alert('Failed to save session');
+      notify.error('Failed to save session');
     }
   };
 
@@ -68,7 +72,7 @@ export default function SessionPlanner({ campaign, isDM }) {
   };
 
   const handleDelete = async (sessionId) => {
-    if (!confirm('Are you sure you want to delete this session?')) return;
+    if (!await confirm({ message: 'Delete this session?', confirmLabel: 'Delete', danger: true })) return;
 
     try {
       const updatedSessions = sessions.filter(s => s.id !== sessionId);
@@ -80,7 +84,7 @@ export default function SessionPlanner({ campaign, isDM }) {
       setSessions(updatedSessions);
     } catch (err) {
       console.error('Error deleting session:', err);
-      alert('Failed to delete session');
+      notify.error('Failed to delete session');
     }
   };
 

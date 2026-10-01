@@ -3,8 +3,10 @@ import { Save, X, ExternalLink, Wand2, Loader2 } from 'lucide-react';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import './CharacterForm.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 export default function CharacterFormSimple({ character, onSave, onCancel, isDM, campaign }) {
+  const notify = useNotify();
   const [formData, setFormData] = useState(character || {
     name: '',
     playerName: '',
@@ -39,7 +41,7 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
       });
     } catch (err) {
       console.error('Avatar generation failed:', err);
-      alert('Failed to generate avatar: ' + err.message);
+      notify.error('Failed to generate avatar: ' + err.message);
     } finally {
       setGeneratingAvatar(false);
     }
@@ -57,13 +59,13 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
     if (file) {
       // Check file size (max 1MB for avatars)
       if (file.size > 1 * 1024 * 1024) {
-        alert('Avatar size must be less than 1MB');
+        notify.warning('Avatar size must be less than 1MB');
         return;
       }
 
       // Check if it's an image
       if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file');
+        notify.warning('Please upload an image file');
         return;
       }
 
@@ -78,7 +80,7 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
         setUploadingAvatar(false);
       };
       reader.onerror = () => {
-        alert('Failed to upload avatar');
+        notify.error('Failed to upload avatar');
         setUploadingAvatar(false);
       };
       reader.readAsDataURL(file);

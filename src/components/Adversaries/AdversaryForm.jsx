@@ -5,6 +5,7 @@ import { generateAdversaryStatblock, generateBossStatblock } from '../../service
 import BossPhaseEditor from '../Encounters/BossPhaseEditor';
 import { DAGGERHEART_ADVERSARIES } from '../../data/daggerheartAdversaries';
 import { useAPIKey } from '../../hooks/useAPIKey';
+import { useNotify } from '../../contexts/ToastContext';
 
 const ROLES = ['minion', 'horde', 'standard', 'bruiser', 'skulk', 'ranged', 'support', 'social', 'leader', 'solo', 'boss'];
 const ATTACK_RANGES = ['Melee', 'Very Close', 'Close', 'Far', 'Very Far'];
@@ -82,6 +83,7 @@ export default function AdversaryForm({
   campaignContext = '',    // pre-built campaign brain context string
   initialMode = 'manual'   // 'manual' | 'ai' | 'template' — lets callers open straight into AI mode
 }) {
+  const notify = useNotify();
   const isEdit = !!adversary;
   const [mode, setMode] = useState(initialMode); // 'manual' | 'ai' | 'template'
   const [form, setForm] = useState(() => adversary ? fromAdversary(adversary) : { ...EMPTY_FORM, features: [] });
@@ -176,7 +178,7 @@ export default function AdversaryForm({
   // ── Save ────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form.name.trim()) { alert('Name is required.'); return; }
+    if (!form.name.trim()) { notify.warning('Name is required.'); return; }
     setSaving(true);
     try {
       await onSave({
@@ -186,7 +188,7 @@ export default function AdversaryForm({
       });
       onClose();
     } catch (e) {
-      alert('Failed to save: ' + e.message);
+      notify.error('Failed to save: ' + e.message);
     } finally {
       setSaving(false);
     }

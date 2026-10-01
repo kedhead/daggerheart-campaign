@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import Modal from '../Modal';
 import './InitiativeTracker.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function InitiativeTracker({
   campaign,
@@ -22,6 +23,7 @@ export default function InitiativeTracker({
   npcs = [],
   isDM
 }) {
+  const confirm = useConfirm();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [newParticipant, setNewParticipant] = useState({
@@ -41,7 +43,7 @@ export default function InitiativeTracker({
   };
 
   const handleEndCombat = async () => {
-    if (confirm('End combat and clear the initiative tracker?')) {
+    if (await confirm({ message: 'End combat and clear the initiative tracker?', confirmLabel: 'Clear', danger: true })) {
       await endInitiative();
     }
   };

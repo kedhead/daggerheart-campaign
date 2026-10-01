@@ -3,8 +3,10 @@ import { UserPlus, X, Mail, Shield, User, CheckCircle, XCircle, Copy } from 'luc
 import { doc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import './CampaignMembers.css';
+import { useNotify } from '../../contexts/ToastContext';
 
 export default function CampaignMembers({ campaign, currentUserId }) {
+  const notify = useNotify();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState('');
@@ -22,12 +24,12 @@ export default function CampaignMembers({ campaign, currentUserId }) {
 
   const handleChangeRole = async (uid, newRole) => {
     if (!isDM) {
-      alert('Only the DM can change member roles');
+      notify.warning('Only the DM can change member roles');
       return;
     }
 
     if (uid === campaign.dmId) {
-      alert('Cannot change the role of the campaign creator');
+      notify.warning('Cannot change the role of the campaign creator');
       return;
     }
 
@@ -44,16 +46,16 @@ export default function CampaignMembers({ campaign, currentUserId }) {
         updatedAt: serverTimestamp()
       });
 
-      alert(`Member role updated to ${newRole === 'dm' ? 'Co-DM' : 'Player'}`);
+      notify.success(`Member role updated to ${newRole === 'dm' ? 'Co-DM' : 'Player'}`);
     } catch (err) {
       console.error('Error changing role:', err);
-      alert('Failed to change member role');
+      notify.error('Failed to change member role');
     }
   };
 
   const handleApproveRequest = async (uid, requestData) => {
     if (!isDM) {
-      alert('Only the DM can approve join requests');
+      notify.warning('Only the DM can approve join requests');
       return;
     }
 
@@ -81,10 +83,10 @@ export default function CampaignMembers({ campaign, currentUserId }) {
         updatedAt: serverTimestamp()
       });
 
-      alert(`${requestData.displayName} has been added to the campaign!`);
+      notify.success(`${requestData.displayName} has been added to the campaign!`);
     } catch (err) {
       console.error('Error approving request:', err);
-      alert('Failed to approve join request');
+      notify.error('Failed to approve join request');
     } finally {
       setProcessingRequest(null);
     }
@@ -92,7 +94,7 @@ export default function CampaignMembers({ campaign, currentUserId }) {
 
   const handleDenyRequest = async (uid, requestData) => {
     if (!isDM) {
-      alert('Only the DM can deny join requests');
+      notify.warning('Only the DM can deny join requests');
       return;
     }
 
@@ -111,10 +113,10 @@ export default function CampaignMembers({ campaign, currentUserId }) {
         updatedAt: serverTimestamp()
       });
 
-      alert(`Join request from ${requestData.displayName} has been declined.`);
+      notify.success(`Join request from ${requestData.displayName} has been declined.`);
     } catch (err) {
       console.error('Error denying request:', err);
-      alert('Failed to deny join request');
+      notify.error('Failed to deny join request');
     } finally {
       setProcessingRequest(null);
     }
@@ -140,7 +142,7 @@ export default function CampaignMembers({ campaign, currentUserId }) {
       });
 
       setInviteEmail('');
-      alert(`${inviteEmail} has been whitelisted. Share the campaign URL with them so they can sign up and join.`);
+      notify.success(`${inviteEmail} has been whitelisted. Share the campaign URL with them so they can sign up and join.`);
     } catch (err) {
       console.error('Error inviting player:', err);
       setError('Failed to add player to whitelist');
@@ -275,7 +277,7 @@ export default function CampaignMembers({ campaign, currentUserId }) {
                 className="btn btn-icon btn-sm"
                 onClick={() => {
                   navigator.clipboard.writeText(`${window.location.origin}?join=${campaign.id}`);
-                  alert('Link copied to clipboard!');
+                  notify.success('Link copied to clipboard!');
                 }}
                 title="Copy link"
               >

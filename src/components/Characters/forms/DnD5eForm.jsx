@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Save, X, ExternalLink } from 'lucide-react';
 import '../CharacterForm.css';
+import { useNotify } from '../../../contexts/ToastContext';
 
 export default function DnD5eForm({ character, onSave, onCancel, isDM }) {
+  const notify = useNotify();
   const [formData, setFormData] = useState(character || {
     name: '',
     playerName: '',
@@ -39,13 +41,13 @@ export default function DnD5eForm({ character, onSave, onCancel, isDM }) {
     if (file) {
       // Check file size (max 1MB for avatars)
       if (file.size > 1 * 1024 * 1024) {
-        alert('Avatar size must be less than 1MB');
+        notify.warning('Avatar size must be less than 1MB');
         return;
       }
 
       // Check if it's an image
       if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file');
+        notify.warning('Please upload an image file');
         return;
       }
 
@@ -60,7 +62,7 @@ export default function DnD5eForm({ character, onSave, onCancel, isDM }) {
         setUploadingAvatar(false);
       };
       reader.onerror = () => {
-        alert('Failed to upload avatar');
+        notify.error('Failed to upload avatar');
         setUploadingAvatar(false);
       };
       reader.readAsDataURL(file);

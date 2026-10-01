@@ -4,8 +4,10 @@ import NoteCard from './NoteCard';
 import NoteForm from './NoteForm';
 import Modal from '../Modal';
 import './NotesView.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function NotesView({ campaign, addNote, updateNote, deleteNote, currentUserId, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes: allNotesEntities = [] }) {
+  const confirm = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,7 +50,7 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
   };
 
   const handleDelete = async (noteId) => {
-    if (confirm('Are you sure you want to delete this note?')) {
+    if (await confirm({ message: 'Delete this note?', confirmLabel: 'Delete', danger: true })) {
       await deleteNote(noteId);
     }
   };

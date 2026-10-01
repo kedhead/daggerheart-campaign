@@ -16,6 +16,8 @@ import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt }
 import { responseParser } from '../src/services/responseParser.js';
 import { promptBuilder } from '../src/services/promptBuilder.js';
 import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
+import { ConfirmProvider, useConfirm } from '../src/contexts/ConfirmContext.jsx';
+import { useNotify } from '../src/contexts/ToastContext.jsx';
 import generateImageHandler from '../api/generate-image.js';
 import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
 import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
@@ -2680,6 +2682,26 @@ section('Table feel');
   assert(capped.includes('>12<'), 'Fear shown never exceeds the 12 maximum');
 }
 
+// ── Themed dialogs instead of window.alert / window.confirm ──
+section('Dialogs');
+{
+  let outsideConfirm, outsideNotify;
+  function Probe() { outsideConfirm = useConfirm(); outsideNotify = useNotify(); return <span>probe</span>; }
+  let threw = false;
+  try { renderToString(<Probe />); } catch { threw = true; }
+  assert(!threw && typeof outsideConfirm === 'function' && typeof outsideNotify.error === 'function',
+    'components using the new hooks still render outside the providers (as the smoke tests do)');
+  const realError = console.error; console.error = () => {};
+  try { outsideNotify.error('x'); } finally { console.error = realError; }
+  assert(true, 'notify outside a provider logs instead of throwing');
+
+  let insideConfirm;
+  function Inside() { insideConfirm = useConfirm(); return <span>inside</span>; }
+  const html = renderToString(<ConfirmProvider><Inside /></ConfirmProvider>);
+  assert(html.includes('inside') && !html.includes('Are you sure?') && insideConfirm !== outsideConfirm,
+    'inside the provider, confirm is the themed dialog, closed until asked');
+}
+
 // ── Campaign memory ──
 section('Campaign memory');
 {
@@ -2884,7 +2906,14 @@ async function runImageApiTests() {
   }
 }
 
-runImageApiTests()
+(async () => {
+  section('Dialogs (async)');
+  let fallback;
+  function P() { fallback = useConfirm(); return null; }
+  renderToString(<P />);
+  assert((await fallback('Delete?')) === false, 'with no browser to ask, the fallback confirm answers no');
+})()
+  .then(() => runImageApiTests())
   .catch((err) => { failures++; console.error('  FAIL: image API tests threw:', err); })
   .finally(() => {
     console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

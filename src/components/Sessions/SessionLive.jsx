@@ -12,6 +12,7 @@ import LiveNoteFeed from './LiveNoteFeed';
 import LiveTranscriptionPanel from './LiveTranscriptionPanel';
 import Modal from '../Modal';
 import './SessionLive.css';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function SessionLive({
   session,
@@ -26,6 +27,7 @@ export default function SessionLive({
   onCreateEntity,
   onBack
 }) {
+  const confirm = useConfirm();
   const {
     liveNotes,
     highlightedNotes,
@@ -104,13 +106,13 @@ export default function SessionLive({
   };
 
   const handleDeleteNote = async (noteId) => {
-    if (window.confirm('Delete this note?')) {
+    if (await confirm({ message: 'Delete this note?', confirmLabel: 'Delete', danger: true })) {
       await deleteNote(noteId);
     }
   };
 
   const handleClearAll = async () => {
-    if (window.confirm('Clear all notes? This cannot be undone.')) {
+    if (await confirm({ message: 'Clear all notes? This cannot be undone.', confirmLabel: 'Clear', danger: true })) {
       await clearAllNotes();
     }
   };
@@ -173,7 +175,7 @@ export default function SessionLive({
   };
 
   const handleEndSession = async () => {
-    if (window.confirm('End live session without saving notes to summary?')) {
+    if (await confirm({ message: 'End live session without saving notes to summary?', confirmLabel: 'End' })) {
       if (onUpdateSession) {
         await onUpdateSession(session.id, {
           isLive: false,

@@ -8,12 +8,12 @@ import AppearsIn from '../CampaignMemory/AppearsIn';
 import { useToast } from '../../contexts/ToastContext';
 import { downloadUrlAs, slugify } from '../../utils/downloadBlob';
 
-async function downloadPortrait(url, name) {
+async function downloadPortrait(url, name, onError) {
   try {
     await downloadUrlAs(url, `${slugify(name, 'npc')}-portrait.png`);
   } catch (err) {
     console.error('Failed to download portrait:', err);
-    alert('Failed to download portrait. Try right-clicking the image and saving it manually.');
+    onError?.('Failed to download portrait. Try right-clicking the image and saving it manually.');
   }
 }
 
@@ -60,7 +60,7 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
           <button
             className="absolute top-6 right-6 z-20 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-white/40 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
             title="Download portrait"
-            onClick={(e) => { e.stopPropagation(); downloadPortrait(npc.avatarUrl, npc.name); }}
+            onClick={(e) => { e.stopPropagation(); downloadPortrait(npc.avatarUrl, npc.name, error); }}
           >
             <Download size={14} />
           </button>

@@ -3,6 +3,8 @@ import { ArrowLeft, Save, Eye, Trash2, RefreshCw, Image as ImageIcon, Users, Fil
 import MediaUploader from './MediaUploader';
 import { regenerateScene, STORYBOOK_STYLES, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { stripAppendedClauses } from '../../utils/storybookPrompt';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const TABS = [
   { id: 'prose', label: 'Prose', icon: FileText },
@@ -23,6 +25,8 @@ export default function ChapterEditor({
   onBack,
   onView
 }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState('prose');
   const [title, setTitle] = useState(chapter.title || '');
   const [prose, setProse] = useState(chapter.prose || '');
@@ -59,7 +63,7 @@ export default function ChapterEditor({
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Delete this chapter? This cannot be undone.')) return;
+    if (!await confirm({ message: 'Delete this chapter? This cannot be undone.', confirmLabel: 'Delete', danger: true })) return;
     await storybook.deleteChapter(chapter.id);
     onBack();
   };
@@ -70,7 +74,7 @@ export default function ChapterEditor({
   };
 
   const handleSceneDelete = async (sceneId) => {
-    if (!window.confirm('Remove this scene illustration?')) return;
+    if (!await confirm({ message: 'Remove this scene illustration?', confirmLabel: 'Remove', danger: true })) return;
     const nextScenes = (chapter.scenes || []).filter(s => s.id !== sceneId);
     await storybook.updateChapter(chapter.id, { scenes: nextScenes });
   };
@@ -146,7 +150,7 @@ export default function ChapterEditor({
         return copy;
       });
     } catch (err) {
-      alert(`Regeneration failed: ${err.message}`);
+      notify.error(`Regeneration failed: ${err.message}`);
     } finally {
       setRegeneratingId(null);
     }
@@ -443,7 +447,7 @@ export default function ChapterEditor({
               <button
                 type="button"
                 onClick={async () => {
-                  if (!window.confirm('Remove this spotlight?')) return;
+                  if (!await confirm({ message: 'Remove this spotlight?', confirmLabel: 'Remove', danger: true })) return;
                   const next = (chapter.spotlights || []).filter(x => x !== s);
                   await storybook.updateChapter(chapter.id, { spotlights: next });
                 }}

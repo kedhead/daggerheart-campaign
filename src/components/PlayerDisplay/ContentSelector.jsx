@@ -5,6 +5,8 @@ import { db, storage } from '../../config/firebase';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Link, Play, Loader2, Wand2, Skull, Plus, Film, Trash2 } from 'lucide-react';
 import './DMDisplayControl.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // Extract YouTube video ID for thumbnail
 function getYouTubeVideoId(url) {
@@ -30,6 +32,8 @@ export default function ContentSelector({
   onSelectContent,
   currentContentItems = []
 }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState('maps');
   const [files, setFiles] = useState([]);
   const [maps, setMaps] = useState([]);
@@ -124,7 +128,7 @@ export default function ContentSelector({
     e.preventDefault();
     const videoId = getYouTubeVideoId(youtubeUrl);
     if (!videoId) {
-      alert('Please enter a valid YouTube URL');
+      notify.warning('Please enter a valid YouTube URL');
       return;
     }
 
@@ -145,14 +149,14 @@ export default function ContentSelector({
     const isImage = file.type.startsWith('image/');
 
     if (!isImage && !isVideo) {
-      alert('Please select an image or video file');
+      notify.warning('Please select an image or video file');
       return;
     }
 
     // Images: 50MB limit  |  Videos: 500MB limit
     const maxBytes = isVideo ? 500 * 1024 * 1024 : 50 * 1024 * 1024;
     if (file.size > maxBytes) {
-      alert(`File size must be less than ${isVideo ? '500MB' : '50MB'}`);
+      notify.warning(`File size must be less than ${isVideo ? '500MB' : '50MB'}`);
       return;
     }
 
@@ -192,7 +196,7 @@ export default function ContentSelector({
       });
     } catch (uploadError) {
       console.error('Upload error:', uploadError);
-      alert('Failed to upload file to storage');
+      notify.error('Failed to upload file to storage');
     } finally {
       setUploading(false);
     }
@@ -241,7 +245,7 @@ export default function ContentSelector({
   // Delete a saved upload (removes both Storage object and Firestore doc)
   const handleDeleteSavedUpload = async (item, e) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete "${item.name}" from the library? This cannot be undone.`)) return;
+    if (!await confirm({ message: `Delete "${item.name}" from the library? This cannot be undone.`, confirmLabel: 'Delete', danger: true })) return;
 
     try {
       if (item.storagePath) {
@@ -251,7 +255,7 @@ export default function ContentSelector({
       setSavedUploads(prev => prev.filter(u => u.id !== item.id));
     } catch (err) {
       console.error('Failed to delete saved upload:', err);
-      alert('Failed to delete. Try again.');
+      notify.error('Failed to delete. Try again.');
     }
   };
 

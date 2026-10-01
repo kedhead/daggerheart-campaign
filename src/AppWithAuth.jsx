@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react';
 import { useAutoFear } from './hooks/useAutoFear';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import { CampaignDataProvider, useCampaignData } from './contexts/CampaignDataContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import AuthPage from './components/Auth/AuthPage';
@@ -366,7 +367,9 @@ export default function AppWithAuth() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <AppContent />
+        <ConfirmProvider>
+          <AppContent />
+        </ConfirmProvider>
       </ToastProvider>
     </AuthProvider>
   );

@@ -7,6 +7,7 @@ import LiveEncounterTracker from './LiveEncounterTracker';
 import Modal from '../Modal';
 import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const SORTS = {
   newest: (a, b) => ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)) || (a.name || '').localeCompare(b.name || ''),
@@ -15,6 +16,7 @@ const SORTS = {
 };
 
 export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, addAdversary, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [], targetEncounterId = null, onTargetEncounterHandled, pendingEncounterDraft = null, onPendingEncounterHandled }) {
+  const confirm = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -106,7 +108,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
   };
 
   const handleDelete = async (encounterId) => {
-    if (confirm('Are you sure you want to delete this encounter template?')) {
+    if (await confirm({ message: 'Delete this encounter template?', confirmLabel: 'Delete', danger: true })) {
       await deleteEncounter(encounterId);
     }
   };

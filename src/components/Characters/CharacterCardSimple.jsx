@@ -1,19 +1,21 @@
 import { useState } from 'react';
+import { useNotify } from '../../contexts/ToastContext';
 import { ChevronDown, ChevronRight, Edit3, Trash2, ExternalLink, EyeOff, Shield, Zap, Sparkles, RefreshCw, Download } from 'lucide-react';
 import { downloadUrlAs, slugify } from '../../utils/downloadBlob';
 import './CharacterCard.css';
 
-async function downloadPortrait(url, name) {
+async function downloadPortrait(url, name, onError) {
   try {
     await downloadUrlAs(url, `${slugify(name, 'character')}-portrait.png`);
   } catch (err) {
     console.error('Failed to download portrait:', err);
-    alert('Failed to download portrait. Try right-clicking the image and saving it manually.');
+    onError?.('Failed to download portrait. Try right-clicking the image and saving it manually.');
   }
 }
 
 export default function CharacterCardSimple({ character, onEdit, onDelete, isDM, canEdit, campaign, onDemiplaneUpdate }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const notify = useNotify();
 
   return (
     <div className={`
@@ -47,7 +49,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
           <button
             className="absolute top-6 right-6 z-30 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-white/40 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
             title="Download portrait"
-            onClick={(e) => { e.stopPropagation(); downloadPortrait(character.avatarUrl, character.name); }}
+            onClick={(e) => { e.stopPropagation(); downloadPortrait(character.avatarUrl, character.name, notify.error); }}
           >
             <Download size={14} />
           </button>

@@ -3,6 +3,7 @@ import { Upload, Grid, Square, Youtube, Link, Play, AlertTriangle } from 'lucide
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../../config/firebase';
 import { useBattleMapStore } from '../../../stores/battleMapStore';
+import { useNotify } from '../../../contexts/ToastContext';
 
 // Blank canvas size presets
 const blankCanvasSizes = [
@@ -17,6 +18,7 @@ const blankCanvasSizes = [
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export default function MapImporter({ campaignId }) {
+  const notify = useNotify();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showBlankOptions, setShowBlankOptions] = useState(false);
@@ -94,7 +96,7 @@ export default function MapImporter({ campaignId }) {
     const isVideo = file.type.startsWith('video/');
 
     if (!file || (!isImage && !isVideo)) {
-      alert('Please select a valid image or video file (PNG, JPG, WebP, GIF, MP4, WebM)');
+      notify.warning('Please select a valid image or video file (PNG, JPG, WebP, GIF, MP4, WebM)');
       return;
     }
 
@@ -173,7 +175,7 @@ export default function MapImporter({ campaignId }) {
     } catch (error) {
       URL.revokeObjectURL(localUrl);
       console.error('Error loading file:', error);
-      alert('Failed to load file');
+      notify.error('Failed to load file');
     } finally {
       setIsLoading(false);
     }

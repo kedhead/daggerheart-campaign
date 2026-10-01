@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronUp, ChevronDown, ListOrdered } from 'lucide-react';
 import Modal from '../Modal';
+import { useNotify } from '../../contexts/ToastContext';
 
 /* Lets the DM reshuffle chapters when they were generated out of order.
    Up/down moves swap the two affected chapters' chapterNumber values; saving
    commits all changes via storybook.updateChapter. */
 export default function ReorderChaptersModal({ isOpen, onClose, chapters, updateChapter }) {
+  const notify = useNotify();
   const initial = useMemo(
     () => [...chapters].sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0)),
     [chapters]
@@ -40,7 +42,7 @@ export default function ReorderChaptersModal({ isOpen, onClose, chapters, update
       }
       onClose();
     } catch (err) {
-      alert(`Reorder failed: ${err.message || err}`);
+      notify.error(`Reorder failed: ${err.message || err}`);
     } finally {
       setSaving(false);
     }

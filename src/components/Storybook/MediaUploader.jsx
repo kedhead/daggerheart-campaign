@@ -1,7 +1,11 @@
 import { useRef, useState } from 'react';
 import { Upload, Image as ImageIcon, Film, Mic, X } from 'lucide-react';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function MediaUploader({ chapter, storybook }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [caption, setCaption] = useState('');
@@ -22,14 +26,14 @@ export default function MediaUploader({ chapter, storybook }) {
       setCaption('');
       if (inputRef.current) inputRef.current.value = '';
     } catch (err) {
-      alert(`Upload failed: ${err.message}`);
+      notify.error(`Upload failed: ${err.message}`);
     } finally {
       setUploading(false);
     }
   };
 
   const handleRemove = async (mediaId) => {
-    if (!window.confirm('Remove this media item?')) return;
+    if (!await confirm({ message: 'Remove this media item?', confirmLabel: 'Remove', danger: true })) return;
     await storybook.removeMedia(chapter.id, mediaId);
   };
 

@@ -9,8 +9,12 @@ import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { generateMap } from '../../services/mapGenerator';
 import './LocationsView.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function LocationsView({ campaign, campaignFrame, locations = [], updateCampaign, addLocation, updateLocation, deleteLocation, isDM, userId, npcs = [], lore = [], sessions = [], timelineEvents = [], encounters = [], notes = [], chapters }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,7 +47,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
   };
 
   const handleDelete = async (locationId) => {
-    if (confirm('Are you sure you want to delete this location?')) {
+    if (await confirm({ message: 'Delete this location?', confirmLabel: 'Delete', danger: true })) {
       await deleteLocation(locationId);
     }
   };
@@ -54,12 +58,12 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       // Firebase Storage supports much larger files (up to 5GB)
       // But we'll keep a reasonable limit for map images
       if (file.size > 10 * 1024 * 1024) {
-        alert('Map image size must be less than 10MB');
+        notify.warning('Map image size must be less than 10MB');
         return;
       }
 
       if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file');
+        notify.warning('Please upload an image file');
         return;
       }
 
@@ -88,25 +92,25 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
             setUploadingMap(false);
           } catch (error) {
             console.error('Upload error:', error);
-            alert('Failed to upload map to Firebase Storage');
+            notify.error('Failed to upload map to Firebase Storage');
             setUploadingMap(false);
           }
         };
         reader.onerror = () => {
-          alert('Failed to read file');
+          notify.error('Failed to read file');
           setUploadingMap(false);
         };
         reader.readAsDataURL(file);
       } catch (error) {
         console.error('Error uploading map:', error);
-        alert('Failed to upload map');
+        notify.error('Failed to upload map');
         setUploadingMap(false);
       }
     }
   };
 
   const handleRemoveMap = async () => {
-    if (confirm('Are you sure you want to remove the world map?')) {
+    if (await confirm({ message: 'Remove the world map?', confirmLabel: 'Remove', danger: true })) {
       await updateCampaign({ worldMap: null });
     }
   };
@@ -123,7 +127,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
       console.error('Failed to download map:', err);
-      alert('Failed to download map. Try right-clicking the image and saving it manually.');
+      notify.error('Failed to download map. Try right-clicking the image and saving it manually.');
     }
   };
 
@@ -159,7 +163,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       }
     } catch (error) {
       console.error('Error generating world map:', error);
-      alert(`Failed to generate world map: ${error.message}`);
+      notify.error(`Failed to generate world map: ${error.message}`);
     } finally {
       setGeneratingWorldMap(false);
     }
@@ -206,7 +210,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       console.log('Map saved to location');
     } catch (error) {
       console.error('Error generating location map:', error);
-      alert(`Failed to generate map: ${error.message}`);
+      notify.error(`Failed to generate map: ${error.message}`);
     } finally {
       setGeneratingMapFor(null);
     }

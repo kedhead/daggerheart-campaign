@@ -4,8 +4,12 @@ import { db } from '../../config/firebase';
 import { Users, Lock, Globe, Calendar, User, Trash2, RefreshCw, Database, Key, LayoutDashboard } from 'lucide-react';
 import SharedAPIKeyManager from './SharedAPIKeyManager';
 import './SuperAdminView.css';
+import { useNotify } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function SuperAdminView({ onViewCampaign }) {
+  const notify = useNotify();
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState('campaigns'); // 'campaigns' | 'apiKeys'
   const [allCampaigns, setAllCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,9 +69,12 @@ export default function SuperAdminView({ onViewCampaign }) {
   };
 
   const handleDeleteCampaign = async (campaign) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete "${campaign.name}"?\n\nCampaign ID: ${campaign.id}\n\nThis will permanently delete all characters, lore, and sessions in this campaign. This action cannot be undone.`
-    );
+    const confirmed = await confirm({
+      title: 'Delete campaign',
+      message: `Delete "${campaign.name}"?\n\nCampaign ID: ${campaign.id}\n\nThis permanently deletes all characters, lore, and sessions in this campaign. It cannot be undone.`,
+      confirmLabel: 'Delete campaign',
+      danger: true,
+    });
 
     if (confirmed) {
       console.log(`\n========================================`);
@@ -139,13 +146,13 @@ export default function SuperAdminView({ onViewCampaign }) {
         // Force refresh from server to ensure UI is in sync
         setTimeout(() => handleRefresh(), 500);
 
-        alert('Campaign deleted successfully!');
+        notify.success('Campaign deleted successfully!');
       } catch (error) {
         console.error('\n========================================');
         console.error(`DELETE FAILED: ${campaign.name}`);
         console.error('========================================');
         console.error('Error details:', error);
-        alert(`Failed to delete campaign: ${error.message}\n\nCheck the console for details.`);
+        notify.error(`Failed to delete campaign: ${error.message}\n\nCheck the console for details.`);
       }
     }
   };
@@ -175,16 +182,19 @@ export default function SuperAdminView({ onViewCampaign }) {
       console.log(`Refreshed campaigns from server. Found ${data.length} campaigns.`);
     } catch (error) {
       console.error('Error refreshing campaigns:', error);
-      alert('Failed to refresh campaigns');
+      notify.error('Failed to refresh campaigns');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClearCache = () => {
-    const confirmed = window.confirm(
-      'This will clear your browser cache and reload the page. Continue?\n\nAfter clicking OK:\n1. Press F12 to open DevTools\n2. Right-click the Reload button\n3. Select "Empty Cache and Hard Reload"'
-    );
+  const handleClearCache = async () => {
+    const confirmed = await confirm({
+      title: 'Clear cache and reload',
+      message: 'This clears this browser\'s saved data for the site and reloads the page.\n\nAfter it reloads:\n1. Press F12 to open DevTools\n2. Right-click the Reload button\n3. Select "Empty Cache and Hard Reload"',
+      confirmLabel: 'Clear and reload',
+      danger: true,
+    });
 
     if (confirmed) {
       // Clear localStorage and sessionStorage
@@ -368,7 +378,7 @@ export default function SuperAdminView({ onViewCampaign }) {
                       className="btn btn-sm btn-secondary"
                       onClick={() => {
                         navigator.clipboard.writeText(campaign.id);
-                        alert(`Campaign ID copied: ${campaign.id}`);
+                        notify.success(`Campaign ID copied: ${campaign.id}`);
                       }}
                       title="Copy campaign ID"
                     >

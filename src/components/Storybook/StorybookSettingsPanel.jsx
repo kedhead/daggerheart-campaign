@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link2, Check } from 'lucide-react';
 import Modal from '../Modal';
 import { STORYBOOK_STYLES, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
+import { useNotify } from '../../contexts/ToastContext';
 
 export default function StorybookSettingsPanel({ isOpen, onClose, campaign, updateCampaign }) {
+  const notify = useNotify();
   const [styleKey, setStyleKey] = useState(campaign?.storybookStyle || DEFAULT_STYLE_KEY);
   const [styleCustom, setStyleCustom] = useState(campaign?.storybookStyleCustom || '');
   const [chroniclePublic, setChroniclePublic] = useState(!!campaign?.chroniclePublic);
@@ -35,7 +37,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
       });
       onClose();
     } catch (err) {
-      alert(`Save failed: ${err.message}`);
+      notify.error(`Save failed: ${err.message}`);
     } finally {
       setSaving(false);
     }

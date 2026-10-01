@@ -72,6 +72,25 @@ export function ToastProvider({ children }) {
   );
 }
 
+// Outside a ToastProvider (server-rendered smoke tests, an isolated preview)
+// messages go to the console instead of throwing, so a component that reports
+// an error can still render.
+const CONSOLE_NOTIFY = Object.freeze({
+  showToast: (m) => { console.info(m); return 0; },
+  success: (m) => { console.info(m); return 0; },
+  info: (m) => { console.info(m); return 0; },
+  warning: (m) => { console.warn(m); return 0; },
+  error: (m) => { console.error(m); return 0; },
+  removeToast: () => {},
+});
+
+/**
+ * Toasts, for replacing window.alert(). Same API as useToast, but never throws.
+ */
+export function useNotify() {
+  return useContext(ToastContext) || CONSOLE_NOTIFY;
+}
+
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
