@@ -73,7 +73,8 @@ export function useCampaignChat({
     setIsLoading(true);
 
     try {
-      let provider = '1min';
+      // No client key: send none and the server uses its own.
+      let provider = '';
       let apiKey = '';
       if (hasAnthropic && keys.anthropic) { provider = 'anthropic'; apiKey = keys.anthropic; }
       else if (hasOpenAI && keys.openai) { provider = 'openai'; apiKey = keys.openai; }

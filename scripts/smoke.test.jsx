@@ -16,6 +16,7 @@ import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt }
 import { responseParser } from '../src/services/responseParser.js';
 import { promptBuilder } from '../src/services/promptBuilder.js';
 import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
+import generateImageHandler from '../api/generate-image.js';
 import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
 import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
 import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
@@ -2732,5 +2733,68 @@ section('Campaign memory');
     'an entity with no appearances renders nothing, not an empty heading');
 }
 
-console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);
-process.exit(failures === 0 ? 0 : 1);
+// ── Image API: OpenAI only ──
+// 1min.ai's key leaked and was revoked. These call the real handler with a
+// stubbed fetch, so they check where requests actually go.
+async function runImageApiTests() {
+  section('Image API');
+  const realFetch = globalThis.fetch;
+  const realKey = process.env.OPENAI_API_KEY;
+  const realMin = process.env.min_api;
+  // A 1min.ai key is present, so any code path that still used it would fire.
+  process.env.min_api = 'revoked-1min-key';
+  const call = async (body, { key = 'sk-test' } = {}) => {
+    const requests = [];
+    globalThis.fetch = async (url, init = {}) => {
+      requests.push({ url: String(url), body: init.body ? JSON.parse(init.body) : null });
+      return { ok: true, status: 200, json: async () => ({ data: [{ b64_json: 'AAAA' }] }), text: async () => '' };
+    };
+    if (key) process.env.OPENAI_API_KEY = key; else delete process.env.OPENAI_API_KEY;
+    const res = {
+      statusCode: 0, payload: null,
+      setHeader() {},
+      status(c) { this.statusCode = c; return this; },
+      json(p) { this.payload = p; return this; },
+      end() { return this; },
+    };
+    await generateImageHandler({ method: 'POST', body }, res);
+    return { res, requests };
+  };
+  try {
+    const asset = await call({ prompt: 'a barrel', type: 'asset', transparent: true });
+    assert(asset.requests.length === 1 && asset.requests[0]?.url.includes('api.openai.com'),
+      'a map asset is rendered by OpenAI, in one request');
+    assert(asset.requests[0]?.body?.background === 'transparent' && asset.requests[0]?.body?.model === 'gpt-image-1',
+      'a transparent asset asks gpt-image-1 for a transparent background — no separate removal step');
+    assert(/transparent background/.test(asset.requests[0]?.body?.prompt || ''),
+      'and the prompt asks for transparency instead of the old "plain solid color background"');
+    assert(asset.res.statusCode === 200 && asset.res.payload?.imageUrl?.startsWith('data:image/png;base64,'),
+      'the asset comes back as an inline PNG');
+
+    const sheet = await call({ prompt: 'four crates', type: 'asset', transparent: false });
+    assert(!('background' in (sheet.requests[0]?.body || {})) && /white background/.test(sheet.requests[0]?.body?.prompt || ''),
+      'a sprite sheet stays on white, so it can still be split into quadrants');
+
+    for (const model of ['magic-art_7_0', 'flux-dev', 'flux-schnell', 'stable-diffusion-3', undefined]) {
+      const r = await call({ prompt: 'a crypt', type: 'dungeon', model });
+      assert(r.requests.length === 1 && r.requests[0]?.url.includes('api.openai.com') && r.res.statusCode === 200,
+        `a battle map asked for with model ${model ?? '(none)'} renders with OpenAI`);
+      assert(!r.requests.some(q => q.url.includes('1min')), `and nothing for ${model ?? '(none)'} is sent to 1min.ai`);
+    }
+
+    const noKey = await call({ prompt: 'a crypt', type: 'dungeon' }, { key: null });
+    assert(noKey.res.statusCode === 500 && noKey.requests.length === 0 && /OPENAI_API_KEY/.test(noKey.res.payload?.error || ''),
+      'with no OpenAI key the endpoint says so instead of falling back to another provider');
+  } finally {
+    globalThis.fetch = realFetch;
+    if (realKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = realKey;
+    if (realMin === undefined) delete process.env.min_api; else process.env.min_api = realMin;
+  }
+}
+
+runImageApiTests()
+  .catch((err) => { failures++; console.error('  FAIL: image API tests threw:', err); })
+  .finally(() => {
+    console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);
+    process.exit(failures === 0 ? 0 : 1);
+  });

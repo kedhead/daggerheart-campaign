@@ -241,7 +241,7 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
         />
       </div>
 
-      {/* Background Removal Toggle */}
+      {/* Transparency toggle — gpt-image-1 renders the alpha channel itself */}
       <div className="generator-section">
         <label className="bg-remove-toggle">
           <input
@@ -249,7 +249,7 @@ export default function AIAssetGenerator({ campaignId, onAssetGenerated }) {
             checked={removeBackground}
             onChange={(e) => setRemoveBackground(e.target.checked)}
           />
-          <span>Remove background (for tokens)</span>
+          <span>Transparent background (for tokens)</span>
         </label>
         <p className="toggle-hint">Creates transparent PNG for clean token placement</p>
       </div>
