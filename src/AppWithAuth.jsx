@@ -220,6 +220,7 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
               locations={locations}
               quests={quests}
               isDM={isDM}
+              isDaggerheart={isDaggerheart}
             />
           </Suspense>
         )}

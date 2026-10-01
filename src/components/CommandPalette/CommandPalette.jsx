@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useKeyboardShortcut, useEscapeKey } from '../../hooks/useKeyboardShortcut';
 import { useCommandPalette } from '../../hooks/useCommandPalette';
+import { navItemsFor } from '../../config/navigation';
 import './CommandPalette.css';
 
 const ICONS = {
@@ -55,30 +56,25 @@ export default function CommandPalette({
   locations = [],
   quests = [],
   isDM,
+  isDaggerheart = true,
 }) {
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
   // Build command list
   const commands = useMemo(() => {
-    const navCommands = [
-      { id: 'nav-dashboard', title: 'Go to Dashboard', icon: 'dashboard', category: 'Navigation', action: () => onNavigate('dashboard'), keywords: ['home'] },
-      { id: 'nav-characters', title: 'Go to Characters', icon: 'characters', category: 'Navigation', action: () => onNavigate('characters'), keywords: ['players', 'pcs'] },
-      { id: 'nav-npcs', title: 'Go to NPCs', icon: 'npcs', category: 'Navigation', action: () => onNavigate('npcs'), keywords: ['non-player'] },
-      { id: 'nav-locations', title: 'Go to Locations', icon: 'locations', category: 'Navigation', action: () => onNavigate('locations'), keywords: ['places', 'maps'] },
-      { id: 'nav-lore', title: 'Go to Lore', icon: 'lore', category: 'Navigation', action: () => onNavigate('lore'), keywords: ['worldbuilding', 'history'] },
-      { id: 'nav-sessions', title: 'Go to Sessions', icon: 'sessions', category: 'Navigation', action: () => onNavigate('sessions'), keywords: ['games', 'play'] },
-      { id: 'nav-encounters', title: 'Go to Encounters', icon: 'encounters', category: 'Navigation', action: () => onNavigate('encounters'), keywords: ['combat', 'battles'] },
-      { id: 'nav-notes', title: 'Go to Notes', icon: 'notes', category: 'Navigation', action: () => onNavigate('notes'), keywords: ['journal'] },
-      { id: 'nav-quests', title: 'Go to Quests', icon: 'quests', category: 'Navigation', action: () => onNavigate('quests'), keywords: ['objectives', 'missions'] },
-      { id: 'nav-items', title: 'Go to Items', icon: 'items', category: 'Navigation', action: () => onNavigate('items'), keywords: ['inventory', 'equipment'] },
-      { id: 'nav-timeline', title: 'Go to Timeline', icon: 'timeline', category: 'Navigation', action: () => onNavigate('timeline'), keywords: ['events', 'history'] },
-      { id: 'nav-files', title: 'Go to Files', icon: 'files', category: 'Navigation', action: () => onNavigate('files'), keywords: ['documents', 'uploads'] },
-      { id: 'nav-tools', title: 'Go to Tools', icon: 'tools', category: 'Navigation', action: () => onNavigate('tools') },
-      { id: 'nav-help', title: 'Go to Help', icon: 'help', category: 'Navigation', action: () => onNavigate('help') },
-      { id: 'nav-members', title: 'Go to Members', icon: 'members', category: 'Navigation', action: () => onNavigate('members'), keywords: ['party', 'players'] },
-      { id: 'nav-settings', title: 'Go to API Settings', icon: 'settings', category: 'Navigation', action: () => onNavigate('apiSettings'), keywords: ['config'] },
-    ];
+    // Every page this viewer can open, from the same list as the sidebar —
+    // this used to be its own hand-kept list that knew about half of them.
+    const navCommands = navItemsFor({ isDM, isDaggerheart })
+      .filter(item => item.action === 'view')
+      .map(item => ({
+        id: `nav-${item.id}`,
+        title: `Go to ${item.label}`,
+        Icon: item.icon,
+        category: 'Navigation',
+        action: () => onNavigate(item.id),
+        keywords: [item.group, ...item.keywords],
+      }));
 
     // Search commands for entities
     const searchCommands = [];
@@ -132,7 +128,7 @@ export default function CommandPalette({
     });
 
     return [...navCommands, ...searchCommands];
-  }, [onNavigate, npcs, characters, locations, quests]);
+  }, [onNavigate, npcs, characters, locations, quests, isDM, isDaggerheart]);
 
   const {
     query,
@@ -206,7 +202,7 @@ export default function CommandPalette({
                 <div className="command-group-title">{category}</div>
                 {items.map((command) => {
                   itemIndex++;
-                  const Icon = ICONS[command.icon] || Search;
+                  const Icon = command.Icon || ICONS[command.icon] || Search;
                   const isSelected = itemIndex === selectedIndex;
 
                   return (

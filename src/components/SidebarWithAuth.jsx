@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Home, Users, BookOpen, ScrollText, Wrench, Crown, User, LogOut, FolderOpen, UserCog, FolderUp, UsersRound, Calendar, Map, Swords, StickyNote, Wand2, Settings, ChevronDown, ChevronRight, Gamepad2, Globe, Scroll, Menu, X, HelpCircle, MessageSquare, Shield, Package, Backpack, Zap, Target, Monitor, Skull, Grid, TreePine, PanelLeftClose, PanelLeft, BookMarked, LayoutDashboard, Sparkles } from 'lucide-react';
+import { Crown, User, LogOut, FolderOpen, ChevronDown, Menu, X, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getGameSystem } from '../data/systems/index.js';
 import { applyTheme } from '../config/themes.js';
+import { navGroupsFor, NAV_GROUP_IDS } from '../config/navigation';
 import './Sidebar.css';
 
 export default function SidebarWithAuth({ currentView, setCurrentView, isDM, userRole, currentCampaign, onSwitchCampaign, presenceIndicator, isDaggerheart = false, onEnterPortal }) {
@@ -11,7 +12,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('sidebarCollapsed') === 'true';
   });
-  const [expandedGroups, setExpandedGroups] = useState(['superadmin', 'campaign', 'players', 'story', 'world', 'adventure', 'resources', 'settings']);
+  const [expandedGroups, setExpandedGroups] = useState(NAV_GROUP_IDS);
 
   // Apply theme based on campaign's game system
   useEffect(() => {
@@ -52,107 +53,8 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
     );
   };
 
-  const navGroups = [
-    // SuperAdmin section - only visible to superadmin
-    ...(isSuperAdmin ? [{
-      id: 'superadmin',
-      label: 'SuperAdmin',
-      icon: Shield,
-      items: [
-        { id: 'superadmin', label: 'All Campaigns', icon: Shield }
-      ]
-    }] : []),
-    {
-      id: 'campaign',
-      label: 'Campaign',
-      icon: Home,
-      items: [
-        { id: 'dashboard', label: 'Dashboard', icon: Home },
-        // Quick access to the player's own sheet — parity with the phone
-        // bottom nav's "Sheet" (and "Portal") buttons, which don't show on
-        // tablet/desktop widths where the sidebar is the only navigation.
-        { id: 'my-sheet', label: 'My Sheet', icon: User },
-        ...((!isDM && isDaggerheart && onEnterPortal)
-          ? [{ id: 'portal', label: 'Player Portal', icon: Gamepad2, action: 'portal' }]
-          : []),
-      ]
-    },
-    {
-      id: 'players',
-      label: 'Players',
-      icon: Users,
-      items: [
-        { id: 'characters', label: 'Characters', icon: Users },
-        { id: 'graveyard', label: 'Graveyard', icon: Skull },
-        { id: 'partyInventory', label: 'Party Stash', icon: Backpack },
-        { id: 'notes', label: 'My Notes', icon: StickyNote },
-        { id: 'messaging', label: 'Messages', icon: MessageSquare }
-      ]
-    },
-    {
-      id: 'story',
-      label: 'The Chronicle',
-      icon: BookMarked,
-      featured: true,
-      items: [
-        { id: 'storybook', label: 'Story So Far', icon: BookMarked }
-      ]
-    },
-    {
-      id: 'world',
-      label: 'World',
-      icon: Globe,
-      items: [
-        { id: 'npcs', label: 'NPCs', icon: UsersRound },
-        { id: 'locations', label: 'Locations', icon: Map },
-        { id: 'lore', label: 'Lore', icon: BookOpen },
-        { id: 'timeline', label: 'Timeline', icon: Calendar }
-      ]
-    },
-    {
-      id: 'adventure',
-      label: 'Adventure',
-      icon: Scroll,
-      items: [
-        { id: 'quests', label: 'Quests', icon: Target },
-        { id: 'sessions', label: 'Sessions', icon: ScrollText },
-        ...(isDM ? [
-          { id: 'encounters', label: 'Encounters', icon: Swords },
-          { id: 'initiative', label: 'Initiative', icon: Zap }
-        ] : [])
-      ]
-    },
-    {
-      id: 'resources',
-      label: 'Resources',
-      icon: FolderUp,
-      items: [
-        { id: 'items', label: 'Item Catalog', icon: Package },
-        { id: 'adversaries', label: 'Adversary Catalog', icon: Skull },
-        { id: 'environments', label: 'Environment Catalog', icon: TreePine },
-        { id: 'files', label: 'Maps & Files', icon: FolderUp },
-        { id: 'tools', label: 'Tools', icon: Wrench },
-        { id: 'help', label: 'Features & Help', icon: HelpCircle },
-        ...(isDM ? [{ id: 'gm-screen', label: 'GM Screen', icon: LayoutDashboard }] : []),
-        ...(isDM ? [{ id: 'gm-cheatsheet', label: 'Rules Cheatsheet', icon: BookMarked }] : []),
-        ...(isDM ? [{ id: 'ai-cogm', label: 'AI Co-GM', icon: Sparkles }] : []),
-      ]
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: Settings,
-      items: [
-        ...(isDM ? [
-          { id: 'playerDisplay', label: 'Player Display', icon: Monitor },
-          { id: 'battleMapStudio', label: 'Battle Map Studio', icon: Grid },
-          { id: 'campaignBuilder', label: 'Campaign Builder', icon: Wand2 },
-          { id: 'members', label: 'Members', icon: UserCog }
-        ] : []),
-        { id: 'apiSettings', label: 'API Settings', icon: Settings }
-      ]
-    }
-  ];
+  // One list for the sidebar, the command palette and the top bar — see config/navigation.js.
+  const navGroups = navGroupsFor({ isDM, isDaggerheart, isSuperAdmin, canEnterPortal: !!onEnterPortal });
 
   const handleLogout = async () => {
     try {
