@@ -34,7 +34,7 @@ export default function LiveNoteFeed({
 
   if (notes.length === 0) {
     return (
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center gap-4 text-white/40">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col items-center justify-center gap-4 text-lr-text-dim">
         <div className="text-center space-y-2">
           <p className="text-lg font-medium">No notes yet. Start capturing what happens!</p>
           <p className="text-sm opacity-70">Everyone can add notes during the session.</p>
@@ -70,16 +70,16 @@ export default function LiveNoteFeed({
             )}
 
             {showAuthor && (
-              <div className="flex items-center gap-2 mb-1 text-xs text-white/50">
+              <div className="flex items-center gap-2 mb-1 text-xs text-lr-text-dim">
                 <User size={12} />
-                <span className={`font-semibold ${isOwnNote ? 'text-[rgb(var(--color-primary-light))]' : 'text-white/70'}`}>
+                <span className={`font-semibold ${isOwnNote ? 'text-[rgb(var(--color-primary-light))]' : 'text-lr-text-muted'}`}>
                   {note.authorName}
                 </span>
                 <span className="ml-auto text-[0.65rem] opacity-70">{formatTime(note.timestamp)}</span>
               </div>
             )}
 
-            <div className="text-[0.95rem] leading-relaxed text-white/90 break-words pr-8">
+            <div className="text-[0.95rem] leading-relaxed text-lr-text break-words pr-8">
               <WikiText
                 text={note.content}
                 entities={entities}
@@ -95,7 +95,7 @@ export default function LiveNoteFeed({
               `}>
               <button
                 className={`
-                  p-1 rounded bg-[var(--bg-primary)] border border-white/10 text-white/40 cursor-pointer transition-colors
+                  p-1 rounded bg-[var(--bg-primary)] border border-white/10 text-lr-text-dim cursor-pointer transition-colors
                   hover:text-[rgb(var(--color-primary))] hover:border-[rgb(var(--color-primary))]
                   ${note.isHighlight ? 'text-amber-500 border-amber-500/30' : ''}
                 `}
@@ -107,7 +107,7 @@ export default function LiveNoteFeed({
 
               {canDelete(note) && (
                 <button
-                  className="p-1 rounded bg-[var(--bg-primary)] border border-white/10 text-white/40 cursor-pointer transition-colors hover:text-red-500 hover:border-red-500"
+                  className="p-1 rounded bg-[var(--bg-primary)] border border-white/10 text-lr-text-dim cursor-pointer transition-colors hover:text-red-500 hover:border-red-500"
                   onClick={() => onDeleteNote(note.id)}
                   title="Delete note"
                 >
@@ -117,7 +117,7 @@ export default function LiveNoteFeed({
             </div>
 
             {!showAuthor && (
-              <span className="absolute right-3 bottom-2 text-[0.65rem] text-white/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <span className="absolute right-3 bottom-2 text-[0.65rem] text-lr-text-dim opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 {formatTime(note.timestamp)}
               </span>
             )}

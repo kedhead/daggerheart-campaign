@@ -33,7 +33,7 @@ export default function PresenceIndicator({ presenceList = [], currentUserId, ma
     return (
       <div className="flex items-center gap-1.5 transition-all duration-300">
         <div className={`w-1.5 h-1.5 rounded-full ${otherUsers.length > 0 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-white/20'}`}></div>
-        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest whitespace-nowrap">
+        <span className="text-[11px] font-bold text-lr-text-dim uppercase tracking-widest whitespace-nowrap">
           {otherUsers.length} Active
         </span>
       </div>
@@ -61,7 +61,7 @@ export default function PresenceIndicator({ presenceList = [], currentUserId, ma
             {user.photoURL ? (
               <img src={user.photoURL} alt={user.displayName} className="w-full h-full object-cover rounded-md" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-white/60 uppercase">
+              <div className="w-full h-full flex items-center justify-center text-[11px] font-black text-lr-text-muted uppercase">
                 {getInitials(user.displayName)}
               </div>
             )}
@@ -69,7 +69,7 @@ export default function PresenceIndicator({ presenceList = [], currentUserId, ma
           </div>
         ))}
         {remainingCount > 0 && (
-          <div className="w-7 h-7 rounded-lg border-2 border-[#0d1126] bg-white/10 flex items-center justify-center text-[9px] font-black text-white/60 z-0">
+          <div className="w-7 h-7 rounded-lg border-2 border-[#0d1126] bg-white/10 flex items-center justify-center text-[11px] font-black text-lr-text-muted z-0">
             +{remainingCount}
           </div>
         )}
@@ -78,17 +78,17 @@ export default function PresenceIndicator({ presenceList = [], currentUserId, ma
       {showTooltip && (
         <div className="absolute top-full mt-2 left-0 w-48 bg-[#0d1126]/90 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center gap-2 mb-3 px-1">
-            <Users size={12} className="text-white/40" />
-            <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">{otherUsers.length} Online Now</span>
+            <Users size={12} className="text-lr-text-dim" />
+            <span className="text-[11px] font-black text-lr-text-dim uppercase tracking-widest">{otherUsers.length} Online Now</span>
           </div>
           <div className="space-y-2">
             {otherUsers.map((user) => (
               <div key={user.id} className="flex items-center gap-2.5">
                 <div className={`w-1.5 h-1.5 rounded-full ${getStatusColor(user.computedStatus)}`} />
                 <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-bold text-white/90 truncate">{user.displayName}</span>
+                  <span className="text-xs font-bold text-lr-text truncate">{user.displayName}</span>
                   {user.currentView && (
-                    <span className="text-[9px] font-medium text-white/20 uppercase tracking-wide truncate">
+                    <span className="text-[11px] font-medium text-white/20 uppercase tracking-wide truncate">
                       Viewing {formatViewName(user.currentView)}
                     </span>
                   )}

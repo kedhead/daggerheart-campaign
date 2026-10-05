@@ -133,7 +133,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-[rgb(var(--color-primary))]">Timeline</h1>
-            <p className="text-white/60 mt-1">
+            <p className="text-lr-text-muted mt-1">
               {counts.all} items • {counts.sessions} sessions • {events.length} events
             </p>
           </div>
@@ -153,7 +153,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
       {/* Search and Filters */}
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white/5 border border-white/10 p-4 rounded-lg">
         <div className="relative w-full md:w-96">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-lr-text-dim" />
           <input
             type="text"
             placeholder="Search events and sessions..."
@@ -184,7 +184,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
           <div className="h-8 w-px bg-white/10 mx-2 hidden md:block"></div>
 
           <button
-            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all border ${filterType === 'all' ? 'bg-white/10 border-white/20 text-white' : 'border-transparent text-white/60 hover:text-white hover:bg-white/5'}`}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all border ${filterType === 'all' ? 'bg-white/10 border-white/20 text-white' : 'border-transparent text-lr-text-muted hover:text-white hover:bg-white/5'}`}
             onClick={() => setFilterType('all')}
           >
             All
@@ -192,7 +192,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
           {['event', 'quest', 'milestone', 'other'].map(type => (
             <button
               key={type}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all border capitalize ${filterType === type ? 'bg-white/10 border-white/20 text-white' : 'border-transparent text-white/60 hover:text-white hover:bg-white/5'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all border capitalize ${filterType === type ? 'bg-white/10 border-white/20 text-white' : 'border-transparent text-lr-text-muted hover:text-white hover:bg-white/5'}`}
               onClick={() => setFilterType(type)}
             >
               {type}
@@ -205,7 +205,7 @@ export default function TimelineView({ campaign, events = [], addEvent, updateEv
       {sortedItems.length === 0 ? (
         <div className="bg-white/5 border border-[rgb(var(--color-accent)/0.2)] rounded-lg p-16 flex flex-col items-center justify-center text-center">
           <Calendar size={48} className="text-white/20 mb-4" />
-          <h3 className="text-xl font-bold text-white/40 mb-2">No Items Found</h3>
+          <h3 className="text-xl font-bold text-lr-text-dim mb-2">No Items Found</h3>
           <p className="text-white/20 max-w-sm">No timeline events or sessions match your current filters.</p>
           {isDM && (searchTerm === '' && filterType === 'all') && (
             <button

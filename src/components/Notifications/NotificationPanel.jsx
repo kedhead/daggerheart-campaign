@@ -19,10 +19,10 @@ export default function NotificationPanel({ unreadConversations, pendingJoinRequ
     <div className="absolute right-0 top-full mt-2 w-80 rounded-2xl bg-[#0d1126]/95 backdrop-blur-2xl border border-white/10 shadow-2xl shadow-black/50 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-        <span className="text-xs font-black text-white/60 uppercase tracking-widest">Notifications</span>
+        <span className="text-xs font-black text-lr-text-muted uppercase tracking-widest">Notifications</span>
         <button
           onClick={onClose}
-          className="p-1 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/5 transition-all"
+          className="p-1 rounded-lg text-lr-text-dim hover:text-lr-text-muted hover:bg-white/5 transition-all"
         >
           <X size={14} />
         </button>
@@ -40,7 +40,7 @@ export default function NotificationPanel({ unreadConversations, pendingJoinRequ
             {unreadConversations.length > 0 && (
               <div>
                 <div className="px-4 py-1.5">
-                  <span className="text-[10px] font-black text-white/25 uppercase tracking-widest">Messages</span>
+                  <span className="text-[11px] font-black text-white/25 uppercase tracking-widest">Messages</span>
                 </div>
                 {unreadConversations.map(conv => {
                   const otherName = conv.type === 'announcement'
@@ -58,14 +58,14 @@ export default function NotificationPanel({ unreadConversations, pendingJoinRequ
                         <MessageSquare size={14} className="text-indigo-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-white/90 truncate">{otherName}</p>
-                        <p className="text-[11px] text-white/40 truncate mt-0.5">
+                        <p className="text-xs font-bold text-lr-text truncate">{otherName}</p>
+                        <p className="text-[11px] text-lr-text-dim truncate mt-0.5">
                           {conv.lastMessage || 'New message'}
                         </p>
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <div className="w-2 h-2 rounded-full bg-indigo-400 shadow-[0_0_6px_rgba(129,140,248,0.8)]" />
-                        <span className="text-[10px] text-white/25">{timeAgo(conv.lastMessageAt)}</span>
+                        <span className="text-[11px] text-white/25">{timeAgo(conv.lastMessageAt)}</span>
                       </div>
                     </button>
                   );
@@ -77,7 +77,7 @@ export default function NotificationPanel({ unreadConversations, pendingJoinRequ
             {pendingJoinRequests.length > 0 && (
               <div>
                 <div className="px-4 py-1.5 mt-1">
-                  <span className="text-[10px] font-black text-white/25 uppercase tracking-widest">Join Requests</span>
+                  <span className="text-[11px] font-black text-white/25 uppercase tracking-widest">Join Requests</span>
                 </div>
                 {pendingJoinRequests.map(req => (
                   <button
@@ -89,14 +89,14 @@ export default function NotificationPanel({ unreadConversations, pendingJoinRequ
                       <UserPlus size={14} className="text-amber-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-white/90 truncate">
+                      <p className="text-xs font-bold text-lr-text truncate">
                         {req.displayName || req.email}
                       </p>
-                      <p className="text-[11px] text-white/40 mt-0.5">Wants to join the campaign</p>
+                      <p className="text-[11px] text-lr-text-dim mt-0.5">Wants to join the campaign</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
-                      <span className="text-[10px] text-white/25">{timeAgo(req.requestedAt)}</span>
+                      <span className="text-[11px] text-white/25">{timeAgo(req.requestedAt)}</span>
                     </div>
                   </button>
                 ))}

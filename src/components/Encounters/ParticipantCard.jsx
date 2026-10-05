@@ -88,7 +88,7 @@ export default function ParticipantCard({
       case 'boss':
         return 'bg-amber-500/30 text-amber-300 border-amber-500/60';
       default:
-        return 'bg-white/10 text-white/60 border-white/20';
+        return 'bg-white/10 text-lr-text-muted border-white/20';
     }
   };
 
@@ -176,14 +176,14 @@ export default function ParticipantCard({
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             {isBoss && <Crown size={16} className="text-amber-400 shrink-0" />}
-            {isDefeated && <Skull size={16} className="text-white/40" />}
-            <span className={`font-bold text-lg ${isDefeated ? 'text-white/40 line-through' : 'text-white'}`}>
+            {isDefeated && <Skull size={16} className="text-lr-text-dim" />}
+            <span className={`font-bold text-lg ${isDefeated ? 'text-lr-text-dim line-through' : 'text-white'}`}>
               {name}
             </span>
             <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider border ${getRoleColorClass()}`}>
               {role}
             </span>
-            <span className="bg-white/10 text-white/60 px-1.5 py-0.5 rounded text-xs font-mono border border-white/10">
+            <span className="bg-white/10 text-lr-text-muted px-1.5 py-0.5 rounded text-xs font-mono border border-white/10">
               T{tier}
             </span>
             {currentPhaseName && (
@@ -215,7 +215,7 @@ export default function ParticipantCard({
                   />
                 ))}
               </div>
-              <span className="text-xs font-mono text-white/60 min-w-[3ch] text-right">{currentHP}</span>
+              <span className="text-xs font-mono text-lr-text-muted min-w-[3ch] text-right">{currentHP}</span>
             </div>
 
             {/* Stress Bar */}
@@ -227,7 +227,7 @@ export default function ParticipantCard({
                   style={{ width: `${stressPercent}%` }}
                 />
               </div>
-              <span className="text-xs font-mono text-white/60 min-w-[3ch] text-right">{currentStress}</span>
+              <span className="text-xs font-mono text-lr-text-muted min-w-[3ch] text-right">{currentStress}</span>
             </div>
           </div>
 
@@ -275,7 +275,7 @@ export default function ParticipantCard({
           )}
         </div>
 
-        <button className="text-white/40 hover:text-white transition-colors">
+        <button className="text-lr-text-dim hover:text-white transition-colors">
           {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
         </button>
       </div>
@@ -291,13 +291,13 @@ export default function ParticipantCard({
             {(difficulty ?? evasion) != null && (
               <div className="flex items-center gap-1.5">
                 <Shield size={14} className="text-blue-400" />
-                <span className="text-xs text-white/60 uppercase tracking-wide">Difficulty</span>
+                <span className="text-xs text-lr-text-muted uppercase tracking-wide">Difficulty</span>
                 <span className="font-bold text-white">{difficulty ?? evasion}</span>
               </div>
             )}
             {motives && (
-              <p className="text-xs text-white/50 italic">
-                <span className="not-italic font-bold text-white/30 uppercase tracking-wide text-[10px]">Motives: </span>
+              <p className="text-xs text-lr-text-dim italic">
+                <span className="not-italic font-bold text-lr-text-dim uppercase tracking-wide text-[11px]">Motives: </span>
                 {motives}
               </p>
             )}
@@ -306,14 +306,14 @@ export default function ParticipantCard({
           {/* Attack Block */}
           {(attack !== undefined || damage) && (
             <div className="bg-[var(--bg-primary)] p-3 rounded-lg border border-white/5 space-y-3">
-              <h5 className="text-xs font-bold text-white/40 uppercase tracking-widest">Attack</h5>
+              <h5 className="text-xs font-bold text-lr-text-dim uppercase tracking-widest">Attack</h5>
 
               {/* Stat line */}
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {attack !== undefined && (
                   <span className="font-bold text-white">+{attack}</span>
                 )}
-                {attackName && <span className="text-white/80">{attackName}</span>}
+                {attackName && <span className="text-lr-text-muted">{attackName}</span>}
                 {attackRange && (
                   <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-xs border border-blue-500/20">
                     {attackRange}
@@ -356,18 +356,18 @@ export default function ParticipantCard({
                       {lastAttackResult.rolls?.[0]}
                     </span>
                     {lastAttackResult.modifier !== 0 && (
-                      <span className="text-white/60">
+                      <span className="text-lr-text-muted">
                         {lastAttackResult.modifier > 0 ? '+' : ''}{lastAttackResult.modifier}
                       </span>
                     )}
                     <span className="font-bold text-white">= {lastAttackResult.total}</span>
                     {lastAttackResult.isCrit && (
-                      <span className="font-bold text-amber-400 uppercase tracking-wide text-[10px]">
+                      <span className="font-bold text-amber-400 uppercase tracking-wide text-[11px]">
                         Critical Hit!
                       </span>
                     )}
                     <button
-                      className="ml-auto text-white/30 hover:text-white transition-colors"
+                      className="ml-auto text-lr-text-dim hover:text-white transition-colors"
                       onClick={() => setLastAttackResult(null)}
                     >
                       <X size={12} />
@@ -384,13 +384,13 @@ export default function ParticipantCard({
                       <span key={i} className="px-2 py-1 bg-white/10 rounded font-mono text-white">{r}</span>
                     ))}
                     {lastDamageResult.modifier !== 0 && (
-                      <span className="text-white/60">
+                      <span className="text-lr-text-muted">
                         {lastDamageResult.modifier > 0 ? '+' : ''}{lastDamageResult.modifier}
                       </span>
                     )}
                     <span className="font-bold text-white">= {lastDamageResult.total}</span>
                     <button
-                      className="ml-auto text-white/30 hover:text-white transition-colors"
+                      className="ml-auto text-lr-text-dim hover:text-white transition-colors"
                       onClick={() => setLastDamageResult(null)}
                     >
                       <X size={12} />
@@ -404,22 +404,22 @@ export default function ParticipantCard({
           {/* Damage Thresholds (per-hit damage → HP marked) */}
           {thresholds && (
             <div className="space-y-1.5">
-              <h5 className="text-xs font-bold text-white/40 uppercase tracking-widest pl-1">Damage Thresholds</h5>
+              <h5 className="text-xs font-bold text-lr-text-dim uppercase tracking-widest pl-1">Damage Thresholds</h5>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
-                  <div className="text-white/40 uppercase tracking-wide mb-1">Minor</div>
+                  <div className="text-lr-text-dim uppercase tracking-wide mb-1">Minor</div>
                   <div className="font-bold text-white">&lt; {majorThreshold}</div>
-                  <div className="text-white/30 mt-0.5">−1 HP</div>
+                  <div className="text-lr-text-dim mt-0.5">−1 HP</div>
                 </div>
                 <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
-                  <div className="text-white/40 uppercase tracking-wide mb-1">Major</div>
+                  <div className="text-lr-text-dim uppercase tracking-wide mb-1">Major</div>
                   <div className="font-bold text-white">≥ {majorThreshold}</div>
-                  <div className="text-white/30 mt-0.5">−2 HP</div>
+                  <div className="text-lr-text-dim mt-0.5">−2 HP</div>
                 </div>
                 <div className="bg-[var(--bg-primary)] p-2 rounded border border-white/5">
-                  <div className="text-white/40 uppercase tracking-wide mb-1">Severe</div>
+                  <div className="text-lr-text-dim uppercase tracking-wide mb-1">Severe</div>
                   <div className="font-bold text-white">≥ {severeThreshold}</div>
-                  <div className="text-white/30 mt-0.5">−3 HP</div>
+                  <div className="text-lr-text-dim mt-0.5">−3 HP</div>
                 </div>
               </div>
             </div>
@@ -431,7 +431,7 @@ export default function ParticipantCard({
               {/* Threshold damage entry: type the damage roll → marks 1/2/3 HP */}
               {thresholds && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white/40 uppercase shrink-0">Damage</span>
+                  <span className="text-xs font-bold text-lr-text-dim uppercase shrink-0">Damage</span>
                   <input
                     type="number"
                     min={1}
@@ -449,14 +449,14 @@ export default function ParticipantCard({
                     Apply
                   </button>
                   {damageInput && parseInt(damageInput, 10) > 0 && (
-                    <span className="text-xs text-white/50">
+                    <span className="text-xs text-lr-text-dim">
                       → marks {marks(parseInt(damageInput, 10))} HP
                     </span>
                   )}
                 </div>
               )}
               <div className="flex items-center gap-4">
-                <span className="text-xs font-bold text-white/40 uppercase w-12 shrink-0" title="Manual HP adjustment">Manual</span>
+                <span className="text-xs font-bold text-lr-text-dim uppercase w-12 shrink-0" title="Manual HP adjustment">Manual</span>
                 <div className="flex flex-wrap gap-1">
                   <button onClick={() => handleQuickDamage(1)} className="btn-xs btn-secondary text-red-400 hover:bg-red-500/20">-1</button>
                   <button onClick={() => handleQuickDamage(2)} className="btn-xs btn-secondary text-red-400 hover:bg-red-500/20">-2</button>
@@ -468,7 +468,7 @@ export default function ParticipantCard({
               </div>
 
               <div className="flex items-center gap-4">
-                <span className="text-xs font-bold text-white/40 uppercase w-12 shrink-0">Stress</span>
+                <span className="text-xs font-bold text-lr-text-dim uppercase w-12 shrink-0">Stress</span>
                 <div className="flex gap-1">
                   <button onClick={() => handleStressDamage(1)} className="btn-xs btn-secondary text-amber-400 hover:bg-amber-500/20">+1</button>
                   <button onClick={() => handleStressDamage(2)} className="btn-xs btn-secondary text-amber-400 hover:bg-amber-500/20">+2</button>
@@ -490,7 +490,7 @@ export default function ParticipantCard({
                       {DAGGERHEART_CONDITIONS.filter(c => !conditions.includes(c)).map(condition => (
                         <button
                           key={condition}
-                          className="px-2 py-1.5 text-xs text-left text-white/80 hover:bg-white/10 rounded transition-colors"
+                          className="px-2 py-1.5 text-xs text-left text-lr-text-muted hover:bg-white/10 rounded transition-colors"
                           onClick={() => {
                             onAddCondition(participant.id, condition);
                             setShowConditionPicker(false);
@@ -517,7 +517,7 @@ export default function ParticipantCard({
           {/* Features */}
           {features && features.length > 0 && (
             <div className="space-y-3">
-              <h5 className="text-xs font-bold text-white/40 uppercase tracking-widest pl-1">Features</h5>
+              <h5 className="text-xs font-bold text-lr-text-dim uppercase tracking-widest pl-1">Features</h5>
               <div className="space-y-2">
                 {features.map((feature, idx) => (
                   <div key={idx} className="bg-[var(--bg-primary)] p-3 rounded-lg border border-white/5 space-y-1">
@@ -536,7 +536,7 @@ export default function ParticipantCard({
                           return (
                             <button
                               type="button"
-                              className="px-2.5 py-1 text-[10px] font-bold bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 rounded border border-purple-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="px-2.5 py-1 text-[11px] font-bold bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 rounded border border-purple-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                               style={{ minHeight: 28 }}
                               disabled={!affordable}
                               onClick={(e) => { e.stopPropagation(); onSpendFear(cost); }}
@@ -549,7 +549,7 @@ export default function ParticipantCard({
                         })()}
                         {feature.type === 'action' && isDM && onApplyDamage && (
                           <button
-                            className="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors"
+                            className="px-2 py-0.5 text-[11px] bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors"
                             onClick={(e) => { e.stopPropagation(); onApplyDamage(participant.id, 1, 'stress'); }}
                             title="Use this action — mark 1 stress"
                           >
@@ -557,14 +557,14 @@ export default function ParticipantCard({
                           </button>
                         )}
                         {feature.type && (
-                          <span className="text-[10px] uppercase text-white/40 bg-white/5 px-1.5 py-0.5 rounded">
+                          <span className="text-[11px] uppercase text-lr-text-dim bg-white/5 px-1.5 py-0.5 rounded">
                             {feature.type}
                           </span>
                         )}
                       </div>
                     </div>
                     {feature.description && (
-                      <p className="text-xs text-white/70 leading-relaxed">{feature.description}</p>
+                      <p className="text-xs text-lr-text-muted leading-relaxed">{feature.description}</p>
                     )}
                   </div>
                 ))}

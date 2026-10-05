@@ -147,7 +147,7 @@ export default function CharactersView({ campaign, characters, deletedCharacters
             >
               <Users size={11} style={{ color: 'var(--text-muted)' }} />
               <span
-                className="text-[10px] font-bold uppercase"
+                className="text-[11px] font-bold uppercase"
                 style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
               >
                 {livingCharacters.length} {livingCharacters.length === 1 ? 'Adventurer' : 'Adventurers'}
@@ -164,7 +164,7 @@ export default function CharactersView({ campaign, characters, deletedCharacters
               >
                 <Skull size={11} style={{ color: 'rgba(200,80,80,0.7)' }} />
                 <span
-                  className="text-[10px] font-bold uppercase"
+                  className="text-[11px] font-bold uppercase"
                   style={{ color: 'rgba(200,80,80,0.7)', letterSpacing: '0.18em' }}
                 >
                   {fallenCount} Fallen
@@ -183,7 +183,7 @@ export default function CharactersView({ campaign, characters, deletedCharacters
               >
                 <Trash2 size={11} style={{ color: 'var(--text-muted)' }} />
                 <span
-                  className="text-[10px] font-bold uppercase"
+                  className="text-[11px] font-bold uppercase"
                   style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
                 >
                   {deletedCharacters.length} Deleted
@@ -204,7 +204,7 @@ export default function CharactersView({ campaign, characters, deletedCharacters
               }}
             >
               <button
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase transition-all"
                 style={{
                   background: viewMode === 'cards' ? 'var(--primary-soft)' : 'transparent',
                   color: viewMode === 'cards' ? 'var(--primary)' : 'var(--text-muted)',
@@ -216,7 +216,7 @@ export default function CharactersView({ campaign, characters, deletedCharacters
                 Cards
               </button>
               <button
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-bold uppercase transition-all"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase transition-all"
                 style={{
                   background: viewMode === 'sheets' ? 'var(--primary-soft)' : 'transparent',
                   color: viewMode === 'sheets' ? 'var(--primary)' : 'var(--text-muted)',
@@ -355,7 +355,7 @@ export default function CharactersView({ campaign, characters, deletedCharacters
               {isDM && (
                 <div className="flex items-center justify-between px-1">
                   <button
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase transition-all"
                     style={{
                       background: 'rgba(80,20,20,0.3)',
                       border: '1px solid rgba(150,40,40,0.25)',
@@ -458,7 +458,7 @@ export default function CharactersView({ campaign, characters, deletedCharacters
             to the graveyard. They can be resurrected later from the Graveyard view.
           </p>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}>
+            <label className="text-[11px] font-bold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}>
               Cause of Death
             </label>
             <input
@@ -476,7 +476,7 @@ export default function CharactersView({ campaign, characters, deletedCharacters
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}>
+            <label className="text-[11px] font-bold uppercase" style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}>
               Epitaph <span style={{ color: 'var(--text-dim)' }}>(optional)</span>
             </label>
             <input

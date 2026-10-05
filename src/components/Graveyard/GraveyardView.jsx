@@ -57,7 +57,7 @@ export default function GraveyardView({
         >
           <Skull size={11} style={{ color: 'var(--text-muted)' }} />
           <span
-            className="text-[10px] font-bold uppercase"
+            className="text-[11px] font-bold uppercase"
             style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
           >
             {fallenCharacters.length} {fallenCharacters.length === 1 ? 'Hero' : 'Heroes'} Lost
@@ -150,14 +150,14 @@ export default function GraveyardView({
                         character.playerName,
                       ].filter(Boolean).join(' • ') || 'No details recorded'}
                     </p>
-                    <p className="text-[10px] uppercase mt-1" style={{ color: 'var(--text-dim)', letterSpacing: '0.14em' }}>
+                    <p className="text-[11px] uppercase mt-1" style={{ color: 'var(--text-dim)', letterSpacing: '0.14em' }}>
                       Deleted{when ? ` ${when}` : ''}{character.deletedByName ? ` by ${character.deletedByName}` : ''}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold uppercase transition-all"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold uppercase transition-all"
                       style={{
                         background: 'rgba(52,211,153,0.1)',
                         border: '1px solid rgba(52,211,153,0.3)',
@@ -309,7 +309,7 @@ function TombstoneCard({ character, isDM, onResurrect }) {
 
         {/* Player attribution */}
         <div className="absolute bottom-6 left-8 z-30">
-          <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] block mb-1">
+          <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] block mb-1">
             Played by
           </span>
           <span className="text-sm font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>
@@ -359,7 +359,7 @@ function TombstoneCard({ character, isDM, onResurrect }) {
             }}
           >
             <span
-              className="text-[9px] font-black uppercase tracking-[0.3em] block"
+              className="text-[11px] font-black uppercase tracking-[0.3em] block"
               style={{ color: 'rgba(200,80,80,0.6)' }}
             >
               Cause of Death

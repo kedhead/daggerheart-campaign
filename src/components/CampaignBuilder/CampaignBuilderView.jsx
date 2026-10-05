@@ -90,7 +90,7 @@ export default function CampaignBuilderView({
             <Wand2 size={32} className="text-[rgb(var(--color-primary))]" />
             Campaign Builder
           </h1>
-          <p className="text-lg text-white/60">AI-Powered Campaign Generation for {gameSystem?.name || 'your game'}</p>
+          <p className="text-lg text-lr-text-muted">AI-Powered Campaign Generation for {gameSystem?.name || 'your game'}</p>
         </div>
 
         <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6 space-y-6">
@@ -99,7 +99,7 @@ export default function CampaignBuilderView({
               <Sparkles size={20} className="text-amber-400" />
               Freeform AI Generation
             </h3>
-            <p className="text-white/60">
+            <p className="text-lr-text-muted">
               {gameSystem?.name || 'This game system'} doesn't use structured campaign frames. Instead, you can use AI to generate
               campaign elements directly using the Quick Generator in each section:
             </p>
@@ -117,7 +117,7 @@ export default function CampaignBuilderView({
                   <item.icon size={16} className="text-[rgb(var(--color-primary))]" />
                   {item.label}
                 </h4>
-                <p className="text-sm text-white/60 m-0">
+                <p className="text-sm text-lr-text-muted m-0">
                   {item.desc}
                 </p>
               </div>
@@ -128,7 +128,7 @@ export default function CampaignBuilderView({
             <h4 className="text-base font-bold text-white mb-2 flex items-center gap-2">
               💡 Pro Tip
             </h4>
-            <p className="text-sm text-white/60 m-0">
+            <p className="text-sm text-lr-text-muted m-0">
               Each "Generate with AI" button lets you provide custom prompts to get exactly what you need for your campaign.
               You have full creative control without being locked into a specific framework!
             </p>
@@ -156,7 +156,7 @@ export default function CampaignBuilderView({
               <CheckCircle size={32} className="text-emerald-400" />
               Campaign Frame
             </h1>
-            <p className="text-white/60">Your completed campaign frame for {campaign.name}</p>
+            <p className="text-lr-text-muted">Your completed campaign frame for {campaign.name}</p>
           </div>
           <button className="btn btn-secondary" onClick={() => setViewingFrame(false)}>
             Back
@@ -168,7 +168,7 @@ export default function CampaignBuilderView({
           {campaignFrame.pitch && (
             <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6">
               <h3 className="text-lg font-bold text-white mb-3">Campaign Pitch</h3>
-              <p className="text-white/80 leading-relaxed">{campaignFrame.pitch}</p>
+              <p className="text-lr-text-muted leading-relaxed">{campaignFrame.pitch}</p>
             </div>
           )}
 
@@ -178,7 +178,7 @@ export default function CampaignBuilderView({
               <h3 className="text-lg font-bold text-white mb-4">Tone & Feel</h3>
               <div className="flex flex-wrap gap-2">
                 {campaignFrame.toneAndFeel.map((tone, i) => (
-                  <span key={i} className="px-3 py-1 rounded-full bg-white/10 text-white/90 text-sm border border-white/10">{tone}</span>
+                  <span key={i} className="px-3 py-1 rounded-full bg-white/10 text-lr-text text-sm border border-white/10">{tone}</span>
                 ))}
               </div>
             </div>
@@ -200,7 +200,7 @@ export default function CampaignBuilderView({
           {campaignFrame.touchstones && campaignFrame.touchstones.length > 0 && (
             <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6">
               <h3 className="text-lg font-bold text-white mb-3">Touchstones</h3>
-              <ul className="list-disc pl-5 space-y-1 text-white/80">
+              <ul className="list-disc pl-5 space-y-1 text-lr-text-muted">
                 {campaignFrame.touchstones.map((touchstone, i) => (
                   <li key={i}>{touchstone}</li>
                 ))}
@@ -212,7 +212,7 @@ export default function CampaignBuilderView({
           {campaignFrame.overview && (
             <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6">
               <h3 className="text-lg font-bold text-white mb-3">Campaign Overview</h3>
-              <p className="text-white/80 whitespace-pre-wrap leading-relaxed">{campaignFrame.overview}</p>
+              <p className="text-lr-text-muted whitespace-pre-wrap leading-relaxed">{campaignFrame.overview}</p>
             </div>
           )}
 
@@ -220,7 +220,7 @@ export default function CampaignBuilderView({
           {campaignFrame.incitingIncident && (
             <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6">
               <h3 className="text-lg font-bold text-white mb-3">Inciting Incident</h3>
-              <p className="text-white/80 whitespace-pre-wrap leading-relaxed">{campaignFrame.incitingIncident}</p>
+              <p className="text-lr-text-muted whitespace-pre-wrap leading-relaxed">{campaignFrame.incitingIncident}</p>
             </div>
           )}
 
@@ -230,7 +230,7 @@ export default function CampaignBuilderView({
             {campaignFrame.playerPrinciples && campaignFrame.playerPrinciples.length > 0 && (
               <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6">
                 <h3 className="text-lg font-bold text-white mb-3">Player Principles</h3>
-                <ul className="list-disc pl-5 space-y-2 text-white/80">
+                <ul className="list-disc pl-5 space-y-2 text-lr-text-muted">
                   {campaignFrame.playerPrinciples.map((principle, i) => (
                     <li key={i}>{principle}</li>
                   ))}
@@ -242,7 +242,7 @@ export default function CampaignBuilderView({
             {campaignFrame.gmPrinciples && campaignFrame.gmPrinciples.length > 0 && (
               <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6">
                 <h3 className="text-lg font-bold text-white mb-3">GM Principles</h3>
-                <ul className="list-disc pl-5 space-y-2 text-white/80">
+                <ul className="list-disc pl-5 space-y-2 text-lr-text-muted">
                   {campaignFrame.gmPrinciples.map((principle, i) => (
                     <li key={i}>{principle}</li>
                   ))}
@@ -266,9 +266,9 @@ export default function CampaignBuilderView({
                         }`}>
                         {quest.priority}
                       </span>
-                      {quest.hidden && <span className="text-xs text-white/40">(Hidden)</span>}
+                      {quest.hidden && <span className="text-xs text-lr-text-dim">(Hidden)</span>}
                     </div>
-                    {quest.description && <p className="text-sm text-white/70 m-0">{quest.description}</p>}
+                    {quest.description && <p className="text-sm text-lr-text-muted m-0">{quest.description}</p>}
                   </div>
                 ))}
               </div>
@@ -292,7 +292,7 @@ export default function CampaignBuilderView({
                   {campaignFrame.sessionZero.safetyTools.lines?.length > 0 && (
                     <div>
                       <strong className="text-red-400 block mb-2">Lines (Hard No)</strong>
-                      <ul className="list-disc pl-5 space-y-1 text-white/80">
+                      <ul className="list-disc pl-5 space-y-1 text-lr-text-muted">
                         {campaignFrame.sessionZero.safetyTools.lines.map((line, i) => (
                           <li key={i}>{line}</li>
                         ))}
@@ -302,7 +302,7 @@ export default function CampaignBuilderView({
                   {campaignFrame.sessionZero.safetyTools.veils?.length > 0 && (
                     <div>
                       <strong className="text-amber-400 block mb-2">Veils (Off-Screen)</strong>
-                      <ul className="list-disc pl-5 space-y-1 text-white/80">
+                      <ul className="list-disc pl-5 space-y-1 text-lr-text-muted">
                         {campaignFrame.sessionZero.safetyTools.veils.map((veil, i) => (
                           <li key={i}>{veil}</li>
                         ))}
@@ -312,7 +312,7 @@ export default function CampaignBuilderView({
                   {campaignFrame.sessionZero.safetyTools.otherBoundaries && (
                     <div>
                       <strong className="text-white block mb-2">Other Boundaries</strong>
-                      <p className="text-white/80 whitespace-pre-wrap">{campaignFrame.sessionZero.safetyTools.otherBoundaries}</p>
+                      <p className="text-lr-text-muted whitespace-pre-wrap">{campaignFrame.sessionZero.safetyTools.otherBoundaries}</p>
                     </div>
                   )}
                 </div>
@@ -328,7 +328,7 @@ export default function CampaignBuilderView({
                 {campaignFrame.sessionZero.characterConnections.map((conn, i) => (
                   <div key={i} className="p-4 bg-black/20 rounded-lg border border-white/5">
                     <strong className="block text-white mb-1">{conn.question}</strong>
-                    {conn.answer && <p className="text-sm text-white/70 italic m-0">{conn.answer}</p>}
+                    {conn.answer && <p className="text-sm text-lr-text-muted italic m-0">{conn.answer}</p>}
                   </div>
                 ))}
               </div>
@@ -344,7 +344,7 @@ export default function CampaignBuilderView({
                   <div key={i} className="p-3 bg-black/20 rounded-lg border border-white/5 flex flex-col gap-1">
                     <span className="text-white">{fact.fact}</span>
                     {(fact.category || fact.establishedBy) && (
-                      <div className="text-xs text-white/40 flex items-center gap-2">
+                      <div className="text-xs text-lr-text-dim flex items-center gap-2">
                         {fact.category && <span className="px-2 py-0.5 rounded bg-white/5 border border-white/5">{fact.category}</span>}
                         {fact.establishedBy && <span>by {fact.establishedBy}</span>}
                       </div>
@@ -364,11 +364,11 @@ export default function CampaignBuilderView({
                   <div key={i} className={`p-3 bg-black/20 rounded-lg border ${loc.createAsLocation ? 'border-emerald-500/30' : 'border-white/5'}`}>
                     <div className="flex items-center gap-2 mb-1">
                       <strong className="text-white">{loc.name}</strong>
-                      <span className="px-2 py-0.5 rounded text-xs bg-white/5 text-white/60 uppercase tracking-wider">{loc.type}</span>
+                      <span className="px-2 py-0.5 rounded text-xs bg-white/5 text-lr-text-muted uppercase tracking-wider">{loc.type}</span>
                       {loc.createAsLocation && <span className="text-xs text-emerald-400 font-medium">(Created as Location)</span>}
                     </div>
-                    {loc.description && <p className="text-sm text-white/70 m-0">{loc.description}</p>}
-                    {loc.mentionedBy && <div className="text-xs text-white/40 mt-1">Mentioned by {loc.mentionedBy}</div>}
+                    {loc.description && <p className="text-sm text-lr-text-muted m-0">{loc.description}</p>}
+                    {loc.mentionedBy && <div className="text-xs text-lr-text-dim mt-1">Mentioned by {loc.mentionedBy}</div>}
                   </div>
                 ))}
               </div>
@@ -380,7 +380,7 @@ export default function CampaignBuilderView({
             (campaignFrame.sessionZeroQuestions?.length > 0)) && (
               <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6">
                 <h3 className="text-lg font-bold text-white mb-3">Session Zero Questions</h3>
-                <ul className="list-disc pl-5 space-y-2 text-white/80">
+                <ul className="list-disc pl-5 space-y-2 text-lr-text-muted">
                   {(campaignFrame.sessionZero?.questions || campaignFrame.sessionZeroQuestions || []).map((question, i) => (
                     <li key={i}>{question}</li>
                   ))}
@@ -426,7 +426,7 @@ export default function CampaignBuilderView({
           <Wand2 size={40} className="text-[rgb(var(--color-primary))]" />
           Campaign Builder
         </h1>
-        <p className="text-xl text-white/60">Create a complete campaign frame to guide your adventure</p>
+        <p className="text-xl text-lr-text-muted">Create a complete campaign frame to guide your adventure</p>
       </div>
 
       {/* Completed Campaign Frame */}
@@ -436,7 +436,7 @@ export default function CampaignBuilderView({
             <CheckCircle size={24} />
             Campaign Frame Completed!
           </h3>
-          <p className="text-white/70 mb-5">
+          <p className="text-lr-text-muted mb-5">
             You have a completed campaign frame for this campaign.
           </p>
           <div className="flex gap-4 flex-wrap">
@@ -459,7 +459,7 @@ export default function CampaignBuilderView({
             <FileText size={24} />
             Resume Draft
           </h3>
-          <p className="text-white/70 mb-5">
+          <p className="text-lr-text-muted mb-5">
             You have an unfinished campaign frame. Continue where you left off!
           </p>
           <div className="flex gap-4">
@@ -476,7 +476,7 @@ export default function CampaignBuilderView({
       {/* Start Fresh */}
       <div className="bg-[var(--bg-secondary)] rounded-xl border border-white/5 p-6">
         <h3 className="text-xl font-bold text-white mb-2">Start from Scratch</h3>
-        <p className="text-white/60 mb-5">
+        <p className="text-lr-text-muted mb-5">
           Build your campaign frame from the ground up with guidance at every step.
         </p>
         <button className="btn btn-primary" onClick={() => handleStartWizard()}>
@@ -504,12 +504,12 @@ export default function CampaignBuilderView({
                 <h4 className="text-lg font-bold text-white mb-1 group-hover:text-[rgb(var(--color-primary))] transition-colors flex items-center gap-2 flex-wrap">
                   {template.name}
                   {template.source === HOPE_FEAR_SOURCE && (
-                    <span className="text-[9px] font-bold uppercase tracking-[0.06em] px-1.5 py-0.5 rounded border border-[#965ac8]/40 bg-[#965ac8]/15 text-[#b98adf]">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.06em] px-1.5 py-0.5 rounded border border-[#965ac8]/40 bg-[#965ac8]/15 text-[#b98adf]">
                       Hope &amp; Fear
                     </span>
                   )}
                 </h4>
-                <div className="text-xs text-white/40 mb-3 flex items-center gap-1">
+                <div className="text-xs text-lr-text-dim mb-3 flex items-center gap-1">
                   Complexity:
                   <div className="flex">
                     {[1, 2, 3, 4].map(i => (
@@ -517,7 +517,7 @@ export default function CampaignBuilderView({
                     ))}
                   </div>
                 </div>
-                <p className="text-sm text-white/60 line-clamp-3">
+                <p className="text-sm text-lr-text-muted line-clamp-3">
                   {template.pitch}
                 </p>
               </div>
@@ -540,17 +540,17 @@ export default function CampaignBuilderView({
       {/* Info Box */}
       <div className="bg-[var(--card-bg)] border-l-4 border-[rgb(var(--color-primary))] rounded-r-lg p-6 mt-8">
         <h4 className="text-lg font-bold text-white mb-2">What's a Campaign Frame?</h4>
-        <p className="text-sm text-white/70 mb-2">
+        <p className="text-sm text-lr-text-muted mb-2">
           A campaign frame is a structured guide that defines the core elements of your campaign:
         </p>
-        <ul className="list-disc pl-5 text-sm text-white/70 mb-3 space-y-1">
+        <ul className="list-disc pl-5 text-sm text-lr-text-muted mb-3 space-y-1">
           <li>Pitch, themes, and tone</li>
           <li>World overview and touchstones</li>
           <li>Player and GM principles</li>
           <li>Inciting incident and starting quests</li>
           <li>Campaign mechanics and session zero tools</li>
         </ul>
-        <p className="text-sm text-white/70">
+        <p className="text-sm text-lr-text-muted">
           The wizard will guide you through all 15 steps with AI assistance available at each stage!
         </p>
       </div>

@@ -53,7 +53,7 @@ export default function LiveEncounterTracker({
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4 animate-in fade-in">
         <div className="w-8 h-8 md:w-12 md:h-12 border-4 border-[rgb(var(--color-primary))] border-t-transparent rounded-full animate-spin" />
-        <p className="text-white/60 text-lg font-medium">Loading encounter...</p>
+        <p className="text-lr-text-muted text-lg font-medium">Loading encounter...</p>
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function LiveEncounterTracker({
         </div>
         <div className="space-y-2">
           <h3 className="text-2xl font-bold text-white">No Active Scenario</h3>
-          <p className="text-white/60 max-w-md mx-auto">Start an encounter from the Scenarios page to begin tracking combat.</p>
+          <p className="text-lr-text-muted max-w-md mx-auto">Start an encounter from the Scenarios page to begin tracking combat.</p>
         </div>
         {onClose && (
           <button className="btn btn-secondary" onClick={onClose}>
@@ -127,7 +127,7 @@ export default function LiveEncounterTracker({
                 <span className={`w-2 h-2 rounded-full ${status === 'active' ? 'bg-red-500' : 'bg-emerald-500'}`} />
                 {status === 'active' ? 'Live Combat' : status}
               </span>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-white/80 border border-white/5">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-lr-text-muted border border-white/5">
                 Round {round}
               </span>
               <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 flex items-center gap-1.5">
@@ -175,8 +175,8 @@ export default function LiveEncounterTracker({
             <Skull size={24} />
           </div>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-white/40">Active Hostiles</p>
-            <p className="text-xl font-bold text-white">{activeParticipants.length} <span className="text-white/40 text-sm">/ {participants.length}</span></p>
+            <p className="text-xs font-bold uppercase tracking-wider text-lr-text-dim">Active Hostiles</p>
+            <p className="text-xl font-bold text-white">{activeParticipants.length} <span className="text-lr-text-dim text-sm">/ {participants.length}</span></p>
           </div>
         </div>
 
@@ -186,7 +186,7 @@ export default function LiveEncounterTracker({
           </div>
           <div className="flex-1 space-y-2">
             <div className="flex justify-between items-end">
-              <p className="text-xs font-bold uppercase tracking-wider text-white/40">Total Vitality</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-lr-text-dim">Total Vitality</p>
               <p className="text-sm font-bold text-emerald-400">{hpPercent}%</p>
             </div>
             <div className="h-2 bg-white/5 rounded-full overflow-hidden">
@@ -206,20 +206,20 @@ export default function LiveEncounterTracker({
           <div className="space-y-4">
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <Skull className="text-red-500" size={24} />
-              Adversaries <span className="text-white/40 text-base font-normal">({activeParticipants.length} active)</span>
+              Adversaries <span className="text-lr-text-dim text-base font-normal">({activeParticipants.length} active)</span>
             </h3>
 
             {activeParticipants.length === 0 && participants.length > 0 ? (
               <div className="p-8 text-center bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
                 <p className="text-2xl font-bold text-emerald-300 mb-1">⚔️ Victory!</p>
-                <p className="text-white/60 text-sm mb-4">Every adversary has been defeated.</p>
+                <p className="text-lr-text-muted text-sm mb-4">Every adversary has been defeated.</p>
                 {isDM && (
                   <button className="btn btn-primary" onClick={() => setShowEndConfirm(true)}>End Encounter</button>
                 )}
               </div>
             ) : activeParticipants.length === 0 ? (
               <div className="p-8 text-center bg-[var(--bg-secondary)] border border-white/5 rounded-xl border-dashed">
-                <p className="text-white/40 italic">No adversaries in this encounter yet.</p>
+                <p className="text-lr-text-dim italic">No adversaries in this encounter yet.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -249,8 +249,8 @@ export default function LiveEncounterTracker({
           {/* Defeated Section */}
           {defeatedParticipants.length > 0 && (
             <div className="space-y-4 pt-4 border-t border-white/5">
-              <h4 className="text-sm font-bold text-white/40 uppercase tracking-wider flex items-center gap-2">
-                Defeated <span className="bg-white/10 px-2 py-0.5 rounded-full text-white/60">{defeatedParticipants.length}</span>
+              <h4 className="text-sm font-bold text-lr-text-dim uppercase tracking-wider flex items-center gap-2">
+                Defeated <span className="bg-white/10 px-2 py-0.5 rounded-full text-lr-text-muted">{defeatedParticipants.length}</span>
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60 hover:opacity-100 transition-opacity">
                 {defeatedParticipants.map(participant => (
@@ -305,7 +305,7 @@ export default function LiveEncounterTracker({
             />
           ) : (
             <div className="p-6 bg-[var(--bg-secondary)] border border-white/5 rounded-xl text-center">
-              <p className="text-white/40 text-sm">No environment active.</p>
+              <p className="text-lr-text-dim text-sm">No environment active.</p>
             </div>
           )}
         </div>
@@ -335,7 +335,7 @@ export default function LiveEncounterTracker({
                 <AlertTriangle size={24} />
               </div>
               <h3 className="text-xl font-bold text-white">End Scenario?</h3>
-              <p className="text-white/60">Are you sure you want to end this combat scenario? This action cannot be undone.</p>
+              <p className="text-lr-text-muted">Are you sure you want to end this combat scenario? This action cannot be undone.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button

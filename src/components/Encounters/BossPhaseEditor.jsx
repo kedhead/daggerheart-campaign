@@ -89,7 +89,7 @@ export default function BossPhaseEditor({ phases, onChange, campaignAdversaries 
           <Crown size={14} className="text-amber-400" />
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">Boss Phases</p>
-            <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Define what happens when the boss crosses HP thresholds</p>
+            <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Define what happens when the boss crosses HP thresholds</p>
           </div>
         </div>
         <button
@@ -125,7 +125,7 @@ export default function BossPhaseEditor({ phases, onChange, campaignAdversaries 
                   <span className="text-sm font-bold text-amber-300 truncate block">
                     {phase.name || `Phase ${idx + 2}`}
                   </span>
-                  <span className="text-[10px] text-amber-400/60">Triggers at ≤{phase.triggerPercent}% HP</span>
+                  <span className="text-[11px] text-amber-400/60">Triggers at ≤{phase.triggerPercent}% HP</span>
                 </div>
                 <button
                   type="button"
@@ -227,7 +227,7 @@ export default function BossPhaseEditor({ phases, onChange, campaignAdversaries 
                             onChange={e => updatePhase(phase.id, 'replaceFeatures', e.target.checked)}
                             className="rounded"
                           />
-                          <span className="text-[10px] text-[var(--text-muted)]">Replace all existing features</span>
+                          <span className="text-[11px] text-[var(--text-muted)]">Replace all existing features</span>
                         </label>
                       </div>
                       <button
@@ -240,7 +240,7 @@ export default function BossPhaseEditor({ phases, onChange, campaignAdversaries 
                     </div>
 
                     {(phase.newFeatures || []).length === 0 && (
-                      <p className="text-[10px] text-[var(--text-muted)] italic py-1">
+                      <p className="text-[11px] text-[var(--text-muted)] italic py-1">
                         No new features — boss keeps its current abilities at this phase.
                       </p>
                     )}
@@ -296,13 +296,13 @@ export default function BossPhaseEditor({ phases, onChange, campaignAdversaries 
                     </div>
 
                     {campaignAdversaries.length === 0 && (
-                      <p className="text-[10px] text-[var(--text-muted)] italic py-1">
+                      <p className="text-[11px] text-[var(--text-muted)] italic py-1">
                         Create campaign adversaries first to select them as summons.
                       </p>
                     )}
 
                     {(phase.summons || []).length === 0 && campaignAdversaries.length > 0 && (
-                      <p className="text-[10px] text-[var(--text-muted)] italic py-1">
+                      <p className="text-[11px] text-[var(--text-muted)] italic py-1">
                         No minions summoned at this phase.
                       </p>
                     )}

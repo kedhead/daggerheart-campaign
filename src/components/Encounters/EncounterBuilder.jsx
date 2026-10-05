@@ -74,7 +74,7 @@ export default function EncounterBuilder({
       {/* Basic Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1">
-          <label className="block text-sm font-semibold text-white/60">Encounter Name *</label>
+          <label className="block text-sm font-semibold text-lr-text-muted">Encounter Name *</label>
           <input
             type="text"
             value={formData.name}
@@ -86,7 +86,7 @@ export default function EncounterBuilder({
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-semibold text-white/60">Description</label>
+          <label className="block text-sm font-semibold text-lr-text-muted">Description</label>
           <div className="relative">
             <WikiLinkInput
               value={formData.description}
@@ -125,13 +125,13 @@ export default function EncounterBuilder({
 
         {environments.length === 0 ? (
           <div className="p-6 bg-[var(--bg-secondary)] border border-white/5 rounded-xl text-center border-dashed">
-            <p className="text-white/60">No environments in catalog</p>
-            <p className="text-xs text-white/40 mt-1">Import or create environments first to use them here.</p>
+            <p className="text-lr-text-muted">No environments in catalog</p>
+            <p className="text-xs text-lr-text-dim mt-1">Import or create environments first to use them here.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Select Environment</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Select Environment</label>
               <select
                 value={formData.environmentId}
                 onChange={(e) => handleChange('environmentId', e.target.value)}
@@ -162,9 +162,9 @@ export default function EncounterBuilder({
                     T{selectedEnvironment.tier} • {selectedEnvironment.type} • DC {selectedEnvironment.difficulty}
                   </span>
                 </div>
-                <p className="text-sm text-white/70 leading-relaxed">{selectedEnvironment.description}</p>
+                <p className="text-sm text-lr-text-muted leading-relaxed">{selectedEnvironment.description}</p>
                 {selectedEnvironment.features?.length > 0 && (
-                  <div className="pt-2 flex items-center gap-2 text-xs text-white/50">
+                  <div className="pt-2 flex items-center gap-2 text-xs text-lr-text-dim">
                     <Info size={12} />
                     <span>{selectedEnvironment.features.length} feature{selectedEnvironment.features.length !== 1 ? 's' : ''} available</span>
                   </div>
@@ -188,7 +188,7 @@ export default function EncounterBuilder({
       {/* Additional Fields */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/5">
         <div className="space-y-1">
-          <label className="block text-sm font-semibold text-white/60">Tactics</label>
+          <label className="block text-sm font-semibold text-lr-text-muted">Tactics</label>
           <div className="relative">
             <WikiLinkInput
               value={formData.tactics}
@@ -203,7 +203,7 @@ export default function EncounterBuilder({
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-semibold text-white/60">Rewards</label>
+          <label className="block text-sm font-semibold text-lr-text-muted">Rewards</label>
           <div className="relative">
             <WikiLinkInput
               value={formData.rewards}
@@ -228,7 +228,7 @@ export default function EncounterBuilder({
             onChange={(e) => handleChange('hidden', e.target.checked)}
             className="w-5 h-5 rounded border-white/10 bg-black/20 text-[rgb(var(--color-primary))] focus:ring-offset-0 focus:ring-0 cursor-pointer"
           />
-          <label htmlFor="hidden-check" className="cursor-pointer text-white/80 select-none">
+          <label htmlFor="hidden-check" className="cursor-pointer text-lr-text-muted select-none">
             Hidden from Players
           </label>
         </div>

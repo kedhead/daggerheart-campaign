@@ -153,7 +153,7 @@ export default function GenerateChapterModal({
     <Modal isOpen={isOpen} onClose={running ? () => {} : onClose} title="Generate Chapter" size="large">
       <div className="space-y-5">
         <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-widest text-white/50">
+          <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">
             Session
           </label>
           <select
@@ -201,12 +201,12 @@ export default function GenerateChapterModal({
               disabled={running}
               className="w-full flex items-center justify-between p-3 rounded-xl bg-black/20 border border-white/10 text-left disabled:opacity-50"
             >
-              <span className="text-xs font-bold uppercase tracking-widest text-white/50">
+              <span className="text-xs font-bold uppercase tracking-widest text-lr-text-dim">
                 Cast · {castIds.length} selected
               </span>
-              <span className="text-xs text-white/40">{castOpen ? 'Hide' : 'Edit'}</span>
+              <span className="text-xs text-lr-text-dim">{castOpen ? 'Hide' : 'Edit'}</span>
             </button>
-            <p className="text-xs text-white/40">
+            <p className="text-xs text-lr-text-dim">
               Pre-ticked from names in the session notes. Only these can appear in the chapter or its art.
             </p>
             {castIds.length === 0 && (
@@ -218,14 +218,14 @@ export default function GenerateChapterModal({
               <div className="max-h-64 overflow-y-auto space-y-3 p-3 rounded-xl bg-black/20 border border-white/10">
                 {castGroups.map(group => (
                   <div key={group.key} className="space-y-1.5">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-white/35">
+                    <div className="text-[11px] font-bold uppercase tracking-widest text-lr-text-dim">
                       {group.label}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                       {group.list.map(e => (
                         <label
                           key={e.id}
-                          className="flex items-center gap-2 text-sm text-white/80 cursor-pointer select-none"
+                          className="flex items-center gap-2 text-sm text-lr-text-muted cursor-pointer select-none"
                         >
                           <input
                             type="checkbox"
@@ -248,7 +248,7 @@ export default function GenerateChapterModal({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-widest text-white/50">
+            <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">
               Art style
             </label>
             <select
@@ -274,11 +274,11 @@ export default function GenerateChapterModal({
           </div>
 
           <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-widest text-white/50">
+            <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">
               Scene illustrations
             </label>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-sm text-white/80">
+              <label className="flex items-center gap-2 text-sm text-lr-text-muted">
                 <input
                   type="checkbox"
                   checked={includeIllustrations}
@@ -298,7 +298,7 @@ export default function GenerateChapterModal({
                 ))}
               </select>
             </div>
-            <p className="text-[11px] text-white/40">
+            <p className="text-[11px] text-lr-text-dim">
               {includeIllustrations
                 ? 'Each featured character gets a one-time styled portrait (cached for reuse).'
                 : 'Text-only chapter — fastest and cheapest.'}
@@ -307,7 +307,7 @@ export default function GenerateChapterModal({
 
           {includeIllustrations && (
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-widest text-white/50">
+              <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">
                 Image model
               </label>
               <select
@@ -322,7 +322,7 @@ export default function GenerateChapterModal({
                 <option value="gpt-image-1">OpenAI gpt-image-1 — uses portraits as references</option>
                 <option value="flux-pro">Flux 1.1 Pro — fast, stylised</option>
               </select>
-              <p className="text-[11px] text-white/40">
+              <p className="text-[11px] text-lr-text-dim">
                 {imageModel === 'nano-banana-2'
                   ? 'Passes each character\'s existing portrait to Google\'s newest Gemini Flash Image (v2) via Replicate — best for preserving actual likeness. Requires REPLICATE_API_TOKEN.'
                   : imageModel === 'nano-banana'
@@ -403,7 +403,7 @@ export default function GenerateChapterModal({
             type="button"
             onClick={onClose}
             disabled={running}
-            className="px-4 py-2 rounded-lg text-white/70 font-semibold hover:text-white disabled:opacity-40"
+            className="px-4 py-2 rounded-lg text-lr-text-muted font-semibold hover:text-white disabled:opacity-40"
           >
             {warnings.length > 0 ? 'Close' : 'Cancel'}
           </button>

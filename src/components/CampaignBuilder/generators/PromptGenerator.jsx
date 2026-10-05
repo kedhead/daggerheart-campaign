@@ -41,7 +41,7 @@ export default function PromptGenerator({
         <FileText size={24} className="text-indigo-400 mt-1" />
         <div>
           <h4 className="text-base font-bold text-white mb-1">Prompt Generator</h4>
-          <p className="text-sm text-white/60 m-0">Copy the prompt below to Claude.ai or ChatGPT, then paste the response back here.</p>
+          <p className="text-sm text-lr-text-muted m-0">Copy the prompt below to Claude.ai or ChatGPT, then paste the response back here.</p>
         </div>
       </div>
 
@@ -56,7 +56,7 @@ export default function PromptGenerator({
         <>
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <label className="text-sm font-medium text-white/80">Generated Prompt</label>
+              <label className="text-sm font-medium text-lr-text-muted">Generated Prompt</label>
               <button
                 className={`btn btn-secondary btn-sm text-xs ${promptCopied ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : ''}`}
                 onClick={handleCopyPrompt}
@@ -83,7 +83,7 @@ export default function PromptGenerator({
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-white/80">Paste AI Response Here</label>
+            <label className="text-sm font-medium text-lr-text-muted">Paste AI Response Here</label>
             <textarea
               value={responseText}
               onChange={(e) => setResponseText(e.target.value)}

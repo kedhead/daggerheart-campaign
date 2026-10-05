@@ -13,7 +13,7 @@ export default function ZoomControls() {
       >
         <ZoomIn size={18} />
       </button>
-      <span className="text-[10px] text-zinc-500 font-medium">{Math.round(zoom * 100)}%</span>
+      <span className="text-[11px] text-zinc-500 font-medium">{Math.round(zoom * 100)}%</span>
       <button
         className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors"
         onClick={zoomOut}

@@ -92,7 +92,7 @@ export default function AICoGMHub({
   if (!isDM) {
     return (
       <div className="bg-[var(--bg-secondary)] border border-white/5 rounded-xl p-6 text-center max-w-2xl mx-auto mt-10">
-        <p className="text-white/60">AI Co-GM is available to Dungeon Masters only.</p>
+        <p className="text-lr-text-muted">AI Co-GM is available to Dungeon Masters only.</p>
       </div>
     );
   }
@@ -103,7 +103,7 @@ export default function AICoGMHub({
         <Sparkles size={28} className="text-[rgb(var(--color-primary))]" />
         <div>
           <h2 className="text-3xl font-bold text-white font-cinzel">AI Co-GM</h2>
-          <p className="text-white/60">
+          <p className="text-lr-text-muted">
             Chat about your campaign, plan sessions, and quick-create content — all grounded in
             everything you've built so far.
           </p>
@@ -122,7 +122,7 @@ export default function AICoGMHub({
             {messages.map((m, i) => (
               <div key={i} className={`flex gap-2 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${m.role === 'user' ? 'bg-[rgb(var(--color-primary))]/30' : 'bg-white/5'}`}>
-                  {m.role === 'user' ? <User size={14} className="text-white" /> : <BookOpen size={14} className="text-white/70" />}
+                  {m.role === 'user' ? <User size={14} className="text-white" /> : <BookOpen size={14} className="text-lr-text-muted" />}
                 </div>
                 <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${m.role === 'user' ? 'bg-[rgb(var(--color-primary))]/20 text-white' : 'bg-black/20 text-white/85 border border-white/5'}`}>
                   {m.role === 'user' ? m.content : <ReactMarkdown>{m.content}</ReactMarkdown>}
@@ -130,7 +130,7 @@ export default function AICoGMHub({
               </div>
             ))}
             {isLoading && (
-              <div className="flex items-center gap-2 text-white/50 text-sm">
+              <div className="flex items-center gap-2 text-lr-text-dim text-sm">
                 <Loader2 size={14} className="animate-spin" />
                 Thinking…
               </div>

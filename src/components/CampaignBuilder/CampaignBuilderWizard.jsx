@@ -518,10 +518,10 @@ export default function CampaignBuilderWizard({
           <>
             <Loader2 size={64} className="text-[rgb(var(--color-primary))] mx-auto mb-4 animate-spin" />
             <h2 className="text-2xl font-bold text-white mb-2">Generating Your Campaign...</h2>
-            <p className="text-lg text-white/60 mb-8 max-w-lg mx-auto">
+            <p className="text-lg text-lr-text-muted mb-8 max-w-lg mx-auto">
               {generationProgress}
             </p>
-            <p className="text-sm text-white/50 max-w-md mx-auto">
+            <p className="text-sm text-lr-text-dim max-w-md mx-auto">
               This may take a few moments. We're creating NPCs, locations, lore, encounters, and timeline events based on your campaign frame.
             </p>
           </>
@@ -531,7 +531,7 @@ export default function CampaignBuilderWizard({
             <h2 className="text-2xl font-bold text-white mb-2">
               {regenerateMode ? 'Content Regenerated!' : 'Campaign Generated!'}
             </h2>
-            <p className="text-lg text-white/60 mb-8 max-w-lg mx-auto">
+            <p className="text-lg text-lr-text-muted mb-8 max-w-lg mx-auto">
               {regenerateMode
                 ? 'New content has been added to your campaign. Check the NPCs, Locations, Lore, and other sections.'
                 : 'Your campaign is ready to play! Check out the NPCs, Locations, Lore, and other sections to see your generated content.'}
@@ -547,7 +547,7 @@ export default function CampaignBuilderWizard({
       <div className="max-w-2xl mx-auto p-8 text-center min-h-[50vh] flex flex-col items-center justify-center">
         <CheckCircle size={64} className="text-emerald-400 mx-auto mb-4" />
         <h2 className="text-2xl font-bold text-white mb-2">Campaign Frame Complete!</h2>
-        <p className="text-white/60 mb-8 max-w-lg mx-auto">
+        <p className="text-lr-text-muted mb-8 max-w-lg mx-auto">
           Your campaign frame has been saved and is now available throughout your campaign.
         </p>
         <button className="btn btn-primary px-8 py-3 text-lg" onClick={onComplete}>
@@ -620,7 +620,7 @@ export default function CampaignBuilderWizard({
             <h2 className="text-2xl font-bold text-white mb-2">
               {regenerateMode ? 'Regenerate Campaign Content' : 'Review & Complete'}
             </h2>
-            <p className="text-white/60">
+            <p className="text-lr-text-muted">
               {regenerateMode
                 ? 'Choose how much content to generate and click Regenerate. New content will be added to your existing campaign.'
                 : 'Review your campaign frame and complete the wizard.'}
@@ -633,20 +633,20 @@ export default function CampaignBuilderWizard({
                 <h3 className="text-lg font-bold text-white mb-4">Campaign Frame Summary</h3>
                 <div className="space-y-4">
                   <div>
-                    <strong className="text-white/80 block mb-1">Pitch:</strong>
-                    <p className="text-white/60 text-sm">{data.pitch || 'Not set'}</p>
+                    <strong className="text-lr-text-muted block mb-1">Pitch:</strong>
+                    <p className="text-lr-text-muted text-sm">{data.pitch || 'Not set'}</p>
                   </div>
                   <div>
-                    <strong className="text-white/80 block mb-1">Tone & Feel:</strong>
-                    <p className="text-white/60 text-sm">{data.toneAndFeel.length > 0 ? data.toneAndFeel.join(', ') : 'Not set'}</p>
+                    <strong className="text-lr-text-muted block mb-1">Tone & Feel:</strong>
+                    <p className="text-lr-text-muted text-sm">{data.toneAndFeel.length > 0 ? data.toneAndFeel.join(', ') : 'Not set'}</p>
                   </div>
                   <div>
-                    <strong className="text-white/80 block mb-1">Themes:</strong>
-                    <p className="text-white/60 text-sm">{data.themes.length > 0 ? data.themes.join(', ') : 'Not set'}</p>
+                    <strong className="text-lr-text-muted block mb-1">Themes:</strong>
+                    <p className="text-lr-text-muted text-sm">{data.themes.length > 0 ? data.themes.join(', ') : 'Not set'}</p>
                   </div>
                   <div>
-                    <strong className="text-white/80 block mb-1">Touchstones:</strong>
-                    <p className="text-white/60 text-sm">{data.touchstones.length > 0 ? data.touchstones.join(', ') : 'Not set'}</p>
+                    <strong className="text-lr-text-muted block mb-1">Touchstones:</strong>
+                    <p className="text-lr-text-muted text-sm">{data.touchstones.length > 0 ? data.touchstones.join(', ') : 'Not set'}</p>
                   </div>
                 </div>
               </div>
@@ -657,7 +657,7 @@ export default function CampaignBuilderWizard({
                 <Settings2 size={20} className="text-[rgb(var(--color-primary))]" />
                 Generation Options
               </h3>
-              <p className="text-white/50 text-sm mb-4">Choose how much starter content to generate for your campaign.</p>
+              <p className="text-lr-text-dim text-sm mb-4">Choose how much starter content to generate for your campaign.</p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                 {[
                   { key: 'locations', label: 'Locations', max: 10 },
@@ -667,7 +667,7 @@ export default function CampaignBuilderWizard({
                   { key: 'partySize', label: 'Party Size', max: 8 }
                 ].map(({ key, label, max }) => (
                   <div key={key} className="flex flex-col items-center gap-1">
-                    <label className="text-white/70 text-xs font-medium">{label}</label>
+                    <label className="text-lr-text-muted text-xs font-medium">{label}</label>
                     <input
                       type="number"
                       min={key === 'partySize' ? 1 : 0}

@@ -48,7 +48,7 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
         {generatingImage ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md z-10">
             <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mb-2" />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Visualizing...</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-lr-text-dim">Visualizing...</span>
           </div>
         ) : lore.coverImage ? (
           <img src={lore.coverImage} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s]" />
@@ -63,11 +63,11 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
         <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between">
           <div className={`flex items-center gap-2 p-1.5 rounded-xl border border-white/10 backdrop-blur-md bg-black/20 ${styleClass}`}>
             <Icon size={14} />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{loreType}</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em]">{loreType}</span>
           </div>
 
           {lore.hidden && isDM && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/20 text-red-400 border border-red-500/20 text-[9px] font-black uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-red-500/20 text-red-400 border border-red-500/20 text-[11px] font-black uppercase tracking-wider">
               <EyeOff size={10} />
               Incognito
             </div>
@@ -78,13 +78,13 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
       <div className="p-6 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-start justify-between gap-6">
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif text-2xl font-black text-white/95 leading-tight group-hover:text-white transition-all tracking-tight italic lowercase">
+            <h3 className="font-serif text-2xl font-black text-lr-text leading-tight group-hover:text-white transition-all tracking-tight italic lowercase">
               {lore.title || 'Untitled'}
             </h3>
             {lore.tags && Array.isArray(lore.tags) && lore.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-3">
                 {lore.tags.filter(tag => tag).map((tag, index) => (
-                  <span key={index} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[9px] font-bold text-white/30 uppercase tracking-tighter hover:text-white/60 transition-colors">
+                  <span key={index} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/5 text-[11px] font-bold text-lr-text-dim uppercase tracking-tighter hover:text-lr-text-muted transition-colors">
                     #{tag}
                   </span>
                 ))}
@@ -98,7 +98,7 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
 
         {isExpanded && (
           <div className="mt-6 animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="prose prose-invert prose-p:leading-relaxed prose-p:text-white/60 prose-p:font-medium prose-strong:text-indigo-400 prose-sm max-w-none font-sans">
+            <div className="prose prose-invert prose-p:leading-relaxed prose-p:text-lr-text-muted prose-p:font-medium prose-strong:text-indigo-400 prose-sm max-w-none font-sans">
               {lore.content ? (
                 <WikiText
                   text={lore.content}
@@ -114,7 +114,7 @@ export default function LoreCard({ lore, onEdit, onDelete, onGenerateImage, gene
               <div className="space-y-3 mt-8 pt-6 border-t border-white/5">
                 <div className="flex items-center gap-3">
                   <button
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all group/btn"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-lr-text-dim hover:text-white transition-all group/btn"
                     onClick={(e) => { e.stopPropagation(); onEdit(); }}
                   >
                     <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />

@@ -153,7 +153,7 @@ export default function MySheetView({
               >
                 <Users size={14} />
                 <span
-                  className="font-bold text-[10px] uppercase"
+                  className="font-bold text-[11px] uppercase"
                   style={{ letterSpacing: '0.16em' }}
                 >
                   Party roster
@@ -184,7 +184,7 @@ export default function MySheetView({
           style={{ borderBottom: '1px solid var(--line)' }}
         >
           <span
-            className="text-[10px] font-bold uppercase mr-1"
+            className="text-[11px] font-bold uppercase mr-1"
             style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
           >
             My Sheet
@@ -212,7 +212,7 @@ export default function MySheetView({
             <button
               type="button"
               onClick={onGoToRoster}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase transition-all"
               style={{
                 background: 'transparent',
                 color: 'var(--text-muted)',
@@ -230,7 +230,7 @@ export default function MySheetView({
       {myCharacters.length === 1 && onGoToRoster && (
         <div className="px-6 pt-4 pb-2 flex items-center justify-between">
           <span
-            className="text-[10px] font-bold uppercase"
+            className="text-[11px] font-bold uppercase"
             style={{ color: 'var(--primary)', letterSpacing: '0.24em' }}
           >
             My Sheet
@@ -238,7 +238,7 @@ export default function MySheetView({
           <button
             type="button"
             onClick={onGoToRoster}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase transition-all"
             style={{
               background: 'transparent',
               color: 'var(--text-muted)',

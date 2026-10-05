@@ -24,7 +24,7 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
       case 'planned': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'in-progress': return 'bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse';
       case 'completed': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-      default: return 'bg-white/10 text-white/60 border-white/20';
+      default: return 'bg-white/10 text-lr-text-muted border-white/20';
     }
   };
 
@@ -42,7 +42,7 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
       >
         <div className="flex items-center gap-4 flex-1">
           <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-black/40 border border-white/10 shrink-0">
-            <span className="text-xs text-white/40 uppercase font-bold">Ses</span>
+            <span className="text-xs text-lr-text-dim uppercase font-bold">Ses</span>
             <span className="text-xl font-bold text-white font-cinzel">{session.number}</span>
           </div>
 
@@ -62,14 +62,14 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
               )}
             </div>
 
-            <p className="text-sm text-white/50 flex items-center gap-1.5">
+            <p className="text-sm text-lr-text-dim flex items-center gap-1.5">
               <Calendar size={12} />
               {formattedDate}
             </p>
           </div>
         </div>
 
-        <button className={`p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors ${isExpanded ? 'bg-white/10 text-white' : ''}`}>
+        <button className={`p-2 rounded-lg text-lr-text-dim hover:text-white hover:bg-white/10 transition-colors ${isExpanded ? 'bg-white/10 text-white' : ''}`}>
           {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
         </button>
       </div>
@@ -79,11 +79,11 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
 
           {/* Summary Section */}
           <div className="space-y-2 pt-6">
-            <h4 className="text-sm font-bold text-white/40 uppercase tracking-wider flex items-center gap-2">
+            <h4 className="text-sm font-bold text-lr-text-dim uppercase tracking-wider flex items-center gap-2">
               <ScrollText size={14} />
               Summary
             </h4>
-            <div className="bg-black/20 rounded-lg p-4 border border-white/5 text-white/80 leading-relaxed whitespace-pre-wrap">
+            <div className="bg-black/20 rounded-lg p-4 border border-white/5 text-lr-text-muted leading-relaxed whitespace-pre-wrap">
               <WikiText
                 text={session.summary}
                 onLinkClick={setViewingEntity}
@@ -95,12 +95,12 @@ export default function SessionCard({ session, onEdit, onDelete, onGoLive, isDM,
           {/* Highlights Section */}
           {session.highlights && session.highlights.length > 0 && (
             <div className="space-y-2">
-              <h4 className="text-sm font-bold text-white/40 uppercase tracking-wider flex items-center gap-2">
+              <h4 className="text-sm font-bold text-lr-text-dim uppercase tracking-wider flex items-center gap-2">
                 Highlights
               </h4>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {session.highlights.map((highlight, index) => (
-                  <li key={index} className="flex items-start gap-2 text-sm text-white/70 bg-white/5 p-2 rounded-md border border-white/5">
+                  <li key={index} className="flex items-start gap-2 text-sm text-lr-text-muted bg-white/5 p-2 rounded-md border border-white/5">
                     <span className="text-[rgb(var(--color-primary))] mt-0.5">•</span>
                     {/* Starred live notes land here, [[links]] and all. */}
                     <span>

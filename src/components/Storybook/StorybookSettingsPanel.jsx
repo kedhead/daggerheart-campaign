@@ -46,12 +46,12 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Storybook Style" size="medium">
       <div className="space-y-5">
-        <p className="text-sm text-white/60 leading-relaxed">
+        <p className="text-sm text-lr-text-muted leading-relaxed">
           Choose the art style for new chapters. Styled character portraits are cached per-style on each entity — changing the style will cause portraits to be regenerated the next time a chapter features them.
         </p>
 
         <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-widest text-white/50">
+          <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">
             Default style
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -79,7 +79,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
 
         {styleKey === 'custom' && (
           <div className="space-y-2">
-            <label className="block text-xs font-bold uppercase tracking-widest text-white/50">
+            <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">
               Custom style preamble
             </label>
             <textarea
@@ -89,7 +89,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
               placeholder="e.g. 'Vintage pulp fantasy illustration, gouache, warm sepia tones, no text or labels'"
               className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white text-sm"
             />
-            <p className="text-[11px] text-white/40">
+            <p className="text-[11px] text-lr-text-dim">
               This text is prepended to every image prompt. Be descriptive about medium, palette, and composition.
             </p>
           </div>
@@ -114,7 +114,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
               <div className="text-sm font-bold text-white">
                 Public Chronicle
               </div>
-              <p className="text-xs text-white/55 mt-1 leading-relaxed">
+              <p className="text-xs text-lr-text-dim mt-1 leading-relaxed">
                 Share a read-only link to the chronicle with anyone — no account required.
                 Only published chapters are visible. In-character journal entries stay private to the campaign.
                 Anyone with the link will be able to read every published chapter and view its illustrations.
@@ -124,7 +124,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
 
           {chroniclePublic && shareLink && (
             <div className="space-y-2 pt-2" style={{ borderTop: '1px dashed var(--line)' }}>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-white/40">
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-lr-text-dim">
                 Share link
               </label>
               <div className="flex gap-2">
@@ -133,7 +133,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
                   readOnly
                   value={shareLink}
                   onClick={(e) => e.target.select()}
-                  className="flex-1 p-2 rounded bg-black/30 border border-white/10 text-white/80 text-xs font-mono"
+                  className="flex-1 p-2 rounded bg-black/30 border border-white/10 text-lr-text-muted text-xs font-mono"
                 />
                 <button
                   type="button"
@@ -164,7 +164,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-white/70 font-semibold hover:text-white"
+            className="px-4 py-2 rounded-lg text-lr-text-muted font-semibold hover:text-white"
           >
             Cancel
           </button>

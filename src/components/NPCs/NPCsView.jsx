@@ -88,16 +88,16 @@ export default function NPCsView({
       {/* Vault Style Header */}
       <div className="flex items-center justify-between gap-8 pb-8 border-b border-white/5 relative">
         <div className="space-y-2 relative z-10">
-          <h2 className="font-serif text-4xl font-black text-white/95 tracking-tight italic lowercase">
+          <h2 className="font-serif text-4xl font-black text-lr-text tracking-tight italic lowercase">
             The Registry
           </h2>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/10">
-              <Users size={10} className="text-white/40" />
-              <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{npcs.length} Contacts</span>
+              <Users size={10} className="text-lr-text-dim" />
+              <span className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.2em]">{npcs.length} Contacts</span>
             </div>
             <div className="w-1 h-1 rounded-full bg-white/20"></div>
-            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest italic">Identity Manifest v2.4</p>
+            <p className="text-[11px] font-bold text-white/20 uppercase tracking-widest italic">Identity Manifest v2.4</p>
           </div>
         </div>
 
@@ -145,10 +145,10 @@ export default function NPCsView({
               key={tab.id}
               onClick={() => setRelationshipFilter(tab.id)}
               className={`
-                px-6 py-2.5 rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300
+                px-6 py-2.5 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] transition-all duration-300
                 ${relationshipFilter === tab.id
                   ? 'bg-white/10 text-white shadow-xl ring-1 ring-white/10'
-                  : 'text-white/20 hover:text-white/60'
+                  : 'text-white/20 hover:text-lr-text-muted'
                 }
               `}
             >
@@ -164,7 +164,7 @@ export default function NPCsView({
           <div className="w-24 h-24 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-center justify-center mb-8 text-white/[0.03]">
             <Heart size={48} />
           </div>
-          <h3 className="text-2xl font-serif font-black text-white/30 mb-2 italic lowercase">Registry Empty</h3>
+          <h3 className="text-2xl font-serif font-black text-lr-text-dim mb-2 italic lowercase">Registry Empty</h3>
           <p className="text-sm text-white/20 font-medium tracking-wide">No individuals matching those parameters were found in the manifest.</p>
         </div>
       ) : (

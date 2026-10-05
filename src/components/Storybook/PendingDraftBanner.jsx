@@ -21,7 +21,7 @@ export default function PendingDraftBanner({ drafts, onReview, onApprove, onDisc
           <h3 className="text-white font-bold">
             {drafts.length} chapter{drafts.length === 1 ? '' : 's'} awaiting review
           </h3>
-          <p className="text-white/60 text-sm">Auto-drafted after a session was finalized. Review, edit, or publish.</p>
+          <p className="text-lr-text-muted text-sm">Auto-drafted after a session was finalized. Review, edit, or publish.</p>
         </div>
       </div>
       <ul className="space-y-2">
@@ -36,7 +36,7 @@ export default function PendingDraftBanner({ drafts, onReview, onApprove, onDisc
           >
             <div className="flex flex-col">
               <span className="text-white font-semibold font-cinzel">{d.title}</span>
-              <span className="text-xs text-white/40">
+              <span className="text-xs text-lr-text-dim">
                 Chapter {d.chapterNumber}{d.sessionNumber ? ` • Session ${d.sessionNumber}` : ''}
               </span>
             </div>
@@ -44,7 +44,7 @@ export default function PendingDraftBanner({ drafts, onReview, onApprove, onDisc
               <button
                 type="button"
                 onClick={() => onReview(d.id)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white/80 bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-lr-text-muted bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-1.5"
               >
                 <Pencil size={12} /> Review
               </button>

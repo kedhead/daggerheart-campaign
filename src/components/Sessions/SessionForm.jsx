@@ -82,7 +82,7 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-1">
-          <label className="block text-sm font-semibold text-white/60">Session Title *</label>
+          <label className="block text-sm font-semibold text-lr-text-muted">Session Title *</label>
           <input
             type="text"
             value={formData.title}
@@ -94,7 +94,7 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
         </div>
 
         <div className="space-y-1">
-          <label className="block text-sm font-semibold text-white/60">Date *</label>
+          <label className="block text-sm font-semibold text-lr-text-muted">Date *</label>
           <input
             type="date"
             value={formData.date}
@@ -107,7 +107,7 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
 
       {isDM && (
         <div className="space-y-1">
-          <label className="block text-sm font-semibold text-white/60">Status</label>
+          <label className="block text-sm font-semibold text-lr-text-muted">Status</label>
           <select
             value={formData.status}
             onChange={(e) => handleChange('status', e.target.value)}
@@ -122,7 +122,7 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
 
       {isDM && (
         <div className="space-y-1">
-          <label className="flex items-center gap-2 text-sm font-semibold text-white/60">
+          <label className="flex items-center gap-2 text-sm font-semibold text-lr-text-muted">
             <LinkIcon size={14} />
             Encounter Links (DM Only)
           </label>
@@ -133,13 +133,13 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
             placeholder="https://freshcutgrass.app/encounter/..."
             className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
           />
-          <p className="text-xs text-white/40 mt-1">Paste FreshCutGrass encounter link(s), separate multiple with commas</p>
+          <p className="text-xs text-lr-text-dim mt-1">Paste FreshCutGrass encounter link(s), separate multiple with commas</p>
         </div>
       )}
 
       <div className="space-y-1">
         <div className="flex items-center justify-between gap-3">
-          <label className="block text-sm font-semibold text-white/60">
+          <label className="block text-sm font-semibold text-lr-text-muted">
             Summary {formData.status === 'planned' ? '' : '*'}
           </label>
           {formData.summary.trim().length > 0 && (
@@ -169,11 +169,11 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
           required={formData.status !== 'planned'}
           className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
         />
-        <p className="text-xs text-white/40 mt-1">Type [[ to link to other entities</p>
+        <p className="text-xs text-lr-text-dim mt-1">Type [[ to link to other entities</p>
       </div>
 
       <div className="space-y-3">
-        <label className="block text-sm font-semibold text-white/60">Highlights</label>
+        <label className="block text-sm font-semibold text-lr-text-muted">Highlights</label>
         <div className="flex gap-2">
           <input
             type="text"
@@ -196,11 +196,11 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
           <div className="space-y-2 mt-3">
             {formData.highlights.map((highlight, index) => (
               <div key={index} className="flex items-center justify-between gap-3 p-3 bg-white/5 border border-white/5 rounded-lg group hover:border-white/20 transition-colors">
-                <span className="text-sm text-white/80">{highlight}</span>
+                <span className="text-sm text-lr-text-muted">{highlight}</span>
                 <button
                   type="button"
                   onClick={() => removeHighlight(index)}
-                  className="text-white/40 hover:text-red-400 transition-colors p-1"
+                  className="text-lr-text-dim hover:text-red-400 transition-colors p-1"
                 >
                   <X size={16} />
                 </button>

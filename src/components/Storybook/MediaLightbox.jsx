@@ -60,7 +60,7 @@ export default function MediaLightbox({ items, index, onClose, onNavigate }) {
       <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-3">
         {content}
         {item.caption && (
-          <p className="text-sm text-white/70 max-w-2xl text-center px-4">{item.caption}</p>
+          <p className="text-sm text-lr-text-muted max-w-2xl text-center px-4">{item.caption}</p>
         )}
       </div>
     </div>,

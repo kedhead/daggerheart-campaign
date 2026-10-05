@@ -193,7 +193,7 @@ export default function SessionLive({
 
   if (!session) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-white/50">
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-lr-text-dim">
         <p>No session selected</p>
         <button className="btn btn-secondary" onClick={onBack}>
           <ArrowLeft size={16} />
@@ -209,7 +209,7 @@ export default function SessionLive({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-[var(--bg-secondary)] border-b border-white/5 gap-4 md:gap-0">
         <div className="flex items-center gap-4">
           <button
-            className="p-2 -ml-2 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 -ml-2 rounded-lg text-lr-text-dim hover:text-white hover:bg-white/10 transition-colors"
             onClick={onBack}
           >
             <ArrowLeft size={20} />
@@ -225,7 +225,7 @@ export default function SessionLive({
 
         <div className="flex flex-wrap items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-end">
           <div className="flex gap-4">
-            <span className="flex items-center gap-1.5 text-sm text-white/60">
+            <span className="flex items-center gap-1.5 text-sm text-lr-text-muted">
               <FileText size={14} />
               {noteCount} notes
             </span>
@@ -238,7 +238,7 @@ export default function SessionLive({
           <div className="flex gap-2">
             {noteCount > 0 && (
               <button
-                className="p-2 rounded-md text-white/60 hover:text-white hover:bg-white/10 transition-colors relative group"
+                className="p-2 rounded-md text-lr-text-muted hover:text-white hover:bg-white/10 transition-colors relative group"
                 onClick={handleCopyNotes}
                 title="Copy all notes"
               >
@@ -249,7 +249,7 @@ export default function SessionLive({
 
             {isDM && noteCount > 0 && (
               <button
-                className="p-2 rounded-md text-white/60 hover:text-red-400 hover:bg-white/10 transition-colors"
+                className="p-2 rounded-md text-lr-text-muted hover:text-red-400 hover:bg-white/10 transition-colors"
                 onClick={handleClearAll}
                 title="Clear all notes"
               >
@@ -313,7 +313,7 @@ export default function SessionLive({
         size="large"
       >
         <div className="flex flex-col gap-5">
-          <p className="text-white/70 m-0">
+          <p className="text-lr-text-muted m-0">
             Review the compiled notes below. {highlightCount > 0
               ? <span className="text-amber-400">Showing {highlightCount} highlighted notes.</span>
               : 'Showing all notes (no highlights were marked).'}
@@ -321,7 +321,7 @@ export default function SessionLive({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <label className="text-sm font-semibold text-white/60">Session Summary Preview</label>
+              <label className="text-sm font-semibold text-lr-text-muted">Session Summary Preview</label>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm flex items-center gap-2"
@@ -350,18 +350,18 @@ export default function SessionLive({
 
           {missingPages.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-white/60 m-0">
+              <p className="text-sm font-semibold text-lr-text-muted m-0">
                 Linked in the notes, but no page yet
               </p>
               <ul className="flex flex-wrap gap-2 m-0 p-0 list-none">
                 {missingPages.map(name => (
-                  <li key={name} className="flex items-center gap-1 pl-3 pr-1 py-1 bg-white/5 border border-white/10 rounded-full text-sm text-white/80">
+                  <li key={name} className="flex items-center gap-1 pl-3 pr-1 py-1 bg-white/5 border border-white/10 rounded-full text-sm text-lr-text-muted">
                     <span className="mr-1">{name}</span>
                     {onCreateEntity && (
                       <>
                         <button
                           type="button"
-                          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-50"
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-lr-text-muted hover:text-white hover:bg-white/10 disabled:opacity-50"
                           onClick={() => handleCreateEntity('npc', name)}
                           disabled={!!creating}
                           aria-label={`Create an NPC named ${name}`}
@@ -371,7 +371,7 @@ export default function SessionLive({
                         </button>
                         <button
                           type="button"
-                          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-white/70 hover:text-white hover:bg-white/10 disabled:opacity-50"
+                          className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-lr-text-muted hover:text-white hover:bg-white/10 disabled:opacity-50"
                           onClick={() => handleCreateEntity('location', name)}
                           disabled={!!creating}
                           aria-label={`Create a location named ${name}`}
@@ -389,7 +389,7 @@ export default function SessionLive({
           )}
 
           {starred.length > 0 && (
-            <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-lr-text-muted cursor-pointer">
               <input
                 type="checkbox"
                 checked={keepHighlights}
@@ -401,7 +401,7 @@ export default function SessionLive({
 
           <div className="p-4 bg-[var(--bg-tertiary)] rounded-lg border-l-4 border-[rgb(var(--color-primary))]">
             <p className="font-semibold text-white mb-2">This will:</p>
-            <ul className="list-disc pl-5 text-sm text-white/70 space-y-1">
+            <ul className="list-disc pl-5 text-sm text-lr-text-muted space-y-1">
               <li>Append these notes to the session summary, linking names that have pages</li>
               <li>End live mode for this session</li>
               <li>Archive the live notes — they’re kept, and the live feed starts clean next time</li>

@@ -59,7 +59,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
               <div className="flex flex-wrap items-center gap-2">
                 {hasBPData ? (
                   <>
-                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold bg-white/5 text-white/60">
+                    <span className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold bg-white/5 text-lr-text-muted">
                       <Skull size={12} />
                       {encounter.usedBP || 0} / {encounter.calculatedBP || 0} BP
                     </span>
@@ -75,7 +75,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
                 )}
 
                 {encounter.partyLevel && (
-                  <span className="text-xs text-white/40">
+                  <span className="text-xs text-lr-text-dim">
                     Lvl {encounter.partyLevel}
                   </span>
                 )}
@@ -93,8 +93,8 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
         <div className="px-4 pb-4 pt-2 border-t border-white/5 space-y-6">
           {encounter.description && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Description</h4>
-              <div className="text-white/80 text-sm leading-relaxed">
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Description</h4>
+              <div className="text-lr-text-muted text-sm leading-relaxed">
                 <WikiText
                   text={encounter.description}
                   onLinkClick={setViewingEntity}
@@ -106,8 +106,8 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
 
           {encounter.enemies && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Opponents</h4>
-              <div className="text-white/80 text-sm leading-relaxed">
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Opponents</h4>
+              <div className="text-lr-text-muted text-sm leading-relaxed">
                 <WikiText
                   text={encounter.enemies}
                   onLinkClick={setViewingEntity}
@@ -120,13 +120,13 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
           {/* Environment from catalog */}
           {environment && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Environment</h4>
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Environment</h4>
               <div className="bg-white/5 border border-white/5 rounded-lg p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-white">{environment.name}</span>
-                  <span className="text-xs text-white/40 font-mono">T{environment.tier} • {environment.type} • DC {environment.difficulty}</span>
+                  <span className="text-xs text-lr-text-dim font-mono">T{environment.tier} • {environment.type} • DC {environment.difficulty}</span>
                 </div>
-                <p className="text-sm text-white/70 italic">{environment.description}</p>
+                <p className="text-sm text-lr-text-muted italic">{environment.description}</p>
               </div>
             </div>
           )}
@@ -134,8 +134,8 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
           {/* Legacy environment text field */}
           {!environment && encounter.environment && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Environment</h4>
-              <div className="text-white/80 text-sm leading-relaxed">
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Environment</h4>
+              <div className="text-lr-text-muted text-sm leading-relaxed">
                 <WikiText
                   text={encounter.environment}
                   onLinkClick={setViewingEntity}
@@ -148,7 +148,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
           {/* Adversary Slots */}
           {hasBPData && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Adversaries</h4>
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Adversaries</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {encounter.adversarySlots.map((slot, idx) => {
                   const adv = getAdversaryFromSlot(slot);
@@ -158,27 +158,27 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
                       {/* Name row */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-white/60 text-xs px-1.5 py-0.5 rounded bg-white/5">{slot.quantity}x</span>
+                          <span className="font-mono text-lr-text-muted text-xs px-1.5 py-0.5 rounded bg-white/5">{slot.quantity}x</span>
                           <span className="text-sm text-white font-medium">{adv.name}</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className="text-white/40">{adv.role}</span>
+                          <span className="text-lr-text-dim">{adv.role}</span>
                           <span className="text-amber-400 font-mono">T{adv.tier}</span>
                         </div>
                       </div>
 
                       {/* Stats sub-row */}
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-white/50 pl-1">
-                        <span><span className="text-white/30">HP </span>{adv.hp}</span>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-lr-text-dim pl-1">
+                        <span><span className="text-lr-text-dim">HP </span>{adv.hp}</span>
                         {adv.thresholds && (
                           <span>
-                            <span className="text-white/30">Thresholds </span>
+                            <span className="text-lr-text-dim">Thresholds </span>
                             {adv.thresholds.minor} / {adv.thresholds.major} / {adv.thresholds.severe}
                           </span>
                         )}
                         {adv.attackDamage && (
                           <span>
-                            <span className="text-white/30">Dmg </span>
+                            <span className="text-lr-text-dim">Dmg </span>
                             {adv.attackName ? `${adv.attackName} · ` : ''}{adv.attackDamage}
                           </span>
                         )}
@@ -221,7 +221,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
 
           {encounter.tactics && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Tactics</h4>
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Tactics</h4>
               <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-lg">
                 <WikiText
                   text={encounter.tactics}
@@ -234,7 +234,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
 
           {encounter.rewards && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Rewards</h4>
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Rewards</h4>
               <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg">
                 <WikiText
                   text={encounter.rewards}
@@ -268,7 +268,7 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
                 </button>
               )}
               <button
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-sm font-medium transition-all"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-lr-text-muted hover:text-white text-sm font-medium transition-all"
                 onClick={onEdit}
               >
                 <Edit2 size={16} />

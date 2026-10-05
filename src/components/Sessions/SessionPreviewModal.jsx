@@ -51,7 +51,7 @@ export default function SessionPreviewModal({
   return (
     <Modal isOpen={isOpen} onClose={isSaving ? () => {} : onCancel} title="Review & Save Session" size="large">
       <div className="space-y-4">
-        <p className="text-sm text-white/60">
+        <p className="text-sm text-lr-text-muted">
           Review the AI-generated content below. Edit any field, remove items you don't want, then click <span className="text-white">Save All</span> to write everything to your campaign.
         </p>
 
@@ -67,12 +67,12 @@ export default function SessionPreviewModal({
                 className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 transition-colors ${
                   isActive
                     ? 'bg-[rgb(var(--color-primary))]/20 text-white border border-[rgb(var(--color-primary))]/40'
-                    : 'text-white/60 hover:bg-white/5 border border-transparent'
+                    : 'text-lr-text-muted hover:bg-white/5 border border-transparent'
                 }`}
               >
                 <Icon size={14} />
                 {t.label}
-                <span className="text-white/40 text-xs">({t.count})</span>
+                <span className="text-lr-text-dim text-xs">({t.count})</span>
               </button>
             );
           })}
@@ -154,7 +154,7 @@ export default function SessionPreviewModal({
                 <div key={i} className="bg-black/20 rounded-lg border border-white/5 p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-white">{m.label}</span>
-                    <button type="button" className="text-white/40 hover:text-red-400" onClick={() => removeFromList('maps', i)}>
+                    <button type="button" className="text-lr-text-dim hover:text-red-400" onClick={() => removeFromList('maps', i)}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -171,7 +171,7 @@ export default function SessionPreviewModal({
 
         {isSaving && saveProgress && (
           <div className="bg-black/20 rounded-lg border border-white/10 p-3">
-            <div className="flex items-center justify-between text-sm text-white/70 mb-1">
+            <div className="flex items-center justify-between text-sm text-lr-text-muted mb-1">
               <span>{saveProgress.label}</span>
               <span>{saveProgress.step}/{saveProgress.total}</span>
             </div>
@@ -209,14 +209,14 @@ export default function SessionPreviewModal({
 }
 
 function ItemList({ items, renderItem, emptyText }) {
-  if (!items.length) return <p className="text-white/40 text-sm italic">{emptyText}</p>;
+  if (!items.length) return <p className="text-lr-text-dim text-sm italic">{emptyText}</p>;
   return <div className="space-y-3">{items.map(renderItem)}</div>;
 }
 
 function Field({ label, children }) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs uppercase tracking-wider text-white/40 font-semibold">{label}</span>
+      <span className="text-xs uppercase tracking-wider text-lr-text-dim font-semibold">{label}</span>
       {children}
     </label>
   );
@@ -262,7 +262,7 @@ function EncounterEditor({ encounter, onChange, onRemove }) {
           onChange={(e) => onChange({ name: e.target.value })}
           className={`${inputCls} font-semibold`}
         />
-        <button type="button" className="ml-2 text-white/40 hover:text-red-400 shrink-0" onClick={onRemove}>
+        <button type="button" className="ml-2 text-lr-text-dim hover:text-red-400 shrink-0" onClick={onRemove}>
           <Trash2 size={14} />
         </button>
       </div>
@@ -289,10 +289,10 @@ function EncounterEditor({ encounter, onChange, onRemove }) {
         <input type="text" value={encounter.environment || ''} onChange={(e) => onChange({ environment: e.target.value })} className={inputCls} />
       </Field>
       {encounter.adversarySlots?.length > 0 && (
-        <div className="text-xs text-white/50">
+        <div className="text-xs text-lr-text-dim">
           <span className="uppercase tracking-wider">Adversary slots:</span>{' '}
           {encounter.adversarySlots.map((s, i) => (
-            <span key={i} className="text-white/70">
+            <span key={i} className="text-lr-text-muted">
               {s.quantity}× {s._kind === 'existing' ? '(existing)' : `staged: ${s._stagedAdvKey}`}{i < encounter.adversarySlots.length - 1 ? ', ' : ''}
             </span>
           ))}
@@ -303,7 +303,7 @@ function EncounterEditor({ encounter, onChange, onRemove }) {
         <div className="space-y-3">
           {/* Player handout */}
           <div className="space-y-1">
-            <span className="text-xs uppercase tracking-wider text-white/40 font-semibold flex items-center gap-1.5">
+            <span className="text-xs uppercase tracking-wider text-lr-text-dim font-semibold flex items-center gap-1.5">
               <span>🗺</span> Player Handout Chart
             </span>
             {encounter.handoutUrl ? (
@@ -313,14 +313,14 @@ function EncounterEditor({ encounter, onChange, onRemove }) {
                   alt={`Puzzle handout: ${encounter.name}`}
                   className="w-full max-h-72 object-contain rounded-lg border border-white/10 bg-black/20"
                 />
-                <p className="text-xs text-white/40">Show this to players as an in-world prop.</p>
+                <p className="text-xs text-lr-text-dim">Show this to players as an in-world prop.</p>
               </div>
             ) : encounter._handoutError ? (
               <p className="text-xs text-amber-300 flex items-center gap-1">
                 <AlertTriangle size={12} /> Handout generation failed: {encounter._handoutError}
               </p>
             ) : (
-              <p className="text-xs text-white/30 italic">Handout image not generated.</p>
+              <p className="text-xs text-lr-text-dim italic">Handout image not generated.</p>
             )}
           </div>
 
@@ -340,7 +340,7 @@ function EncounterEditor({ encounter, onChange, onRemove }) {
                 <AlertTriangle size={12} /> GM sheet generation failed: {encounter._gmSheetError}
               </p>
             ) : (
-              <p className="text-xs text-white/30 italic">GM sheet not generated.</p>
+              <p className="text-xs text-lr-text-dim italic">GM sheet not generated.</p>
             )}
           </div>
         </div>
@@ -359,7 +359,7 @@ function AdversaryEditor({ adversary, onChange, onRemove }) {
           onChange={(e) => onChange({ name: e.target.value })}
           className={`${inputCls} font-semibold`}
         />
-        <button type="button" className="ml-2 text-white/40 hover:text-red-400 shrink-0" onClick={onRemove}>
+        <button type="button" className="ml-2 text-lr-text-dim hover:text-red-400 shrink-0" onClick={onRemove}>
           <Trash2 size={14} />
         </button>
       </div>
@@ -397,7 +397,7 @@ function NPCEditor({ npc, onChange, onRemove }) {
     <div className="bg-black/20 rounded-lg border border-white/5 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <input type="text" value={npc.name} onChange={(e) => onChange({ name: e.target.value })} className={`${inputCls} font-semibold`} />
-        <button type="button" className="ml-2 text-white/40 hover:text-red-400 shrink-0" onClick={onRemove}>
+        <button type="button" className="ml-2 text-lr-text-dim hover:text-red-400 shrink-0" onClick={onRemove}>
           <Trash2 size={14} />
         </button>
       </div>
@@ -431,7 +431,7 @@ function LocationEditor({ location, onChange, onRemove }) {
     <div className="bg-black/20 rounded-lg border border-white/5 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <input type="text" value={location.name} onChange={(e) => onChange({ name: e.target.value })} className={`${inputCls} font-semibold`} />
-        <button type="button" className="ml-2 text-white/40 hover:text-red-400 shrink-0" onClick={onRemove}>
+        <button type="button" className="ml-2 text-lr-text-dim hover:text-red-400 shrink-0" onClick={onRemove}>
           <Trash2 size={14} />
         </button>
       </div>

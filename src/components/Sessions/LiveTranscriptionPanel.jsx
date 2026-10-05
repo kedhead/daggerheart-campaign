@@ -334,12 +334,12 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
     <div className="bg-[var(--bg-secondary)] border border-white/5 rounded-xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-full ${isRecording ? 'bg-red-500/20 text-red-500 animate-pulse' : isTesting ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-white/40'}`}>
+          <div className={`p-2 rounded-full ${isRecording ? 'bg-red-500/20 text-red-500 animate-pulse' : isTesting ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-lr-text-dim'}`}>
             <Mic size={24} />
           </div>
           <div>
             <h3 className="text-xl font-bold text-white">Live Transcription</h3>
-            <p className="text-sm text-white/50">Record session chat and generate DM notes automatically</p>
+            <p className="text-sm text-lr-text-dim">Record session chat and generate DM notes automatically</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -350,7 +350,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
           )}
           <button
             onClick={() => setShowDeviceSettings(!showDeviceSettings)}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 transition-colors"
+            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-lr-text-dim hover:text-lr-text-muted transition-colors"
             title="Audio settings"
           >
             <Settings size={18} />
@@ -361,7 +361,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
       {/* Device selector */}
       {showDeviceSettings && (
         <div className="p-3 bg-black/20 border border-white/5 rounded-lg space-y-2">
-          <label className="text-sm font-medium text-white/70">Microphone</label>
+          <label className="text-sm font-medium text-lr-text-muted">Microphone</label>
           <select
             value={selectedDeviceId}
             onChange={(e) => setSelectedDeviceId(e.target.value)}
@@ -380,7 +380,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
       {(isTesting || isRecording) && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-white/50 flex items-center gap-1">
+            <span className="text-lr-text-dim flex items-center gap-1">
               <Volume2 size={12} /> Mic Level
             </span>
             <span className={`font-medium ${audioLevel < 15 ? 'text-red-400' : audioLevel < 40 ? 'text-yellow-400' : 'text-green-400'}`}>
@@ -408,7 +408,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
         <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-lg space-y-2">
           <p className="text-sm text-green-400 font-medium">🎧 Play back your test recording:</p>
           <audio controls src={testPlaybackUrl} className="w-full h-8" />
-          <p className="text-xs text-white/40">If you can hear yourself clearly, the mic is working. Click "Start Recording" to begin.</p>
+          <p className="text-xs text-lr-text-dim">If you can hear yourself clearly, the mic is working. Click "Start Recording" to begin.</p>
         </div>
       )}
 
@@ -417,7 +417,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
         {!isRecording && !isProcessing && !isTesting && (
           <button
             onClick={startMicTest}
-            className="flex items-center gap-2 px-5 py-3 bg-white/5 hover:bg-white/10 text-white/70 border border-white/10 rounded-full font-bold transition-all text-sm"
+            className="flex items-center gap-2 px-5 py-3 bg-white/5 hover:bg-white/10 text-lr-text-muted border border-white/10 rounded-full font-bold transition-all text-sm"
           >
             <Volume2 size={18} />
             Test Mic
@@ -455,7 +455,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
         )}
 
         {isProcessing && (
-          <div className="flex items-center gap-3 text-white/70">
+          <div className="flex items-center gap-3 text-lr-text-muted">
             <Loader2 size={24} className="animate-spin text-[rgb(var(--color-primary))]" />
             <span className="font-medium">Transcribing & formatting notes... this may take a minute.</span>
           </div>
@@ -471,7 +471,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
             </h4>
             <button
               onClick={copyToClipboard}
-              className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-white/80 transition-colors"
+              className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-lr-text-muted transition-colors"
             >
               {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
               {copied ? 'Copied!' : 'Copy'}
@@ -479,10 +479,10 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
           </div>
           <div className="p-4 bg-black/30 border border-white/10 rounded-lg max-h-[400px] overflow-y-auto custom-scrollbar prose prose-invert max-w-none">
             {generatedNotes.split('\n').map((line, i) => {
-              if (line.startsWith('## ')) return <h3 key={i} className="text-lg font-bold mt-4 mb-2 text-white/90">{line.replace('## ', '')}</h3>;
+              if (line.startsWith('## ')) return <h3 key={i} className="text-lg font-bold mt-4 mb-2 text-lr-text">{line.replace('## ', '')}</h3>;
               if (line.startsWith('# ')) return <h2 key={i} className="text-xl font-bold mt-5 mb-3 text-white">{line.replace('# ', '')}</h2>;
-              if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc text-white/70">{line.replace('- ', '')}</li>;
-              return <p key={i} className="text-white/80 min-h-[1rem]">{line}</p>;
+              if (line.startsWith('- ')) return <li key={i} className="ml-4 list-disc text-lr-text-muted">{line.replace('- ', '')}</li>;
+              return <p key={i} className="text-lr-text-muted min-h-[1rem]">{line}</p>;
             })}
           </div>
         </div>

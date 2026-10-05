@@ -167,8 +167,8 @@ export default function AppRouter({
           <div className="relative w-20 h-20 border-t-2 border-r-2 border-indigo-500 rounded-full animate-spin shadow-[0_0_20px_rgba(79,70,229,0.5)]" />
         </div>
         <div className="text-center space-y-2 relative">
-          <h2 className="font-serif text-2xl font-black text-white/90 italic lowercase tracking-tighter">Loading...</h2>
-          <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em]">Gathering your campaign data</p>
+          <h2 className="font-serif text-2xl font-black text-lr-text italic lowercase tracking-tighter">Loading...</h2>
+          <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em]">Gathering your campaign data</p>
         </div>
       </div>
     );

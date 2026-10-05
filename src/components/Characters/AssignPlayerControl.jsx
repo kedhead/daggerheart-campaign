@@ -47,7 +47,7 @@ export default function AssignPlayerControl({ character, campaign, updateCharact
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition-all"
+        className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase transition-all"
         style={{
           background: hasExplicit ? 'var(--primary-soft)' : 'var(--surface-hi)',
           color: hasExplicit ? 'var(--primary)' : 'var(--text-muted)',
@@ -77,7 +77,7 @@ export default function AssignPlayerControl({ character, campaign, updateCharact
             }}
           >
             <div
-              className="px-3 py-2 text-[10px] font-bold uppercase"
+              className="px-3 py-2 text-[11px] font-bold uppercase"
               style={{
                 color: 'var(--text-muted)',
                 letterSpacing: '0.16em',
@@ -117,7 +117,7 @@ export default function AssignPlayerControl({ character, campaign, updateCharact
                   <span className="flex flex-col">
                     <span>{m.name}</span>
                     <span
-                      className="text-[9px] uppercase"
+                      className="text-[11px] uppercase"
                       style={{ color: 'var(--text-dim)', letterSpacing: '0.14em' }}
                     >
                       {m.role}

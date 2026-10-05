@@ -20,14 +20,14 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
           {/* Header */}
           <div className="bg-gradient-to-b from-amber-500/25 to-transparent px-6 pt-8 pb-5 text-center space-y-2">
             <Crown className="w-10 h-10 text-amber-400 mx-auto" style={{ filter: 'drop-shadow(0 0 8px #f59e0b)' }} />
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-500/70">Phase Transition</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-amber-500/70">Phase Transition</p>
             <h2
               className="text-4xl font-extrabold text-white"
               style={{ fontFamily: 'var(--font-display)', textShadow: '0 0 24px rgba(245,158,11,0.4)' }}
             >
               {phase.name}
             </h2>
-            <p className="text-sm text-white/40">{bossName}</p>
+            <p className="text-sm text-lr-text-dim">{bossName}</p>
           </div>
 
           {/* Content */}
@@ -36,7 +36,7 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
             {/* Flavor description */}
             {phase.description && (
               <div className="border-t border-amber-500/20 pt-4">
-                <p className="text-sm text-white/70 leading-relaxed italic text-center">
+                <p className="text-sm text-lr-text-muted leading-relaxed italic text-center">
                   &ldquo;{phase.description}&rdquo;
                 </p>
               </div>
@@ -45,7 +45,7 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
             {/* New features */}
             {hasNewFeatures && (
               <div className="space-y-2">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-amber-400 flex items-center gap-2">
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-amber-400 flex items-center gap-2">
                   <Sparkles size={11} />
                   {phase.replaceFeatures ? 'New Abilities (replaces all previous)' : 'New Abilities Gained'}
                 </h4>
@@ -53,12 +53,12 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
                   <div key={i} className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-bold text-amber-200 text-sm">{f.name}</span>
-                      <span className="text-[9px] uppercase text-amber-500/60 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                      <span className="text-[11px] uppercase text-amber-500/60 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                         {f.type}
                       </span>
                     </div>
                     {f.description && (
-                      <p className="text-xs text-white/60 leading-relaxed">{f.description}</p>
+                      <p className="text-xs text-lr-text-muted leading-relaxed">{f.description}</p>
                     )}
                   </div>
                 ))}
@@ -69,7 +69,7 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
             {hasAttackChange && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 flex items-start gap-3">
                 <Swords size={16} className="text-red-400 shrink-0 mt-0.5" />
-                <div className="text-sm text-white/70 leading-relaxed">
+                <div className="text-sm text-lr-text-muted leading-relaxed">
                   Attack changes to:{' '}
                   {phase.attackName && (
                     <span className="text-red-300 font-bold">{phase.attackName} </span>
@@ -84,13 +84,13 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
             {/* Summons */}
             {summons.length > 0 && (
               <div className="space-y-2">
-                <h4 className="text-[10px] font-bold uppercase tracking-widest text-red-400 flex items-center gap-2">
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-red-400 flex items-center gap-2">
                   <Skull size={11} />
                   Calling for Reinforcements!
                 </h4>
                 {summons.map((s, i) => (
                   <div key={i} className="bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 flex items-center justify-between">
-                    <span className="text-sm text-white/80 font-medium">{s.adversary.name}</span>
+                    <span className="text-sm text-lr-text-muted font-medium">{s.adversary.name}</span>
                     <span className="text-sm text-red-300 font-bold">×{s.quantity}</span>
                   </div>
                 ))}
@@ -101,7 +101,7 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
             {phase.healPercent > 0 && (
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-4 py-3 flex items-center gap-3">
                 <Heart size={16} className="text-emerald-400 shrink-0" />
-                <span className="text-sm text-white/70">
+                <span className="text-sm text-lr-text-muted">
                   Boss recovers{' '}
                   <span className="text-emerald-300 font-bold">{phase.healPercent}%</span>{' '}
                   of maximum HP

@@ -31,7 +31,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Scenario Name</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Scenario Name</label>
         <input
           type="text"
           value={formData.name}
@@ -44,7 +44,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-white/80 block">Difficulty</label>
+          <label className="text-sm font-medium text-lr-text-muted block">Difficulty</label>
           <div className="relative">
             <select
               value={formData.difficulty}
@@ -56,14 +56,14 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
               <option value="hard">Hard</option>
               <option value="deadly">Deadly</option>
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-white/40">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-lr-text-dim">
               <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
             </div>
           </div>
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-white/80 block">Rec. Level</label>
+          <label className="text-sm font-medium text-lr-text-muted block">Rec. Level</label>
           <input
             type="number"
             value={formData.partyLevel}
@@ -75,7 +75,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Description</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Description</label>
         <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
@@ -87,7 +87,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Opponents</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Opponents</label>
         <WikiLinkInput
           value={formData.enemies}
           onChange={(e) => handleChange('enemies', e.target.value)}
@@ -99,7 +99,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Environment</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Environment</label>
         <WikiLinkInput
           value={formData.environment}
           onChange={(e) => handleChange('environment', e.target.value)}
@@ -111,7 +111,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Tactics</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Tactics</label>
         <WikiLinkInput
           value={formData.tactics}
           onChange={(e) => handleChange('tactics', e.target.value)}
@@ -123,7 +123,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Rewards</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Rewards</label>
         <WikiLinkInput
           value={formData.rewards}
           onChange={(e) => handleChange('rewards', e.target.value)}
@@ -135,7 +135,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">FreshCutGrass Link (Optional)</label>
+        <label className="text-sm font-medium text-lr-text-muted block">FreshCutGrass Link (Optional)</label>
         <input
           type="url"
           value={formData.freshcutgrassLink}
@@ -155,7 +155,7 @@ export default function EncounterForm({ encounter, onSave, onCancel, campaign, e
           />
           <div>
             <span className="block text-sm font-medium text-white">Hidden from Players</span>
-            <span className="block text-xs text-white/50">Only you can see this until revealed</span>
+            <span className="block text-xs text-lr-text-dim">Only you can see this until revealed</span>
           </div>
         </div>
       )}

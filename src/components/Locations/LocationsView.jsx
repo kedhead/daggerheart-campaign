@@ -231,27 +231,27 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
       {/* Immersive Atlas Header */}
       <div className="flex items-center justify-between gap-8 pb-8 border-b border-white/5 relative">
         <div className="space-y-2 relative z-10">
-          <h2 className="font-serif text-4xl font-black text-white/95 tracking-tight italic lowercase">
+          <h2 className="font-serif text-4xl font-black text-lr-text tracking-tight italic lowercase">
             The Atlas
           </h2>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/10">
-              <MapIcon size={10} className="text-white/40" />
-              <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">{locations.length} Cartographed Sites</span>
+              <MapIcon size={10} className="text-lr-text-dim" />
+              <span className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.2em]">{locations.length} Cartographed Sites</span>
             </div>
             <div className="w-1 h-1 rounded-full bg-white/20"></div>
-            <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest italic">Locations ready</p>
+            <p className="text-[11px] font-bold text-white/20 uppercase tracking-widest italic">Locations ready</p>
           </div>
         </div>
 
         {isDM && (
           <div className="flex items-center gap-3">
             <button
-              className="group flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] text-white/60 hover:text-white transition-all border border-white/5 hover:border-white/20"
+              className="group flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.08] text-lr-text-muted hover:text-white transition-all border border-white/5 hover:border-white/20"
               onClick={() => setQuickGenOpen(true)}
             >
               <Wand2 size={16} className="text-indigo-400 group-hover:rotate-12 transition-transform" />
-              <span className="font-black text-[10px] uppercase tracking-widest">AI cartography</span>
+              <span className="font-black text-[11px] uppercase tracking-widest">AI cartography</span>
             </button>
             <button
               className="group flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-300 shadow-xl border border-indigo-400/20 active:scale-95"
@@ -273,17 +273,17 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                 <MapIcon size={20} />
               </div>
               <div>
-                <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white/80">World Map</h3>
-                <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">Global Scan Active</p>
+                <h3 className="text-sm font-black uppercase tracking-[0.3em] text-lr-text-muted">World Map</h3>
+                <p className="text-[11px] font-bold text-white/20 uppercase tracking-widest">Global Scan Active</p>
               </div>
             </div>
 
             <div className="flex items-center gap-4 bg-black/20 p-2 pl-4 rounded-2xl border border-white/5">
-              <span className="text-[9px] font-black uppercase text-white/30 tracking-widest">Map Style:</span>
+              <span className="text-[11px] font-black uppercase text-lr-text-dim tracking-widest">Map Style:</span>
               <select
                 value={customMapStyle || ''}
                 onChange={(e) => setCustomMapStyle(e.target.value)}
-                className="border-none text-[10px] font-bold text-white focus:ring-0 cursor-pointer"
+                className="border-none text-[11px] font-bold text-white focus:ring-0 cursor-pointer"
                 style={{ appearance: 'auto', backgroundColor: '#1a1a2e' }}
               >
                 <option value="" style={{ backgroundColor: '#1a1a2e', color: '#e4e8f0' }}>Tolkien (Classic)</option>
@@ -307,7 +307,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 <div className="absolute bottom-8 right-8 flex items-center gap-3">
                   <button
-                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:text-white transition-all"
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 text-[11px] font-black uppercase tracking-widest text-emerald-400 hover:text-white transition-all"
                     onClick={handleDownloadMap}
                     title="Download world map image"
                   >
@@ -315,19 +315,19 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                     Export
                   </button>
                   <button
-                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-all disabled:opacity-50"
+                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500 border border-indigo-500/20 text-[11px] font-black uppercase tracking-widest text-indigo-400 hover:text-white transition-all disabled:opacity-50"
                     onClick={handleGenerateWorldMap}
                     disabled={generatingWorldMap}
                   >
                     <Wand2 size={14} className={generatingWorldMap ? 'animate-spin' : ''} />
                     {generatingWorldMap ? 'Generating...' : 'AI Regenerate'}
                   </button>
-                  <label className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all cursor-pointer">
+                  <label className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-black uppercase tracking-widest text-lr-text-muted hover:text-white transition-all cursor-pointer">
                     <Upload size={14} />
                     Replace Atlas
                     <input type="file" accept="image/*" onChange={handleMapUpload} disabled={uploadingMap} className="hidden" />
                   </label>
-                  <button className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-[10px] font-black uppercase tracking-widest text-red-400 hover:text-white transition-all" onClick={handleRemoveMap}>
+                  <button className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-[11px] font-black uppercase tracking-widest text-red-400 hover:text-white transition-all" onClick={handleRemoveMap}>
                     Decommission
                   </button>
                 </div>
@@ -337,7 +337,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                 <div className="w-20 h-20 rounded-3xl bg-white/[0.02] border border-white/5 flex items-center justify-center mb-6 text-white/10 animate-pulse">
                   <MapIcon size={32} />
                 </div>
-                <h4 className="text-xl font-serif font-black text-white/40 mb-2 italic lowercase text-center">Cartography needed</h4>
+                <h4 className="text-xl font-serif font-black text-lr-text-dim mb-2 italic lowercase text-center">Cartography needed</h4>
                 <p className="max-w-xs text-xs text-white/20 font-medium mb-8">Upload a world map or generate one with AI based on your campaign locations.</p>
                 <div className="flex items-center gap-4">
                   <button
@@ -348,7 +348,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
                     <Wand2 size={16} className={generatingWorldMap ? 'animate-spin' : ''} />
                     {generatingWorldMap ? 'Generating Map...' : 'AI Generate Map'}
                   </button>
-                  <label className="px-10 py-4 rounded-[2rem] bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white font-black text-xs uppercase tracking-[0.3em] transition-all cursor-pointer">
+                  <label className="px-10 py-4 rounded-[2rem] bg-white/5 hover:bg-white/10 border border-white/10 text-lr-text-muted hover:text-white font-black text-xs uppercase tracking-[0.3em] transition-all cursor-pointer">
                     {uploadingMap ? 'Processing...' : 'Upload Map'}
                     <input type="file" accept="image/*" onChange={handleMapUpload} disabled={uploadingMap} className="hidden" />
                   </label>
@@ -377,7 +377,7 @@ export default function LocationsView({ campaign, campaignFrame, locations = [],
           <div className="w-24 h-24 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-center justify-center mb-8 text-white/[0.03]">
             <MapIcon size={48} />
           </div>
-          <h3 className="text-2xl font-serif font-black text-white/30 mb-2 italic lowercase">Unknown Territory</h3>
+          <h3 className="text-2xl font-serif font-black text-lr-text-dim mb-2 italic lowercase">Unknown Territory</h3>
           <p className="text-sm text-white/20 font-medium tracking-wide">The current search criteria yield no cartographed locations.</p>
         </div>
       ) : (

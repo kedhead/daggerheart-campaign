@@ -44,11 +44,11 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, 
         <div className="absolute inset-0 bg-gradient-to-t from-[#0d1126] to-transparent" />
 
         <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
-          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-widest ring-1 ring-inset ${getCategoryStyles(note.category)}`}>
+          <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-black uppercase tracking-widest ring-1 ring-inset ${getCategoryStyles(note.category)}`}>
             {note.category || 'other'}
           </span>
           {note.createdAt && (
-            <span className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">{formatDate(note.createdAt)}</span>
+            <span className="text-[11px] font-bold text-lr-text-dim uppercase tracking-tighter">{formatDate(note.createdAt)}</span>
           )}
         </div>
       </div>
@@ -56,11 +56,11 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, 
       <div className="p-4 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif text-lg font-bold text-white/90 leading-tight group-hover:text-white transition-colors">
+            <h3 className="font-serif text-lg font-bold text-lr-text leading-tight group-hover:text-white transition-colors">
               {note.title}
             </h3>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] font-medium text-white/20">by {note.createdByName || 'Unknown'}</span>
+              <span className="text-[11px] font-medium text-white/20">by {note.createdByName || 'Unknown'}</span>
             </div>
           </div>
           <div className={`p-1.5 rounded-lg bg-white/5 border border-white/5 text-white/20 group-hover:text-white group-hover:bg-white/10 transition-all ${isExpanded ? 'rotate-180 bg-white/10 text-white' : ''}`}>
@@ -70,7 +70,7 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, 
 
         {isExpanded && (
           <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="prose prose-invert prose-sm max-w-none text-white/70 leading-relaxed font-sans font-medium">
+            <div className="prose prose-invert prose-sm max-w-none text-lr-text-muted leading-relaxed font-sans font-medium">
               <WikiText
                 text={note.content}
                 onLinkClick={setViewingEntity}
@@ -81,7 +81,7 @@ export default function NoteCard({ note, onEdit, onDelete, currentUserId, isDM, 
             {canEdit && !isEmbedded && (
               <div className="flex items-center gap-2 mt-6 pt-4 border-t border-white/5">
                 <button
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-bold text-white/60 hover:text-white transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-bold text-lr-text-muted hover:text-white transition-all"
                   onClick={(e) => { e.stopPropagation(); onEdit(); }}
                 >
                   <Edit3 size={14} />

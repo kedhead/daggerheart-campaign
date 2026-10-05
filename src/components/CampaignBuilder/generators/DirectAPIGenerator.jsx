@@ -21,7 +21,7 @@ export default function DirectAPIGenerator({
       return (
         <>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Name (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Name (Optional)</label>
             <input
               type="text"
               value={requirements.name || ''}
@@ -32,7 +32,7 @@ export default function DirectAPIGenerator({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Occupation (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Occupation (Optional)</label>
             <input
               type="text"
               value={requirements.occupation || ''}
@@ -43,7 +43,7 @@ export default function DirectAPIGenerator({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Relationship</label>
+            <label className="text-sm font-medium text-lr-text-muted">Relationship</label>
             <select
               value={requirements.relationship || ''}
               onChange={(e) => setRequirements({ ...requirements, relationship: e.target.value })}
@@ -63,7 +63,7 @@ export default function DirectAPIGenerator({
       return (
         <>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Name (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Name (Optional)</label>
             <input
               type="text"
               value={requirements.name || ''}
@@ -74,7 +74,7 @@ export default function DirectAPIGenerator({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Type</label>
+            <label className="text-sm font-medium text-lr-text-muted">Type</label>
             <select
               value={requirements.type || ''}
               onChange={(e) => setRequirements({ ...requirements, type: e.target.value })}
@@ -92,7 +92,7 @@ export default function DirectAPIGenerator({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Region (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Region (Optional)</label>
             <input
               type="text"
               value={requirements.region || ''}
@@ -109,7 +109,7 @@ export default function DirectAPIGenerator({
       return (
         <>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Category</label>
+            <label className="text-sm font-medium text-lr-text-muted">Category</label>
             <select
               value={requirements.loreType || ''}
               onChange={(e) => setRequirements({ ...requirements, loreType: e.target.value })}
@@ -133,7 +133,7 @@ export default function DirectAPIGenerator({
       return (
         <>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Difficulty</label>
+            <label className="text-sm font-medium text-lr-text-muted">Difficulty</label>
             <select
               value={requirements.difficulty || ''}
               onChange={(e) => setRequirements({ ...requirements, difficulty: e.target.value })}
@@ -148,7 +148,7 @@ export default function DirectAPIGenerator({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Environment (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Environment (Optional)</label>
             <input
               type="text"
               value={requirements.environment || ''}
@@ -159,7 +159,7 @@ export default function DirectAPIGenerator({
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Party Size</label>
+            <label className="text-sm font-medium text-lr-text-muted">Party Size</label>
             <input
               type="number"
               min="1"
@@ -181,7 +181,7 @@ export default function DirectAPIGenerator({
               />
               <span>Also generate fresh adversaries for this encounter</span>
             </label>
-            <p className="text-xs text-white/50 mt-2 ml-6">
+            <p className="text-xs text-lr-text-dim mt-2 ml-6">
               The AI will propose new adversary concepts. You'll be able to review and edit them, then they'll be fully statted up and added to your campaign's adversary list.
             </p>
           </div>
@@ -196,15 +196,15 @@ export default function DirectAPIGenerator({
     <div className="flex flex-col gap-5">
       <div className="flex items-start gap-3 p-4 bg-[rgb(var(--color-primary))/10] rounded-xl border border-[rgb(var(--color-primary))/20]">
         <Zap size={20} className="text-[rgb(var(--color-primary-light))] mt-0.5 shrink-0" />
-        <p className="text-sm text-white/70 m-0">
+        <p className="text-sm text-lr-text-muted m-0">
           Generation uses your campaign's pitch, themes, tone, and existing content to keep everything consistent with your world.
         </p>
       </div>
 
       {/* Description — the key field */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80">
-          Describe what you want <span className="text-white/40">(Optional but recommended)</span>
+        <label className="text-sm font-medium text-lr-text-muted">
+          Describe what you want <span className="text-lr-text-dim">(Optional but recommended)</span>
         </label>
         <textarea
           value={requirements.description || ''}

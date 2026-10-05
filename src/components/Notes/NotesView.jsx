@@ -80,10 +80,10 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
       {/* View Header */}
       <div className="flex items-center justify-between gap-6 pb-6 border-b border-white/5">
         <div className="space-y-1">
-          <h2 className="font-serif text-3xl font-black text-white/90 tracking-tight italic lowercase">
+          <h2 className="font-serif text-3xl font-black text-lr-text tracking-tight italic lowercase">
             The Archive
           </h2>
-          <p className="text-xs font-bold text-white/30 uppercase tracking-[0.2em] flex items-center gap-2">
+          <p className="text-xs font-bold text-lr-text-dim uppercase tracking-[0.2em] flex items-center gap-2">
             <StickyNote size={12} />
             {userNotes.length} Document{userNotes.length !== 1 ? 's' : ''} synchronized
           </p>
@@ -125,10 +125,10 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
               key={tab.id}
               onClick={() => setFilterCategory(tab.id)}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all
+                flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest whitespace-nowrap transition-all
                 ${filterCategory === tab.id
                   ? 'bg-white/10 text-white shadow-lg ring-1 ring-white/10'
-                  : 'text-white/30 hover:text-white/60 hover:bg-white/[0.02]'
+                  : 'text-lr-text-dim hover:text-lr-text-muted hover:bg-white/[0.02]'
                 }
               `}
             >
@@ -148,11 +148,11 @@ export default function NotesView({ campaign, addNote, updateNote, deleteNote, c
             <StickyNote size={40} />
           </div>
           {searchTerm || filterCategory !== 'all' ? (
-            <p className="text-white/40 font-bold uppercase tracking-widest text-xs italic">No documents match your query</p>
+            <p className="text-lr-text-dim font-bold uppercase tracking-widest text-xs italic">No documents match your query</p>
           ) : (
             <>
-              <h3 className="text-xl font-serif font-black text-white/80 mb-2 italic lowercase">Empty Archive</h3>
-              <p className="text-sm text-white/30 font-medium mb-8">Maintain records of your journey, the people you meet, and the lands you discover.</p>
+              <h3 className="text-xl font-serif font-black text-lr-text-muted mb-2 italic lowercase">Empty Archive</h3>
+              <p className="text-sm text-lr-text-dim font-medium mb-8">Maintain records of your journey, the people you meet, and the lands you discover.</p>
               <button
                 className="px-8 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black text-xs uppercase tracking-widest transition-all"
                 onClick={handleAdd}

@@ -21,7 +21,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
       return (
         <div className="flex flex-col gap-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Relationship (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Relationship (Optional)</label>
             <select
               value={selectedOptions.relationship || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, relationship: e.target.value })}
@@ -35,7 +35,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Occupation (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Occupation (Optional)</label>
             <input
               type="text"
               value={selectedOptions.occupation || ''}
@@ -46,7 +46,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Location (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Location (Optional)</label>
             <input
               type="text"
               value={selectedOptions.location || ''}
@@ -63,7 +63,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
       return (
         <div className="flex flex-col gap-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Type (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Type (Optional)</label>
             <select
               value={selectedOptions.type || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, type: e.target.value })}
@@ -81,7 +81,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Region (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Region (Optional)</label>
             <input
               type="text"
               value={selectedOptions.region || ''}
@@ -98,7 +98,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
       return (
         <div className="flex flex-col gap-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Difficulty (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Difficulty (Optional)</label>
             <select
               value={selectedOptions.difficulty || ''}
               onChange={(e) => setSelectedOptions({ ...selectedOptions, difficulty: e.target.value })}
@@ -113,7 +113,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-white/80">Party Level (Optional)</label>
+            <label className="text-sm font-medium text-lr-text-muted">Party Level (Optional)</label>
             <input
               type="number"
               min="1"
@@ -137,7 +137,7 @@ export default function TemplateGenerator({ type, requirements, onGenerate, gene
         <Sparkles size={24} className="text-emerald-400 mt-1" />
         <div>
           <h4 className="text-base font-bold text-white mb-1">Random Template Generation</h4>
-          <p className="text-sm text-white/60 m-0">Instantly generate content from curated lists. No AI required!</p>
+          <p className="text-sm text-lr-text-muted m-0">Instantly generate content from curated lists. No AI required!</p>
         </div>
       </div>
 

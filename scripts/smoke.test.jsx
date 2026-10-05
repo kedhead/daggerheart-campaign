@@ -91,6 +91,7 @@ import TakeDamageModal from '../src/components/Characters/TakeDamageModal.jsx';
 import PortalTableStatus from '../src/components/PlayerPortal/PortalTableStatus.jsx';
 import { bottomTabsFor } from '../src/components/Layout/BottomNav.jsx';
 import { navGroupsFor, navItemsFor, viewTitle, VIEWS } from '../src/config/navigation.js';
+import { gameThemes } from '../src/config/themes.js';
 import { readFileSync } from 'node:fs';
 import { publicCountdowns } from '../src/utils/countdowns.js';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
@@ -2739,6 +2740,30 @@ section('Navigation');
   assert(viewTitle('gm-screen') === 'GM Screen' && viewTitle('apiSettings') === 'API Settings' && viewTitle('storybook') === 'The Chronicle',
     'the top bar titles every page properly (not "Gm-screen")');
   assert(viewTitle('some-new-page') === 'Some New Page', 'and an unknown page still gets a readable title');
+}
+
+// ── Readability: theme text contrast ──
+section('Readability');
+{
+  const lum = (hex) => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a, b) => { const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const failures = [];
+  for (const [id, theme] of Object.entries(gameThemes)) {
+    const c = theme.colors;
+    for (const fg of ['text', 'textMuted', 'textDim']) {
+      for (const bg of ['bg', 'surface', 'surfaceHi']) {
+        if (!c[fg] || !c[bg]) continue;
+        const r = ratio(c[fg], c[bg]);
+        if (r < 4.5) failures.push(`${id} ${fg} on ${bg}: ${r.toFixed(2)}`);
+      }
+    }
+  }
+  assert(Object.keys(gameThemes).length >= 5 && failures.length === 0,
+    `every theme's text, muted and dim colours reach 4.5:1 on every surface (${failures.join('; ') || 'all pass'})`);
 }
 
 // ── Campaign memory ──

@@ -116,14 +116,14 @@ export default function QuestForm({
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="flex items-center justify-between border-b border-white/5 pb-4">
         <h3 className="text-xl font-bold text-white">{quest ? 'Edit Quest' : 'Create New Quest'}</h3>
-        <button type="button" onClick={onCancel} className="text-white/40 hover:text-white transition-colors">
+        <button type="button" onClick={onCancel} className="text-lr-text-dim hover:text-white transition-colors">
           <X size={20} />
         </button>
       </div>
 
       {/* Name */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Quest Name <span className="text-red-400">*</span></label>
+        <label className="text-sm font-medium text-lr-text-muted block">Quest Name <span className="text-red-400">*</span></label>
         <input
           type="text"
           value={formData.name}
@@ -137,7 +137,7 @@ export default function QuestForm({
       {/* Status & Priority Row */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-white/80 block">Status</label>
+          <label className="text-sm font-medium text-lr-text-muted block">Status</label>
           <div className="relative">
             <select
               value={formData.status}
@@ -148,14 +148,14 @@ export default function QuestForm({
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-white/40">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-lr-text-dim">
               <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
             </div>
           </div>
         </div>
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-white/80 block">Priority</label>
+          <label className="text-sm font-medium text-lr-text-muted block">Priority</label>
           <div className="relative">
             <select
               value={formData.priority}
@@ -166,7 +166,7 @@ export default function QuestForm({
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-white/40">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-lr-text-dim">
               <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
             </div>
           </div>
@@ -175,7 +175,7 @@ export default function QuestForm({
 
       {/* Description */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Description</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Description</label>
         <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
@@ -184,22 +184,22 @@ export default function QuestForm({
           placeholder="Describe the quest... Use [[entity name]] to link to NPCs, locations, etc."
           rows={4}
         />
-        <p className="text-xs text-white/40">Type [[ to link to other entities</p>
+        <p className="text-xs text-lr-text-dim">Type [[ to link to other entities</p>
       </div>
 
       {/* Objectives */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-white/80 block">Objectives</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Objectives</label>
         <div className="space-y-2 bg-black/20 border border-white/5 rounded-lg p-4">
           {formData.objectives.length === 0 && (
-            <p className="text-sm text-white/40 italic text-center py-2">No objectives added yet</p>
+            <p className="text-sm text-lr-text-dim italic text-center py-2">No objectives added yet</p>
           )}
 
           {formData.objectives.map((objective, index) => (
             <div key={objective.id} className="flex items-center gap-2">
               <button
                 type="button"
-                className={`p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded transition-colors ${index === 0 ? 'opacity-20 cursor-not-allowed' : ''}`}
+                className={`p-1.5 text-lr-text-dim hover:text-white hover:bg-white/10 rounded transition-colors ${index === 0 ? 'opacity-20 cursor-not-allowed' : ''}`}
                 disabled={index === 0}
                 onClick={() => handleMoveObjective(index, -1)}
                 title="Move up"
@@ -253,7 +253,7 @@ export default function QuestForm({
 
       {/* Rewards */}
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Rewards</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Rewards</label>
         <WikiLinkInput
           value={formData.rewards}
           onChange={(e) => handleChange('rewards', e.target.value)}
@@ -275,7 +275,7 @@ export default function QuestForm({
           />
           <div>
             <span className="block text-sm font-medium text-white">Hidden from Players</span>
-            <span className="block text-xs text-white/50">Only you can see this quest until revealed</span>
+            <span className="block text-xs text-lr-text-dim">Only you can see this quest until revealed</span>
           </div>
         </div>
       )}

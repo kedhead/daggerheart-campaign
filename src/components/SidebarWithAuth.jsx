@@ -111,12 +111,12 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
               <h1 className="text-xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white via-white/90 to-white/40 font-serif lowercase italic">
                 {systemName}
               </h1>
-              <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">Campaign Manager</p>
+              <p className="text-[11px] font-bold text-lr-text-dim uppercase tracking-[0.2em]">Campaign Manager</p>
             </div>
           )}
           <button
             className={`
-              absolute top-6 right-6 p-1.5 rounded-lg border border-white/5 bg-white/[0.02] text-white/40 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all duration-300
+              absolute top-6 right-6 p-1.5 rounded-lg border border-white/5 bg-white/[0.02] text-lr-text-dim hover:text-white hover:bg-white/10 hover:border-white/20 transition-all duration-300
               ${isCollapsed ? 'static mt-2 self-center rotate-180' : ''}
             `}
             onClick={toggleCollapsed}
@@ -133,10 +133,10 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                 <FolderOpen size={20} className="text-[color:var(--primary)]" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-xs font-bold text-white/90 truncate leading-tight tracking-tight uppercase">{currentCampaign.name}</h3>
+                <h3 className="text-xs font-bold text-lr-text truncate leading-tight tracking-tight uppercase">{currentCampaign.name}</h3>
                 <div className="flex items-center gap-1.5 mt-1">
                   {isDM ? <Crown size={10} className="text-amber-400" /> : <User size={10} className="text-blue-400" />}
-                  <span className="text-[9px] font-black text-white/20 uppercase tracking-widest leading-none">
+                  <span className="text-[11px] font-black text-white/20 uppercase tracking-widest leading-none">
                     {isDM ? 'Dungeon Master' : 'Adventurer'}
                   </span>
                 </div>
@@ -170,15 +170,15 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
               {!isCollapsed && (
                 <div className="px-3 flex items-center justify-between group cursor-pointer" onClick={() => toggleGroup(group.id)}>
                   <span
-                    className={`text-[10px] font-black uppercase tracking-[0.25em] transition-colors ${
+                    className={`text-[11px] font-black uppercase tracking-[0.25em] transition-colors ${
                       group.featured
                         ? 'text-transparent bg-clip-text bg-gradient-to-r from-[color:var(--primary)] via-white to-[color:var(--accent)] group-hover:brightness-125'
-                        : 'text-white/20 group-hover:text-white/40'
+                        : 'text-white/20 group-hover:text-lr-text-dim'
                     }`}
                   >
                     {group.label}
                   </span>
-                  <div className={`transition-transform duration-300 text-white/10 group-hover:text-white/30 ${expandedGroups.includes(group.id) ? 'rotate-180' : ''}`}>
+                  <div className={`transition-transform duration-300 text-white/10 group-hover:text-lr-text-dim ${expandedGroups.includes(group.id) ? 'rotate-180' : ''}`}>
                     <ChevronDown size={12} />
                   </div>
                 </div>
@@ -197,7 +197,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                           w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 relative group/item
                           ${isActive
                             ? 'bg-[color:var(--primary-soft)] text-white border border-[color:var(--primary)]/30 shadow-[0_4px_12px_rgba(255,255,255,0.05)]'
-                            : 'text-white/40 hover:text-white/80 hover:bg-white/[0.02]'
+                            : 'text-lr-text-dim hover:text-lr-text-muted hover:bg-white/[0.02]'
                           }
                           ${isCollapsed ? 'justify-center' : ''}
                         `}
@@ -223,7 +223,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
                         )}
 
                         {isCollapsed && (
-                          <div className="absolute left-full ml-4 px-2 py-1 bg-arcane-navy border border-white/10 rounded-md text-[10px] font-bold text-white opacity-0 group-hover/item:opacity-100 translate-x-1 group-hover/item:translate-x-0 transition-all z-50 pointer-events-none whitespace-nowrap shadow-2xl">
+                          <div className="absolute left-full ml-4 px-2 py-1 bg-arcane-navy border border-white/10 rounded-md text-[11px] font-bold text-white opacity-0 group-hover/item:opacity-100 translate-x-1 group-hover/item:translate-x-0 transition-all z-50 pointer-events-none whitespace-nowrap shadow-2xl">
                             {item.label}
                           </div>
                         )}
@@ -241,7 +241,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
           {!isCollapsed && (
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all duration-300 group"
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-lr-text-dim hover:text-red-400 hover:bg-red-500/10 transition-all duration-300 group"
             >
               <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
               <span className="text-xs font-black uppercase tracking-widest">Sign Out</span>
@@ -254,7 +254,7 @@ export default function SidebarWithAuth({ currentView, setCurrentView, isDM, use
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-white tracking-[0.2em] uppercase leading-none">Lorelich</span>
+                <span className="text-[11px] font-black text-white tracking-[0.2em] uppercase leading-none">Lorelich</span>
                 <span className="text-[8px] font-bold text-white/20 uppercase tracking-[0.1em] mt-0.5 leading-none">Enterprise OS</span>
               </div>
             )}

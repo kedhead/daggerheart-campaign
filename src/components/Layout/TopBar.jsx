@@ -127,7 +127,7 @@ export default function TopBar({ currentView, presenceList, currentCampaignId, c
                         Search campaign, lore, or press <span className="text-[color:var(--text)]">⌘K</span> for commands…
                     </div>
                     <div
-                        className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded text-[11px] font-bold"
                         style={{
                             border: '1px solid var(--line-strong)',
                             background: 'var(--surface-hi)',
@@ -143,7 +143,7 @@ export default function TopBar({ currentView, presenceList, currentCampaignId, c
             <div className="flex items-center gap-2 desk:gap-4 shrink-0">
                 {/* Role pill — mirrors Sidebar pill so the swap is always visible */}
                 <div
-                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-bold uppercase tracking-[0.14em]"
+                    className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold uppercase tracking-[0.14em]"
                     style={{
                         background: isDM ? 'rgba(139, 92, 246, 0.12)' : 'var(--primary-soft)',
                         borderColor: isDM ? 'var(--fear)' : 'var(--primary)',
@@ -161,7 +161,7 @@ export default function TopBar({ currentView, presenceList, currentCampaignId, c
                         </span>
                         <div className="flex items-center gap-1.5">
                             <div className="w-1.5 h-1.5 rounded-full bg-[color:var(--success)] shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>
-                            <span className="text-[10px] font-medium text-[color:var(--text-muted)] uppercase tracking-widest">Active</span>
+                            <span className="text-[11px] font-medium text-[color:var(--text-muted)] uppercase tracking-widest">Active</span>
                         </div>
                     </div>
                     <div
@@ -197,7 +197,7 @@ export default function TopBar({ currentView, presenceList, currentCampaignId, c
                         <Bell size={20} />
                         {totalCount > 0 && (
                             <span
-                                className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full text-[9px] font-black text-white leading-none"
+                                className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-0.5 flex items-center justify-center rounded-full text-[11px] font-black text-white leading-none"
                                 style={{
                                     background: 'var(--danger)',
                                     border: '2px solid var(--bg)',

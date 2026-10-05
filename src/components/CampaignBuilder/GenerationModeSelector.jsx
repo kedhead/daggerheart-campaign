@@ -53,12 +53,12 @@ export default function GenerationModeSelector({ mode, onModeChange, hasAPIKey }
               onClick={() => onModeChange(modeOption.id)}
               disabled={!modeOption.available}
             >
-              <Icon size={20} className={isActive ? 'text-[rgb(var(--color-primary))]' : 'text-white/60'} />
+              <Icon size={20} className={isActive ? 'text-[rgb(var(--color-primary))]' : 'text-lr-text-muted'} />
               <div className="flex flex-col gap-1">
                 <span className={`font-bold ${isActive ? 'text-[rgb(var(--color-primary-light))]' : 'text-white'}`}>
                   {modeOption.label}
                 </span>
-                <span className="text-xs text-white/60">{modeOption.description}</span>
+                <span className="text-xs text-lr-text-muted">{modeOption.description}</span>
                 {needsKey && <span className="text-xs font-medium text-amber-400 mt-1">Requires API key</span>}
               </div>
             </button>
