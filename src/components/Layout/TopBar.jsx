@@ -5,6 +5,7 @@ import { Search, Bell, ChevronRight, Crown, User } from 'lucide-react';
 import PresenceIndicator from '../PresenceIndicator/PresenceIndicator';
 import NotificationPanel from '../Notifications/NotificationPanel';
 import { useNotifications } from '../../hooks/useNotifications';
+import { viewTitle } from '../../config/navigation';
 
 export default function TopBar({ currentView, presenceList, currentCampaignId, campaign, isDM, setCurrentView, onOpenCommandPalette }) {
     const { currentUser } = useAuth();
@@ -88,32 +89,8 @@ export default function TopBar({ currentView, presenceList, currentCampaignId, c
         return () => document.removeEventListener('mousedown', handleClick);
     }, [panelOpen]);
 
-    const getBreadcrumbs = () => {
-        const views = {
-            dashboard: 'Dashboard',
-            characters: 'Characters',
-            lore: 'Lore & World',
-            npcs: 'Non-Player Characters',
-            locations: 'Locations',
-            timeline: 'World Timeline',
-            quests: 'Quests & Objectives',
-            sessions: 'Session Logs',
-            encounters: 'Encounter Builder',
-            initiative: 'Initiative Tracker',
-            partyInventory: 'Party Stash',
-            items: 'Item Catalog',
-            adversaries: 'Adversary Catalog',
-            environments: 'Environment Catalog',
-            files: 'Maps & Files',
-            tools: 'Utility Tools',
-            help: 'Features & Help',
-            members: 'Campaign Members',
-            playerDisplay: 'Player Display',
-            battleMapStudio: 'Battle Map Studio',
-            campaignBuilder: 'Campaign Builder'
-        };
-        return views[currentView] || currentView.charAt(0).toUpperCase() + currentView.slice(1);
-    };
+    // Shared with the sidebar, so every page gets a real title.
+    const getBreadcrumbs = () => viewTitle(currentView);
 
     return (
         <header

@@ -90,6 +90,8 @@ import RestModal from '../src/components/Characters/RestModal.jsx';
 import TakeDamageModal from '../src/components/Characters/TakeDamageModal.jsx';
 import PortalTableStatus from '../src/components/PlayerPortal/PortalTableStatus.jsx';
 import { bottomTabsFor } from '../src/components/Layout/BottomNav.jsx';
+import { navGroupsFor, navItemsFor, viewTitle, VIEWS } from '../src/config/navigation.js';
+import { readFileSync } from 'node:fs';
 import { publicCountdowns } from '../src/utils/countdowns.js';
 import DeathMoveModal from '../src/components/Characters/DeathMoveModal.jsx';
 import { buildSheetFields, normalizeInventory, splitGold, armorSlotCount } from '../src/utils/daggerheartSheetFields.js';
@@ -2700,6 +2702,43 @@ section('Dialogs');
   const html = renderToString(<ConfirmProvider><Inside /></ConfirmProvider>);
   assert(html.includes('inside') && !html.includes('Are you sure?') && insideConfirm !== outsideConfirm,
     'inside the provider, confirm is the themed dialog, closed until asked');
+}
+
+// ── Navigation: one list for sidebar, palette and title ──
+section('Navigation');
+{
+  const ids = (who) => navItemsFor(who).map(i => i.id);
+  const dm = ids({ isDM: true, isDaggerheart: true, canEnterPortal: true });
+  const player = ids({ isDM: false, isDaggerheart: true, canEnterPortal: true });
+
+  const dmOnly = Object.entries(VIEWS).filter(([, v]) => v.dm).map(([id]) => id);
+  assert(dmOnly.length >= 9 && dmOnly.every(id => !player.includes(id)),
+    `players never see DM tools (${dmOnly.filter(id => player.includes(id)).join(', ') || 'none leaked'})`);
+  assert(dmOnly.every(id => dm.includes(id)), 'and the DM sees all of them');
+  assert(!dm.includes('my-sheet') && !dm.includes('portal') && player.includes('my-sheet') && player.includes('portal'),
+    'My Sheet and the Portal are for players; the DM has no sheet');
+  assert(!ids({ isDM: false, isDaggerheart: false, canEnterPortal: true }).includes('portal'), 'the Portal is Daggerheart-only');
+  assert(!dm.includes('superadmin') && ids({ isDM: true, isSuperAdmin: true }).includes('superadmin'), 'All Campaigns is for the super admin only');
+
+  const table = navGroupsFor({ isDM: true }).find(g => g.id === 'table');
+  assert(table && ['sessions', 'encounters', 'gm-screen', 'playerDisplay', 'battleMapStudio'].every(id => table.items.some(i => i.id === id)),
+    'the DM\'s session-time tools sit together under At the Table');
+  assert(!navGroupsFor({ isDM: true }).find(g => g.id === 'settings').items.some(i => ['playerDisplay', 'battleMapStudio', 'campaignBuilder'].includes(i.id)),
+    'Player Display, Battle Map Studio and Campaign Builder are no longer filed under Settings');
+  const all = navGroupsFor({ isDM: true, isDaggerheart: true, isSuperAdmin: true, canEnterPortal: true }).flatMap(g => g.items.map(i => i.id));
+  assert(all.length === new Set(all).size, 'every page appears in exactly one group');
+
+  // Every page the router can show is reachable from the menu.
+  const router = readFileSync('src/components/AppRouter.jsx', 'utf8');
+  const routes = [...router.matchAll(/case '([\w-]+)':/g)].map(m => m[1]);
+  const unreachable = routes.filter(r => !(r in VIEWS));
+  assert(routes.length > 25 && unreachable.length === 0, `every routed page is in the menu (missing: ${unreachable.join(', ') || 'none'})`);
+  const dmPlusPlayer = new Set([...ids({ isDM: true, isDaggerheart: true, isSuperAdmin: true }), ...player]);
+  assert(routes.every(r => dmPlusPlayer.has(r)), 'and someone can open each of them');
+
+  assert(viewTitle('gm-screen') === 'GM Screen' && viewTitle('apiSettings') === 'API Settings' && viewTitle('storybook') === 'The Chronicle',
+    'the top bar titles every page properly (not "Gm-screen")');
+  assert(viewTitle('some-new-page') === 'Some New Page', 'and an unknown page still gets a readable title');
 }
 
 // ── Campaign memory ──
