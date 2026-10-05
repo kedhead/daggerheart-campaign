@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { Plus, Minus, Trash2, Search, Skull, X, Crown } from 'lucide-react';
 import { BP_COSTS, getSlotBPCost } from './BPCalculator';
 
@@ -10,6 +11,8 @@ export default function AdversaryPicker({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showPicker, setShowPicker] = useState(false);
+  const pickerRef = useRef(null);
+  useDialogFocus(pickerRef, showPicker, () => setShowPicker(false));
 
   // Filter adversaries for the picker
   const filteredAdversaries = adversaries.filter(adv =>
@@ -169,6 +172,10 @@ export default function AdversaryPicker({
       {showPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowPicker(false)}>
           <div
+            ref={pickerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add adversaries"
             className="bg-[var(--bg-secondary)] border border-white/10 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl"
             style={{ maxHeight: 'min(80vh, calc(100dvh - 2rem))' }}
             onClick={e => e.stopPropagation()}

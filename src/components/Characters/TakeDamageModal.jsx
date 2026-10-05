@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, HeartCrack, Shield } from 'lucide-react';
 import { damageOutcome, armorSlotsFree } from '../../utils/playerDamage';
 import { hpRemaining } from '../../utils/daggerheartVitals';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import './LevelUpWizard.css';
 
 const SEVERITY_LABEL = { none: 'No damage', minor: 'Minor', major: 'Major', severe: 'Severe', massive: 'Massive' };
@@ -22,6 +23,9 @@ const QUICK = [-5, -1, 1, 5];
  * @param {(updates: object) => void} onApply
  */
 export default function TakeDamageModal({ character, thresholds, armorTotal = 0, massiveRule = false, onApply, onClose }) {
+  // Mounted only while open: move focus in, keep Tab inside, Escape closes.
+  const dialogRef = useRef(null);
+  useDialogFocus(dialogRef, true, onClose);
   const [damage, setDamage] = useState('');
   const [resistant, setResistant] = useState(false);
   const freeArmor = armorSlotsFree(character, armorTotal);
@@ -47,7 +51,7 @@ export default function TakeDamageModal({ character, thresholds, armorTotal = 0,
 
   const overlay = (
     <div className="luw-overlay" onClick={onClose}>
-      <div className="luw-modal" role="dialog" aria-modal="true" aria-labelledby="take-damage-title" onClick={e => e.stopPropagation()}>
+      <div className="luw-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="take-damage-title" onClick={e => e.stopPropagation()}>
         <div className="luw-header">
           <h2 className="luw-title" id="take-damage-title">
             <HeartCrack size={18} style={{ verticalAlign: '-3px', marginRight: 8 }} />Take Damage

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronRight, ChevronLeft, Check, AlertCircle } from 'lucide-react';
 import {
@@ -8,9 +8,13 @@ import {
 import { getCardsForCharacter, getCardsForMulticlass, getCardByName } from '../../data/daggerheartDomainCards';
 import { applyLevelUp, maxCardLevelFor, TRAIT_NAMES, TIER_BOUNDARY_LEVELS } from '../../utils/daggerheartLevelUp';
 import { COMPANION_UPGRADES, EXAMPLE_COMPANION_EXPERIENCES } from '../../data/daggerheartCompanion';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import './LevelUpWizard.css';
 
 export default function LevelUpWizard({ character, items, onComplete, onClose }) {
+  // Mounted only while open: move focus in, keep Tab inside, Escape closes.
+  const dialogRef = useRef(null);
+  useDialogFocus(dialogRef, true, onClose);
   const currentLevel = character.level || 1;
   const newLevel = currentLevel + 1;
   const newTier = getTierForLevel(newLevel);
@@ -650,11 +654,11 @@ export default function LevelUpWizard({ character, items, onComplete, onClose })
   // phones. Server rendering (smoke tests) has no document — render inline.
   const overlay = (
     <div className="luw-overlay" onClick={onClose}>
-      <div className="luw-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="luw-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="level-up-title" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="luw-header">
-          <h2 className="luw-title">Level Up to {newLevel}</h2>
-          <button className="luw-close" onClick={onClose}><X size={20} /></button>
+          <h2 className="luw-title" id="level-up-title">Level Up to {newLevel}</h2>
+          <button className="luw-close" onClick={onClose} aria-label="Close"><X size={20} /></button>
         </div>
 
         {/* Progress */}

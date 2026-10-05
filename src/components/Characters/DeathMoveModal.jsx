@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Skull, Check, Flame, Shield, Dices } from 'lucide-react';
 import { scarCount, normalizeHopeSlots } from '../../utils/daggerheartHope';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import './LevelUpWizard.css';
 
 const d12 = () => Math.floor(Math.random() * 12) + 1;
@@ -17,6 +18,9 @@ const d12 = () => Math.floor(Math.random() * 12) + 1;
  * sites already hold a campaign and call useDice, so this costs no plumbing.
  */
 export default function DeathMoveModal({ character, onApply, onClose, onRollHopeDie, onRollDuality }) {
+  // Mounted only while open: move focus in, keep Tab inside, Escape closes.
+  const dialogRef = useRef(null);
+  useDialogFocus(dialogRef, true, onClose);
   const level = character.level || 1;
   const scars = scarCount(character);
   const hopeSlotCount = normalizeHopeSlots(character.hopeSlots).length;
@@ -253,12 +257,12 @@ export default function DeathMoveModal({ character, onApply, onClose, onRollHope
   // phones. Server rendering (smoke tests) has no document — render inline.
   const overlay = (
     <div className="luw-overlay" onClick={onClose}>
-      <div className="luw-modal" onClick={e => e.stopPropagation()}>
+      <div className="luw-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="death-move-title" onClick={e => e.stopPropagation()}>
         <div className="luw-header">
-          <h2 className="luw-title" style={{ color: '#e66' }}>
+          <h2 className="luw-title" id="death-move-title" style={{ color: '#e66' }}>
             <Skull size={18} style={{ verticalAlign: '-3px', marginRight: 8 }} />Death Move
           </h2>
-          <button className="luw-close" onClick={onClose}><X size={20} /></button>
+          <button className="luw-close" onClick={onClose} aria-label="Close"><X size={20} /></button>
         </div>
 
         <div className="luw-body">

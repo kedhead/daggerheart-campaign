@@ -2766,6 +2766,23 @@ section('Readability');
     `every theme's text, muted and dim colours reach 4.5:1 on every surface (${failures.join('; ') || 'all pass'})`);
 }
 
+// ── Dialogs announce themselves and label their close button ──
+{
+  const chr = { name: 'Thorne', level: 5, hpSlots: [true, true, true], stressSlots: [false], hopeSlots: [true] };
+  const checks = [
+    ['RestModal', React.createElement(RestModal, { character: chr, onApply: () => {}, onClose: () => {} })],
+    ['DeathMoveModal', React.createElement(DeathMoveModal, { character: chr, onApply: () => {}, onClose: () => {} })],
+    ['LevelUpWizard', React.createElement(LevelUpWizard, { character: chr, items: [], onComplete: () => {}, onClose: () => {} })],
+  ];
+  for (const [name, el] of checks) {
+    const html = renderToString(el);
+    const label = html.match(/aria-labelledby="([^"]+)"/)?.[1];
+    assert(html.includes('role="dialog"') && html.includes('aria-modal="true"') && label && html.includes(`id="${label}"`),
+      `${name} is announced as a dialog, titled by its heading`);
+    assert(html.includes('aria-label="Close"'), `${name}'s close button is labelled for screen readers`);
+  }
+}
+
 // ── Campaign memory ──
 section('Campaign memory');
 {

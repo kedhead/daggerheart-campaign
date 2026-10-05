@@ -1,6 +1,11 @@
+import { useRef } from 'react';
 import { Crown, Sparkles, Skull, Heart, Swords } from 'lucide-react';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 
 export default function PhaseTransitionModal({ bossName, phase, allAdversaries = [], onConfirm, isDM }) {
+  // No Escape: the phase change has to be acknowledged.
+  const dialogRef = useRef(null);
+  useDialogFocus(dialogRef, !!phase);
   if (!phase) return null;
 
   const summons = (phase.summons || [])
@@ -13,7 +18,7 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
       {/* Outer glow ring */}
-      <div className="relative w-full max-w-lg">
+      <div className="relative w-full max-w-lg" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="phase-transition-title">
         <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-amber-500/40 to-red-600/30 animate-pulse pointer-events-none blur-sm" />
 
         <div className="relative bg-[var(--bg-secondary)] border border-amber-500/60 rounded-2xl overflow-hidden shadow-2xl shadow-amber-900/40">
@@ -22,6 +27,7 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
             <Crown className="w-10 h-10 text-amber-400 mx-auto" style={{ filter: 'drop-shadow(0 0 8px #f59e0b)' }} />
             <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-amber-500/70">Phase Transition</p>
             <h2
+              id="phase-transition-title"
               className="text-4xl font-extrabold text-white"
               style={{ fontFamily: 'var(--font-display)', textShadow: '0 0 24px rgba(245,158,11,0.4)' }}
             >
