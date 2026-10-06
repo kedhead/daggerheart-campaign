@@ -25,6 +25,8 @@ import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
 import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
 import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
 import { isVisibleToPlayers, visibleTo } from '../src/utils/playerVisibility.js';
+import SessionDateFilters from '../src/components/Filters/SessionDateFilters.jsx';
+import { linkedSessionIds, sessionFilterOptions, filterBySessionAndDate, createdAtMillis, SORTS as ENTITY_SORTS } from '../src/utils/sessionLinks.js';
 import { isArchivedNote, starredHighlights, TRANSCRIPTION_NOTE_PREFIX, mergeHighlights, unresolvedLinks, appearancesFor, previouslyOn, recentPlayedSessions, stripWikiLinks } from '../src/utils/campaignMemory.js';
 import { isAtDeathsDoor, hpRemaining, hpMax, stressMarked, partyVitals, weaponAttackModifier } from '../src/utils/daggerheartVitals.js';
 import { sourcePortraitKey, cachedPortraitKey } from '../src/utils/storybookPortraitCache.js';
@@ -2783,6 +2785,68 @@ section('Readability');
       `${name} is announced as a dialog, titled by its heading`);
     assert(html.includes('aria-label="Close"'), `${name}'s close button is labelled for screen readers`);
   }
+}
+
+// ── Session and date filters (NPCs, encounters) ──
+section('Session filters');
+{
+  const sessions = [
+    { id: 's1', number: 1, title: 'The Ferry', status: 'completed', summary: 'We met Vex at the docks.' },
+    { id: 's2', number: 2, title: 'Night Market', status: 'completed', summary: 'Quiet.', dmNotes: 'Brom is the spy.', npcIds: ['n-made'], encounterLinks: 'e1, encounter://e2' },
+    { id: 's3', number: 3, title: 'Next Week', status: 'planned', dmNotes: 'Vex returns with Sly.' },
+    { id: 's4', number: 4, title: 'Secret', status: 'completed', hidden: true, summary: 'Vex again.' },
+  ];
+  const vex = { id: 'n-vex', name: 'Vex' };
+  const brom = { id: 'n-brom', name: 'Brom' };
+  const ids = (e, o) => [...linkedSessionIds(e, sessions, o)].sort().join(',');
+
+  assert(ids(vex, { isDM: true }) === 's1,s3,s4', `the DM sees every session that mentions an NPC, planned and hidden too (got ${ids(vex, { isDM: true })})`);
+  assert(ids(vex, { isDM: false }) === 's1', 'players only get played, visible sessions');
+  assert(ids(brom, { isDM: true }) === 's2' && ids(brom, { isDM: false }) === '',
+    "an NPC named only in a session's DM notes is never linked for players");
+  assert(ids({ id: 'n-made', name: 'Zed' }, { isDM: false }) === 's2', 'NPCs a session plan created are linked to that session');
+  assert(ids({ id: 'x', name: 'Ola', firstMet: ' the ferry ' }, { isDM: false }) === 's1', '"First met" naming a session title links it');
+  assert(ids({ id: 'x', name: 'Ola', sessionId: 's2' }, { isDM: false }) === 's2', 'an explicit session tag links it');
+  assert(ids({ id: 'e2', name: 'Docks Ambush' }, { kind: 'encounter', isDM: true }) === 's2',
+    "a session's linked encounters (plain ids or encounter:// links) are linked");
+  assert(ids({ id: 'x', name: 'Al' }, { isDM: true }) === '', 'very short names are not matched inside words');
+
+  const opts = sessionFilterOptions(sessions, { isDM: false });
+  assert(JSON.stringify(opts.map(o => o.id)) === JSON.stringify(['s2', 's1']) && opts[0].label === 'Session 2: Night Market',
+    'players can filter by played, visible sessions, newest first');
+  assert(sessionFilterOptions(sessions, { isDM: true }).some(o => o.label === 'Session 3: Next Week (planned)'),
+    'the DM can also filter by a planned session, marked as planned');
+
+  const now = Date.UTC(2026, 9, 6);
+  const day = 86400000;
+  const npcs = [
+    { id: 'a', name: 'Vex', createdAt: { seconds: (now - 2 * day) / 1000 } },
+    { id: 'b', name: 'Brom', createdAt: { toMillis: () => now - 40 * day } },
+    { id: 'c', name: 'Old Timer' },
+  ];
+  const pick = (o) => filterBySessionAndDate(npcs, { sessions, now, ...o }).map(n => n.id).join(',');
+  assert(pick({ added: '7' }) === 'a', 'Past week keeps only what was added in the last 7 days');
+  assert(pick({ added: '90' }) === 'a,b', 'Past 3 months reaches further back');
+  assert(pick({ added: 'any' }) === 'a,b,c', 'Any time includes records from before dates were kept');
+  assert(pick({ session: 's1' }) === 'a', 'filtering by a session keeps the NPCs linked to it');
+  assert(pick({ session: 'none', isDM: true }) === 'c', '"Not linked to a session" finds the loose ones');
+  assert(pick({ session: 's2', isDM: false }) === '', "a player's session filter can't surface DM-notes-only links");
+
+  assert(createdAtMillis({}) === 0 && createdAtMillis({ createdAt: new Date(5) }) === 5, 'creation times read from Firestore timestamps or dates');
+  assert(JSON.stringify([...npcs].sort(ENTITY_SORTS.newest).map(n => n.id)) === JSON.stringify(['a', 'b', 'c']),
+    'newest first puts undated records last');
+  assert(JSON.stringify([...npcs].sort(ENTITY_SORTS.name).map(n => n.id)) === JSON.stringify(['b', 'c', 'a']), 'and Name sorts A–Z');
+
+  const noop = () => {};
+  const idle = strip(renderToString(<SessionDateFilters sessionOptions={opts} session="all" onSession={noop} added="any" onAdded={noop}
+    sort="newest" onSort={noop} shown={3} total={3} noun="NPCs" />));
+  assert(idle.includes('Session 2: Night Market') && idle.includes('Not linked to a session') && idle.includes('Added in the past week'),
+    'the filter row offers the sessions, "not linked", and date ranges');
+  assert(idle.includes('3 NPCs') && !idle.includes('Clear filters'), 'with no filter on, it shows the total and no Clear button');
+  const busy = strip(renderToString(<SessionDateFilters sessionOptions={opts} session="s1" onSession={noop} added="any" onAdded={noop}
+    showSort={false} shown={1} total={3} noun="encounters" />));
+  assert(busy.includes('1 of 3 encounters') && busy.includes('Clear filters') && !busy.includes('Name A–Z'),
+    'filtered, it shows "1 of 3" and a Clear button, and the sort can be left to the page');
 }
 
 // ── Campaign memory ──

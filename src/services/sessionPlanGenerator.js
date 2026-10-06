@@ -547,11 +547,16 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
   }
 
   // ── NPCs ───────────────────────────────────────────────────────────────
+  // Ids are kept so the session can list the NPCs it introduced (`npcIds`),
+  // which the NPC page's Session filter reads.
+  const createdNpcIds = [];
   for (const npc of preview.npcs) {
     tick(`Saving NPC: ${npc.name}`);
     try {
       if (addNPC) {
-        await addNPC(stripPreviewMeta(npc));
+        const result = await addNPC(stripPreviewMeta(npc));
+        const newId = result?.id || result;
+        if (typeof newId === 'string' && newId) createdNpcIds.push(newId);
       }
     } catch (err) {
       console.error('addNPC failed:', err);
@@ -660,7 +665,8 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
     const sessionDoc = {
       ...preview.sessionDraft,
       // Store encounter IDs as plain comma-separated Firestore IDs (not encounter:// URIs)
-      encounterLinks: createdEncounterIds.map(e => e.id).join(',')
+      encounterLinks: createdEncounterIds.map(e => e.id).join(','),
+      ...(createdNpcIds.length > 0 ? { npcIds: createdNpcIds } : {})
     };
     const result = await addSession(sessionDoc);
     sessionId = result?.id || null;
