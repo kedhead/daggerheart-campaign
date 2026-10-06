@@ -6,6 +6,7 @@
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../config/firebase';
 import { ANCESTRIES } from '../data/systems/daggerheart';
+import { apiFetch } from './apiClient';
 
 /**
  * Visual appearance hints for Daggerheart ancestries.
@@ -42,7 +43,7 @@ export const ANCESTRY_VISUAL_HINTS = {
  */
 async function downloadImageAsDataUrl(imageUrl) {
   try {
-    const response = await fetch('/api/download-image', {
+    const response = await apiFetch('/api/download-image', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -70,7 +71,7 @@ async function downloadImageAsDataUrl(imageUrl) {
  * @returns {Promise<string>} Image data URL (base64)
  */
 async function generatePortraitImage(prompt, apiKey) {
-  const response = await fetch('/api/generate-image', {
+  const response = await apiFetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, apiKey: apiKey || undefined, type: 'portrait' })

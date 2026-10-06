@@ -12,6 +12,7 @@ import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musi
 import { CURATED_SOUND_EFFECTS, getRandomVariantUrl } from '../../data/soundEffectsLibrary';
 import './DMSoundboard.css';
 import { useNotify } from '../../contexts/ToastContext';
+import { apiFetch } from '../../services/apiClient';
 
 // Background music themes
 const MUSIC_THEMES = {
@@ -213,7 +214,7 @@ export default function DMSoundboard({ campaignId }) {
       if (!audioData && result.audioUrl) {
         console.log('No audioData from API, fetching via download proxy...');
         try {
-          const proxyRes = await fetch('/api/download-audio', {
+          const proxyRes = await apiFetch('/api/download-audio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ audioUrl: result.audioUrl })
@@ -554,7 +555,7 @@ export default function DMSoundboard({ campaignId }) {
       if (!audioData && result.audioUrl) {
         console.log('No audioData for music, fetching via download proxy...');
         try {
-          const proxyRes = await fetch('/api/download-audio', {
+          const proxyRes = await apiFetch('/api/download-audio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ audioUrl: result.audioUrl })
@@ -724,7 +725,7 @@ export default function DMSoundboard({ campaignId }) {
       let audioData = result.audioData;
       if (!audioData && result.audioUrl) {
         try {
-          const proxyRes = await fetch('/api/download-audio', {
+          const proxyRes = await apiFetch('/api/download-audio', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ audioUrl: result.audioUrl })

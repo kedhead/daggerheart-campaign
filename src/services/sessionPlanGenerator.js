@@ -19,6 +19,7 @@ import { promptBuilder } from './promptBuilder';
 import { responseParser } from './responseParser';
 import { generateBattleMap } from './battleMapGenerator';
 import { fuzzyMatchAdversary } from '../utils/adversaryNameMatch';
+import { apiFetch } from './apiClient';
 
 /**
  * Ask the AI to produce a SessionPlan JSON.
@@ -42,7 +43,7 @@ export async function generateSessionPlan({
 }) {
   if (!brief?.trim()) throw new Error('Please describe the session you want to plan.');
 
-  const response = await fetch('/api/rules-chat', {
+  const response = await apiFetch('/api/rules-chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

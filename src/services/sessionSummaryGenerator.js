@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient';
 /**
  * Summarize raw session notes into a polished narrative, grounded strictly in the
  * provided notes (no invention of new events/NPCs/outcomes). Uses /api/rules-chat
@@ -21,7 +22,7 @@ export async function summarizeSessionNotes({
 }) {
   if (!rawNotes?.trim()) throw new Error('No session notes to summarize.');
 
-  const response = await fetch('/api/rules-chat', {
+  const response = await apiFetch('/api/rules-chat', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

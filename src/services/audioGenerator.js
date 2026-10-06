@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient';
 /**
  * Audio Generation Service
  * Uses the /api/generate-sound route, which calls ElevenLabs
@@ -22,7 +23,7 @@ export async function generateSoundEffect(prompt, _apiKey, options = {}) {
   }
 
   try {
-    const response = await fetch('/api/generate-sound', {
+    const response = await apiFetch('/api/generate-sound', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

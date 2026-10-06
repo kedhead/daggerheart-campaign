@@ -5,13 +5,14 @@
 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../config/firebase';
+import { apiFetch } from './apiClient';
 
 /**
  * Download an image from a URL and convert to data URL via proxy
  */
 async function downloadImageAsDataUrl(imageUrl) {
     try {
-        const response = await fetch('/api/download-image', {
+        const response = await apiFetch('/api/download-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ imageUrl })
@@ -34,7 +35,7 @@ async function downloadImageAsDataUrl(imageUrl) {
  * Generate a lore visual using gpt-image-1 via backend proxy
  */
 async function generateLoreVisual(prompt, apiKey) {
-    const response = await fetch('/api/generate-image', {
+    const response = await apiFetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt, type: 'portrait', apiKey: apiKey || null })

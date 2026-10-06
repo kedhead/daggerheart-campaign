@@ -5,6 +5,7 @@
 
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../config/firebase';
+import { apiFetch } from './apiClient';
 
 /**
  * Generate a battle map image using AI
@@ -30,7 +31,7 @@ export async function generateBattleMap(options) {
 
   console.log('Generating battle map:', { prompt, type, size, animated });
 
-  const response = await fetch('/api/generate-image', {
+  const response = await apiFetch('/api/generate-image', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -76,7 +77,7 @@ export async function generateMapAsset(options) {
   }
 
   // Generate the asset image
-  const response = await fetch('/api/generate-image', {
+  const response = await apiFetch('/api/generate-image', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
@@ -122,7 +123,7 @@ export async function saveGeneratedImage(imageUrl, campaignId, type = 'map') {
     // Vercel's 4.5 MB request limit, so only remote URLs take that route.
     let dataUrl = imageUrl;
     if (!imageUrl.startsWith('data:')) {
-      const response = await fetch('/api/download-image', {
+      const response = await apiFetch('/api/download-image', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

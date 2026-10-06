@@ -8,6 +8,7 @@ import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musi
 import { persistAudio, persistVideo, deleteStoredFile } from '../../services/audioStorage';
 import { exportCinematicWebM } from './cinematicExporter';
 import './CinematicPlayer.css';
+import { apiFetch } from '../../services/apiClient';
 
 
 // Curated narrator presets. `id` is an ElevenLabs premade voice; `style` +
@@ -202,7 +203,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     const batch = Date.now();
     try {
       for (const job of jobs) {
-        const resp = await fetch('/api/generate-narration', {
+        const resp = await apiFetch('/api/generate-narration', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -249,7 +250,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     if (!isDM || !updateChapter || !slide?.sceneKey || !slide.imageUrl) return;
     setError(null);
     setAnimating({ label: 'Starting…' });
-    const post = (body) => fetch('/api/generate-image', {
+    const post = (body) => apiFetch('/api/generate-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -287,7 +288,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
         if (direct.ok) blob = await direct.blob();
       } catch { /* CORS or network — use the proxy below */ }
       if (!blob) {
-        const pr = await fetch('/api/download-proxy', {
+        const pr = await apiFetch('/api/download-proxy', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: videoUrl })

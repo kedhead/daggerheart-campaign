@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import Modal from '../Modal';
 import { CLASSES, getBaseProficiency, ANCESTRIES, COMMUNITIES, DOMAINS } from '../../data/systems/daggerheart';
 import { Upload, FileText, Image, Loader2, AlertCircle, CheckCircle, RotateCcw } from 'lucide-react';
+import { apiFetch } from '../../services/apiClient';
 
 const CLASS_NAMES = Object.keys(CLASSES);
 const ANCESTRY_NAMES = Object.keys(ANCESTRIES);
@@ -52,7 +53,7 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter, ch
     reader.onload = async (e) => {
       const base64 = e.target.result.split(',')[1];
       try {
-        const res = await fetch('/api/parse-character-pdf', {
+        const res = await apiFetch('/api/parse-character-pdf', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageBase64: base64, mediaType: file.type }),

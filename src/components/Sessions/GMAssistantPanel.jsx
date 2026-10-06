@@ -13,6 +13,7 @@ import {
 } from '../../services/sessionPlanGenerator';
 import SessionPlanCard from './SessionPlanCard';
 import SessionPreviewModal from './SessionPreviewModal';
+import { apiFetch } from '../../services/apiClient';
 
 const SAMPLE_PROMPTS = [
   'Plan tonight\'s session at the Siphon Pits — 4–5 encounters with 2 puzzle challenges, 3 hours, party of 6 at level appropriate.',
@@ -216,7 +217,7 @@ export default function GMAssistantPanel({
     const addMapFile = async ({ name, url, tag }) => {
       try {
         // Download via the existing server-side proxy (avoids CORS on external image URLs)
-        const resp = await fetch('/api/download-image', {
+        const resp = await apiFetch('/api/download-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageUrl: url })

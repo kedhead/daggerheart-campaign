@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useAPIKey } from './useAPIKey';
 import { buildCampaignContext } from '../services/campaignContext';
+import { apiFetch } from '../services/apiClient';
 
 /**
  * Shared chat state/logic for the Campaign GM assistant — the messages array,
@@ -79,7 +80,7 @@ export function useCampaignChat({
       if (hasAnthropic && keys.anthropic) { provider = 'anthropic'; apiKey = keys.anthropic; }
       else if (hasOpenAI && keys.openai) { provider = 'openai'; apiKey = keys.openai; }
 
-      const response = await fetch('/api/rules-chat', {
+      const response = await apiFetch('/api/rules-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
