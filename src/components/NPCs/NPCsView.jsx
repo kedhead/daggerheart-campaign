@@ -8,6 +8,8 @@ import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useToast } from '../../contexts/ToastContext';
 import { buildCampaignContext } from '../../services/campaignContext';
 import { visibleTo } from '../../utils/playerVisibility';
+import SessionDateFilters, { SessionTagSelect } from '../Filters/SessionDateFilters';
+import { sessionFilterOptions, filterBySessionAndDate, SORTS } from '../../utils/sessionLinks';
 
 export default function NPCsView({
   npcs, addNPC, updateNPC, deleteNPC, isDM, campaign, campaignFrame,
@@ -23,6 +25,15 @@ export default function NPCsView({
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [relationshipFilter, setRelationshipFilter] = useState('all');
+  const [sessionFilter, setSessionFilter] = useState('all');
+  const [addedFilter, setAddedFilter] = useState('any');
+  const [sortBy, setSortBy] = useState('newest');
+  const [sessionTag, setSessionTag] = useState('');
+  const sessionOptions = useMemo(() => sessionFilterOptions(sessions, { isDM }), [sessions, isDM]);
+  // Tagging is a DM action, so the dialog offers every session, planned ones included.
+  const tagOptions = useMemo(() => sessionFilterOptions(sessions, { isDM: true }), [sessions]);
+  // While the list is filtered to one session, new NPCs default to it.
+  const filteredSessionId = sessionFilter !== 'all' && sessionFilter !== 'none' ? sessionFilter : '';
   const { success, error } = useToast();
 
   const mergedMaps = useMemo(() => [
@@ -43,15 +54,18 @@ export default function NPCsView({
 
   const handleAdd = () => {
     setEditingNPC(null);
+    setSessionTag(filteredSessionId);
     setIsModalOpen(true);
   };
 
   const handleEdit = (npc) => {
     setEditingNPC(npc);
+    setSessionTag(npc.sessionId || '');
     setIsModalOpen(true);
   };
 
-  const handleSave = async (npcData) => {
+  const handleSave = async (formData) => {
+    const npcData = { ...formData, sessionId: sessionTag || null };
     try {
       if (editingNPC) {
         await updateNPC(editingNPC.id, npcData);
@@ -69,7 +83,8 @@ export default function NPCsView({
 
   // Players never see hidden NPCs. This list checked no visibility flag at all,
   // so the DM's hidden NPCs were listed for everyone.
-  const visibleNPCs = visibleTo(npcs, isDM).filter(npc => {
+  const viewableNPCs = visibleTo(npcs, isDM);
+  const matchingNPCs = viewableNPCs.filter(npc => {
     if (relationshipFilter !== 'all' && npc.relationship !== relationshipFilter) return false;
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
@@ -82,6 +97,10 @@ export default function NPCsView({
     }
     return true;
   });
+  // Session and date-added filters — rules in utils/sessionLinks.js.
+  const visibleNPCs = filterBySessionAndDate(matchingNPCs, {
+    session: sessionFilter, added: addedFilter, sessions, kind: 'npc', isDM, now: Date.now(),
+  }).sort(SORTS[sortBy] || SORTS.newest);
 
   return (
     <div className="min-h-screen bg-transparent p-6 space-y-10 animate-in fade-in duration-200">
@@ -94,7 +113,7 @@ export default function NPCsView({
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/5 border border-white/10">
               <Users size={10} className="text-lr-text-dim" />
-              <span className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.2em]">{npcs.length} Contacts</span>
+              <span className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.2em]">{viewableNPCs.length} Contacts</span>
             </div>
             <div className="w-1 h-1 rounded-full bg-white/20"></div>
             <p className="text-[11px] font-bold text-white/20 uppercase tracking-widest italic">Identity Manifest v2.4</p>
@@ -158,6 +177,19 @@ export default function NPCsView({
         </div>
       </div>
 
+      <SessionDateFilters
+        sessionOptions={sessionOptions}
+        session={sessionFilter}
+        onSession={setSessionFilter}
+        added={addedFilter}
+        onAdded={setAddedFilter}
+        sort={sortBy}
+        onSort={setSortBy}
+        shown={visibleNPCs.length}
+        total={viewableNPCs.length}
+        noun="NPCs"
+      />
+
       {/* Vault Grid */}
       {visibleNPCs.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-32 rounded-[4rem] border border-white/5 bg-white/[0.01] transition-all duration-200 hover:bg-white/[0.02]">
@@ -202,6 +234,7 @@ export default function NPCsView({
         title={editingNPC ? 'Modify Profile' : 'New Identity Entry'}
         size="large"
       >
+        {isDM && <SessionTagSelect sessionOptions={tagOptions} value={sessionTag} onChange={setSessionTag} />}
         <NPCForm
           npc={editingNPC}
           onSave={handleSave}
@@ -224,7 +257,7 @@ export default function NPCsView({
         campaignFrame={campaignFrame}
         existingContent={npcs}
         onSave={async (npcData) => {
-          await addNPC(npcData);
+          await addNPC(filteredSessionId ? { ...npcData, sessionId: filteredSessionId } : npcData);
           success('NPC added to campaign');
           setQuickGenOpen(false);
         }}

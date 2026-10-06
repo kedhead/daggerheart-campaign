@@ -121,8 +121,10 @@ export default function SessionsView({
   const handleCreateEntity = (addNPC && addLocation)
     ? async (kind, name) => {
         const firstMet = liveSession?.title || '';
+        // Tagged with the session, so the NPC page's Session filter finds it.
+        const sessionId = liveSession?.id || null;
         if (kind === 'npc') {
-          await addNPC({ name, occupation: '', location: '', relationship: 'neutral', description: '', notes: '', firstMet, hidden: false });
+          await addNPC({ name, occupation: '', location: '', relationship: 'neutral', description: '', notes: '', firstMet, hidden: false, sessionId });
         } else if (kind === 'location') {
           await addLocation({ name, type: 'other', region: '', description: '', notableFeatures: '', inhabitants: '', secrets: '', hidden: false });
         }

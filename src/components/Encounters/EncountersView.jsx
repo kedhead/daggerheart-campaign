@@ -9,11 +9,8 @@ import QuickGeneratorModal from '../CampaignBuilder/QuickGeneratorModal';
 import { useActiveEncounter } from '../../hooks/useActiveEncounter';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
-const SORTS = {
-  newest: (a, b) => ((b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)) || (a.name || '').localeCompare(b.name || ''),
-  oldest: (a, b) => ((a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)) || (a.name || '').localeCompare(b.name || ''),
-  name: (a, b) => (a.name || '').localeCompare(b.name || ''),
-};
+import SessionDateFilters, { SessionTagSelect } from '../Filters/SessionDateFilters';
+import { sessionFilterOptions, filterBySessionAndDate, SORTS } from '../../utils/sessionLinks';
 
 export default function EncountersView({ campaign, encounters = [], addEncounter, updateEncounter, deleteEncounter, addAdversary, isDM, npcs = [], locations = [], lore = [], sessions = [], timelineEvents = [], notes = [], adversaries = [], environments = [], characters = [], targetEncounterId = null, onTargetEncounterHandled, pendingEncounterDraft = null, onPendingEncounterHandled }) {
   const confirm = useConfirm();
@@ -22,6 +19,13 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDifficulty, setFilterDifficulty] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [sessionFilter, setSessionFilter] = useState('all');
+  const [addedFilter, setAddedFilter] = useState('any');
+  const [sessionTag, setSessionTag] = useState('');
+  // Encounters are DM-only, so planned sessions are offered too — that's
+  // where prep lives.
+  const sessionOptions = useMemo(() => sessionFilterOptions(sessions, { isDM: true }), [sessions]);
+  const filteredSessionId = sessionFilter !== 'all' && sessionFilter !== 'none' ? sessionFilter : '';
   const [quickGenOpen, setQuickGenOpen] = useState(false);
   const [useBuilder, setUseBuilder] = useState(true); // Use new BP builder by default
   const [showTracker, setShowTracker] = useState(false);
@@ -88,15 +92,19 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
 
   const handleAdd = () => {
     setEditingEncounter(null);
+    // While the list is filtered to one session, new encounters default to it.
+    setSessionTag(filteredSessionId);
     setIsModalOpen(true);
   };
 
   const handleEdit = (encounter) => {
     setEditingEncounter(encounter);
+    setSessionTag(encounter.sessionId || '');
     setIsModalOpen(true);
   };
 
-  const handleSave = async (encounterData) => {
+  const handleSave = async (formData) => {
+    const encounterData = { ...formData, sessionId: sessionTag || null };
     if (editingEncounter) {
       await updateEncounter(editingEncounter.id, encounterData);
     } else {
@@ -114,7 +122,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
   };
 
   // Filter encounters
-  const filteredEncounters = encounters.filter(encounter => {
+  const matchingEncounters = encounters.filter(encounter => {
     // Visibility filter
     if (!isDM && encounter.hidden) return false;
 
@@ -125,6 +133,10 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     const matchesFilter = filterDifficulty === 'all' || encounter.difficulty === filterDifficulty;
 
     return matchesSearch && matchesFilter;
+  });
+  // Session and date-added filters — rules in utils/sessionLinks.js.
+  const filteredEncounters = filterBySessionAndDate(matchingEncounters, {
+    session: sessionFilter, added: addedFilter, sessions, kind: 'encounter', isDM: true, now: Date.now(),
   }).sort(SORTS[sortBy] || SORTS.newest);
 
   // Count by difficulty
@@ -361,6 +373,18 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
         </div>
       </div>
 
+      <SessionDateFilters
+        sessionOptions={sessionOptions}
+        session={sessionFilter}
+        onSession={setSessionFilter}
+        added={addedFilter}
+        onAdded={setAddedFilter}
+        showSort={false}
+        shown={filteredEncounters.length}
+        total={encounters.length}
+        noun="encounters"
+      />
+
       {/* Encounters Grid */}
       {filteredEncounters.length === 0 ? (
         <div
@@ -391,7 +415,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
             No scenarios found
           </h3>
           <p className="max-w-sm mb-6" style={{ color: 'var(--text-dim)' }}>
-            {searchTerm || filterDifficulty !== 'all'
+            {searchTerm || filterDifficulty !== 'all' || sessionFilter !== 'all' || addedFilter !== 'any'
               ? 'Try adjusting your filters.'
               : 'Create your first combat scenario to get started.'}
           </p>
@@ -444,6 +468,8 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
         title={editingEncounter ? 'Edit Scenario' : 'New Scenario'}
         size={useBuilder && isDaggerheart ? 'large' : 'medium'}
       >
+        <SessionTagSelect sessionOptions={sessionOptions} value={sessionTag} onChange={setSessionTag} />
+
         {/* Builder Mode Toggle for Daggerheart */}
         {isDaggerheart && (
           <div className="flex gap-2 p-1 bg-black/40 rounded-lg mb-6 w-fit">
@@ -507,7 +533,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
         existingAdversaries={adversaries}
         addAdversary={addAdversary}
         onSave={async (encounterData) => {
-          await addEncounter(encounterData);
+          await addEncounter(filteredSessionId ? { ...encounterData, sessionId: filteredSessionId } : encounterData);
           setQuickGenOpen(false);
         }}
       />
