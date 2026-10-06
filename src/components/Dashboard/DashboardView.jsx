@@ -55,7 +55,7 @@ function GmStat({ icon: Icon, label, value }) {
       <Icon size={16} style={{ color: 'var(--text-muted)' }} strokeWidth={1.8} />
       <div className="flex flex-col leading-tight">
         <span
-          className="text-[9px] font-bold uppercase"
+          className="text-[11px] font-bold uppercase"
           style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
         >
           {label}
@@ -220,7 +220,7 @@ export default function DashboardView({
                 {stat.value}
               </h3>
               <p
-                className="text-[10px] font-bold uppercase"
+                className="text-[11px] font-bold uppercase"
                 style={{ color: 'var(--text-muted)', letterSpacing: '0.2em' }}
               >
                 {stat.label}
@@ -252,7 +252,7 @@ export default function DashboardView({
             </div>
             <div>
               <span
-                className="text-[10px] font-bold uppercase block"
+                className="text-[11px] font-bold uppercase block"
                 style={{ color: 'var(--fear)', letterSpacing: '0.24em' }}
               >
                 GM at a glance
@@ -311,7 +311,7 @@ export default function DashboardView({
                       <BookOpen size={14} className="inline -mt-0.5 mr-2" style={{ color: 'var(--primary)' }} />
                       Chapter {recap.chapter.chapterNumber}{recap.chapter.title ? `: ${recap.chapter.title}` : ''}
                       {isDM && recap.chapter.status !== 'published' && (
-                        <span className="ml-2 text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>(draft)</span>
+                        <span className="ml-2 text-[11px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>(draft)</span>
                       )}
                     </span>
                     {onNavigate && (
@@ -447,7 +447,7 @@ export default function DashboardView({
                           {session.title}
                         </h4>
                         <span
-                          className="text-[10px] font-semibold uppercase shrink-0"
+                          className="text-[11px] font-semibold uppercase shrink-0"
                           style={{ color: 'var(--text-dim)', letterSpacing: '0.12em' }}
                         >
                           {formatSessionDate(session.date)}
@@ -523,7 +523,7 @@ export default function DashboardView({
       >
         <form onSubmit={handleSaveCampaign} className="space-y-6 pt-4">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Campaign Name</label>
+            <label className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.2em] ml-1">Campaign Name</label>
             <input
               type="text"
               value={campaignForm.name}
@@ -533,7 +533,7 @@ export default function DashboardView({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] ml-1">Description</label>
+            <label className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.2em] ml-1">Description</label>
             <textarea
               value={campaignForm.description}
               onChange={(e) => setCampaignForm({ ...campaignForm, description: e.target.value })}
@@ -549,16 +549,16 @@ export default function DashboardView({
                 onChange={(e) => setCampaignForm({ ...campaignForm, isPublic: e.target.checked })}
                 className="w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
               />
-              <span className="text-xs font-bold text-white/60 group-hover:text-white transition-colors">Make Campaign Public</span>
+              <span className="text-xs font-bold text-lr-text-muted group-hover:text-white transition-colors">Make Campaign Public</span>
             </label>
-            <p className="text-[10px] text-white/20 font-medium ml-8 italic">
+            <p className="text-[11px] text-white/20 font-medium ml-8 italic">
               Anyone can discover and request to join this campaign.
             </p>
           </div>
 
           {/* Content sources — which rulebooks feed this campaign's catalogs */}
           <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-3">
-            <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em]">Content Sources</div>
+            <div className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.25em]">Content Sources</div>
             {CONTENT_SOURCES.map(src => (
               <label key={src.id} className={`flex items-start gap-3 ${src.locked ? 'opacity-60' : 'cursor-pointer group'}`}>
                 <input
@@ -572,12 +572,12 @@ export default function DashboardView({
                   className="mt-0.5 w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
                 />
                 <span>
-                  <span className="block text-xs font-bold text-white/60 group-hover:text-white transition-colors">{src.label}</span>
+                  <span className="block text-xs font-bold text-lr-text-muted group-hover:text-white transition-colors">{src.label}</span>
                   {src.description && (
-                    <span className="block text-[10px] text-white/25 font-medium italic">{src.description}</span>
+                    <span className="block text-[11px] text-white/25 font-medium italic">{src.description}</span>
                   )}
                   {src.releaseDate && (
-                    <span className="block text-[10px] text-amber-400/50 font-medium">Content arrives {src.releaseDate}</span>
+                    <span className="block text-[11px] text-amber-400/50 font-medium">Content arrives {src.releaseDate}</span>
                   )}
                 </span>
               </label>
@@ -595,8 +595,8 @@ export default function DashboardView({
                   className="mt-0.5 w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
                 />
                 <span>
-                  <span className="block text-xs font-bold text-white/60 group-hover:text-white transition-colors">Track Hope &amp; Fear automatically</span>
-                  <span className="block text-[10px] text-white/55 font-medium italic">
+                  <span className="block text-xs font-bold text-lr-text-muted group-hover:text-white transition-colors">Track Hope &amp; Fear automatically</span>
+                  <span className="block text-[11px] text-lr-text-dim font-medium italic">
                     Action rolls with Hope add a Hope to the roller; rolls with Fear add a Fear to your pool;
                     a critical also clears a Stress. Reaction rolls never count. Turn off to track by hand.
                   </span>
@@ -610,8 +610,8 @@ export default function DashboardView({
                   className="mt-0.5 w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
                 />
                 <span>
-                  <span className="block text-xs font-bold text-white/60 group-hover:text-white transition-colors">Use the Massive damage rule</span>
-                  <span className="block text-[10px] text-white/55 font-medium italic">
+                  <span className="block text-xs font-bold text-lr-text-muted group-hover:text-white transition-colors">Use the Massive damage rule</span>
+                  <span className="block text-[11px] text-lr-text-dim font-medium italic">
                     Optional rule: damage of at least double a character&rsquo;s Severe threshold marks 4 HP.
                     Applies to the players&rsquo; Take Damage button.
                   </span>
@@ -621,7 +621,7 @@ export default function DashboardView({
           )}
 
           <div className="flex gap-3 pt-6 border-t border-white/5">
-            <button type="button" className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 font-black text-xs uppercase tracking-widest transition-all" onClick={() => setIsEditingCampaign(false)}>
+            <button type="button" className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-lr-text-dim font-black text-xs uppercase tracking-widest transition-all" onClick={() => setIsEditingCampaign(false)}>
               Cancel
             </button>
             <button type="submit" className="flex-[2] py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95">

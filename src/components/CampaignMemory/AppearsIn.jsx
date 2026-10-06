@@ -44,13 +44,13 @@ export default function AppearsIn({ entity, kind = 'npc', sessions = EMPTY, chap
   const shownSessions = sessionHits.slice(0, MAX_SESSIONS);
   const moreSessions = sessionHits.length - shownSessions.length;
 
-  const linkClass = 'text-left text-white/75 hover:text-white underline decoration-white/20 hover:decoration-white/60 underline-offset-2';
+  const linkClass = 'text-left text-lr-text-muted hover:text-white underline decoration-white/20 hover:decoration-white/60 underline-offset-2';
 
   return (
     <div className="space-y-4">
       {npcsHere.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-[10px] font-black text-emerald-400/70 uppercase tracking-[0.3em] font-sans">Found Here</h4>
+          <h4 className="text-[11px] font-black text-emerald-400/70 uppercase tracking-[0.3em] font-sans">Found Here</h4>
           <ul className="flex flex-wrap gap-2 m-0 p-0 list-none text-sm font-sans">
             {npcsHere.map(n => {
               const target = getByName?.(n.name);
@@ -60,7 +60,7 @@ export default function AppearsIn({ entity, kind = 'npc', sessions = EMPTY, chap
                     <button type="button" className={linkClass} onClick={(e) => { e.stopPropagation(); onOpen(target); }}>
                       {n.name}
                     </button>
-                  ) : <span className="text-white/75">{n.name}</span>}
+                  ) : <span className="text-lr-text-muted">{n.name}</span>}
                 </li>
               );
             })}
@@ -70,7 +70,7 @@ export default function AppearsIn({ entity, kind = 'npc', sessions = EMPTY, chap
 
       {sessionHits.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-[10px] font-black text-sky-400/70 uppercase tracking-[0.3em] font-sans">Appears In</h4>
+          <h4 className="text-[11px] font-black text-sky-400/70 uppercase tracking-[0.3em] font-sans">Appears In</h4>
           <ul className="space-y-1 m-0 p-0 list-none text-sm font-sans">
             {shownSessions.map(s => (
               <li key={s.id}>
@@ -85,11 +85,11 @@ export default function AppearsIn({ entity, kind = 'npc', sessions = EMPTY, chap
                   >
                     {sessionLabel(s)}
                   </button>
-                ) : <span className="text-white/75">{sessionLabel(s)}</span>}
+                ) : <span className="text-lr-text-muted">{sessionLabel(s)}</span>}
               </li>
             ))}
             {moreSessions > 0 && (
-              <li className="text-white/55 text-xs">and {moreSessions} more</li>
+              <li className="text-lr-text-dim text-xs">and {moreSessions} more</li>
             )}
           </ul>
         </div>
@@ -97,17 +97,17 @@ export default function AppearsIn({ entity, kind = 'npc', sessions = EMPTY, chap
 
       {chapterHits.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-[10px] font-black text-violet-400/70 uppercase tracking-[0.3em] font-sans">In the Chronicle</h4>
-          <ul className="space-y-1.5 m-0 p-0 list-none text-sm font-sans text-white/75">
+          <h4 className="text-[11px] font-black text-violet-400/70 uppercase tracking-[0.3em] font-sans">In the Chronicle</h4>
+          <ul className="space-y-1.5 m-0 p-0 list-none text-sm font-sans text-lr-text-muted">
             {chapterHits.map(({ chapter, moment }) => (
               <li key={chapter.id}>
-                <span className="font-semibold text-white/85">
+                <span className="font-semibold text-lr-text-muted">
                   Ch. {toRoman(chapter.chapterNumber)}{chapter.title ? `: ${chapter.title}` : ''}
                 </span>
                 {isDM && chapter.status !== 'published' && (
-                  <span className="ml-2 text-[10px] uppercase tracking-wider text-amber-400/80">draft</span>
+                  <span className="ml-2 text-[11px] uppercase tracking-wider text-amber-400/80">draft</span>
                 )}
-                {moment && <span className="italic text-white/60"> — {moment}</span>}
+                {moment && <span className="italic text-lr-text-muted"> — {moment}</span>}
               </li>
             ))}
           </ul>

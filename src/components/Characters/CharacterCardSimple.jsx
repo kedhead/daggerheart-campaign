@@ -47,7 +47,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
         {/* Portrait Download Button */}
         {character.avatarUrl && (
           <button
-            className="absolute top-6 right-6 z-30 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-white/40 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
+            className="absolute top-6 right-6 z-30 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-lr-text-dim hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
             title="Download portrait"
             onClick={(e) => { e.stopPropagation(); downloadPortrait(character.avatarUrl, character.name, notify.error); }}
           >
@@ -57,26 +57,26 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
 
         {/* Player Attribution */}
         <div className="absolute bottom-6 left-8 z-30">
-          <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] block mb-1">Player Character</span>
-          <span className="text-sm font-bold text-white/60 tracking-widest">{character.playerName || 'Unknown Player'}</span>
+          <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] block mb-1">Player Character</span>
+          <span className="text-sm font-bold text-lr-text-muted tracking-widest">{character.playerName || 'Unknown Player'}</span>
         </div>
       </div>
 
       <div className="p-8 cursor-pointer relative" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="flex flex-col gap-4">
           <div className="space-y-1">
-            <h3 className="text-4xl font-serif font-black text-white/95 leading-none italic lowercase tracking-tighter">
+            <h3 className="text-4xl font-serif font-black text-lr-text leading-none italic lowercase tracking-tighter">
               {character.name}
             </h3>
             <div className="flex flex-wrap gap-3 pt-3">
               {(character.class || character.ancestry) && (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[11px] font-bold text-lr-text-dim uppercase tracking-widest">
                   <Shield size={10} className="text-blue-400/50" />
                   {character.class} {character.ancestry && `• ${character.ancestry}`}
                 </div>
               )}
               {character.demiplaneLink && (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-[10px] font-bold text-emerald-400/60 uppercase tracking-widest">
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 text-[11px] font-bold text-emerald-400/60 uppercase tracking-widest">
                   <Zap size={10} />
                   Demiplane Sheet
                 </div>
@@ -101,7 +101,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
                       <ExternalLink size={24} />
                     </div>
                     <div>
-                      <span className="text-[10px] font-black text-emerald-500/40 uppercase tracking-[0.3em] block mb-1">Character Sheet</span>
+                      <span className="text-[11px] font-black text-emerald-500/40 uppercase tracking-[0.3em] block mb-1">Character Sheet</span>
                       <span className="text-sm font-bold text-emerald-400 tracking-wide uppercase">Open on Demiplane</span>
                     </div>
                   </div>
@@ -113,8 +113,8 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
 
             {character.playerNotes && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-blue-400/60 uppercase tracking-[0.3em] font-sans">Character Notes</h4>
-                <div className="prose prose-invert prose-sm font-sans font-medium text-white/50 leading-relaxed max-w-none">
+                <h4 className="text-[11px] font-black text-blue-400/60 uppercase tracking-[0.3em] font-sans">Character Notes</h4>
+                <div className="prose prose-invert prose-sm font-sans font-medium text-lr-text-dim leading-relaxed max-w-none">
                   <p>{character.playerNotes}</p>
                 </div>
               </div>
@@ -122,8 +122,8 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
 
             {character.backstory && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Backstory</h4>
-                <div className="prose prose-invert prose-sm font-sans font-medium text-white/40 leading-relaxed max-w-none italic">
+                <h4 className="text-[11px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Backstory</h4>
+                <div className="prose prose-invert prose-sm font-sans font-medium text-lr-text-dim leading-relaxed max-w-none italic">
                   <p>{character.backstory}</p>
                 </div>
               </div>
@@ -131,11 +131,11 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
 
             {isDM && character.dmNotes && (
               <div className="space-y-3 p-5 rounded-2xl bg-white/[0.02] border border-white/5 border-dashed">
-                <h4 className="flex items-center gap-2 text-[10px] font-black text-rose-400/60 uppercase tracking-[0.3em] font-sans">
+                <h4 className="flex items-center gap-2 text-[11px] font-black text-rose-400/60 uppercase tracking-[0.3em] font-sans">
                   <EyeOff size={10} />
                   DM Notes
                 </h4>
-                <div className="prose prose-invert prose-sm font-sans font-medium text-white/30 leading-relaxed max-w-none">
+                <div className="prose prose-invert prose-sm font-sans font-medium text-lr-text-dim leading-relaxed max-w-none">
                   <p>{character.dmNotes}</p>
                 </div>
               </div>
@@ -144,7 +144,7 @@ export default function CharacterCardSimple({ character, onEdit, onDelete, isDM,
             {canEdit && (
               <div className="flex items-center gap-3 pt-6 border-t border-white/5">
                 <button
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all group/btn"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-lr-text-dim hover:text-white transition-all group/btn"
                   onClick={(e) => { e.stopPropagation(); onEdit(); }}
                 >
                   <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />

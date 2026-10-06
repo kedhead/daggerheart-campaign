@@ -116,14 +116,14 @@ export default function PartyInventoryView({
             >
               <Package size={11} style={{ color: 'var(--text-muted)' }} />
               <span
-                className="text-[10px] font-bold uppercase"
+                className="text-[11px] font-bold uppercase"
                 style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
               >
                 {totalItems} {totalItems === 1 ? 'Artifact' : 'Artifacts'}
               </span>
             </div>
             <span
-              className="text-[10px] font-bold uppercase"
+              className="text-[11px] font-bold uppercase"
               style={{ color: 'var(--text-dim)', letterSpacing: '0.18em' }}
             >
               Shared party payload
@@ -273,7 +273,7 @@ export default function PartyInventoryView({
                     )}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <span
-                        className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md"
+                        className="text-[11px] font-bold uppercase px-2 py-0.5 rounded-md"
                         style={{
                           letterSpacing: '0.18em',
                           color: tone,
@@ -285,14 +285,14 @@ export default function PartyInventoryView({
                       </span>
                       {item.type && (
                         <span
-                          className="text-[9px] font-bold uppercase"
+                          className="text-[11px] font-bold uppercase"
                           style={{ letterSpacing: '0.18em', color: 'var(--text-muted)' }}
                         >
                           {item.type}
                         </span>
                       )}
                       <span
-                        className="text-[10px] font-bold"
+                        className="text-[11px] font-bold"
                         style={{
                           color: 'var(--text-muted)',
                           fontFamily: 'var(--font-mono)',
@@ -323,7 +323,7 @@ export default function PartyInventoryView({
                   return bits.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5 mt-3">
                       {bits.map((b, i) => (
-                        <span key={i} className="text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize"
+                        <span key={i} className="text-[11px] font-semibold px-2 py-0.5 rounded-md capitalize"
                           style={{ background: 'var(--surface-hi)', border: '1px solid var(--line)', color: 'var(--text-muted)' }}>
                           {b}
                         </span>
@@ -366,7 +366,7 @@ export default function PartyInventoryView({
                   style={{ borderTop: '1px solid var(--line)' }}
                 >
                   <span
-                    className="text-[9px] font-bold uppercase"
+                    className="text-[11px] font-bold uppercase"
                     style={{ color: 'var(--text-dim)', letterSpacing: '0.16em' }}
                   >
                     {entry.addedByName ? `Stashed by ${entry.addedByName}` : 'Party stash'}
@@ -383,7 +383,7 @@ export default function PartyInventoryView({
                     >
                       <ArrowRight size={12} style={{ color: 'var(--accent)' }} />
                       <span
-                        className="text-[10px] font-bold uppercase"
+                        className="text-[11px] font-bold uppercase"
                         style={{ letterSpacing: '0.16em' }}
                       >
                         Transfer
@@ -420,7 +420,7 @@ export default function PartyInventoryView({
         <form onSubmit={handleAddToParty} className="space-y-5 pt-2">
           <div className="space-y-1.5">
             <label
-              className="text-[10px] font-bold uppercase block"
+              className="text-[11px] font-bold uppercase block"
               style={{ color: 'var(--text-muted)', letterSpacing: '0.2em' }}
             >
               Select Item
@@ -447,7 +447,7 @@ export default function PartyInventoryView({
 
           <div className="space-y-1.5">
             <label
-              className="text-[10px] font-bold uppercase block"
+              className="text-[11px] font-bold uppercase block"
               style={{ color: 'var(--text-muted)', letterSpacing: '0.2em' }}
             >
               Quantity
@@ -470,7 +470,7 @@ export default function PartyInventoryView({
 
           <div className="space-y-1.5">
             <label
-              className="text-[10px] font-bold uppercase block"
+              className="text-[11px] font-bold uppercase block"
               style={{ color: 'var(--text-muted)', letterSpacing: '0.2em' }}
             >
               Notes

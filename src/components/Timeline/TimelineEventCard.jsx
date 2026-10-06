@@ -36,7 +36,7 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campa
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/50">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-lr-text-dim">
             {event.date && (
               <p className="flex items-center gap-1.5">
                 <CalendarIcon size={14} />
@@ -52,7 +52,7 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campa
           </div>
         </div>
 
-        <button className="text-white/40 hover:text-white transition-colors p-1">
+        <button className="text-lr-text-dim hover:text-white transition-colors p-1">
           {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
         </button>
       </div>
@@ -62,8 +62,8 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campa
         <div className="px-4 pb-4 pt-0 space-y-4 border-t border-white/5 mt-2 pt-4">
           {event.description && (
             <div className="space-y-1">
-              <h4 className="text-sm font-medium text-white/40 uppercase tracking-wider">Description</h4>
-              <div className="text-white/80 leading-relaxed text-sm">
+              <h4 className="text-sm font-medium text-lr-text-dim uppercase tracking-wider">Description</h4>
+              <div className="text-lr-text-muted leading-relaxed text-sm">
                 <WikiText
                   text={event.description}
                   onLinkClick={setViewingEntity}
@@ -75,8 +75,8 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campa
 
           {event.participants && (
             <div className="space-y-1">
-              <h4 className="text-sm font-medium text-white/40 uppercase tracking-wider">Participants</h4>
-              <div className="text-white/80 leading-relaxed text-sm">
+              <h4 className="text-sm font-medium text-lr-text-dim uppercase tracking-wider">Participants</h4>
+              <div className="text-lr-text-muted leading-relaxed text-sm">
                 <WikiText
                   text={event.participants}
                   onLinkClick={setViewingEntity}
@@ -88,8 +88,8 @@ export default function TimelineEventCard({ event, onEdit, onDelete, isDM, campa
 
           {event.outcome && (
             <div className="space-y-1">
-              <h4 className="text-sm font-medium text-white/40 uppercase tracking-wider">Outcome</h4>
-              <div className="text-white/80 leading-relaxed text-sm">
+              <h4 className="text-sm font-medium text-lr-text-dim uppercase tracking-wider">Outcome</h4>
+              <div className="text-lr-text-muted leading-relaxed text-sm">
                 <WikiText
                   text={event.outcome}
                   onLinkClick={setViewingEntity}

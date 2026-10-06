@@ -31,7 +31,7 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
   return (
     <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Event Title <span className="text-red-400">*</span></label>
+        <label className="text-sm font-medium text-lr-text-muted block">Event Title <span className="text-red-400">*</span></label>
         <input
           type="text"
           value={formData.title}
@@ -42,20 +42,20 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">In-Game Date</label>
+        <label className="text-sm font-medium text-lr-text-muted block">In-Game Date</label>
         <input
           type="text"
           value={formData.date}
           onChange={(e) => handleChange('date', e.target.value)}
           placeholder="e.g., Day 15 of Summer, Year 1024"
         />
-        <p className="text-xs text-white/40">
+        <p className="text-xs text-lr-text-dim">
           Use any format that makes sense for your campaign
         </p>
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Location</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Location</label>
         <input
           type="text"
           value={formData.location}
@@ -65,7 +65,7 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Event Type <span className="text-red-400">*</span></label>
+        <label className="text-sm font-medium text-lr-text-muted block">Event Type <span className="text-red-400">*</span></label>
         <div className="relative">
           <select
             value={formData.type}
@@ -78,14 +78,14 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
             <option value="milestone">Milestone - Significant achievement</option>
             <option value="other">Other - Background info or flavor</option>
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-white/50">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-lr-text-dim">
             <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" /></svg>
           </div>
         </div>
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Description</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Description</label>
         <WikiLinkInput
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
@@ -94,11 +94,11 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
           placeholder="What happened? Type [[ to link entities"
           rows={4}
         />
-        <p className="text-xs text-white/40">Type [[ to link to other entities</p>
+        <p className="text-xs text-lr-text-dim">Type [[ to link to other entities</p>
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Participants</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Participants</label>
         <input
           type="text"
           value={formData.participants}
@@ -108,7 +108,7 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm font-medium text-white/80 block">Outcome</label>
+        <label className="text-sm font-medium text-lr-text-muted block">Outcome</label>
         <WikiLinkInput
           value={formData.outcome}
           onChange={(e) => handleChange('outcome', e.target.value)}
@@ -129,7 +129,7 @@ export default function TimelineEventForm({ event, onSave, onCancel, campaign, e
           />
           <div>
             <span className="block text-sm font-medium text-white">Hidden from Players</span>
-            <span className="block text-xs text-white/50">Only you can see this until revealed</span>
+            <span className="block text-xs text-lr-text-dim">Only you can see this until revealed</span>
           </div>
         </div>
       )}

@@ -1,32 +1,17 @@
-import { useEffect, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import './Modal.css';
-
-// Open modals, oldest first. Escape closes only the top one: a confirm opened
-// over an editor used to close both, losing the editor's unsaved work.
-const openStack = [];
 
 export default function Modal({ isOpen, onClose, title, children, size = 'medium' }) {
   const id = useId();
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    openStack.push(id);
-    const onKey = (e) => {
-      if (e.key !== 'Escape' || openStack[openStack.length - 1] !== id) return;
-      e.stopPropagation();
-      onCloseRef.current?.();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      const at = openStack.lastIndexOf(id);
-      if (at !== -1) openStack.splice(at, 1);
-    };
-  }, [isOpen, id]);
+  const dialogRef = useRef(null);
+  const titleId = `${id}-title`;
+  // Focus, Tab and Escape — only the topmost dialog responds (see useDialogFocus).
+  useDialogFocus(dialogRef, isOpen, () => onCloseRef.current?.());
 
   if (!isOpen) return null;
 
@@ -55,6 +40,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
 
       {/* Modal Content */}
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         className={`relative w-full ${sizeClasses[size] || sizeClasses.medium} flex flex-col overflow-hidden rounded-2xl lr-modal-shell`}
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -81,6 +70,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
         >
           <div className="space-y-1.5">
             <h2
+              id={titleId}
               className="text-xl sm:text-2xl"
               style={{
                 fontFamily: 'var(--font-display)',
@@ -97,6 +87,8 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
             />
           </div>
           <button
+            type="button"
+            aria-label="Close"
             className="p-2 rounded-xl transition-all"
             onClick={onClose}
             style={{

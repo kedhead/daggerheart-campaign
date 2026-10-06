@@ -10,7 +10,7 @@ const TRAIT_KEYS = ['agility', 'strength', 'finesse', 'instinct', 'presence', 'k
 
 const INPUT_CLS = 'w-full p-2 bg-black/20 border border-white/10 rounded-md text-white focus:outline-none focus:border-[rgb(var(--color-primary))] text-sm';
 const SELECT_CLS = INPUT_CLS;
-const LABEL_CLS = 'block text-xs font-bold text-white/50 mb-1 uppercase tracking-wider';
+const LABEL_CLS = 'block text-xs font-bold text-lr-text-dim mb-1 uppercase tracking-wider';
 
 export default function DemiplaneImportModal({ isOpen, onClose, addCharacter, character, updateCharacter }) {
   const isUpdate = !!character;
@@ -209,8 +209,8 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter, ch
                 <Image size={36} />
               </div>
               <div className="text-center">
-                <p className="text-white/60 font-semibold mb-1">Drop your PDF or screenshot here</p>
-                <p className="text-white/30 text-sm">PDF · PNG · JPG · WebP · max 32 MB</p>
+                <p className="text-lr-text-muted font-semibold mb-1">Drop your PDF or screenshot here</p>
+                <p className="text-lr-text-dim text-sm">PDF · PNG · JPG · WebP · max 32 MB</p>
               </div>
               <button
                 className="px-6 py-2.5 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-sm font-bold border border-indigo-500/30 transition-colors"
@@ -243,10 +243,10 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter, ch
 
         {/* Phase 2: Loading */}
         {loading && (
-          <div className="flex flex-col items-center justify-center gap-4 py-16 text-white/50">
+          <div className="flex flex-col items-center justify-center gap-4 py-16 text-lr-text-dim">
             <Loader2 size={36} className="animate-spin text-indigo-400" />
-            <p className="font-semibold text-white/60">Reading character sheet with AI…</p>
-            <p className="text-xs text-white/30">This takes about 10–20 seconds</p>
+            <p className="font-semibold text-lr-text-muted">Reading character sheet with AI…</p>
+            <p className="text-xs text-lr-text-dim">This takes about 10–20 seconds</p>
           </div>
         )}
 
@@ -314,7 +314,7 @@ export default function DemiplaneImportModal({ isOpen, onClose, addCharacter, ch
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                   {TRAIT_KEYS.map(t => (
                     <div key={t} className="text-center">
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">{t}</p>
+                      <p className="text-[11px] font-bold text-lr-text-dim uppercase tracking-wider mb-1">{t}</p>
                       <input
                         type="number"
                         min={-2}

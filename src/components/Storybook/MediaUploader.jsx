@@ -56,7 +56,7 @@ export default function MediaUploader({ chapter, storybook }) {
         />
         <label
           htmlFor="storybook-media-input"
-          className="flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed cursor-pointer text-white/60 hover:text-white hover:border-white/30 transition"
+          className="flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed cursor-pointer text-lr-text-muted hover:text-white hover:border-white/30 transition"
           style={{ borderColor: 'var(--line-strong)' }}
         >
           <Upload size={18} />
@@ -78,7 +78,7 @@ export default function MediaUploader({ chapter, storybook }) {
               <button
                 type="button"
                 onClick={() => { setPendingFile(null); setCaption(''); }}
-                className="px-3 py-2 rounded-lg text-white/60 text-sm hover:text-white"
+                className="px-3 py-2 rounded-lg text-lr-text-muted text-sm hover:text-white"
               >
                 Cancel
               </button>
@@ -114,18 +114,18 @@ export default function MediaUploader({ chapter, storybook }) {
               {m.kind === 'image' && <img src={m.url} alt={m.caption || ''} className="w-full h-full object-cover" />}
               {m.kind === 'video' && (
                 <div className="w-full h-full flex items-center justify-center bg-black">
-                  <Film size={32} className="text-white/40" />
+                  <Film size={32} className="text-lr-text-dim" />
                 </div>
               )}
               {m.kind === 'audio' && (
                 <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--surface-hi)' }}>
-                  <Mic size={32} className="text-white/40" />
+                  <Mic size={32} className="text-lr-text-dim" />
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => handleRemove(m.id)}
-                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white/80 hover:bg-red-500/80 hover:text-white"
+                className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-lr-text-muted hover:bg-red-500/80 hover:text-white"
                 aria-label="Remove"
               >
                 <X size={14} />

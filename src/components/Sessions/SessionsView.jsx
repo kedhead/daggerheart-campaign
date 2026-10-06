@@ -165,7 +165,7 @@ export default function SessionsView({
             <BookOpen className="text-[rgb(var(--color-primary))]" size={32} />
             Session Log
           </h2>
-          <p className="text-white/60 text-lg">
+          <p className="text-lr-text-muted text-lg">
             {sessions.length} session{sessions.length !== 1 ? 's' : ''} logged
           </p>
         </div>
@@ -218,10 +218,10 @@ export default function SessionsView({
       {sortedSessions.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-12 bg-[var(--bg-secondary)] border border-white/5 rounded-xl text-center space-y-4">
           <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-2">
-            <ScrollText size={32} className="text-white/40" />
+            <ScrollText size={32} className="text-lr-text-dim" />
           </div>
           <h3 className="text-xl font-bold text-white">No sessions logged yet</h3>
-          <p className="text-white/60 max-w-md">
+          <p className="text-lr-text-muted max-w-md">
             Start tracking your campaign's history by logging your first session.
           </p>
           {isDM && (

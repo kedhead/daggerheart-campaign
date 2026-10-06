@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Sun, Moon, Check, Dices } from 'lucide-react';
 import { getTierForLevel } from '../../data/systems/daggerheart';
 import { scarCount } from '../../utils/daggerheartHope';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import './LevelUpWizard.css';
 
 const d4 = () => Math.floor(Math.random() * 4) + 1;
@@ -23,6 +24,9 @@ const LONG_MOVES = [
 ];
 
 export default function RestModal({ character, onApply, onClose }) {
+  // Mounted only while open: move focus in, keep Tab inside, Escape closes.
+  const dialogRef = useRef(null);
+  useDialogFocus(dialogRef, true, onClose);
   const level = character.level || 1;
   const tier = getTierForLevel(level);
   const scars = scarCount(character);
@@ -228,10 +232,10 @@ export default function RestModal({ character, onApply, onClose }) {
   // phones. Server rendering (smoke tests) has no document — render inline.
   const overlay = (
     <div className="luw-overlay" onClick={onClose}>
-      <div className="luw-modal" onClick={e => e.stopPropagation()}>
+      <div className="luw-modal" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="rest-title" onClick={e => e.stopPropagation()}>
         <div className="luw-header">
-          <h2 className="luw-title"><Dices size={18} style={{ verticalAlign: '-3px', marginRight: 8 }} />Downtime</h2>
-          <button className="luw-close" onClick={onClose}><X size={20} /></button>
+          <h2 className="luw-title" id="rest-title"><Dices size={18} style={{ verticalAlign: '-3px', marginRight: 8 }} />Downtime</h2>
+          <button className="luw-close" onClick={onClose} aria-label="Close"><X size={20} /></button>
         </div>
 
         <div className="luw-body">

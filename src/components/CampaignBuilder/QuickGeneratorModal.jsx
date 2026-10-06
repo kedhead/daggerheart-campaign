@@ -341,7 +341,7 @@ export default function QuickGeneratorModal({
           <div className="space-y-4">
             {/* Portrait Section */}
             <div className="border-b border-white/10 pb-4 mb-2">
-              <label className="block text-sm font-semibold text-white/60 mb-2">Portrait</label>
+              <label className="block text-sm font-semibold text-lr-text-muted mb-2">Portrait</label>
               <div className="flex justify-center">
                 {editableResult.avatarUrl ? (
                   <div className="flex flex-col items-center gap-3">
@@ -365,12 +365,12 @@ export default function QuickGeneratorModal({
                     </button>
                   </div>
                 ) : generatingPortrait ? (
-                  <div className="flex flex-col items-center justify-center gap-2 p-8 text-white/40">
+                  <div className="flex flex-col items-center justify-center gap-2 p-8 text-lr-text-dim">
                     <Loader2 size={32} className="animate-spin" />
                     <span>Generating portrait...</span>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center gap-2 p-6 text-white/40 bg-black/20 border-2 border-dashed border-white/10 rounded-lg min-w-[150px]">
+                  <div className="flex flex-col items-center justify-center gap-2 p-6 text-lr-text-dim bg-black/20 border-2 border-dashed border-white/10 rounded-lg min-w-[150px]">
                     <ImageIcon size={32} className="opacity-50" />
                     <span>No portrait</span>
                     <button
@@ -392,7 +392,7 @@ export default function QuickGeneratorModal({
             </div>
 
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Name *</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Name *</label>
               <input
                 type="text"
                 value={editableResult.name || ''}
@@ -401,7 +401,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Occupation</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Occupation</label>
               <input
                 type="text"
                 value={editableResult.occupation || ''}
@@ -410,7 +410,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Location</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Location</label>
               <input
                 type="text"
                 value={editableResult.location || ''}
@@ -419,7 +419,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Relationship</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Relationship</label>
               <select
                 value={editableResult.relationship || 'neutral'}
                 onChange={(e) => handleFieldChange('relationship', e.target.value)}
@@ -431,7 +431,7 @@ export default function QuickGeneratorModal({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Description</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Description</label>
               <textarea
                 value={editableResult.description || ''}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
@@ -439,7 +439,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Notes</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Notes</label>
               <textarea
                 value={editableResult.notes || ''}
                 onChange={(e) => handleFieldChange('notes', e.target.value)}
@@ -447,7 +447,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">First Met</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">First Met</label>
               <textarea
                 value={editableResult.firstMet || ''}
                 onChange={(e) => handleFieldChange('firstMet', e.target.value)}
@@ -469,7 +469,7 @@ export default function QuickGeneratorModal({
           </h3>
           <div className="space-y-4">
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Name *</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Name *</label>
               <input
                 type="text"
                 value={editableResult.name || ''}
@@ -478,7 +478,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Type</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Type</label>
               <select
                 value={editableResult.type || 'other'}
                 onChange={(e) => handleFieldChange('type', e.target.value)}
@@ -494,7 +494,7 @@ export default function QuickGeneratorModal({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Region</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Region</label>
               <input
                 type="text"
                 value={editableResult.region || ''}
@@ -503,7 +503,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Description</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Description</label>
               <textarea
                 value={editableResult.description || ''}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
@@ -511,7 +511,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Notable Features</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Notable Features</label>
               <textarea
                 value={editableResult.notableFeatures || ''}
                 onChange={(e) => handleFieldChange('notableFeatures', e.target.value)}
@@ -519,7 +519,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Secrets</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Secrets</label>
               <textarea
                 value={editableResult.secrets || ''}
                 onChange={(e) => handleFieldChange('secrets', e.target.value)}
@@ -527,7 +527,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Inhabitants</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Inhabitants</label>
               <textarea
                 value={editableResult.inhabitants || ''}
                 onChange={(e) => handleFieldChange('inhabitants', e.target.value)}
@@ -549,7 +549,7 @@ export default function QuickGeneratorModal({
           </h3>
           <div className="space-y-4">
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Title *</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Title *</label>
               <input
                 type="text"
                 value={editableResult.title || ''}
@@ -558,7 +558,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Category</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Category</label>
               <select
                 value={editableResult.category || 'history'}
                 onChange={(e) => handleFieldChange('category', e.target.value)}
@@ -575,7 +575,7 @@ export default function QuickGeneratorModal({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Content</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Content</label>
               <textarea
                 value={editableResult.content || ''}
                 onChange={(e) => handleFieldChange('content', e.target.value)}
@@ -596,7 +596,7 @@ export default function QuickGeneratorModal({
           </h3>
           <div className="space-y-4">
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Name *</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Name *</label>
               <input
                 type="text"
                 value={editableResult.name || ''}
@@ -605,7 +605,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Difficulty</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Difficulty</label>
               <select
                 value={editableResult.difficulty || 'medium'}
                 onChange={(e) => handleFieldChange('difficulty', e.target.value)}
@@ -618,7 +618,7 @@ export default function QuickGeneratorModal({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Environment</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Environment</label>
               <textarea
                 value={editableResult.environment || ''}
                 onChange={(e) => handleFieldChange('environment', e.target.value)}
@@ -627,7 +627,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Description</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Description</label>
               <textarea
                 value={editableResult.description || ''}
                 onChange={(e) => handleFieldChange('description', e.target.value)}
@@ -635,7 +635,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Enemies</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Enemies</label>
               <textarea
                 value={editableResult.enemies || ''}
                 onChange={(e) => handleFieldChange('enemies', e.target.value)}
@@ -643,7 +643,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Tactics</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Tactics</label>
               <textarea
                 value={editableResult.tactics || ''}
                 onChange={(e) => handleFieldChange('tactics', e.target.value)}
@@ -651,7 +651,7 @@ export default function QuickGeneratorModal({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-sm font-semibold text-white/60">Rewards</label>
+              <label className="block text-sm font-semibold text-lr-text-muted">Rewards</label>
               <textarea
                 value={editableResult.rewards || ''}
                 onChange={(e) => handleFieldChange('rewards', e.target.value)}
@@ -678,7 +678,7 @@ export default function QuickGeneratorModal({
                     Add
                   </button>
                 </div>
-                <p className="text-xs text-white/50">
+                <p className="text-xs text-lr-text-dim">
                   Review and tweak before saving. Each will be statted up and added to your campaign's adversary list, then linked to this encounter.
                 </p>
                 {adversaryStubs.map((stub) => (
@@ -704,7 +704,7 @@ export default function QuickGeneratorModal({
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="block text-xs text-white/50 mb-1">Tier</label>
+                        <label className="block text-xs text-lr-text-dim mb-1">Tier</label>
                         <select
                           value={stub.tier}
                           onChange={(e) => handleStubChange(stub.id, 'tier', Number(e.target.value))}
@@ -718,7 +718,7 @@ export default function QuickGeneratorModal({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-white/50 mb-1">Role</label>
+                        <label className="block text-xs text-lr-text-dim mb-1">Role</label>
                         <select
                           value={stub.role}
                           onChange={(e) => handleStubChange(stub.id, 'role', e.target.value)}
@@ -743,7 +743,7 @@ export default function QuickGeneratorModal({
                         </select>
                       </div>
                       <div>
-                        <label className="block text-xs text-white/50 mb-1">Quantity</label>
+                        <label className="block text-xs text-lr-text-dim mb-1">Quantity</label>
                         <input
                           type="number"
                           min="1"

@@ -162,7 +162,7 @@ export default function ChapterEditor({
         <button
           type="button"
           onClick={onBack}
-          className="self-start inline-flex items-center gap-2 text-white/60 hover:text-white text-sm font-semibold"
+          className="self-start inline-flex items-center gap-2 text-lr-text-muted hover:text-white text-sm font-semibold"
         >
           <ArrowLeft size={16} /> Back
         </button>
@@ -170,7 +170,7 @@ export default function ChapterEditor({
           <button
             type="button"
             onClick={onView}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-white/80 hover:bg-white/10 text-sm font-semibold"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-lr-text-muted hover:bg-white/10 text-sm font-semibold"
           >
             <Eye size={14} /> Preview
           </button>
@@ -178,7 +178,7 @@ export default function ChapterEditor({
             type="button"
             onClick={handleSave}
             disabled={saving || !isDirty}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white/80 text-sm font-semibold border disabled:opacity-40"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-lr-text-muted text-sm font-semibold border disabled:opacity-40"
             style={{
               background: isDirty ? 'color-mix(in srgb, var(--primary) 18%, transparent)' : 'transparent',
               borderColor: 'var(--line-strong)'
@@ -214,7 +214,7 @@ export default function ChapterEditor({
       </header>
 
       <div className="space-y-2">
-        <label className="block text-xs font-bold uppercase tracking-widest text-white/40">Title</label>
+        <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">Title</label>
         <input
           type="text"
           value={title}
@@ -247,14 +247,14 @@ export default function ChapterEditor({
 
       {activeTab === 'prose' && (
         <div className="space-y-2">
-          <label className="block text-xs font-bold uppercase tracking-widest text-white/40">
+          <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">
             Prose (markdown supported)
           </label>
           <textarea
             value={prose}
             onChange={(e) => setProse(e.target.value)}
             rows={22}
-            className="w-full p-4 rounded-xl bg-black/20 border border-white/10 text-white/90 text-sm focus:outline-none focus:border-[color:var(--primary)]"
+            className="w-full p-4 rounded-xl bg-black/20 border border-white/10 text-lr-text text-sm focus:outline-none focus:border-[color:var(--primary)]"
             style={{ fontFamily: 'var(--font-body)', lineHeight: 1.7 }}
           />
         </div>
@@ -270,7 +270,7 @@ export default function ChapterEditor({
               borderColor: 'var(--line)'
             }}
           >
-            <label className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+            <label className="text-[11px] font-bold uppercase tracking-widest text-lr-text-dim">
               Regenerate using
             </label>
             <select
@@ -287,7 +287,7 @@ export default function ChapterEditor({
           </div>
 
           {(chapter.scenes || []).length === 0 && (
-            <p className="text-sm text-white/50 italic">No scenes on this chapter yet.</p>
+            <p className="text-sm text-lr-text-dim italic">No scenes on this chapter yet.</p>
           )}
           {(chapter.scenes || []).map((scene, idx) => {
             const promptDirty = Object.prototype.hasOwnProperty.call(editedPrompts, scene.id)
@@ -305,7 +305,7 @@ export default function ChapterEditor({
                 {scene.imageUrl && <img src={scene.imageUrl} alt={scene.caption} className="w-full h-full object-cover" />}
               </div>
               <div className="space-y-3">
-                <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                <div className="text-[11px] font-bold text-lr-text-dim uppercase tracking-widest">
                   Scene {idx + 1}
                   {!scene.imageUrl && (
                     <span className="ml-2 text-amber-300 normal-case tracking-normal">
@@ -323,14 +323,14 @@ export default function ChapterEditor({
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                    <label className="text-[11px] font-bold uppercase tracking-widest text-lr-text-dim">
                       Image prompt {promptDirty && <span className="text-amber-300 ml-1">(unsaved)</span>}
                     </label>
                     {promptDirty && (
                       <button
                         type="button"
                         onClick={() => handlePromptSave(scene)}
-                        className="text-[10px] font-semibold text-white/70 hover:text-white px-2 py-0.5 rounded border border-white/15"
+                        className="text-[11px] font-semibold text-lr-text-muted hover:text-white px-2 py-0.5 rounded border border-white/15"
                       >
                         Save prompt
                       </button>
@@ -341,16 +341,16 @@ export default function ChapterEditor({
                     onChange={(e) => handlePromptChange(scene.id, e.target.value)}
                     placeholder="Visual prompt — what should appear in this scene?"
                     rows={4}
-                    className="w-full p-2 rounded-lg bg-black/30 border border-white/10 text-white/85 text-xs font-mono"
+                    className="w-full p-2 rounded-lg bg-black/30 border border-white/10 text-lr-text-muted text-xs font-mono"
                     style={{ lineHeight: 1.5 }}
                   />
-                  <p className="text-[10px] text-white/35">
+                  <p className="text-[11px] text-lr-text-dim">
                     Edit the prompt to fine-tune the image. Regenerate uses whatever's in this box and saves it back to the chapter.
                   </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                  <label className="text-[11px] font-bold uppercase tracking-widest text-lr-text-dim">
                     Who's in this scene ({(scene.featuredEntityIds || []).length})
                   </label>
                   <div
@@ -358,7 +358,7 @@ export default function ChapterEditor({
                     style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid var(--line)' }}
                   >
                     {castOptions.length === 0 && (
-                      <span className="text-[10px] text-white/35">No characters, NPCs or adversaries in this campaign yet.</span>
+                      <span className="text-[11px] text-lr-text-dim">No characters, NPCs or adversaries in this campaign yet.</span>
                     )}
                     {castOptions.map(opt => {
                       const on = (scene.featuredEntityIds || []).includes(opt.id);
@@ -368,7 +368,7 @@ export default function ChapterEditor({
                           type="button"
                           onClick={() => toggleSceneCast(scene, opt.id)}
                           title={opt.group}
-                          className="text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors"
+                          className="text-[11px] font-semibold px-2 py-1 rounded-full border transition-colors"
                           style={{
                             background: on ? 'color-mix(in srgb, var(--primary) 30%, transparent)' : 'rgba(255,255,255,0.04)',
                             borderColor: on ? 'color-mix(in srgb, var(--primary) 60%, transparent)' : 'rgba(255,255,255,0.12)',
@@ -380,7 +380,7 @@ export default function ChapterEditor({
                       );
                     })}
                   </div>
-                  <p className="text-[10px] text-white/35">
+                  <p className="text-[11px] text-lr-text-dim">
                     This is what actually controls who gets drawn — each selected character's
                     portrait is sent to the image model as a reference. Naming someone in the
                     prompt without selecting them here leaves the model to invent their face.
@@ -392,7 +392,7 @@ export default function ChapterEditor({
                     type="button"
                     onClick={() => handleSceneRegenerate(scene)}
                     disabled={regeneratingId === scene.id}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-white/80 bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-lr-text-muted bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50"
                   >
                     <RefreshCw size={12} className={regeneratingId === scene.id ? 'animate-spin' : ''} />
                     {regeneratingId === scene.id ? 'Regenerating…' : 'Regenerate'}
@@ -414,7 +414,7 @@ export default function ChapterEditor({
       {activeTab === 'spotlights' && (
         <div className="space-y-3">
           {(chapter.spotlights || []).length === 0 && (
-            <p className="text-sm text-white/50 italic">No spotlight cards on this chapter.</p>
+            <p className="text-sm text-lr-text-dim italic">No spotlight cards on this chapter.</p>
           )}
           {(chapter.spotlights || []).map((s, idx) => (
             <div
@@ -428,11 +428,11 @@ export default function ChapterEditor({
               <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0" style={{ background: 'var(--surface-hi)' }}>
                 {s.portraitUrl
                   ? <img src={s.portraitUrl} alt={s.name} className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">{(s.name || '?').slice(0, 1)}</div>}
+                  : <div className="w-full h-full flex items-center justify-center text-lr-text-dim text-xs">{(s.name || '?').slice(0, 1)}</div>}
               </div>
               <div className="flex-1">
                 <div className="font-bold text-white font-cinzel">{s.name}</div>
-                <div className="text-[10px] uppercase tracking-widest text-white/40 mb-1">{s.entityType}</div>
+                <div className="text-[11px] uppercase tracking-widest text-lr-text-dim mb-1">{s.entityType}</div>
                 <input
                   type="text"
                   value={s.moment || ''}
@@ -451,7 +451,7 @@ export default function ChapterEditor({
                   const next = (chapter.spotlights || []).filter(x => x !== s);
                   await storybook.updateChapter(chapter.id, { spotlights: next });
                 }}
-                className="self-start text-white/30 hover:text-red-400"
+                className="self-start text-lr-text-dim hover:text-red-400"
                 aria-label="Remove"
               >
                 <Trash2 size={14} />

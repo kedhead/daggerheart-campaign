@@ -332,7 +332,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
           return (
             <button
               key={tab.id}
-              className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${isActive ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
+              className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[11px] uppercase font-medium tracking-wide transition-colors ${isActive ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
               onClick={() => setActivePanel(tab.id)}
               title={tab.label}
             >
@@ -342,7 +342,7 @@ export default function BattleMapStudio({ campaign, isDM }) {
           );
         })}
         <button
-          className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${activePanel === 'maps' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
+          className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[11px] uppercase font-medium tracking-wide transition-colors ${activePanel === 'maps' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
           onClick={() => setActivePanel('maps')}
         >
           <FolderOpen size={16} />
@@ -353,14 +353,14 @@ export default function BattleMapStudio({ campaign, isDM }) {
         {isMobile && (
           <>
             <button
-              className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${activePanel === 'grid' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
+              className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[11px] uppercase font-medium tracking-wide transition-colors ${activePanel === 'grid' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
               onClick={() => setActivePanel('grid')}
             >
               <Grid size={16} />
               Grid
             </button>
             <button
-              className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[10px] uppercase font-medium tracking-wide transition-colors ${activePanel === 'animate' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
+              className={`flex-1 min-w-[60px] flex flex-col items-center gap-1 py-2 px-1 rounded-md text-[11px] uppercase font-medium tracking-wide transition-colors ${activePanel === 'animate' ? 'bg-zinc-800 text-indigo-400' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'}`}
               onClick={() => setActivePanel('animate')}
             >
               <CloudRain size={16} />

@@ -99,7 +99,7 @@ export default function QuestCard({
                 />
 
                 {quest.hidden && (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-white/5 text-white/40">
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-white/5 text-lr-text-dim">
                     <EyeOff size={12} />
                     <span>Hidden</span>
                   </div>
@@ -117,7 +117,7 @@ export default function QuestCard({
                   {statusConfig.label}
                 </span>
                 {totalCount > 0 && (
-                  <span className="text-white/40">
+                  <span className="text-lr-text-dim">
                     {completedCount}/{totalCount} objectives
                   </span>
                 )}
@@ -147,8 +147,8 @@ export default function QuestCard({
           {/* Description */}
           {quest.description && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Description</h4>
-              <div className="text-white/80 text-sm leading-relaxed">
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Description</h4>
+              <div className="text-lr-text-muted text-sm leading-relaxed">
                 <WikiText
                   text={quest.description}
                   getEntity={getByName}
@@ -160,7 +160,7 @@ export default function QuestCard({
           {/* Objectives */}
           {objectives.length > 0 && (
             <div className="space-y-3">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Objectives</h4>
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Objectives</h4>
               <ul className="space-y-2">
                 {objectives.map(objective => (
                   <li
@@ -177,7 +177,7 @@ export default function QuestCard({
                     <div className={objective.completed ? 'text-emerald-400' : 'text-white/20'}>
                       {objective.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
                     </div>
-                    <span className={`text-sm ${objective.completed ? 'text-white/40 line-through' : 'text-white/90'}`}>
+                    <span className={`text-sm ${objective.completed ? 'text-lr-text-dim line-through' : 'text-lr-text'}`}>
                       {objective.text}
                     </span>
                   </li>
@@ -189,7 +189,7 @@ export default function QuestCard({
           {/* Rewards */}
           {quest.rewards && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-white/40 uppercase tracking-wider">Rewards</h4>
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Rewards</h4>
               <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg">
                 <WikiText
                   text={quest.rewards}
@@ -243,14 +243,14 @@ export default function QuestCard({
 
               <div className="flex gap-2">
                 <button
-                  className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                  className="p-2 text-lr-text-dim hover:text-white hover:bg-white/10 rounded-lg transition-all"
                   onClick={(e) => { e.stopPropagation(); onEdit(); }}
                   title="Edit Quest"
                 >
                   <Edit2 size={16} />
                 </button>
                 <button
-                  className="p-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                  className="p-2 text-lr-text-dim hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                   onClick={(e) => { e.stopPropagation(); onDelete(); }}
                   title="Delete Quest"
                 >

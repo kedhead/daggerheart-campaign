@@ -124,7 +124,7 @@ export default function SessionPlanner({ campaign, isDM }) {
         <div className="p-8 bg-[var(--bg-secondary)] border border-white/5 rounded-xl text-center space-y-4">
           <AlertCircle size={48} className="text-white/20 mx-auto" />
           <h2 className="text-2xl font-bold text-white">DM Access Only</h2>
-          <p className="text-white/60">Only Dungeon Masters can access the session planner.</p>
+          <p className="text-lr-text-muted">Only Dungeon Masters can access the session planner.</p>
         </div>
       </div>
     );
@@ -135,7 +135,7 @@ export default function SessionPlanner({ campaign, isDM }) {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 py-4">
         <div>
           <h2 className="text-3xl font-bold text-white font-cinzel">Session Planner</h2>
-          <p className="text-white/60 text-lg">Plan and organize your campaign sessions</p>
+          <p className="text-lr-text-muted text-lg">Plan and organize your campaign sessions</p>
         </div>
         {!isAdding && (
           <button
@@ -155,7 +155,7 @@ export default function SessionPlanner({ campaign, isDM }) {
           <div className="flex justify-between items-center pb-4 border-b border-white/5">
             <h3 className="text-xl font-bold text-white">{editingId ? 'Edit Session' : 'New Session'}</h3>
             <button
-              className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+              className="p-2 rounded-lg text-lr-text-dim hover:text-white hover:bg-white/10 transition-colors"
               onClick={resetForm}
             >
               <X size={20} />
@@ -165,7 +165,7 @@ export default function SessionPlanner({ campaign, isDM }) {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
-                <label htmlFor="name" className="block text-sm font-semibold text-white/60">Session Name *</label>
+                <label htmlFor="name" className="block text-sm font-semibold text-lr-text-muted">Session Name *</label>
                 <input
                   id="name"
                   type="text"
@@ -177,9 +177,9 @@ export default function SessionPlanner({ campaign, isDM }) {
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="date" className="block text-sm font-semibold text-white/60">Date</label>
+                <label htmlFor="date" className="block text-sm font-semibold text-lr-text-muted">Date</label>
                 <div className="relative">
-                  <Calendar size={18} className="absolute left-3 top-3.5 text-white/40 pointer-events-none" />
+                  <Calendar size={18} className="absolute left-3 top-3.5 text-lr-text-dim pointer-events-none" />
                   <input
                     id="date"
                     type="datetime-local"
@@ -192,7 +192,7 @@ export default function SessionPlanner({ campaign, isDM }) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="status" className="block text-sm font-semibold text-white/60">Status</label>
+              <label htmlFor="status" className="block text-sm font-semibold text-lr-text-muted">Status</label>
               <select
                 id="status"
                 value={formData.status}
@@ -206,9 +206,9 @@ export default function SessionPlanner({ campaign, isDM }) {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="encounterLinks" className="block text-sm font-semibold text-white/60">Encounter Links</label>
+              <label htmlFor="encounterLinks" className="block text-sm font-semibold text-lr-text-muted">Encounter Links</label>
               <div className="relative">
-                <LinkIcon size={18} className="absolute left-3 top-3.5 text-white/40 pointer-events-none" />
+                <LinkIcon size={18} className="absolute left-3 top-3.5 text-lr-text-dim pointer-events-none" />
                 <input
                   id="encounterLinks"
                   type="text"
@@ -218,11 +218,11 @@ export default function SessionPlanner({ campaign, isDM }) {
                   className="w-full p-3 pl-10 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
                 />
               </div>
-              <p className="text-xs text-white/40 mt-1">Paste FreshCutGrass encounter link(s), separate multiple with commas</p>
+              <p className="text-xs text-lr-text-dim mt-1">Paste FreshCutGrass encounter link(s), separate multiple with commas</p>
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="notes" className="block text-sm font-semibold text-white/60">Session Notes</label>
+              <label htmlFor="notes" className="block text-sm font-semibold text-lr-text-muted">Session Notes</label>
               <textarea
                 id="notes"
                 value={formData.notes}
@@ -257,10 +257,10 @@ export default function SessionPlanner({ campaign, isDM }) {
         {sessions.length === 0 && !isAdding ? (
           <div className="flex flex-col items-center justify-center p-12 bg-[var(--bg-secondary)] border border-white/5 rounded-xl text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-2">
-              <Calendar size={32} className="text-white/40" />
+              <Calendar size={32} className="text-lr-text-dim" />
             </div>
             <h3 className="text-xl font-bold text-white">No sessions planned yet</h3>
-            <p className="text-white/60 max-w-md">
+            <p className="text-lr-text-muted max-w-md">
               Start planning your next adventure by creating a session plan.
             </p>
             <button className="btn btn-primary mt-4" onClick={() => setIsAdding(true)}>
@@ -280,7 +280,7 @@ export default function SessionPlanner({ campaign, isDM }) {
                     </span>
                   </div>
                   {session.date && (
-                    <div className="flex items-center gap-2 text-sm text-white/50">
+                    <div className="flex items-center gap-2 text-sm text-lr-text-dim">
                       <Calendar size={14} />
                       <span>{new Date(session.date).toLocaleString()}</span>
                     </div>
@@ -288,14 +288,14 @@ export default function SessionPlanner({ campaign, isDM }) {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-lg text-lr-text-dim hover:text-white hover:bg-white/10 transition-colors"
                     onClick={() => handleEdit(session)}
                     title="Edit session"
                   >
                     <Edit2 size={18} />
                   </button>
                   <button
-                    className="p-2 rounded-lg text-white/40 hover:text-red-500 hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-lg text-lr-text-dim hover:text-red-500 hover:bg-white/10 transition-colors"
                     onClick={() => handleDelete(session.id)}
                     title="Delete session"
                   >
@@ -306,7 +306,7 @@ export default function SessionPlanner({ campaign, isDM }) {
 
               {session.encounterLinks && (
                 <div className="flex items-start gap-3 mb-4 p-3 bg-black/20 rounded-lg border border-white/5">
-                  <LinkIcon size={16} className="text-white/40 mt-1 shrink-0" />
+                  <LinkIcon size={16} className="text-lr-text-dim mt-1 shrink-0" />
                   <div className="flex flex-wrap gap-2">
                     {session.encounterLinks.split(',').map((link, index) => (
                       <a
@@ -325,7 +325,7 @@ export default function SessionPlanner({ campaign, isDM }) {
 
               {session.notes && (
                 <div className="p-4 bg-black/20 rounded-lg border border-white/5 border-l-4 border-l-[var(--hope-color)]">
-                  <p className="text-white/80 whitespace-pre-wrap leading-relaxed">{session.notes}</p>
+                  <p className="text-lr-text-muted whitespace-pre-wrap leading-relaxed">{session.notes}</p>
                 </div>
               )}
             </div>

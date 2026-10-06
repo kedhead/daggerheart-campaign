@@ -111,7 +111,7 @@ export default function QuestsView({
             <Target className="text-[rgb(var(--color-primary))]" size={32} />
             Quest Log
           </h2>
-          <p className="text-white/60 text-lg">
+          <p className="text-lr-text-muted text-lg">
             {statusCounts.active} active {statusCounts.active === 1 ? 'quest' : 'quests'}
           </p>
         </div>
@@ -126,13 +126,13 @@ export default function QuestsView({
       {/* Controls */}
       <div className="flex flex-col gap-4 sticky top-0 z-20 bg-[var(--bg-primary)]/80 backdrop-blur-xl p-4 -mx-4 rounded-xl border border-white/5 md:flex-row md:items-center md:justify-between shadow-lg">
         <div className="relative flex-1 max-w-md">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-lr-text-dim" />
           <input
             type="text"
             placeholder="Search quests..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-primary))]"
+            className="w-full pl-10 pr-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder:text-lr-text-dim focus:outline-none focus:ring-1 focus:ring-[rgb(var(--color-primary))]"
           />
         </div>
 
@@ -145,7 +145,7 @@ export default function QuestsView({
                 whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all border
                 ${statusFilter === filter.value
                   ? 'bg-[rgb(var(--color-primary))]/20 text-[rgb(var(--color-primary))] border-[rgb(var(--color-primary))]/50'
-                  : 'bg-white/5 text-white/60 border-transparent hover:bg-white/10 hover:text-white'}
+                  : 'bg-white/5 text-lr-text-muted border-transparent hover:bg-white/10 hover:text-white'}
               `}
             >
               {filter.label}
@@ -184,7 +184,7 @@ export default function QuestsView({
             <Target size={32} />
           </div>
           <h3 className="text-xl font-medium text-white mb-2">No quests found</h3>
-          <p className="text-white/40 max-w-sm mb-6">
+          <p className="text-lr-text-dim max-w-sm mb-6">
             {statusFilter !== 'all'
               ? `No ${statusFilter} quests match your criteria.`
               : 'The adventure log is empty.'}

@@ -46,16 +46,16 @@ export default function CommunitiesStep({ value, onChange }) {
       <div className="space-y-6">
         {/* Added Communities List */}
         <div className="space-y-3">
-          <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider flex items-center justify-between">
+          <h3 className="text-sm font-bold text-lr-text-muted uppercase tracking-wider flex items-center justify-between">
             <span>Your Communities</span>
-            <span className="text-white/40 text-xs normal-case font-normal">{communities.length} added</span>
+            <span className="text-lr-text-dim text-xs normal-case font-normal">{communities.length} added</span>
           </h3>
 
           {communities.length === 0 ? (
             <div className="p-8 text-center border-2 border-dashed border-white/10 rounded-xl bg-white/5">
               <Users className="mx-auto text-white/20 mb-3" size={32} />
-              <p className="text-white/60">No communities added yet.</p>
-              <p className="text-sm text-white/40 mt-1">Add standard Daggerheart communities or create your own.</p>
+              <p className="text-lr-text-muted">No communities added yet.</p>
+              <p className="text-sm text-lr-text-dim mt-1">Add standard Daggerheart communities or create your own.</p>
             </div>
           ) : (
             <div className="grid gap-3">
@@ -69,7 +69,7 @@ export default function CommunitiesStep({ value, onChange }) {
                     <X size={16} />
                   </button>
                   <h4 className="font-bold text-white mb-1">{community.name}</h4>
-                  <p className="text-sm text-white/70">{community.description}</p>
+                  <p className="text-sm text-lr-text-muted">{community.description}</p>
                 </div>
               ))}
             </div>
@@ -105,12 +105,12 @@ export default function CommunitiesStep({ value, onChange }) {
                         <span className="font-bold text-white text-sm">{name}</span>
                         <Plus size={14} className="text-[rgb(var(--color-primary))] opacity-0 group-hover:opacity-100" />
                       </div>
-                      <p className="text-xs text-white/50 line-clamp-1">{desc}</p>
+                      <p className="text-xs text-lr-text-dim line-clamp-1">{desc}</p>
                     </button>
                   );
                 })}
                 {Object.keys(COMMUNITIES).every(name => communities.some(c => c.name === name)) && (
-                  <p className="text-center text-xs text-white/40 py-2">All standard communities added</p>
+                  <p className="text-center text-xs text-lr-text-dim py-2">All standard communities added</p>
                 )}
               </div>
             )}

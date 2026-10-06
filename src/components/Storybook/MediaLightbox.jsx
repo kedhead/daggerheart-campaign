@@ -1,17 +1,20 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function MediaLightbox({ items, index, onClose, onNavigate }) {
+  const dialogRef = useRef(null);
+  // Escape goes through the dialog stack, so it closes only the top dialog.
+  useDialogFocus(dialogRef, !!items?.length, onClose);
   useEffect(() => {
     const handler = (e) => {
-      if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowLeft') onNavigate(-1);
       if (e.key === 'ArrowRight') onNavigate(1);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [onClose, onNavigate]);
+  }, [onNavigate]);
 
   if (!items || items.length === 0) return null;
   const item = items[index];
@@ -25,6 +28,10 @@ export default function MediaLightbox({ items, index, onClose, onNavigate }) {
 
   return createPortal(
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={item.caption || 'Media viewer'}
       className="fixed inset-0 z-[200] flex items-center justify-center"
       style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
@@ -60,7 +67,7 @@ export default function MediaLightbox({ items, index, onClose, onNavigate }) {
       <div onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-3">
         {content}
         {item.caption && (
-          <p className="text-sm text-white/70 max-w-2xl text-center px-4">{item.caption}</p>
+          <p className="text-sm text-lr-text-muted max-w-2xl text-center px-4">{item.caption}</p>
         )}
       </div>
     </div>,

@@ -36,7 +36,7 @@ export default function AncestriesStep({ value, onChange }) {
     >
       <div className="space-y-4">
         <div className="flex justify-between items-center pb-2 border-b border-white/10">
-          <label className="text-sm font-bold text-white/80 uppercase tracking-wider">Available Ancestries</label>
+          <label className="text-sm font-bold text-lr-text-muted uppercase tracking-wider">Available Ancestries</label>
           <button
             onClick={toggleAll}
             className="text-xs text-[rgb(var(--color-primary))] hover:underline"
@@ -70,8 +70,8 @@ export default function AncestriesStep({ value, onChange }) {
                     {isSelected && <Check size={14} strokeWidth={3} />}
                   </div>
                   <div>
-                    <h4 className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-white/80'}`}>{name}</h4>
-                    <p className="text-xs text-white/50 mt-1 line-clamp-2">{description}</p>
+                    <h4 className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-lr-text-muted'}`}>{name}</h4>
+                    <p className="text-xs text-lr-text-dim mt-1 line-clamp-2">{description}</p>
                   </div>
                 </div>
               </div>

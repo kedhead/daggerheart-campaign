@@ -47,15 +47,15 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
         <div className="absolute top-6 left-6">
           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 backdrop-blur-xl bg-black/40 ${getTypeStyles(location.type)}`}>
             <MapPin size={12} strokeWidth={3} />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">{location.type || 'Sector'}</span>
+            <span className="text-[11px] font-black uppercase tracking-[0.2em]">{location.type || 'Sector'}</span>
           </div>
         </div>
 
         {/* Region Overprint */}
         {location.region && (
           <div className="absolute bottom-6 left-8">
-            <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.4em] block mb-1">Regional Sector</span>
-            <span className="text-sm font-bold text-white/60 tracking-widest">{location.region}</span>
+            <span className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em] block mb-1">Regional Sector</span>
+            <span className="text-sm font-bold text-lr-text-muted tracking-widest">{location.region}</span>
           </div>
         )}
       </div>
@@ -77,15 +77,15 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
             }}
             disabled={!isDM || isEmbedded || !onUpdate}
             as="h3"
-            className="text-4xl font-serif font-black text-white/95 tracking-tighter italic lowercase leading-none"
+            className="text-4xl font-serif font-black text-lr-text tracking-tighter italic lowercase leading-none"
           />
 
           {isExpanded && (
             <div className="space-y-10 mt-10 animate-in fade-in slide-in-from-top-6 duration-200">
               {location.description && (
                 <div className="space-y-3">
-                  <h4 className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Topography/Atmosphere</h4>
-                  <div className="prose prose-invert prose-sm font-sans font-medium text-white/60 leading-relaxed max-w-none">
+                  <h4 className="text-[11px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Topography/Atmosphere</h4>
+                  <div className="prose prose-invert prose-sm font-sans font-medium text-lr-text-muted leading-relaxed max-w-none">
                     <WikiText
                       text={location.description}
                       onLinkClick={setViewingEntity}
@@ -98,8 +98,8 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {location.notableFeatures && (
                   <div className="space-y-3">
-                    <h4 className="text-[10px] font-black text-amber-400/60 uppercase tracking-[0.3em] font-sans">Landmarks</h4>
-                    <div className="text-xs text-white/50 leading-relaxed font-sans font-medium">
+                    <h4 className="text-[11px] font-black text-amber-400/60 uppercase tracking-[0.3em] font-sans">Landmarks</h4>
+                    <div className="text-xs text-lr-text-dim leading-relaxed font-sans font-medium">
                       <WikiText
                         text={location.notableFeatures}
                         onLinkClick={setViewingEntity}
@@ -110,8 +110,8 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
                 )}
                 {location.inhabitants && (
                   <div className="space-y-3">
-                    <h4 className="text-[10px] font-black text-emerald-400/60 uppercase tracking-[0.3em] font-sans">Population</h4>
-                    <div className="text-xs text-white/50 leading-relaxed font-sans font-medium">
+                    <h4 className="text-[11px] font-black text-emerald-400/60 uppercase tracking-[0.3em] font-sans">Population</h4>
+                    <div className="text-xs text-lr-text-dim leading-relaxed font-sans font-medium">
                       <WikiText
                         text={location.inhabitants}
                         onLinkClick={setViewingEntity}
@@ -135,8 +135,8 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
 
               {location.secrets && isDM && (
                 <div className="space-y-3 p-6 rounded-3xl bg-red-500/5 border border-red-500/10 border-dashed">
-                  <h4 className="text-[10px] font-black text-red-400/60 uppercase tracking-[0.3em] font-sans">Restricted Intel</h4>
-                  <div className="prose prose-invert prose-sm italic text-white/40 leading-relaxed">
+                  <h4 className="text-[11px] font-black text-red-400/60 uppercase tracking-[0.3em] font-sans">Restricted Intel</h4>
+                  <div className="prose prose-invert prose-sm italic text-lr-text-dim leading-relaxed">
                     <WikiText
                       text={location.secrets}
                       onLinkClick={setViewingEntity}
@@ -149,7 +149,7 @@ export default function LocationCard({ location, onEdit, onDelete, onUpdate, onG
               {isDM && !isEmbedded && (
                 <div className="flex flex-wrap items-center gap-3 pt-8 border-t border-white/5">
                   <button
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all group/btn"
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-lr-text-dim hover:text-white transition-all group/btn"
                     onClick={(e) => { e.stopPropagation(); onEdit(); }}
                   >
                     <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />

@@ -77,7 +77,7 @@ export function DeleteCharacterPrompt({ character, onClose, onConfirm, permanent
       {permanent && (
         <div className="space-y-1">
           <label
-            className="text-[10px] font-bold uppercase"
+            className="text-[11px] font-bold uppercase"
             style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
           >
             Type <span style={{ color: 'var(--text)' }}>{character.name}</span> to confirm

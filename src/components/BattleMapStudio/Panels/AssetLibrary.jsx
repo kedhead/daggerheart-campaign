@@ -146,7 +146,7 @@ export default function AssetLibrary({ campaignId }) {
           <Globe size={14} />
           Shared
           {sharedAssets.length > 0 && (
-            <span className="ml-1 bg-indigo-500/20 text-indigo-400 px-1.5 rounded-full text-[10px]">{sharedAssets.length}</span>
+            <span className="ml-1 bg-indigo-500/20 text-indigo-400 px-1.5 rounded-full text-[11px]">{sharedAssets.length}</span>
           )}
         </button>
       </div>
@@ -161,7 +161,7 @@ export default function AssetLibrary({ campaignId }) {
                 {sizePresets.map(size => (
                   <button
                     key={size.id}
-                    className={`flex-1 py-1 text-[10px] font-medium rounded transition-colors ${selectedSize === size.id ? 'bg-zinc-800 text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    className={`flex-1 py-1 text-[11px] font-medium rounded transition-colors ${selectedSize === size.id ? 'bg-zinc-800 text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
                     onClick={() => setSelectedSize(size.id)}
                   >
                     {size.name}
@@ -192,7 +192,7 @@ export default function AssetLibrary({ campaignId }) {
                         className="w-full h-full rounded-full flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 ring-2 ring-transparent group-hover:ring-indigo-500"
                         style={{ backgroundColor: token.color }}
                       >
-                        <category.icon size={20} className="text-white/90" />
+                        <category.icon size={20} className="text-lr-text" />
                       </div>
                     </div>
                   ))}
@@ -258,7 +258,7 @@ export default function AssetLibrary({ campaignId }) {
                 {sizePresets.map(size => (
                   <button
                     key={size.id}
-                    className={`flex-1 py-1 text-[10px] font-medium rounded transition-colors ${selectedSize === size.id ? 'bg-zinc-800 text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                    className={`flex-1 py-1 text-[11px] font-medium rounded transition-colors ${selectedSize === size.id ? 'bg-zinc-800 text-indigo-400 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
                     onClick={() => setSelectedSize(size.id)}
                   >
                     {size.name}

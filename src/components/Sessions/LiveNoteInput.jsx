@@ -49,7 +49,7 @@ export default function LiveNoteInput({ onSubmit, disabled = false }) {
           placeholder="Add a note... (Enter to send, Ctrl+Enter for highlight)"
           disabled={disabled || isSubmitting}
           rows={1}
-          className="flex-1 bg-transparent border-0 text-[var(--text-primary)] text-[0.95rem] leading-relaxed resize-none min-h-[24px] max-h-[100px] p-1.5 focus:outline-none placeholder:text-white/30"
+          className="flex-1 bg-transparent border-0 text-[var(--text-primary)] text-[0.95rem] leading-relaxed resize-none min-h-[24px] max-h-[100px] p-1.5 focus:outline-none placeholder:text-lr-text-dim"
         />
         <div className="flex gap-1 items-center">
           <button
@@ -58,7 +58,7 @@ export default function LiveNoteInput({ onSubmit, disabled = false }) {
               p-2 rounded-md transition-all duration-200
               ${isHighlight
                 ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
-                : 'text-white/40 hover:bg-white/10 hover:text-amber-500'}
+                : 'text-lr-text-dim hover:bg-white/10 hover:text-amber-500'}
             `}
             onClick={() => setIsHighlight(!isHighlight)}
             title={isHighlight ? 'Remove highlight' : 'Mark as highlight'}

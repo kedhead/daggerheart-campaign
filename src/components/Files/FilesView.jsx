@@ -567,7 +567,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
               {/* AI Badge Overlay */}
               {file.isGeneratedMap && (
-                <div className="absolute top-2 right-2 z-20 bg-black/60 backdrop-blur-sm border border-[var(--fear-color)] text-[var(--fear-color)] text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">
+                <div className="absolute top-2 right-2 z-20 bg-black/60 backdrop-blur-sm border border-[var(--fear-color)] text-[var(--fear-color)] text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded">
                   AI Generated
                 </div>
               )}
@@ -579,7 +579,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
                 <h4 className="font-semibold text-[var(--text-primary)] mb-1 truncate" title={file.name}>{file.name}</h4>
 
                 {file.mapType && (
-                  <span className="inline-block px-2 py-0.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded text-[10px] uppercase tracking-wide text-[var(--text-secondary)] mb-2">
+                  <span className="inline-block px-2 py-0.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded text-[11px] uppercase tracking-wide text-[var(--text-secondary)] mb-2">
                     {file.mapType}
                   </span>
                 )}
@@ -795,7 +795,7 @@ export default function FilesView({ campaign, isDM, userId, locations = [], upda
 
               {viewingMap.gridSize && (
                 <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] bg-[var(--bg-primary)]/50 p-2 rounded inline-block">
-                  <span className="uppercase tracking-wider font-bold text-[10px]">Grid Size:</span>
+                  <span className="uppercase tracking-wider font-bold text-[11px]">Grid Size:</span>
                   {viewingMap.gridSize}
                 </div>
               )}

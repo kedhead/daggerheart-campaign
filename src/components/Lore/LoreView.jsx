@@ -133,7 +133,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
             >
               <BookOpen size={11} style={{ color: 'var(--text-muted)' }} />
               <span
-                className="text-[10px] font-bold uppercase"
+                className="text-[11px] font-bold uppercase"
                 style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
               >
                 {lore.length} {lore.length === 1 ? 'Fragment' : 'Fragments'}
@@ -203,7 +203,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
           >
             <button
               onClick={() => setTypeFilter('all')}
-              className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap transition-all"
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase whitespace-nowrap transition-all"
               style={{
                 background: typeFilter === 'all' ? 'var(--primary-soft)' : 'transparent',
                 color: typeFilter === 'all' ? 'var(--primary)' : 'var(--text-muted)',
@@ -216,7 +216,7 @@ export default function LoreView({ lore, addLore, updateLore, deleteLore, isDM, 
               <button
                 key={type}
                 onClick={() => setTypeFilter(type)}
-                className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase whitespace-nowrap transition-all"
+                className="px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase whitespace-nowrap transition-all"
                 style={{
                   background: typeFilter === type ? 'var(--primary-soft)' : 'transparent',
                   color: typeFilter === type ? 'var(--primary)' : 'var(--text-muted)',

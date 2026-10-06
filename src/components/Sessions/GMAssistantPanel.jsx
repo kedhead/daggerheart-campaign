@@ -93,7 +93,7 @@ export default function GMAssistantPanel({
   if (!isDM) {
     return (
       <div className="bg-[var(--bg-secondary)] border border-white/5 rounded-xl p-6 text-center">
-        <p className="text-white/60">GM Assistant is available to Dungeon Masters only.</p>
+        <p className="text-lr-text-muted">GM Assistant is available to Dungeon Masters only.</p>
       </div>
     );
   }
@@ -296,12 +296,12 @@ export default function GMAssistantPanel({
             <Sparkles size={20} className="text-[rgb(var(--color-primary))]" />
             <h3 className="text-xl font-bold text-white font-cinzel">GM Assistant</h3>
           </div>
-          <p className="text-sm text-white/60 mt-1">
+          <p className="text-sm text-lr-text-muted mt-1">
             Describe the session you want to run. I'll draft a plan you can refine, then build all the encounters, adversaries, NPCs, and notes.
           </p>
         </div>
         {onClose && (
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors">
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-lr-text-dim hover:text-white hover:bg-white/10 transition-colors">
             <X size={18} />
           </button>
         )}
@@ -319,7 +319,7 @@ export default function GMAssistantPanel({
           <Message key={i} role={m.role} content={m.content} />
         ))}
         {isThinking && (
-          <div className="flex items-center gap-2 text-white/50 text-sm">
+          <div className="flex items-center gap-2 text-lr-text-dim text-sm">
             <Loader2 size={14} className="animate-spin" />
             Thinking…
           </div>
@@ -341,7 +341,7 @@ export default function GMAssistantPanel({
 
       {isBuildingPreview && previewProgress && (
         <div className="bg-black/20 rounded-lg border border-white/10 p-3">
-          <div className="flex items-center justify-between text-sm text-white/70 mb-1">
+          <div className="flex items-center justify-between text-sm text-lr-text-muted mb-1">
             <span>{previewProgress.label}</span>
             <span>{previewProgress.step}/{previewProgress.total}</span>
           </div>
@@ -356,14 +356,14 @@ export default function GMAssistantPanel({
 
       {!latestPlan && !isThinking && messages.length <= 1 && (
         <div className="space-y-2">
-          <p className="text-xs uppercase tracking-wider text-white/40">Try one of these</p>
+          <p className="text-xs uppercase tracking-wider text-lr-text-dim">Try one of these</p>
           <div className="flex flex-col gap-1.5">
             {SAMPLE_PROMPTS.map((p, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={() => sendBrief(p)}
-                className="text-left text-sm text-white/70 px-3 py-2 rounded-lg bg-black/20 border border-white/5 hover:border-white/20 hover:text-white transition-colors"
+                className="text-left text-sm text-lr-text-muted px-3 py-2 rounded-lg bg-black/20 border border-white/5 hover:border-white/20 hover:text-white transition-colors"
               >
                 {p}
               </button>
@@ -374,7 +374,7 @@ export default function GMAssistantPanel({
 
       {((adversaries || []).length > 0 || (npcs || []).length > 0) && (
         <div className="flex items-center gap-2 pt-2 border-t border-white/10">
-          <label className="text-xs uppercase tracking-wider text-white/40 shrink-0">Fight a specific enemy</label>
+          <label className="text-xs uppercase tracking-wider text-lr-text-dim shrink-0">Fight a specific enemy</label>
           <select
             value={featuredEnemyKey}
             onChange={(e) => setFeaturedEnemyKey(e.target.value)}
@@ -443,7 +443,7 @@ function Message({ role, content }) {
   return (
     <div className={`flex gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center ${isUser ? 'bg-[rgb(var(--color-primary))]/30' : 'bg-white/5'}`}>
-        {isUser ? <User size={14} className="text-white" /> : <Bot size={14} className="text-white/70" />}
+        {isUser ? <User size={14} className="text-white" /> : <Bot size={14} className="text-lr-text-muted" />}
       </div>
       <div className={`max-w-[85%] px-3 py-2 rounded-lg text-sm ${isUser ? 'bg-[rgb(var(--color-primary))]/20 text-white' : 'bg-black/20 text-white/85 border border-white/5'}`}>
         {isUser ? content : <ReactMarkdown>{content}</ReactMarkdown>}

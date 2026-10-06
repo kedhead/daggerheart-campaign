@@ -58,7 +58,7 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
         {/* Portrait Download Button */}
         {npc.avatarUrl && (
           <button
-            className="absolute top-6 right-6 z-20 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-white/40 hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
+            className="absolute top-6 right-6 z-20 p-2 rounded-xl border border-white/10 backdrop-blur-md bg-black/40 text-lr-text-dim hover:text-white hover:bg-black/60 transition-all opacity-0 group-hover:opacity-100"
             title="Download portrait"
             onClick={(e) => { e.stopPropagation(); downloadPortrait(npc.avatarUrl, npc.name, error); }}
           >
@@ -85,23 +85,23 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
               }}
               disabled={!isDM || isEmbedded || !onUpdate}
               as="h3"
-              className="text-3xl font-serif font-black text-white/95 leading-none italic lowercase tracking-tighter"
+              className="text-3xl font-serif font-black text-lr-text leading-none italic lowercase tracking-tighter"
             />
             <div className="flex flex-wrap gap-3 pt-2">
               {npc.species && (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[11px] font-bold text-lr-text-dim uppercase tracking-widest">
                   <User size={10} className="text-amber-400/50" />
                   {npc.species}
                 </div>
               )}
               {npc.occupation && (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[11px] font-bold text-lr-text-dim uppercase tracking-widest">
                   <Briefcase size={10} className="text-indigo-400/50" />
                   {npc.occupation}
                 </div>
               )}
               {npc.location && (
-                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg border border-white/5 bg-white/[0.02] text-[11px] font-bold text-lr-text-dim uppercase tracking-widest">
                   <MapPin size={10} className="text-rose-400/50" />
                   <WikiText text={npc.location} onLinkClick={setViewingEntity} getEntity={getByName} />
                 </div>
@@ -114,8 +114,8 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
           <div className="mt-8 space-y-8 animate-in fade-in slide-in-from-top-6 duration-200">
             {npc.description && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Observations</h4>
-                <div className="prose prose-invert prose-sm font-sans font-medium text-white/60 leading-relaxed max-w-none">
+                <h4 className="text-[11px] font-black text-indigo-400/60 uppercase tracking-[0.3em] font-sans">Observations</h4>
+                <div className="prose prose-invert prose-sm font-sans font-medium text-lr-text-muted leading-relaxed max-w-none">
                   <WikiText
                     text={npc.description}
                     onLinkClick={setViewingEntity}
@@ -130,8 +130,8 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
                 every player under the heading "Encrypted Intel". */}
             {npc.notes && isDM && (
               <div className="space-y-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5 italic">
-                <h4 className="text-[10px] font-black text-amber-400/60 uppercase tracking-[0.3em] font-sans not-italic">Encrypted Intel</h4>
-                <div className="prose prose-invert prose-sm font-sans font-medium text-white/50 leading-relaxed max-w-none">
+                <h4 className="text-[11px] font-black text-amber-400/60 uppercase tracking-[0.3em] font-sans not-italic">Encrypted Intel</h4>
+                <div className="prose prose-invert prose-sm font-sans font-medium text-lr-text-dim leading-relaxed max-w-none">
                   <WikiText
                     text={npc.notes}
                     onLinkClick={setViewingEntity}
@@ -143,8 +143,8 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
 
             {npc.firstMet && (
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-cyan-400/60 uppercase tracking-[0.3em] font-sans">First Encounter</h4>
-                <div className="prose prose-invert prose-sm font-sans font-medium text-white/50 leading-relaxed max-w-none">
+                <h4 className="text-[11px] font-black text-cyan-400/60 uppercase tracking-[0.3em] font-sans">First Encounter</h4>
+                <div className="prose prose-invert prose-sm font-sans font-medium text-lr-text-dim leading-relaxed max-w-none">
                   <WikiText
                     text={npc.firstMet}
                     onLinkClick={setViewingEntity}
@@ -167,7 +167,7 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
             {isDM && !isEmbedded && (
               <div className="flex items-center gap-3 pt-6 border-t border-white/5">
                 <button
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-all group/btn"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-lr-text-dim hover:text-white transition-all group/btn"
                   onClick={(e) => { e.stopPropagation(); onEdit(); }}
                 >
                   <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />

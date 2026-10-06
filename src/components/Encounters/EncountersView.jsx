@@ -198,7 +198,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
               }}
             >
               <span
-                className="text-[10px] font-bold uppercase"
+                className="text-[11px] font-bold uppercase"
                 style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
               >
                 {encounters.length} {encounters.length !== 1 ? 'Scenarios' : 'Scenario'} Prepared
@@ -449,7 +449,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
           <div className="flex gap-2 p-1 bg-black/40 rounded-lg mb-6 w-fit">
             <button
               type="button"
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${!useBuilder ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${!useBuilder ? 'bg-white/10 text-white' : 'text-lr-text-dim hover:text-white'}`}
               onClick={() => setUseBuilder(false)}
             >
               Simple
