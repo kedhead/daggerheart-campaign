@@ -7,6 +7,7 @@ import { Map, Users, FolderOpen, Check, Image as ImageIcon, Youtube, Upload, Lin
 import './DMDisplayControl.css';
 import { useNotify } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { apiFetch } from '../../services/apiClient';
 
 // Extract YouTube video ID for thumbnail
 function getYouTubeVideoId(url) {
@@ -284,7 +285,7 @@ export default function ContentSelector({
       console.log('Generating display image with prompt:', fullPrompt);
 
       // Call image generation via server proxy — backend uses server-side OPENAI_API_KEY if no client key
-      const response = await fetch('/api/generate-image', {
+      const response = await apiFetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -306,7 +307,7 @@ export default function ContentSelector({
 
       // Download via proxy and upload to Firebase Storage
       console.log('Downloading generated image...');
-      const proxyResponse = await fetch('/api/download-image', {
+      const proxyResponse = await apiFetch('/api/download-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageUrl })

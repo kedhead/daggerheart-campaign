@@ -24,6 +24,7 @@ import { ANCESTRY_VISUAL_HINTS } from './portraitGenerator';
 import { scopeRosters, sanitizeChapterCast } from '../utils/storybookCast';
 import { composeScenePrompt, stripAppendedClauses } from '../utils/storybookPrompt';
 import { sourcePortraitKey, cachedPortraitKey } from '../utils/storybookPortraitCache';
+import { apiFetch } from './apiClient';
 
 // ── Style presets (must stay in sync with api/generate-image.js) ──────────────
 
@@ -78,7 +79,7 @@ function placeholderScene(scenePrompt, index, artNote = null) {
 // ── Low-level helpers ─────────────────────────────────────────────────────────
 
 async function downloadImageAsDataUrl(imageUrl) {
-  const response = await fetch('/api/download-image', {
+  const response = await apiFetch('/api/download-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ imageUrl })
@@ -99,7 +100,7 @@ async function uploadDataUrl(dataUrl, storagePath) {
 }
 
 async function describeImage(imageUrl, subjectHint, apiKey) {
-  const res = await fetch('/api/generate-storybook', {
+  const res = await apiFetch('/api/generate-storybook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'describe', imageUrl, subjectHint, apiKey: apiKey || undefined })
@@ -124,7 +125,7 @@ const REFERENCE_CAPABLE_MODELS = new Set([
 const usesReferenceImages = (imageModel) => REFERENCE_CAPABLE_MODELS.has(imageModel);
 
 async function generateStylizedImage({ prompt, type, styleKey, gameSystem, apiKey, imageModel, referenceImages, size = '1024x1024' }) {
-  const res = await fetch('/api/generate-image', {
+  const res = await apiFetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -449,7 +450,7 @@ export async function generateChapter({
     .slice(0, 2)
     .map(c => `${c.title}: ${(c.prose || '').split('\n\n').slice(0, 2).join(' ').slice(0, 280)}`);
 
-  const textRes = await fetch('/api/generate-storybook', {
+  const textRes = await apiFetch('/api/generate-storybook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

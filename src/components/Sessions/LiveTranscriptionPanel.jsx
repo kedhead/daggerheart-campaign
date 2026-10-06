@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, Square, Loader2, FileText, Check, AlertCircle, Copy, Volume2, Settings } from 'lucide-react';
+import { apiFetch } from '../../services/apiClient';
 
 export default function LiveTranscriptionPanel({ onNotesGenerated }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -268,7 +269,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
       formData.append('audio', blob, `audio.${ext}`);
       formData.append('mimeType', mimeType);
 
-      const transcribeRes = await fetch('/api/transcribe-audio', {
+      const transcribeRes = await apiFetch('/api/transcribe-audio', {
         method: 'POST',
         body: formData
       });
@@ -286,7 +287,7 @@ export default function LiveTranscriptionPanel({ onNotesGenerated }) {
 
       console.log('Whisper transcript:', transcript);
 
-      const notesRes = await fetch('/api/generate-notes', {
+      const notesRes = await apiFetch('/api/generate-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ transcript })

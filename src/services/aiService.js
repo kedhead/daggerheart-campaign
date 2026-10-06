@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient';
 /**
  * AI Service for API integration
  * Supports Anthropic Claude and OpenAI GPT-4
@@ -16,7 +17,7 @@ export const aiService = {
    */
   async generateWithClaude(prompt, apiKey, model = 'claude-haiku-4-5-20251001') {
     try {
-      const response = await fetch('/api/generate', {
+      const response = await apiFetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -51,7 +52,7 @@ export const aiService = {
    */
   async generateWithOpenAI(prompt, apiKey, model = 'gpt-4o') {
     try {
-      const response = await fetch('/api/generate', {
+      const response = await apiFetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

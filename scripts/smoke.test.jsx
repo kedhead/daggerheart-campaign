@@ -19,6 +19,8 @@ import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
 import { ConfirmProvider, useConfirm } from '../src/contexts/ConfirmContext.jsx';
 import { useNotify } from '../src/contexts/ToastContext.jsx';
 import generateImageHandler from '../api/generate-image.js';
+import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
+import { generateKeyPair, SignJWT, exportJWK, createLocalJWKSet } from 'jose';
 import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
 import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
 import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
@@ -2955,6 +2957,8 @@ async function runImageApiTests() {
     await generateImageHandler({ method: 'POST', body }, res);
     return { res, requests };
   };
+  // These exercise the handler itself, so sign in a test user.
+  setTokenVerifierForTests(async () => ({ uid: 'test-user', email: null }));
   try {
     const asset = await call({ prompt: 'a barrel', type: 'asset', transparent: true });
     assert(asset.requests.length === 1 && asset.requests[0]?.url.includes('api.openai.com'),
@@ -2981,11 +2985,64 @@ async function runImageApiTests() {
     assert(noKey.res.statusCode === 500 && noKey.requests.length === 0 && /OPENAI_API_KEY/.test(noKey.res.payload?.error || ''),
       'with no OpenAI key the endpoint says so instead of falling back to another provider');
   } finally {
+    setTokenVerifierForTests(null);
     globalThis.fetch = realFetch;
     if (realKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = realKey;
     if (realMin === undefined) delete process.env.min_api; else process.env.min_api = realMin;
   }
 }
+
+// ── API sign-in checks ──
+async function runAuthTests() {
+  section('API sign-in');
+  const projectId = 'lorelich-test';
+  const { publicKey, privateKey } = await generateKeyPair('RS256');
+  const jwk = { ...(await exportJWK(publicKey)), kid: 'k1', alg: 'RS256' };
+  const keys = createLocalJWKSet({ keys: [jwk] });
+  const sign = (claims = {}, { iss = `https://securetoken.google.com/${projectId}`, aud = projectId, exp = '1h', key = privateKey } = {}) =>
+    new SignJWT({ email: 'gm@example.com', ...claims })
+      .setProtectedHeader({ alg: 'RS256', kid: 'k1' })
+      .setSubject('uid-123').setIssuer(iss).setAudience(aud).setIssuedAt().setExpirationTime(exp)
+      .sign(key);
+  const rejects = async (token, opts = {}) => {
+    try { await verifyIdToken(token, { projectId, keys, ...opts }); return false; } catch { return true; }
+  };
+
+  const user = await verifyIdToken(await sign(), { projectId, keys });
+  assert(user.uid === 'uid-123', 'a valid Firebase ID token for this project identifies the user');
+  assert(await rejects(''), 'no token is refused');
+  assert(await rejects('not-a-jwt'), 'a malformed token is refused');
+  assert(await rejects(await sign({}, { aud: 'someone-elses-project' })), 'a token for a different Firebase project is refused');
+  assert(await rejects(await sign({}, { iss: 'https://evil.example' })), 'a token from another issuer is refused');
+  assert(await rejects(await sign({}, { exp: Math.floor(Date.now() / 1000) - 60 })), 'an expired token is refused');
+  const other = await generateKeyPair('RS256');
+  assert(await rejects(await sign({}, { key: other.privateKey })), "a token not signed by Google's key is refused");
+  assert(await rejects(await sign(), { projectId: '' }), 'with no project id configured the server refuses rather than trusting anything');
+
+  assert(bearerToken({ headers: { authorization: 'Bearer abc.def' } }) === 'abc.def' && bearerToken({ headers: {} }) === '',
+    'the token is read from the Authorization header');
+
+  // End to end through a real endpoint: no token, no spend.
+  const realFetch = globalThis.fetch;
+  const realKey = process.env.OPENAI_API_KEY;
+  const outbound = [];
+  globalThis.fetch = async (url) => { outbound.push(String(url)); return { ok: true, json: async () => ({}) }; };
+  process.env.OPENAI_API_KEY = 'sk-test';
+  try {
+    const res = { statusCode: 0, payload: null, setHeader() {}, status(c) { this.statusCode = c; return this; }, json(p) { this.payload = p; return this; }, end() { return this; } };
+    setTokenVerifierForTests(async (t) => { if (!t) throw new Error('no token'); return { uid: 'x' }; });
+    await generateImageHandler({ method: 'POST', headers: {}, body: { prompt: 'a crypt', type: 'dungeon' } }, res);
+    assert(res.statusCode === 401 && outbound.length === 0 && /sign in/i.test(res.payload?.error || ''),
+      'an image request without a sign-in token is refused before any paid API is called');
+    const ok = await requireUser({ headers: { authorization: 'Bearer t' } }, res);
+    assert(ok?.uid === 'x', 'with a token the request goes through');
+  } finally {
+    setTokenVerifierForTests(null);
+    globalThis.fetch = realFetch;
+    if (realKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = realKey;
+  }
+}
+
 
 (async () => {
   section('Dialogs (async)');
@@ -2995,7 +3052,8 @@ async function runImageApiTests() {
   assert((await fallback('Delete?')) === false, 'with no browser to ask, the fallback confirm answers no');
 })()
   .then(() => runImageApiTests())
-  .catch((err) => { failures++; console.error('  FAIL: image API tests threw:', err); })
+  .then(() => runAuthTests())
+  .catch((err) => { failures++; console.error('  FAIL: async tests threw:', err); })
   .finally(() => {
     console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);
     process.exit(failures === 0 ? 0 : 1);
