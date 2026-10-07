@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TRAIT_ABBREV } from '../../../utils/daggerheartRollUtils';
 import { computeDefenses } from '../../../utils/daggerheartDefenses';
 import PassiveEffectsNote from '../../Characters/PassiveEffectsNote';
+import { effectiveTraits } from '../../../data/daggerheartAbilityEffects';
 
 const BONUS_OPTS = [
   { key: null,        label: 'Normal',      color: '#eab308' },
@@ -22,7 +23,8 @@ const TRAIT_ORDER = ['agility', 'strength', 'finesse', 'instinct', 'presence', '
 export default function StatsTab({ character, rollBonus, setRollBonus, roll, campaignId, items }) {
   const [rollingKey, setRollingKey] = useState(null);
 
-  const traits = character.traits || {};
+  // Includes passive trait bonuses (Bone-Touched's +1 Agility).
+  const traits = effectiveTraits(character);
   const level = character.level || 1;
 
   // Derived defenses come from the same shared calculator the full character

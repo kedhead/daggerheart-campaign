@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sun, Moon, Check, Flame } from 'lucide-react';
 import { getTierForLevel } from '../../../data/systems/daggerheart';
 import { scarCount } from '../../../utils/daggerheartHope';
+import { usesClearedByRest } from '../../../utils/cardActions';
 
 const d4 = () => Math.floor(Math.random() * 4) + 1;
 
@@ -53,7 +54,10 @@ export default function PartyRestPanel({ characters = [], updateCharacter, addFe
       }
 
       if (updateCharacter) {
-        await updateCharacter(c.id, { hpSlots: hp, stressSlots: stress, armorSlots: armor, hopeSlots: hope });
+        await updateCharacter(c.id, {
+          hpSlots: hp, stressSlots: stress, armorSlots: armor, hopeSlots: hope,
+          cardUses: usesClearedByRest(c.cardUses, restType),
+        });
       }
       lines.push(`${c.name}: ${parts.length ? parts.join(', ') : 'no change'}`);
     }

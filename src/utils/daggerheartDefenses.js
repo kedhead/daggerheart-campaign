@@ -6,7 +6,7 @@
 // Daggerheart core rulebook.
 
 import { CLASSES, getEffectiveProficiency, getTierForLevel } from '../data/systems/daggerheart';
-import { computeAbilityDelta, hasPassiveEffect, isPermanentEffect } from '../data/daggerheartAbilityEffects';
+import { computeAbilityDelta, hasPassiveEffect, isPermanentEffect, effectiveTraits } from '../data/daggerheartAbilityEffects';
 import { getCardByName } from '../data/daggerheartDomainCards';
 import { DAGGERHEART_ARMOR, ALL_DAGGERHEART_ITEMS } from '../data/daggerheartItems';
 import { getFeatureName, getFeatureDescription } from './itemFeatures';
@@ -84,7 +84,9 @@ export function computeDefenses(character, equippedItems = []) {
   equippedItems = equippedItems.map(enrichFromCatalog);
   const charClass = character?.class;
   const level = character?.level || 1;
-  const traits = character?.traits || {};
+  // Passive trait bonuses (Bone-Touched's +1 Agility) count everywhere a trait
+  // does — here, Untouchable's half-Agility Evasion.
+  const traits = effectiveTraits(character);
   const proficiency = getEffectiveProficiency(character);
 
   // Domain cards are stored as plain names; enrich them to full card objects
@@ -176,6 +178,7 @@ export function computeDefenses(character, equippedItems = []) {
     proficiency,
     traits,
     domainCardCounts,
+    vitalityChoices: character?.vitalityChoices,
   });
 
   // Damage thresholds. Final threshold = base + character level. Fallback chain:
