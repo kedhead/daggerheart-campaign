@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { getCardByName } from '../../../data/daggerheartDomainCards';
-import { getEffectiveProficiency } from '../../../data/systems/daggerheart';
 import { splitCardFeatures } from '../../../utils/domainCardText';
-import CardActions, { VitalityChoice } from '../../Characters/CardActions';
+import CardActions, { VitalityChoice, portalActionProps } from '../../Characters/CardActions';
 
 function parseGrimoireEntries(description) {
   // Split "SpellName: text. SpellName: text." into per-spell entries; only
@@ -62,16 +61,8 @@ export default function SpellsTab({ character, roll, rawRoll, rollDamage, campai
 
   // Card buttons (Cast, trait rolls, dice, Hope/Stress costs, uses, tokens)
   // come from the card's own text — see utils/cardActions.js.
-  const proficiency = getEffectiveProficiency(character);
-  const actionProps = (text, name, useKey) => ({
-    text, name, useKey, character, proficiency,
-    updateCharacter: updateCharacter || null,
-    canRoll: !!campaignId,
-    onRoll: (label, modifier, { reaction } = {}) => (reaction
-      ? (rawRoll || roll)({ label, modifier, kind: 'reaction' })
-      : roll({ label, modifier })),
-    onDice: (label, parsed) => rollDamage({ label, ...parsed }),
-  });
+  const shared = portalActionProps({ character, roll, rawRoll, rollDamage, campaignId, updateCharacter });
+  const actionProps = (text, name, useKey) => ({ ...shared, text, name, useKey });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

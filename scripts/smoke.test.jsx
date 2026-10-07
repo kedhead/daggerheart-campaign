@@ -94,7 +94,8 @@ import RestModal from '../src/components/Characters/RestModal.jsx';
 import TakeDamageModal from '../src/components/Characters/TakeDamageModal.jsx';
 import PassiveEffectsNote from '../src/components/Characters/PassiveEffectsNote.jsx';
 import CardActions from '../src/components/Characters/CardActions.jsx';
-import { parseCardActions, diceFormula, usesClearedByRest, spellcastModifier, spendHope, markStress, hopeAvailable, stressAvailable } from '../src/utils/cardActions.js';
+import { parseCardActions, diceFormula, usesClearedByRest, spellcastModifier, spendHope, markStress, hopeAvailable, stressAvailable, featureParts } from '../src/utils/cardActions.js';
+import FeaturesTab from '../src/components/PlayerPortal/tabs/FeaturesTab.jsx';
 import { applyVitalityChoice, rollBonusesFor, effectiveTraits } from '../src/data/daggerheartAbilityEffects.js';
 import { getCardByName } from '../src/data/daggerheartDomainCards.js';
 import PortalTableStatus from '../src/components/PlayerPortal/PortalTableStatus.jsx';
@@ -1311,6 +1312,83 @@ section('Domain card actions');
   const tokenHtml = strip(renderToString(<CardActions text={text('Fane of the Wilds')} name="Fane of the Wilds" character={{ id: 'c1', cardTokens: { 'Fane of the Wilds': 3 } }} updateCharacter={() => {}} />));
   assert(tokenHtml.includes('Tokens') && tokenHtml.includes('>3<'), 'token cards show their count');
   assert(renderToString(<CardActions text={text('Vitality')} name="Vitality" character={{}} />) === '', 'cards with nothing to do show no buttons');
+}
+
+// ── Class, subclass and heritage features match the rulebook ──
+// The Bard had an invented 3-Hope "Rally" Hope feature plus "Inspiring Leader"
+// and "Versatile Performance"; ancestries and communities had made-up
+// features. Checked here against dh-rulebook.txt itself.
+section('Class and heritage features');
+{
+  const book = readFileSync('dh-rulebook.txt', 'utf8');
+  const core = ['Bard', 'Druid', 'Guardian', 'Ranger', 'Rogue', 'Seraph', 'Sorcerer', 'Warrior', 'Wizard'];
+  const hopeOk = core.filter(c => {
+    const m = book.match(new RegExp(`${c.toUpperCase()}'S HOPE FEATURE\\n([^:]+):`));
+    return m && CLASSES[c].hopeFeature?.name === m[1];
+  });
+  assert(hopeOk.length === core.length, `every class's Hope feature is the rulebook's (${hopeOk.length}/${core.length})`);
+  assert(CLASSES.Bard.hopeFeature.name === 'Make a Scene' && /Distract/.test(CLASSES.Bard.hopeFeature.description), "the Bard's Hope feature is Make a Scene");
+  assert(CLASSES.Bard.classFeatures.length === 1 && CLASSES.Bard.classFeatures[0].name === 'Rally', 'and its one class feature is Rally');
+  const featureText = core.flatMap(c => CLASSES[c].classFeatures.map(f => f.description));
+  assert(featureText.every(t => book.replace(/\s+/g, ' ').includes(t.split('\n')[0].replace(/—/g, '--').slice(0, 60))), 'class feature text is the rulebook wording');
+
+  const traitWrong = [];
+  for (const c of core) for (const sc of SUBCLASSES[c]) {
+    // Page breaks (\f) sit before some subclass headings.
+    const at = book.search(new RegExp(`[\\n\\f]${sc.name.toUpperCase()}\\nPlay the ${sc.name}`));
+    const m = at >= 0 ? book.slice(at, at + 400).match(/SPELLCAST TRAIT\n(\w+)/) : null;
+    if ((m?.[1] || undefined) !== sc.spellcastTrait) traitWrong.push(sc.name);
+  }
+  assert(traitWrong.length === 0, `every core subclass's Spellcast trait matches the rulebook${traitWrong.length ? ` (wrong: ${traitWrong.join(', ')})` : ''}`);
+  const words = (t) => t.replace(/[^A-Za-z0-9]+/g, ' ').trim();
+  const bookWords = words(book);
+  const subTextOk = core.every(c => SUBCLASSES[c].every(sc => ['foundation', 'specialization', 'mastery'].every(k =>
+    featureParts(sc[k]).every(p => bookWords.includes(words(`${p.name}: ${p.text}`))))));
+  assert(subTextOk, 'subclass features use the rulebook wording');
+
+  const ancestries = Object.keys(ANCESTRIES).filter(n => !ANCESTRIES[n].source);
+  assert(ancestries.length === 18 && ancestries.includes('Infernis') && !ancestries.includes('Daemon') && !ancestries.includes('Inferis'),
+    `the 18 rulebook ancestries are offered (${ancestries.length}), spelled Infernis, without the invented Daemon`);
+  assert(ancestries.every(n => ANCESTRIES[n].features.length === 2 && ANCESTRIES[n].features.every(f => book.includes(`${f.name}: `))),
+    'each ancestry has its two rulebook features');
+  assert(ANCESTRIES.Inferis?.features?.[0]?.name === 'Fearless' && ANCESTRIES.Daemon?.features?.length === 1,
+    'characters saved as "Inferis" or "Daemon" still resolve');
+  const communities = Object.keys(COMMUNITIES).filter(n => !COMMUNITIES[n].source);
+  assert(communities.length === 9 && communities.every(n => book.includes(`${COMMUNITIES[n].features[0].name}: `)), 'the 9 rulebook communities with their rulebook features');
+  assert(COMMUNITIES.Duneborne?.source === 'hope-fear', 'Duneborne and friends come from the Hope & Fear supplement');
+
+  // Buttons for features.
+  const rally = CLASSES.Bard.classFeatures[0].description;
+  const rallyAt = (level) => parseCardActions(rally, { level }).filter(a => a.kind === 'dice').map(a => a.dieType).join(',');
+  assert(rallyAt(1) === '6' && rallyAt(5) === '8', `Rally rolls a d6 at level 1, a d8 from level 5 (${rallyAt(1)} / ${rallyAt(5)})`);
+  assert(parseCardActions(rally).some(a => a.kind === 'uses' && a.per === 'session'), 'Rally is tracked once per session');
+  const sneak = parseCardActions(CLASSES.Rogue.classFeatures.find(f => f.name === 'Sneak Attack').description).find(a => a.kind === 'dice');
+  assert(sneak?.scale === 'tier' && diceFormula(sneak, { tier: 2 }) === '2d6', 'Sneak Attack rolls tier d6s');
+  const illusion = parseCardActions(CLASSES.Sorcerer.classFeatures.find(f => f.name === 'Minor Illusion').description);
+  assert(illusion.some(a => a.kind === 'spellcast' && a.difficulty === 10), 'Minor Illusion casts vs 10');
+  const parts = featureParts(SUBCLASSES.Guardian.find(s => s.name === 'Stalwart').foundation);
+  assert(parts.length === 2 && parts[0].name === 'Unwavering' && parts[1].name === 'Iron Will' && !parts[0].text.includes('Iron Will'), 'a two-feature subclass slot splits into its features');
+
+  const bard = { id: 'b1', class: 'Bard', subclass: 'Troubadour', level: 5, traits: { presence: 2 }, hopeSlots: [true, true, true, true, false, false] };
+  const html = strip(renderToString(<FeaturesTab character={bard} updateCharacter={() => {}} roll={() => {}} rollDamage={() => {}} campaignId="c1" />));
+  assert(html.includes('Make a Scene') && html.includes('Rally') && html.includes('1d8') && html.includes('Use (1/session)'), 'the portal shows Make a Scene and Rally with its d8 and session use');
+  assert(!html.includes('Spend 3 Hope</button>'), "Make a Scene's Hope is paid by its Activate button, not a second Spend button");
+
+  // Features that change stats now count, like domain cards do.
+  const base = (c) => computeDefenses({ level: 1, ...c }, []);
+  const plainGuard = base({ class: 'Guardian', subclass: 'Vengeance' });
+  const stalwart = (subclassLevel) => base({ class: 'Guardian', subclass: 'Stalwart', subclassLevel });
+  assert(stalwart('foundation').majorThreshold === plainGuard.majorThreshold + 1, 'Stalwart foundation (Unwavering): +1 thresholds');
+  assert(stalwart('mastery').majorThreshold === plainGuard.majorThreshold + 6 && stalwart('mastery').severeThreshold === plainGuard.severeThreshold + 6,
+    'Stalwart mastery: +1, +2 and +3 add up to +6');
+  assert(stalwart('foundation').passiveEffects.some(e => e.name === 'Unwavering' && e.active && /\+1 thresholds/.test(e.summary)), 'and the sheet lists Unwavering among what counts');
+  const rogue = { class: 'Rogue', subclass: 'Syndicate' };
+  assert(base({ ...rogue, ancestry: 'Simiah' }).evasion === base(rogue).evasion + 1, 'Simiah (Nimble): +1 Evasion');
+  assert(base({ class: 'Rogue', subclass: 'Nightwalker', subclassLevel: 'mastery' }).evasion === base(rogue).evasion + 1, 'Nightwalker mastery (Fleeting Shadow): +1 Evasion');
+  assert(base({ ...rogue, ancestry: 'Galapa', level: 5 }).majorThreshold === base({ ...rogue, level: 5 }).majorThreshold + 3, 'Galapa (Shell): thresholds + Proficiency (3 at level 5)');
+  const war = { class: 'Wizard', subclass: 'School of War', subclassLevel: 'specialization' };
+  assert(base({ ...war, hopeSlots: [true, true, false, false, false, false] }).evasion === base(war).evasion + 1, 'Conjure Shield: + Proficiency to Evasion with 2 Hope');
+  assert(base({ ...war, hopeSlots: [true, false, false, false, false, false] }).evasion === base(war).evasion, 'and nothing with 1 Hope');
 }
 
 // --- Player dice colors (roller color + Duality sets) ---

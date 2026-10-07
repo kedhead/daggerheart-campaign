@@ -11,13 +11,13 @@
 //   { kind: 'spellcast', difficulty, reaction }        Spellcast Roll (reaction: Counterspell-style)
 //   { kind: 'trait', trait, difficulty }                Strength Roll, Agility Roll…
 //   { kind: 'dice', quantity, dieType, modifier, scale, label }
-//                                                       scale: 'proficiency' | 'spellcast' | null
+//                                                       scale: 'proficiency' | 'spellcast' | 'tier' | null
 //   { kind: 'hope', amount }                            "spend a Hope", "spend 2 Hope"
 //   { kind: 'stress', amount }                          "mark a Stress"
 //   { kind: 'uses', per }                               "once per long rest" (per: long rest | short rest | rest | session)
 //   { kind: 'tokens' }                                  cards that place tokens
 
-import { SUBCLASSES } from '../data/systems/daggerheart.js';
+import { SUBCLASSES, getTierForLevel } from '../data/systems/daggerheart.js';
 import { effectiveTraits, rollBonusesFor } from '../data/daggerheartAbilityEffects.js';
 import { normalizeHopeSlots, usableHopeMax, usableHopeFilled } from './daggerheartHope.js';
 import { stressSlotsOf } from './daggerheartVitals.js';
@@ -60,7 +60,8 @@ function diceActions(text) {
     const near = text.slice(m.index + m[0].length, m.index + m[0].length + 90);
     let scale = null;
     if (/^[^.]*?(?:using|equal to)\s+your\s+Proficiency/i.test(near)) scale = 'proficiency';
-    else if (/^[^.]*?equal to your Spellcast trait/i.test(near)) scale = 'spellcast';
+    else if (/^[^.]*?equal to your (?:subclass's )?Spellcast trait/i.test(near)) scale = 'spellcast';
+    else if (/^[^.]*?equal to your tier\b/i.test(near)) scale = 'tier';
     // "that many d10s" / "a number of d6s" with no stated count: the player
     // decides, so offer one die and let them roll again.
     const quantity = m[1] ? parseInt(m[1], 10) : 1;
@@ -87,11 +88,22 @@ function difficultyAfter(text, phrase) {
   return m ? parseInt(m[1], 10) : null;
 }
 
+// "At level 1, your Rally Die is a d6. … At level 5, your Rally Die increases
+// to a d8." Given the character's level, keep only the die they have now.
+function dieForLevel(text, dice, level) {
+  const up = text.match(/At level (\d+), your ([A-Za-z ]+? Die) increases to a d(\d+)/i);
+  if (!up || !(level > 0)) return dice;
+  const base = text.match(new RegExp(`your ${up[2]} is a d(\\d+)`, 'i'));
+  const drop = level >= Number(up[1]) ? Number(base?.[1]) : Number(up[3]);
+  return dice.filter(d => !(d.dieType === drop && d.quantity === 1 && !d.scale));
+}
+
 /**
  * The actions a piece of rules text describes, in a stable order:
- * rolls, dice, costs, then tracking.
+ * rolls, dice, costs, then tracking. Pass the character's `level` for
+ * features whose die grows with level (Rally, Unstoppable).
  */
-export function parseCardActions(text) {
+export function parseCardActions(text, { level } = {}) {
   if (typeof text !== 'string' || !text.trim()) return [];
   const actions = [];
 
@@ -107,7 +119,7 @@ export function parseCardActions(text) {
       actions.push({ kind: 'trait', trait: trait.toLowerCase(), difficulty: difficultyAfter(text, `${trait} Roll`) });
     }
   }
-  actions.push(...diceActions(text));
+  actions.push(...dieForLevel(text, diceActions(text), level));
   for (const amount of costs(text, 'Hope')) actions.push({ kind: 'hope', amount });
   for (const amount of costs(text, 'Stress')) actions.push({ kind: 'stress', amount });
 
@@ -119,9 +131,10 @@ export function parseCardActions(text) {
 }
 
 /** Display text for a dice action given the character's numbers. */
-export function diceFormula(action, { proficiency = 1, spellcast = 0 } = {}) {
+export function diceFormula(action, { proficiency = 1, spellcast = 0, tier = 1 } = {}) {
   const n = action.scale === 'proficiency' ? Math.max(1, proficiency)
     : action.scale === 'spellcast' ? Math.max(1, spellcast)
+    : action.scale === 'tier' ? Math.max(1, tier)
     : action.quantity;
   return `${n}d${action.dieType}${action.modifier ? `+${action.modifier}` : ''}`;
 }
@@ -141,6 +154,29 @@ export function usesClearedByRest(cardUses = {}, restType) {
     next[key] = clears ? { ...entry, used: false } : entry;
   }
   return next;
+}
+
+/**
+ * A subclass feature slot can hold two features ("Unwavering / Iron Will",
+ * described as "Unwavering: … Iron Will: …"). Split it so each gets its own
+ * text and buttons. A single feature comes back as one part.
+ */
+export function featureParts(feature) {
+  const name = String(feature?.name || '');
+  const text = String(feature?.description || '');
+  const names = name.split(' / ').map(n => n.trim()).filter(Boolean);
+  if (names.length < 2) return [{ name, text }];
+  const starts = names.map(n => text.indexOf(`${n}: `));
+  if (starts.some(i => i < 0) || starts.some((i, k) => k > 0 && i <= starts[k - 1])) return [{ name, text }];
+  return names.map((n, k) => ({
+    name: n,
+    text: text.slice(starts[k] + n.length + 2, k + 1 < names.length ? starts[k + 1] : text.length).trim(),
+  }));
+}
+
+/** The character's tier, for "a number of d6s equal to your tier". */
+export function tierOf(character) {
+  return getTierForLevel(Number(character?.level) || 1);
 }
 
 // ── The character's side: modifiers and costs ─────────────────────────────

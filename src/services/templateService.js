@@ -120,7 +120,7 @@ export const templateService = {
     // Pick ancestry for Daggerheart
     let ancestry = '';
     if (gameSystem === 'daggerheart' || !gameSystem) {
-      const defaultAncestries = ['Clank', 'Daemon', 'Drakona', 'Dwarf', 'Elf', 'Faerie', 'Faun', 'Firbolg', 'Fungril', 'Galapa', 'Giant', 'Goblin', 'Halfling', 'Human', 'Inferis', 'Katari', 'Orc', 'Ribbet', 'Simiah'];
+      const defaultAncestries = ['Clank', 'Drakona', 'Dwarf', 'Elf', 'Faerie', 'Faun', 'Firbolg', 'Fungril', 'Galapa', 'Giant', 'Goblin', 'Halfling', 'Human', 'Infernis', 'Katari', 'Orc', 'Ribbet', 'Simiah'];
       const availableAncestries = (campaignFrame?.ancestries?.length > 0) ? campaignFrame.ancestries : defaultAncestries;
       const usedAncestries = existingNPCs.map(n => n.ancestry).filter(Boolean);
       // Prefer unused ancestries for variety

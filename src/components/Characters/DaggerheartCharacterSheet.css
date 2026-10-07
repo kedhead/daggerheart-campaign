@@ -804,6 +804,18 @@
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.45);
   line-height: 1.5;
+  /* Rulebook text keeps its bullet lists on their own lines. */
+  white-space: pre-line;
+}
+
+.dh-feature-part + .dh-feature-part {
+  margin-top: 0.6rem;
+}
+
+.dh-feature-part-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.15rem;
 }
 
 .dh-feature-tracker {

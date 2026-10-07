@@ -28,6 +28,8 @@ export const ANCESTRY_VISUAL_HINTS = {
   'Goblin': 'a small scrappy humanoid about 3 feet tall with large pointed ears, a wide mouth with sharp teeth, and mottled green or gray skin',
   'Halfling': 'a cheerful small humanoid about 3 feet tall with curly hair, large bare feet, and a round friendly face',
   'Human': 'a human with normal human features',
+  'Infernis': 'a humanoid with deep reddish or charcoal-dark skin, small curved horns on the head, a pointed tail, and faintly glowing eyes hinting at infernal power',
+  // Older spelling, kept for characters and NPCs saved with it.
   'Inferis': 'a humanoid with deep reddish or charcoal-dark skin, small curved horns on the head, a pointed tail, and faintly glowing eyes hinting at infernal power',
   'Katari': 'a feline humanoid with cat-like pointed ears, visible whiskers, a long tail, and fur-covered skin with cat-like facial features',
   'Orc': 'a tall powerfully-built humanoid with prominent upward-jutting tusks, a strong jaw, thick neck, and green or gray skin',

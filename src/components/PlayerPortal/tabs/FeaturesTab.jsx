@@ -2,8 +2,12 @@ import { CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES } from '../../../data/syst
 import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../../data/sources';
 import TransformationPanel from '../../Characters/TransformationPanel';
 import { scarCount } from '../../../utils/daggerheartHope';
+import { featureParts } from '../../../utils/cardActions';
+import CardActions, { portalActionProps } from '../../Characters/CardActions';
 
-function FeatureCard({ tag, name, description, accentColor, action }) {
+const descStyle = { fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5, whiteSpace: 'pre-line' };
+
+function FeatureCard({ tag, name, description, accentColor, action, children }) {
   return (
     <div className="lrp-card" style={{ borderColor: accentColor ? `${accentColor}33` : undefined }}>
       {tag && (
@@ -12,9 +16,8 @@ function FeatureCard({ tag, name, description, accentColor, action }) {
         </div>
       )}
       <div style={{ fontSize: 13, fontWeight: 700, color: '#fdf6dc', marginBottom: description ? 6 : 0 }}>{name}</div>
-      {description && (
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.5 }}>{description}</div>
-      )}
+      {description && <div style={descStyle}>{description}</div>}
+      {children}
       {action}
     </div>
   );
@@ -22,7 +25,7 @@ function FeatureCard({ tag, name, description, accentColor, action }) {
 
 const HOPE_FEATURE_COST = 3;
 
-export default function FeaturesTab({ character, updateCharacter, campaign }) {
+export default function FeaturesTab({ character, updateCharacter, campaign, roll, rawRoll, rollDamage, campaignId }) {
   const charClass     = character.class || '';
   const subclass      = character.subclass || '';
   const ancestry      = character.ancestry || '';
@@ -47,6 +50,33 @@ export default function FeaturesTab({ character, updateCharacter, campaign }) {
   const communityFeatures = communityData?.features || [];
 
   const hasHeritage = ancestryFeatures.length > 0 || communityFeatures.length > 0;
+
+  // Each feature gets the buttons its rules text calls for, as domain cards
+  // do (utils/cardActions.js). A subclass slot holding two features
+  // ("Unwavering / Iron Will") is split so each has its own.
+  const shared = portalActionProps({ character, roll, rawRoll, rollDamage, campaignId, updateCharacter });
+  const featureCard = ({ key, tag, feature, source, accentColor }) => {
+    const parts = featureParts(feature);
+    const accent = accentColor || '#eab308';
+    if (parts.length === 1) {
+      return (
+        <FeatureCard key={key} tag={tag} name={feature.name} description={feature.description} accentColor={accentColor}>
+          <CardActions {...shared} text={feature.description} name={feature.name} useKey={`${source} · ${feature.name}`} accent={accent} />
+        </FeatureCard>
+      );
+    }
+    return (
+      <FeatureCard key={key} tag={tag} name={feature.name} accentColor={accentColor}>
+        {parts.map(p => (
+          <div key={p.name} style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: accent, marginBottom: 2 }}>{p.name}</div>
+            <div style={descStyle}>{p.text}</div>
+            <CardActions {...shared} text={p.text} name={p.name} useKey={`${source} · ${p.name}`} accent={accent} />
+          </div>
+        ))}
+      </FeatureCard>
+    );
+  };
   const hasContent  = classFeatures.length > 0 || hopeFeature || subclassInfo || mcSubclassInfo || hasHeritage;
 
   if (!hasContent) {
@@ -91,6 +121,7 @@ export default function FeaturesTab({ character, updateCharacter, campaign }) {
                   name={hopeFeature.name}
                   description={hopeFeature.description}
                   accentColor="#eab308"
+                  /* Activate pays the Hope; CardActions adds any rolls or dice. */
                   action={updateCharacter && (
                     <button
                       onClick={toggle}
@@ -106,12 +137,12 @@ export default function FeaturesTab({ character, updateCharacter, campaign }) {
                       {active ? 'End effect' : `Activate — ${HOPE_FEATURE_COST} Hope`}
                     </button>
                   )}
-                />
+                >
+                  <CardActions {...shared} text={hopeFeature.description} name={hopeFeature.name} useKey={`${charClass} · ${hopeFeature.name}`} accent="#eab308" hideCosts />
+                </FeatureCard>
               );
             })()}
-            {classFeatures.map((f, i) => (
-              <FeatureCard key={i} name={f.name} description={f.description} />
-            ))}
+            {classFeatures.map((f, i) => featureCard({ key: i, feature: f, source: charClass }))}
           </div>
         </div>
       )}
@@ -122,13 +153,13 @@ export default function FeaturesTab({ character, updateCharacter, campaign }) {
           <div className="lrp-section-label">{subclassInfo.name}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {subclassInfo.foundation && (
-              <FeatureCard tag="Foundation" name={subclassInfo.foundation.name} description={subclassInfo.foundation.description} accentColor="#a78bfa" />
+              featureCard({ tag: 'Foundation', feature: subclassInfo.foundation, source: subclassInfo.name, accentColor: '#a78bfa' })
             )}
             {(subclassLevel === 'specialization' || subclassLevel === 'mastery') && subclassInfo.specialization && (
-              <FeatureCard tag="Specialization" name={subclassInfo.specialization.name} description={subclassInfo.specialization.description} accentColor="#a78bfa" />
+              featureCard({ tag: 'Specialization', feature: subclassInfo.specialization, source: subclassInfo.name, accentColor: '#a78bfa' })
             )}
             {subclassLevel === 'mastery' && subclassInfo.mastery && (
-              <FeatureCard tag="Mastery" name={subclassInfo.mastery.name} description={subclassInfo.mastery.description} accentColor="#a78bfa" />
+              featureCard({ tag: 'Mastery', feature: subclassInfo.mastery, source: subclassInfo.name, accentColor: '#a78bfa' })
             )}
           </div>
         </div>
@@ -139,7 +170,7 @@ export default function FeaturesTab({ character, updateCharacter, campaign }) {
         <div>
           <div className="lrp-section-label">{character.multiclass?.class} — {mcSubclassInfo.name} (Multiclass)</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <FeatureCard tag="Foundation" name={mcSubclassInfo.foundation.name} description={mcSubclassInfo.foundation.description} accentColor="#a78bfa" />
+            {featureCard({ tag: 'Foundation', feature: mcSubclassInfo.foundation, source: mcSubclassInfo.name, accentColor: '#a78bfa' })}
           </div>
         </div>
       )}
@@ -150,10 +181,10 @@ export default function FeaturesTab({ character, updateCharacter, campaign }) {
           <div className="lrp-section-label">Heritage Features</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {ancestryFeatures.map((f, i) => (
-              <FeatureCard key={`a-${i}`} tag={`Ancestry — ${ancestry}`} name={f.name} description={f.description} accentColor="#60a5fa" />
+              featureCard({ key: `a-${i}`, tag: `Ancestry — ${ancestry}`, feature: f, source: 'Ancestry', accentColor: '#60a5fa' })
             ))}
             {communityFeatures.map((f, i) => (
-              <FeatureCard key={`c-${i}`} tag={`Community — ${community}`} name={f.name} description={f.description} accentColor="#60a5fa" />
+              featureCard({ key: `c-${i}`, tag: `Community — ${community}`, feature: f, source: 'Community', accentColor: '#60a5fa' })
             ))}
           </div>
         </div>

@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { Sparkles, Dices, Flame, Feather, Check, RotateCcw, Minus, Plus } from 'lucide-react';
 import {
   parseCardActions, diceFormula, spellcastModifier, traitModifier,
-  hopeAvailable, stressAvailable, spendHope, markStress,
+  hopeAvailable, stressAvailable, spendHope, markStress, tierOf,
 } from '../../utils/cardActions';
 import { VITALITY_CHOICES, applyVitalityChoice } from '../../data/daggerheartAbilityEffects';
+import { getEffectiveProficiency } from '../../data/systems/daggerheart';
 
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const signed = (n) => (n >= 0 ? `+${n}` : `${n}`);
@@ -30,18 +31,25 @@ const btn = (accent, disabled) => ({
  * @param {Function} onRoll    - (label, modifier, { reaction }) => roll a Duality roll
  * @param {Function} onDice    - (label, { quantity, dieType, modifier }) => roll dice
  * @param {Function} [updateCharacter] - (id, updates); without it costs/uses are read-only
+ * @param {boolean} [hideCosts] - leave out Spend Hope / Mark Stress (a class's Hope
+ *   feature already has its own Activate button that pays the 3 Hope)
  */
 export default function CardActions({
   text, name, useKey, character, updateCharacter, onRoll, onDice,
-  proficiency = 1, accent = 'var(--primary)', canRoll = true,
+  proficiency = 1, accent = 'var(--primary)', canRoll = true, hideCosts = false,
 }) {
-  const actions = useMemo(() => parseCardActions(text), [text]);
+  const level = Number(character?.level) || 0;
+  const parsed = useMemo(() => parseCardActions(text, { level }), [text, level]);
+  const actions = hideCosts ? parsed.filter(a => a.kind !== 'hope' && a.kind !== 'stress') : parsed;
   if (actions.length === 0) return null;
 
   const key = useKey || name;
   const canEdit = !!updateCharacter && !!character?.id;
   const update = (u) => { if (u && canEdit) updateCharacter(character.id, u); };
   const spell = spellcastModifier(character);
+  // "d4s equal to your Spellcast trait" counts the trait itself, not roll bonuses.
+  const spellTrait = spell.trait ? traitModifier(character, spell.trait) : 0;
+  const tier = tierOf(character);
   const hope = hopeAvailable(character);
   const stress = stressAvailable(character);
   const uses = character?.cardUses?.[key];
@@ -74,11 +82,11 @@ export default function CardActions({
         }
         if (a.kind === 'dice') {
           if (!canRoll) return null;
-          const formula = diceFormula(a, { proficiency, spellcast: Math.max(0, spell.modifier) });
+          const formula = diceFormula(a, { proficiency, spellcast: Math.max(0, spellTrait), tier });
           const m = formula.match(/^(\d+)d(\d+)(?:\+(\d+))?$/);
           return (
             <button key={i} type="button" style={btn(accent)}
-              title={a.scale === 'proficiency' ? 'Dice equal to your Proficiency' : a.scale === 'spellcast' ? 'Dice equal to your Spellcast trait' : undefined}
+              title={{ proficiency: 'Dice equal to your Proficiency', spellcast: 'Dice equal to your Spellcast trait', tier: 'Dice equal to your tier' }[a.scale]}
               onClick={() => m && onDice?.(`${name}${a.label ? ` — ${a.label}` : ''}`, { quantity: +m[1], dieType: +m[2], modifier: +(m[3] || 0) })}>
               <Dices size={13} /> {formula}{a.label ? ` ${a.label}` : ''}
             </button>
@@ -135,6 +143,23 @@ export default function CardActions({
       })}
     </div>
   );
+}
+
+/**
+ * The CardActions props for a Player Portal tab: action rolls earn Hope/Fear,
+ * reaction rolls (Counterspell) use the untagged roller so they don't.
+ */
+export function portalActionProps({ character, roll, rawRoll, rollDamage, campaignId, updateCharacter }) {
+  return {
+    character,
+    proficiency: getEffectiveProficiency(character),
+    updateCharacter: updateCharacter || null,
+    canRoll: !!campaignId,
+    onRoll: (label, modifier, { reaction } = {}) => (reaction
+      ? (rawRoll || roll)({ label, modifier, kind: 'reaction' })
+      : roll({ label, modifier })),
+    onDice: (label, parsed) => rollDamage({ label, ...parsed }),
+  };
 }
 
 /**

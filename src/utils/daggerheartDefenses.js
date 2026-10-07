@@ -8,6 +8,8 @@
 import { CLASSES, getEffectiveProficiency, getTierForLevel } from '../data/systems/daggerheart';
 import { computeAbilityDelta, hasPassiveEffect, isPermanentEffect, effectiveTraits } from '../data/daggerheartAbilityEffects';
 import { getCardByName } from '../data/daggerheartDomainCards';
+import { FEATURE_EFFECTS, passiveFeaturesOf } from '../data/daggerheartFeatureEffects';
+import { normalizeHopeSlots, usableHopeFilled } from './daggerheartHope';
 import { DAGGERHEART_ARMOR, ALL_DAGGERHEART_ITEMS } from '../data/daggerheartItems';
 import { getFeatureName, getFeatureDescription } from './itemFeatures';
 
@@ -180,6 +182,12 @@ export function computeDefenses(character, equippedItems = []) {
     domainCardCounts,
     vitalityChoices: character?.vitalityChoices,
   });
+  // Subclass, ancestry and community features with a stat bonus (Stalwart's
+  // thresholds, Simiah's Nimble, …), applied the same way.
+  const featureDelta = computeAbilityDelta(passiveFeaturesOf(character), {
+    proficiency,
+    hope: usableHopeFilled(character, normalizeHopeSlots(character?.hopeSlots)),
+  }, FEATURE_EFFECTS);
 
   // Damage thresholds. Final threshold = base + character level. Fallback chain:
   //   1. Ability-set base (e.g. Bare Bones) + level — overrides armor entirely
@@ -203,8 +211,8 @@ export function computeDefenses(character, equippedItems = []) {
     majorThreshold = 5 + level;
     severeThreshold = 11 + level;
   }
-  majorThreshold += abilityDelta.majorBonus;
-  severeThreshold += abilityDelta.severeBonus;
+  majorThreshold += abilityDelta.majorBonus + featureDelta.majorBonus;
+  severeThreshold += abilityDelta.severeBonus + featureDelta.severeBonus;
   const massiveThreshold = severeThreshold > 0 ? severeThreshold * 2 : 0;
 
   // Final Armor Score: base (or ability-set base) + feature bonuses + ability
@@ -220,12 +228,13 @@ export function computeDefenses(character, equippedItems = []) {
   const hopeFeatureEvasion =
     character?.hopeFeatureActive && String(charClass || '').toLowerCase() === 'rogue' ? 2 : 0;
 
-  const evasion = baseEffectiveEvasion + abilityDelta.evasionBonus + hopeFeatureEvasion;
+  const evasion = baseEffectiveEvasion + abilityDelta.evasionBonus + featureDelta.evasionBonus + hopeFeatureEvasion;
 
   // What each passive card is doing, for the sheet to show. Vaulted cards are
   // listed too, so "why isn't this counting?" has an answer.
   const passiveEffects = [
     ...abilityDelta.effects,
+    ...featureDelta.effects,
     ...allDomainCards
       .filter(c => vaulted.has(c.name) && hasPassiveEffect(c.name))
       .map(c => ({ name: c.name, active: false, reason: 'in vault', summary: '' })),

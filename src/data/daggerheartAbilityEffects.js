@@ -174,7 +174,7 @@ function summarize(d) {
   return parts.join(', ') || 'no bonus yet';
 }
 
-export function computeAbilityDelta(ownedCards, ctx) {
+export function computeAbilityDelta(ownedCards, ctx, handlers = ABILITY_EFFECTS) {
   const delta = {
     armorScoreBonus: 0,
     armorScoreSet: null,
@@ -192,7 +192,7 @@ export function computeAbilityDelta(ownedCards, ctx) {
   };
   if (!Array.isArray(ownedCards)) return delta;
   for (const card of ownedCards) {
-    const handler = ABILITY_EFFECTS[card?.name];
+    const handler = handlers[card?.name];
     if (!handler) continue;
     let active = true;
     try { active = handler.applies(ctx); } catch { active = false; }

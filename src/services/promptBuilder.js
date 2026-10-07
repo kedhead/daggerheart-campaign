@@ -145,7 +145,7 @@ Game System: ${gameSystem.name}`;
 
     // Ancestry instructions (Daggerheart only)
     if (gameSystem.id === 'daggerheart') {
-      const defaultAncestries = ['Clank', 'Daemon', 'Drakona', 'Dwarf', 'Elf', 'Faerie', 'Faun', 'Firbolg', 'Fungril', 'Galapa', 'Giant', 'Goblin', 'Halfling', 'Human', 'Inferis', 'Katari', 'Orc', 'Ribbet', 'Simiah'];
+      const defaultAncestries = ['Clank', 'Drakona', 'Dwarf', 'Elf', 'Faerie', 'Faun', 'Firbolg', 'Fungril', 'Galapa', 'Giant', 'Goblin', 'Halfling', 'Human', 'Infernis', 'Katari', 'Orc', 'Ribbet', 'Simiah'];
       const availableAncestries = (campaignFrame?.ancestries?.length > 0) ? campaignFrame.ancestries : defaultAncestries;
 
       // When the DM has chosen an ancestry it is a requirement, not a suggestion.
