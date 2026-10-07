@@ -6,6 +6,8 @@
 //
 // Each handler receives:
 //   hasEquippedArmor, tier, proficiency, traits, domainCardCounts
+// `requires` is shown on the sheet when the condition isn't met, so a card
+// that isn't counting says why instead of failing silently.
 // and returns a partial delta:
 //   {
 //     armorScoreBonus, armorScoreSet,           // armor score
@@ -31,6 +33,7 @@ export const ABILITY_EFFECTS = {
   // Blade
   'Fortified Armor': {
     applies: (ctx) => ctx.hasEquippedArmor,
+    requires: 'needs armor equipped',
     effect: () => ({ majorBonus: 2, severeBonus: 2 }),
   },
   'Vitality': {
@@ -39,6 +42,7 @@ export const ABILITY_EFFECTS = {
   },
   'Blade-Touched': {
     applies: (ctx) => (ctx.domainCardCounts?.Blade ?? 0) >= 4,
+    requires: 'needs 4+ Blade cards',
     effect: () => ({ severeBonus: 4 }),
   },
 
@@ -51,12 +55,14 @@ export const ABILITY_EFFECTS = {
   // Splendor
   'Splendor-Touched': {
     applies: (ctx) => (ctx.domainCardCounts?.Splendor ?? 0) >= 4,
+    requires: 'needs 4+ Splendor cards',
     effect: () => ({ severeBonus: 3 }),
   },
 
   // Valor
   'Bare Bones': {
     applies: (ctx) => !ctx.hasEquippedArmor,
+    requires: 'needs no armor equipped',
     effect: (ctx) => {
       const strength = ctx.traits?.strength ?? 0;
       const bases = BARE_BONES_TIER_BASES[ctx.tier] || BARE_BONES_TIER_BASES[1];
@@ -69,6 +75,7 @@ export const ABILITY_EFFECTS = {
   },
   'Armorer': {
     applies: (ctx) => ctx.hasEquippedArmor,
+    requires: 'needs armor equipped',
     effect: () => ({ armorScoreBonus: 1 }),
   },
   'Rise Up': {
@@ -77,9 +84,32 @@ export const ABILITY_EFFECTS = {
   },
   'Valor-Touched': {
     applies: (ctx) => (ctx.domainCardCounts?.Valor ?? 0) >= 4,
+    requires: 'needs 4+ Valor cards',
     effect: () => ({ armorScoreBonus: 1 }),
   },
 };
+
+/** Whether a card has a passive stat effect modelled here. */
+export function hasPassiveEffect(name) {
+  return Object.prototype.hasOwnProperty.call(ABILITY_EFFECTS, name);
+}
+
+// "+2 thresholds", "+1 Armor Score", "+1 Evasion" — what a card adds right now.
+function summarize(d) {
+  const parts = [];
+  if (d.majorBaseSet != null || d.severeBaseSet != null) parts.push(`unarmored thresholds ${d.majorBaseSet ?? 0}/${d.severeBaseSet ?? 0}`);
+  if (d.armorScoreSet != null) parts.push(`Armor Score ${d.armorScoreSet}`);
+  const major = d.majorBonus || 0;
+  const severe = d.severeBonus || 0;
+  if (major && major === severe) parts.push(`+${major} thresholds`);
+  else {
+    if (major) parts.push(`+${major} Major`);
+    if (severe) parts.push(`+${severe} Severe`);
+  }
+  if (d.armorScoreBonus) parts.push(`+${d.armorScoreBonus} Armor Score`);
+  if (d.evasionBonus) parts.push(`+${d.evasionBonus} Evasion`);
+  return parts.join(', ') || 'no bonus yet';
+}
 
 export function computeAbilityDelta(ownedCards, ctx) {
   const delta = {
@@ -91,6 +121,8 @@ export function computeAbilityDelta(ownedCards, ctx) {
     severeBonus: 0,
     evasionBonus: 0,
     activeCards: [],
+    // Every owned card with a passive effect: { name, active, reason, summary }.
+    effects: [],
   };
   if (!Array.isArray(ownedCards)) return delta;
   for (const card of ownedCards) {
@@ -98,8 +130,12 @@ export function computeAbilityDelta(ownedCards, ctx) {
     if (!handler) continue;
     let active = true;
     try { active = handler.applies(ctx); } catch { active = false; }
-    if (!active) continue;
+    if (!active) {
+      delta.effects.push({ name: card.name, active: false, reason: handler.requires || 'condition not met', summary: '' });
+      continue;
+    }
     const d = handler.effect(ctx) || {};
+    delta.effects.push({ name: card.name, active: true, reason: '', summary: summarize(d) });
     if (d.armorScoreSet != null) delta.armorScoreSet = d.armorScoreSet;
     if (d.majorBaseSet != null) delta.majorBaseSet = d.majorBaseSet;
     if (d.severeBaseSet != null) delta.severeBaseSet = d.severeBaseSet;

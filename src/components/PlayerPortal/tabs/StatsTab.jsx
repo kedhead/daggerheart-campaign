@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { TRAIT_ABBREV } from '../../../utils/daggerheartRollUtils';
 import { computeDefenses } from '../../../utils/daggerheartDefenses';
+import PassiveEffectsNote from '../../Characters/PassiveEffectsNote';
 
 const BONUS_OPTS = [
   { key: null,        label: 'Normal',      color: '#eab308' },
@@ -37,7 +38,7 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
         .filter(Boolean)
     : [];
 
-  const { armorScore, evasion, majorThreshold, severeThreshold } = computeDefenses(character, equippedItems);
+  const { armorScore, evasion, majorThreshold, severeThreshold, passiveEffects } = computeDefenses(character, equippedItems);
 
   const handleTraitRoll = async (traitName) => {
     if (!campaignId) return;
@@ -139,6 +140,7 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
           <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 12, lineHeight: 1.45 }}>
             Damage at or above each threshold marks <span style={{ color: '#f5c543' }}>1 / 2 / 3</span> HP.
           </div>
+          <PassiveEffectsNote effects={passiveEffects} style={{ color: 'rgba(253,246,220,0.75)' }} />
         </div>
       </div>
 
