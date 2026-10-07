@@ -19,6 +19,7 @@ import DeathMoveModal from './DeathMoveModal';
 import TakeDamageModal from './TakeDamageModal';
 import PassiveEffectsNote from './PassiveEffectsNote';
 import CardActions, { VitalityChoice } from './CardActions';
+import { featureParts } from '../../utils/cardActions';
 import { effectiveTraits, rollBonusesFor } from '../../data/daggerheartAbilityEffects';
 import { applyDamage } from '../../utils/playerDamage';
 import BeastformPanel from './BeastformPanel';
@@ -970,6 +971,27 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   const renderAbilitiesTab = () => {
     const classFeatures = classData?.classFeatures || [];
     const hopeFeature = classData?.hopeFeature;
+    // A feature's rules text plus the buttons it calls for (rolls, dice, Hope
+    // and Stress costs, uses, tokens). Subclass slots holding two features
+    // ("Unwavering / Iron Will") get a block each.
+    const featureBody = (feature, source) => {
+      const parts = featureParts(feature);
+      if (parts.length === 1) {
+        return (
+          <>
+            <div className="dh-feature-desc">{feature.description}</div>
+            <CardActions {...cardActionProps} text={feature.description} name={feature.name} useKey={`${source} · ${feature.name}`} />
+          </>
+        );
+      }
+      return parts.map(p => (
+        <div key={p.name} className="dh-feature-part">
+          <div className="dh-feature-part-name">{p.name}</div>
+          <div className="dh-feature-desc">{p.text}</div>
+          <CardActions {...cardActionProps} text={p.text} name={p.name} useKey={`${source} · ${p.name}`} />
+        </div>
+      ));
+    };
     // Multiclass subclass info
     const mcSubclassInfo = character.multiclass && SUBCLASSES[character.multiclass.class]
       ? SUBCLASSES[character.multiclass.class].find(s => s.name === character.multiclass.subclass)
@@ -1022,6 +1044,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               </div>
               <div className="dh-feature-name">{hopeFeature.name}</div>
               <div className="dh-feature-desc">{hopeFeature.description}</div>
+              {/* Activate (below) pays the Hope; this adds any rolls or dice. */}
+              <CardActions {...cardActionProps} text={hopeFeature.description} name={hopeFeature.name} useKey={`${charClass} · ${hopeFeature.name}`} hideCosts />
               {canEdit && updateCharacter && (
                 <button
                   className="dh-hope-activate-btn"
@@ -1041,7 +1065,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           {classFeatures.map((f, i) => (
             <div key={i} className="dh-feature-card">
               <div className="dh-feature-name">{f.name}</div>
-              <div className="dh-feature-desc">{f.description}</div>
+              {featureBody(f, charClass)}
             </div>
           ))}
         </div>
@@ -1055,7 +1079,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <div className="dh-feature-card">
               <div className="dh-feature-tag">Foundation</div>
               <div className="dh-feature-name">{subclassInfo.foundation.name}</div>
-              <div className="dh-feature-desc">{subclassInfo.foundation.description}</div>
+              {featureBody(subclassInfo.foundation, subclassInfo.name)}
               {subclassInfo.name === 'Call of the Slayer' && slayerDiceTracker}
             </div>
           )}
@@ -1063,14 +1087,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             <div className="dh-feature-card">
               <div className="dh-feature-tag">Specialization</div>
               <div className="dh-feature-name">{subclassInfo.specialization.name}</div>
-              <div className="dh-feature-desc">{subclassInfo.specialization.description}</div>
+              {featureBody(subclassInfo.specialization, subclassInfo.name)}
             </div>
           )}
           {subclassLevel === 'mastery' && subclassInfo.mastery && (
             <div className="dh-feature-card">
               <div className="dh-feature-tag">Mastery</div>
               <div className="dh-feature-name">{subclassInfo.mastery.name}</div>
-              <div className="dh-feature-desc">{subclassInfo.mastery.description}</div>
+              {featureBody(subclassInfo.mastery, subclassInfo.name)}
             </div>
           )}
         </div>
@@ -1083,7 +1107,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <div className="dh-feature-card">
             <div className="dh-feature-tag">Foundation</div>
             <div className="dh-feature-name">{mcSubclassInfo.foundation.name}</div>
-            <div className="dh-feature-desc">{mcSubclassInfo.foundation.description}</div>
+            {featureBody(mcSubclassInfo.foundation, mcSubclassInfo.name)}
             {mcSubclassInfo.name === 'Call of the Slayer' && slayerDiceTracker}
           </div>
         </div>
@@ -1101,14 +1125,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               <div key={`a-${i}`} className="dh-feature-card">
                 <div className="dh-feature-tag">Ancestry — {ancestry}</div>
                 <div className="dh-feature-name">{f.name}</div>
-                <div className="dh-feature-desc">{f.description}</div>
+                {featureBody(f, 'Ancestry')}
               </div>
             ))}
             {communityFeatures.map((f, i) => (
               <div key={`c-${i}`} className="dh-feature-card">
                 <div className="dh-feature-tag">Community — {community}</div>
                 <div className="dh-feature-name">{f.name}</div>
-                <div className="dh-feature-desc">{f.description}</div>
+                {featureBody(f, 'Community')}
               </div>
             ))}
           </div>
