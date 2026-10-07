@@ -6,7 +6,7 @@
 // Daggerheart core rulebook.
 
 import { CLASSES, getEffectiveProficiency, getTierForLevel } from '../data/systems/daggerheart';
-import { computeAbilityDelta } from '../data/daggerheartAbilityEffects';
+import { computeAbilityDelta, hasPassiveEffect, isPermanentEffect } from '../data/daggerheartAbilityEffects';
 import { getCardByName } from '../data/daggerheartDomainCards';
 import { DAGGERHEART_ARMOR, ALL_DAGGERHEART_ITEMS } from '../data/daggerheartItems';
 import { getFeatureName, getFeatureDescription } from './itemFeatures';
@@ -52,6 +52,24 @@ export function resolveArmorBases(armor) {
   return null;
 }
 
+// Armor recorded by name instead of as an equipped inventory item. Demiplane
+// imports write `equippedArmor`; older sheets use `armorName` / `armorItems`.
+// The sheet shows that armor, so the stats must count it as worn too.
+function namedArmorOf(character) {
+  const name = [character?.equippedArmor, character?.armorName, character?.armorItems?.[0]?.name]
+    .find(n => typeof n === 'string' && n.trim());
+  return name ? name.trim() : '';
+}
+
+// Match a recorded armor name to the catalog: exact, then without a trailing
+// "armor" ("Chainmail" ↔ "Chainmail Armor").
+function catalogArmorByName(name) {
+  const key = name.toLowerCase().replace(/\s+armou?r$/, '');
+  return DAGGERHEART_ARMOR.find(a => a.name.toLowerCase() === name.toLowerCase())
+    || DAGGERHEART_ARMOR.find(a => a.name.toLowerCase().replace(/\s+armou?r$/, '') === key)
+    || null;
+}
+
 /**
  * Compute a character's derived defenses.
  *
@@ -59,7 +77,8 @@ export function resolveArmorBases(armor) {
  * @param {Array}  equippedItems - resolved, currently-equipped item objects
  *                 (full item shape with `systemData`), weapons and armor alike.
  * @returns {{armorScore:number, evasion:number, majorThreshold:number,
- *            severeThreshold:number, massiveThreshold:number}}
+ *            severeThreshold:number, massiveThreshold:number,
+ *            passiveEffects: Array<{name, active, reason, summary}>}}
  */
 export function computeDefenses(character, equippedItems = []) {
   equippedItems = equippedItems.map(enrichFromCatalog);
@@ -70,11 +89,25 @@ export function computeDefenses(character, equippedItems = []) {
 
   // Domain cards are stored as plain names; enrich them to full card objects
   // (with `name` + `domain`) so passive ability effects can be matched.
-  const domainCards = (character?.domainCards || [])
+  const allDomainCards = (character?.domainCards || [])
     .map(c => (typeof c === 'string' ? getCardByName(c) : (c?.name && c?.domain ? c : getCardByName(c?.name))))
     .filter(Boolean);
+  // Vault cards are inactive (SRD): only the loadout grants passive bonuses —
+  // except permanent ones like Vitality, which the rules vault on purpose.
+  const vaulted = new Set((character?.vaultCards || []).filter(n => !isPermanentEffect(n)));
+  const domainCards = allDomainCards.filter(c => !vaulted.has(c.name));
 
-  const equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
+  let equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
+  if (equippedArmorItems.length === 0) {
+    // No armor item equipped — fall back to armor recorded by name, so
+    // "while wearing armor" cards (Fortified Armor, Armorer) and the armor's
+    // own thresholds apply, and Bare Bones doesn't.
+    const name = namedArmorOf(character);
+    if (name) {
+      const match = catalogArmorByName(name);
+      equippedArmorItems = [match ? { ...match, type: 'armor' } : { type: 'armor', name, systemData: {} }];
+    }
+  }
   const baseArmorScore = character?.armor ?? 0;
 
   // Base Armor Score from the equipped armor item (or the character's stored value).
@@ -186,5 +219,14 @@ export function computeDefenses(character, equippedItems = []) {
 
   const evasion = baseEffectiveEvasion + abilityDelta.evasionBonus + hopeFeatureEvasion;
 
-  return { armorScore, evasion, majorThreshold, severeThreshold, massiveThreshold };
+  // What each passive card is doing, for the sheet to show. Vaulted cards are
+  // listed too, so "why isn't this counting?" has an answer.
+  const passiveEffects = [
+    ...abilityDelta.effects,
+    ...allDomainCards
+      .filter(c => vaulted.has(c.name) && hasPassiveEffect(c.name))
+      .map(c => ({ name: c.name, active: false, reason: 'in vault', summary: '' })),
+  ];
+
+  return { armorScore, evasion, majorThreshold, severeThreshold, massiveThreshold, passiveEffects };
 }

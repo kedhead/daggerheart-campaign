@@ -92,6 +92,7 @@ import { DeleteCharacterPrompt } from '../src/components/Characters/ConfirmDelet
 import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import TakeDamageModal from '../src/components/Characters/TakeDamageModal.jsx';
+import PassiveEffectsNote from '../src/components/Characters/PassiveEffectsNote.jsx';
 import PortalTableStatus from '../src/components/PlayerPortal/PortalTableStatus.jsx';
 import { bottomTabsFor } from '../src/components/Layout/BottomNav.jsx';
 import { navGroupsFor, navItemsFor, viewTitle, VIEWS } from '../src/config/navigation.js';
@@ -1168,6 +1169,52 @@ section('Cinematic recap timeline');
   assert(dodging.evasion === 14, `active Rogue's Dodge adds +2 evasion (got ${dodging.evasion})`);
   const warriorActive = computeDefenses({ class: 'Warrior', level: 1, hopeFeatureActive: true }, []);
   assert(warriorActive.evasion === 11, 'non-rogue active Hope feature leaves evasion unchanged');
+}
+
+// ── Passive domain cards: Fortified Armor and friends ──
+// Reported: Fortified Armor in the loadout didn't change thresholds. Its
+// "while wearing armor" check only saw armor equipped as an inventory item,
+// but imported/older characters record armor as a name (equippedArmor).
+{
+  const chainmail = { type: 'armor', name: 'Chainmail Armor', systemData: { armorScore: 4, armorSlots: 4, thresholds: { minor: 7, major: 15 } } };
+  const guardian = { class: 'Guardian', level: 4, domainCards: ['Fortified Armor'] };
+  const plain = { class: 'Guardian', level: 4 };
+
+  const itemBase = computeDefenses(plain, [chainmail]);
+  const itemFort = computeDefenses(guardian, [chainmail]);
+  assert(itemFort.majorThreshold === itemBase.majorThreshold + 2 && itemFort.severeThreshold === itemBase.severeThreshold + 2,
+    `Fortified Armor adds +2 to both thresholds with equipped armor (${itemBase.majorThreshold}/${itemBase.severeThreshold} → ${itemFort.majorThreshold}/${itemFort.severeThreshold})`);
+
+  const named = computeDefenses({ ...guardian, equippedArmor: 'Chainmail Armor' }, []);
+  assert(named.majorThreshold === 7 + 4 + 2 && named.severeThreshold === 15 + 4 + 2,
+    `armor recorded by name (Demiplane imports) counts as worn: Chainmail 7/15 + level 4 + Fortified 2 (got ${named.majorThreshold}/${named.severeThreshold})`);
+  const shortName = computeDefenses({ ...guardian, equippedArmor: 'chainmail' }, []);
+  assert(shortName.majorThreshold === 13, `a short armor name ("chainmail") still finds the catalog armor (got ${shortName.majorThreshold})`);
+  const legacy = computeDefenses({ ...guardian, armorName: 'Mystery Plate' }, []);
+  assert(legacy.majorThreshold === 5 + 4 + 2, `unknown named armor still counts as wearing armor for Fortified Armor (got ${legacy.majorThreshold})`);
+
+  const bare = computeDefenses(guardian, []);
+  assert(bare.majorThreshold === 5 + 4, 'with no armor at all, Fortified Armor adds nothing');
+  const why = (bare.passiveEffects || []).find(e => e.name === 'Fortified Armor');
+  assert(why && !why.active && /armor/i.test(why.reason || ''), `and the sheet can say why ("${why?.reason}")`);
+  const shown = (itemFort.passiveEffects || []).find(e => e.name === 'Fortified Armor');
+  assert(shown?.active && /\+2/.test(shown.summary || ''), `when active it reports what it adds ("${shown?.summary}")`);
+
+  const vaulted = computeDefenses({ ...guardian, vaultCards: ['Fortified Armor'] }, [chainmail]);
+  assert(vaulted.majorThreshold === itemBase.majorThreshold, 'a card in the Vault gives no passive bonus (vault cards are inactive)');
+  assert((vaulted.passiveEffects || []).some(e => e.name === 'Fortified Armor' && !e.active && /vault/i.test(e.reason)), 'and reports that it is in the vault');
+  const vitalityVaulted = computeDefenses({ class: 'Guardian', level: 5, domainCards: ['Vitality'], vaultCards: ['Vitality'] }, [chainmail]);
+  const noVitality = computeDefenses({ class: 'Guardian', level: 5 }, [chainmail]);
+  assert(vitalityVaulted.majorThreshold === noVitality.majorThreshold + 2,
+    'Vitality keeps applying from the vault, where the rules put it permanently');
+
+  const boneArmored = computeDefenses({ class: 'Guardian', level: 1, traits: { strength: 2 }, domainCards: ['Bare Bones'], equippedArmor: 'Chainmail Armor' }, []);
+  assert(boneArmored.armorScore === 4, `Bare Bones doesn't apply while wearing named armor (armor ${boneArmored.armorScore})`);
+
+  const note = strip(renderToString(<PassiveEffectsNote effects={[...itemFort.passiveEffects, ...bare.passiveEffects.map(e => ({ ...e, name: e.name + ' ' }))]} />));
+  assert(note.includes('Includes') && note.includes('Fortified Armor') && note.includes('+2 thresholds') && note.includes('needs armor equipped'),
+    'the sheet shows which passive cards count, and why any don\'t');
+  assert(renderToString(<PassiveEffectsNote effects={[]} />) === '', 'and shows nothing when no passive cards are owned');
 }
 
 // --- Player dice colors (roller color + Duality sets) ---

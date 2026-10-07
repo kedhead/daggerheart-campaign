@@ -17,6 +17,7 @@ import LevelUpWizard from './LevelUpWizard';
 import RestModal from './RestModal';
 import DeathMoveModal from './DeathMoveModal';
 import TakeDamageModal from './TakeDamageModal';
+import PassiveEffectsNote from './PassiveEffectsNote';
 import { applyDamage } from '../../utils/playerDamage';
 import BeastformPanel from './BeastformPanel';
 import TransformationPanel from './TransformationPanel';
@@ -336,6 +337,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     majorThreshold,
     severeThreshold,
     massiveThreshold,
+    passiveEffects,
   } = useMemo(() => computeDefenses(character, equippedItems), [character, equippedItems]);
 
   // Resize armor slots to match the equipped armor's slot count.
@@ -786,6 +788,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <div className="dh-damage-tier-hp">Mark 3 HP</div>
         </div>
       </div>
+      {/* Which passive domain cards are counting, and why any aren't. */}
+      <PassiveEffectsNote effects={passiveEffects} />
 
       {/* Experiences */}
       {experiences.length > 0 && (
