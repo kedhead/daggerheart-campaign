@@ -36,7 +36,11 @@ export const ABILITY_EFFECTS = {
     requires: 'needs armor equipped',
     effect: () => ({ majorBonus: 2, severeBonus: 2 }),
   },
+  // Vitality is chosen once and then vaulted permanently (rules), so its
+  // benefit must keep applying from the vault. Its two-of-three choice is
+  // not modelled yet; the threshold bonus stands in for it.
   'Vitality': {
+    permanent: true,
     applies: () => true,
     effect: () => ({ majorBonus: 2, severeBonus: 2 }),
   },
@@ -92,6 +96,11 @@ export const ABILITY_EFFECTS = {
 /** Whether a card has a passive stat effect modelled here. */
 export function hasPassiveEffect(name) {
   return Object.prototype.hasOwnProperty.call(ABILITY_EFFECTS, name);
+}
+
+/** Cards whose effect is permanent once chosen, so the vault doesn't switch it off. */
+export function isPermanentEffect(name) {
+  return !!ABILITY_EFFECTS[name]?.permanent;
 }
 
 // "+2 thresholds", "+1 Armor Score", "+1 Evasion" — what a card adds right now.

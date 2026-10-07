@@ -1203,6 +1203,10 @@ section('Cinematic recap timeline');
   const vaulted = computeDefenses({ ...guardian, vaultCards: ['Fortified Armor'] }, [chainmail]);
   assert(vaulted.majorThreshold === itemBase.majorThreshold, 'a card in the Vault gives no passive bonus (vault cards are inactive)');
   assert((vaulted.passiveEffects || []).some(e => e.name === 'Fortified Armor' && !e.active && /vault/i.test(e.reason)), 'and reports that it is in the vault');
+  const vitalityVaulted = computeDefenses({ class: 'Guardian', level: 5, domainCards: ['Vitality'], vaultCards: ['Vitality'] }, [chainmail]);
+  const noVitality = computeDefenses({ class: 'Guardian', level: 5 }, [chainmail]);
+  assert(vitalityVaulted.majorThreshold === noVitality.majorThreshold + 2,
+    'Vitality keeps applying from the vault, where the rules put it permanently');
 
   const boneArmored = computeDefenses({ class: 'Guardian', level: 1, traits: { strength: 2 }, domainCards: ['Bare Bones'], equippedArmor: 'Chainmail Armor' }, []);
   assert(boneArmored.armorScore === 4, `Bare Bones doesn't apply while wearing named armor (armor ${boneArmored.armorScore})`);

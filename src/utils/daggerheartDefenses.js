@@ -6,7 +6,7 @@
 // Daggerheart core rulebook.
 
 import { CLASSES, getEffectiveProficiency, getTierForLevel } from '../data/systems/daggerheart';
-import { computeAbilityDelta, hasPassiveEffect } from '../data/daggerheartAbilityEffects';
+import { computeAbilityDelta, hasPassiveEffect, isPermanentEffect } from '../data/daggerheartAbilityEffects';
 import { getCardByName } from '../data/daggerheartDomainCards';
 import { DAGGERHEART_ARMOR, ALL_DAGGERHEART_ITEMS } from '../data/daggerheartItems';
 import { getFeatureName, getFeatureDescription } from './itemFeatures';
@@ -92,8 +92,9 @@ export function computeDefenses(character, equippedItems = []) {
   const allDomainCards = (character?.domainCards || [])
     .map(c => (typeof c === 'string' ? getCardByName(c) : (c?.name && c?.domain ? c : getCardByName(c?.name))))
     .filter(Boolean);
-  // Vault cards are inactive (SRD): only the loadout grants passive bonuses.
-  const vaulted = new Set(character?.vaultCards || []);
+  // Vault cards are inactive (SRD): only the loadout grants passive bonuses —
+  // except permanent ones like Vitality, which the rules vault on purpose.
+  const vaulted = new Set((character?.vaultCards || []).filter(n => !isPermanentEffect(n)));
   const domainCards = allDomainCards.filter(c => !vaulted.has(c.name));
 
   let equippedArmorItems = equippedItems.filter(i => i.type === 'armor');
