@@ -96,6 +96,7 @@ import PassiveEffectsNote from '../src/components/Characters/PassiveEffectsNote.
 import CardActions from '../src/components/Characters/CardActions.jsx';
 import { parseCardActions, diceFormula, usesClearedByRest, spellcastModifier, spendHope, markStress, hopeAvailable, stressAvailable, featureParts } from '../src/utils/cardActions.js';
 import FeaturesTab from '../src/components/PlayerPortal/tabs/FeaturesTab.jsx';
+import { transformDiceBox, patchPhysicsWorker, patchEngineCreation } from '../vite/diceBoxPatch.js';
 import { applyVitalityChoice, rollBonusesFor, effectiveTraits } from '../src/data/daggerheartAbilityEffects.js';
 import { getCardByName } from '../src/data/daggerheartDomainCards.js';
 import PortalTableStatus from '../src/components/PlayerPortal/PortalTableStatus.jsx';
@@ -1389,6 +1390,40 @@ section('Class and heritage features');
   const war = { class: 'Wizard', subclass: 'School of War', subclassLevel: 'specialization' };
   assert(base({ ...war, hopeSlots: [true, true, false, false, false, false] }).evasion === base(war).evasion + 1, 'Conjure Shield: + Proficiency to Evasion with 2 Hope');
   assert(base({ ...war, hopeSlots: [true, false, false, false, false, false] }).evasion === base(war).evasion, 'and nothing with 1 Hope');
+}
+
+// ── Dice run in real time on slow frames ──
+// dice-box stepped physics once per rendered frame, at most 2 x 1/90 s, so
+// below ~45 fps (laptops, busy tables) the dice tumbled in slow motion.
+// vite/diceBoxPatch.js lifts that at build time; check it against the
+// installed library, so an upgrade that moves the code fails here.
+section('Dice-box patch');
+{
+  const dist = 'node_modules/@3d-dice/dice-box/dist/';
+  const inline = (code, name) => {
+    const m = code.match(new RegExp(`\\b${name}\\s*=\\s*"([A-Za-z0-9+/=]{1000,})"`));
+    return m ? Buffer.from(m[1], 'base64').toString('latin1') : '';
+  };
+  const physics = inline(transformDiceBox(readFileSync(dist + 'dice-box.es.js', 'utf8'), dist + 'dice-box.es.js'), 'ml');
+  assert(/stepSimulation\(\w+,5,1\/90\)/.test(physics) && !/stepSimulation\(\w+,2,1\/90\)/.test(physics),
+    'physics takes up to 5 substeps per frame (was 2)');
+  assert(/\w+=Math\.min\(\w+,50\)/.test(physics), 'and clamps a frame to 50 ms, so an idle gap cannot jump the dice');
+  let parses = true;
+  try { new Function(physics); } catch { parses = false; }
+  assert(parses, 'the patched physics worker is still valid JavaScript');
+
+  const render = inline(transformDiceBox(readFileSync(dist + 'world.offscreen.js', 'utf8'), dist + 'world.offscreen.js'), 'p');
+  assert(render.includes('preserveDrawingBuffer:!1') && render.includes('setHardwareScalingLevel(Math.min(2'),
+    'the offscreen renderer drops preserveDrawingBuffer and caps large canvases');
+  const onscreen = transformDiceBox(readFileSync(dist + 'world.onscreen.js', 'utf8'), dist + 'world.onscreen.js');
+  assert(onscreen.includes('preserveDrawingBuffer:!1'), 'and so does the onscreen fallback');
+
+  assert(transformDiceBox('export default 1', '/src/other.js') === null, 'other modules pass through untouched');
+  let threw = false;
+  try { patchPhysicsWorker('nothing to see'); } catch { threw = true; }
+  let threw2 = false;
+  try { patchEngineCreation('nothing to see'); } catch { threw2 = true; }
+  assert(threw && threw2, 'a dice-box version without the expected code fails the build instead of silently staying slow');
 }
 
 // --- Player dice colors (roller color + Duality sets) ---

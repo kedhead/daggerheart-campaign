@@ -1,8 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { diceBoxPatch } from './vite/diceBoxPatch.js'
 
 export default defineConfig({
-  plugins: [react()],
+  // diceBoxPatch: dice-box's physics advanced at most 22 ms per rendered frame,
+  // so below ~45 fps (laptops, busy tables) the dice tumbled in slow motion.
+  // See vite/diceBoxPatch.js.
+  plugins: [diceBoxPatch(), react()],
+  // Pre-bundling runs esbuild, which skips plugin transforms — exclude dice-box
+  // so the dev server serves the patched files too.
+  optimizeDeps: {
+    exclude: ['@3d-dice/dice-box'],
+  },
   // Remove base path for Vercel/Netlify (use '/')
   // Only use base: '/daggerheart/' for GitHub Pages
   base: '/',
