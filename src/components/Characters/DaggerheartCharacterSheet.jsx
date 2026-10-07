@@ -18,6 +18,8 @@ import RestModal from './RestModal';
 import DeathMoveModal from './DeathMoveModal';
 import TakeDamageModal from './TakeDamageModal';
 import PassiveEffectsNote from './PassiveEffectsNote';
+import CardActions, { VitalityChoice } from './CardActions';
+import { effectiveTraits, rollBonusesFor } from '../../data/daggerheartAbilityEffects';
 import { applyDamage } from '../../utils/playerDamage';
 import BeastformPanel from './BeastformPanel';
 import TransformationPanel from './TransformationPanel';
@@ -39,18 +41,6 @@ const parseDamageString = (dmgStr) => {
   };
 };
 
-// Extract the first dice expression embedded in free-form card description text.
-// Matches patterns like d8, 1d8, 2d8+3, d20+2 anywhere in the string.
-const extractCardDice = (text) => {
-  if (!text) return null;
-  const match = text.match(/(\d+)?d(\d+)(?:\+(\d+))?/);
-  if (!match) return null;
-  return {
-    quantity: parseInt(match[1] || '1', 10),
-    dieType: parseInt(match[2], 10),
-    modifier: parseInt(match[3] || '0', 10),
-  };
-};
 
 const DEFAULT_TRAITS = { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 };
 const DEFAULT_HP = [true, true, true, true, true, true];
@@ -286,6 +276,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     () => domainCards.filter(c => !vaultCardNames.includes(c.name)),
     [domainCards, vaultCardNames]
   );
+  // Notorious "doesn't count against your loadout's domain card maximum of 5".
+  const loadoutCount = loadoutCards.filter(c => c.name !== 'Notorious').length;
   const vaultedCards = useMemo(
     () => domainCards.filter(c => vaultCardNames.includes(c.name)),
     [domainCards, vaultCardNames]
@@ -447,8 +439,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     return { label, modifier: baseMod + delta };
   };
 
+  // Rolls use passive trait bonuses (Bone-Touched's +1 Agility) and passive
+  // attack bonuses (Blade-Touched's +2) from the loadout.
+  const rollTraits = effectiveTraits(character);
+  const passiveRoll = rollBonusesFor(character);
+
   const handleAttributeRoll = async (traitName) => {
-    const baseMod = traits[traitName] ?? 0;
+    const baseMod = rollTraits[traitName] ?? 0;
     const baseLabel = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} Check`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`attr-${traitName}`);
@@ -457,7 +454,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   };
 
   const handleExperienceRoll = async (expName, expBonus, traitName) => {
-    const traitMod = traits[traitName] ?? 0;
+    const traitMod = rollTraits[traitName] ?? 0;
     const baseMod = traitMod + expBonus;
     const baseLabel = `${expName} (${TRAIT_ABBREV[traitName]})`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
@@ -469,8 +466,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const handleWeaponAttack = async (weapon) => {
     const traitName = (weapon.systemData?.trait || '').toLowerCase();
-    const traitMod = traits[traitName] ?? 0;
-    const baseMod = traitMod;
+    const traitMod = rollTraits[traitName] ?? 0;
+    const baseMod = traitMod + (passiveRoll.attack || 0);
     const baseLabel = `Attack: ${displayItemName(weapon)}`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`atk-${weapon.id}`);
@@ -496,19 +493,28 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (result) showRollResult(label, 'generic', result);
   };
 
-  const handleSpellcastRoll = async (card) => {
-    const baseLabel = `Spellcast: ${card.name}`;
-    const { label, modifier: mod } = applyRollBonus(baseLabel, 0);
-    flashRoll(`spell-${card.name}`);
-    const result = await rollAction({ label, modifier: mod });
+  // Domain card buttons (CardActions): Cast / trait rolls are action rolls
+  // (Hope & Fear apply) unless the card makes a reaction roll; dice are dice.
+  const handleCardRoll = async (baseLabel, baseMod, { reaction } = {}) => {
+    const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
+    const result = reaction
+      ? await roll({ label, modifier: mod, kind: 'reaction' })
+      : await rollAction({ label, modifier: mod });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
-  const handleAbilityDiceRoll = async (card, parsed) => {
-    const label = `${card.name}`;
-    flashRoll(`card-${card.name}`);
+  const handleCardDice = async (label, parsed) => {
     const result = await rollDamage({ label, ...parsed });
     if (result) showRollResult(label, 'generic', result);
+  };
+
+  const cardActionProps = {
+    character,
+    updateCharacter: canEdit ? updateCharacter : null,
+    onRoll: handleCardRoll,
+    onDice: handleCardDice,
+    proficiency,
+    canRoll: !!campaign?.id,
   };
 
   // ─── Sidebar ───
@@ -1115,7 +1121,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
           <div className="dh-section-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
             <span>
               <BookOpen size={12} style={{ display: 'inline', marginRight: '0.3rem', verticalAlign: 'middle' }} />
-              Loadout ({loadoutCards.length}/5)
+              Loadout ({loadoutCount}/5)
             </span>
             {canEdit && vaultedCards.length > 0 && (
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.68rem', textTransform: 'none', letterSpacing: 0, cursor: 'pointer', opacity: 0.8 }}>
@@ -1124,9 +1130,9 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               </label>
             )}
           </div>
-          {loadoutCards.length > 5 && (
+          {loadoutCount > 5 && (
             <div className="dh-loadout-warning">
-              Loadout over the 5-card limit — move {loadoutCards.length - 5} card{loadoutCards.length - 5 > 1 ? 's' : ''} to your vault.
+              Loadout over the 5-card limit — move {loadoutCount - 5} card{loadoutCount - 5 > 1 ? 's' : ''} to your vault.
             </div>
           )}
           <div className="dh-domain-cards-content">
@@ -1135,13 +1141,9 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                 <div className="dh-domain-cards-group-label">{domain}</div>
                 <div className="dh-domain-cards-grid">
                   {cards.map(card => {
-                    const isSpell = card.type === 'Spell';
-                    const features = splitCardFeatures(card.description);
-                    const isMultiFeature = features.length > 1 || (features[0] && features[0].name);
-                    const diceParsed = extractCardDice(card.description);
-                    const diceLabel = diceParsed
-                      ? `${diceParsed.quantity}d${diceParsed.dieType}${diceParsed.modifier > 0 ? `+${diceParsed.modifier}` : ''}`
-                      : null;
+                    // Grimoires hold several named spells; each gets its own buttons.
+                    const features = card.type === 'Grimoire' ? splitCardFeatures(card.description) : [];
+                    const isMultiFeature = features.length > 1;
                     return (
                       <div key={card.name} className="dh-domain-card">
                         <div className="dh-domain-card-header">
@@ -1158,7 +1160,8 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                                 ⚡{card.recallCost}
                               </span>
                             )}
-                            {canEdit && (
+                            {/* Notorious "can't be placed in your vault". */}
+                            {canEdit && card.name !== 'Notorious' && (
                               <button
                                 className="dh-card-vault-btn"
                                 title="Move to vault (inactive)"
@@ -1175,33 +1178,18 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
                               <div key={fi} className="dh-domain-card-feature">
                                 {f.name && <span className="dh-domain-card-feature-name">{f.name}: </span>}
                                 <span className="dh-domain-card-feature-text">{f.text}</span>
+                                <CardActions {...cardActionProps} text={f.text} name={f.name || card.name} useKey={`${card.name} · ${f.name || fi}`} />
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="dh-domain-card-desc">{card.description}</div>
+                          <>
+                            <div className="dh-domain-card-desc" style={{ whiteSpace: 'pre-line' }}>{card.description}</div>
+                            <CardActions {...cardActionProps} text={card.description} name={card.name} useKey={card.name} />
+                          </>
                         )}
-                        {campaign?.id && (isSpell || diceLabel) && (
-                          <div className="dh-weapon-roll-row" style={{ marginTop: '0.5rem' }}>
-                            {isSpell && (
-                              <button
-                                className={`dh-weapon-roll-btn dh-ability-roll-cast ${rollingKey === `spell-${card.name}` ? 'dh-roll-flash' : ''}`}
-                                onClick={() => handleSpellcastRoll(card)}
-                                title="Spellcast Roll (2d12 — add your Spellcast trait)"
-                              >
-                                <Sparkles size={12} /> Cast
-                              </button>
-                            )}
-                            {diceLabel && (
-                              <button
-                                className={`dh-weapon-roll-btn dh-ability-roll-dice ${rollingKey === `card-${card.name}` ? 'dh-roll-flash' : ''}`}
-                                onClick={() => handleAbilityDiceRoll(card, diceParsed)}
-                                title={`Roll ${diceLabel}`}
-                              >
-                                <Dices size={12} /> {diceLabel}
-                              </button>
-                            )}
-                          </div>
+                        {card.name === 'Vitality' && canEdit && (
+                          <VitalityChoice character={character} updateCharacter={updateCharacter} />
                         )}
                       </div>
                     );
@@ -1224,7 +1212,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             {vaultedCards.map(card => {
               const cost = card.recallCost || 0;
               const unmarkedStress = stressSlots.filter(s => !s).length;
-              const loadoutFull = loadoutCards.length >= 5;
+              const loadoutFull = loadoutCount >= 5;
               const cantAfford = !freeRecall && cost > unmarkedStress;
               const disabled = loadoutFull || cantAfford;
               const recallTitle = loadoutFull

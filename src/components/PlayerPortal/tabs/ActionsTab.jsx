@@ -5,6 +5,7 @@ import { displayItemName, isRenameable, renameEquippedItem } from '../../../util
 import ItemName from '../../Items/ItemName';
 import { getEffectiveProficiency } from '../../../data/systems/daggerheart';
 import { weaponAttackModifier } from '../../../utils/daggerheartVitals';
+import { effectiveTraits, rollBonusesFor } from '../../../data/daggerheartAbilityEffects';
 
 const BONUS_OPTS = [
   { key: null,        label: 'Normal',      color: '#eab308' },
@@ -28,7 +29,9 @@ function RollPill({ label, formula, onClick, kind, isRolling }) {
 export default function ActionsTab({ character, rollBonus, setRollBonus, roll, rollDamage, campaignId, items, updateCharacter }) {
   const [rollingKey, setRollingKey] = useState(null);
 
-  const traits = character.traits || {};
+  // Passive card bonuses: Bone-Touched's +1 Agility, Blade-Touched's +2 to attack rolls.
+  const traits = effectiveTraits(character);
+  const attackBonus = rollBonusesFor(character).attack || 0;
   const level = character.level || 1;
   const proficiency = getEffectiveProficiency(character);
 
@@ -57,7 +60,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
     // Trait only. Proficiency is the number of damage dice (see
     // handleWeaponDamage), never an attack bonus — adding it here inflated
     // every attack rolled from a phone. See daggerheartVitals.js.
-    const mod = weaponAttackModifier(traits, weapon);
+    const mod = weaponAttackModifier(traits, weapon) + attackBonus;
     const bonus = rollBonus;
     if (rollBonus) setRollBonus(null);
     setRollingKey(`atk-${weapon.id}`);
@@ -111,7 +114,7 @@ export default function ActionsTab({ character, rollBonus, setRollBonus, roll, r
               // label showed the inflated trait + Proficiency number.
               const dmg = getWeaponDamage(weapon, level, proficiency) || sd.damage || '';
               const traitKey = (sd.trait || 'agility').toLowerCase();
-              const traitMod = weaponAttackModifier(traits, weapon);
+              const traitMod = weaponAttackModifier(traits, weapon) + attackBonus;
               const atkLabel = `${TRAIT_ABBREV[traitKey] || sd.trait || 'AGI'} ${traitMod >= 0 ? '+' : ''}${traitMod}`;
               const features = sd.features || [];
               const describedFeatures = features.map(resolveFeature).filter(r => r.name && r.description);

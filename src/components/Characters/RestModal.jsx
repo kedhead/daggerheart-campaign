@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Sun, Moon, Check, Dices } from 'lucide-react';
 import { getTierForLevel } from '../../data/systems/daggerheart';
 import { scarCount } from '../../utils/daggerheartHope';
+import { usesClearedByRest } from '../../utils/cardActions';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
 import './LevelUpWizard.css';
 
@@ -131,8 +132,11 @@ export default function RestModal({ character, onApply, onClose }) {
     });
 
     // Resting ends any active class Hope feature (e.g. Rogue's Dodge lasts
-    // "until your next rest").
-    onApply({ hpSlots: hp, stressSlots: stress, armorSlots: armor, hopeSlots: hope, hopeFeatureActive: false });
+    // "until your next rest"), and refreshes the card uses this rest covers.
+    onApply({
+      hpSlots: hp, stressSlots: stress, armorSlots: armor, hopeSlots: hope, hopeFeatureActive: false,
+      cardUses: usesClearedByRest(character.cardUses, restType),
+    });
     setResults(log);
   };
 

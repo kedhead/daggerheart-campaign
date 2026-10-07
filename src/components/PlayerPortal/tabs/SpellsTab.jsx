@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { getCardByName } from '../../../data/daggerheartDomainCards';
-import { extractCardDice } from '../../../utils/daggerheartRollUtils';
+import { getEffectiveProficiency } from '../../../data/systems/daggerheart';
 import { splitCardFeatures } from '../../../utils/domainCardText';
+import CardActions, { VitalityChoice } from '../../Characters/CardActions';
 
 function parseGrimoireEntries(description) {
   // Split "SpellName: text. SpellName: text." into per-spell entries; only
@@ -22,20 +23,7 @@ const DOMAIN_GLYPHS = {
   Dread: '🕯',
 };
 
-function RollPill({ label, formula, onClick, kind }) {
-  const colorMap = { weapon: '#f5c543', spell: '#a78bfa', stat: '#60a5fa', generic: '#eab308' };
-  const c = colorMap[kind] || colorMap.generic;
-  return (
-    <button onClick={onClick} className="lrp-roll-pill"
-      style={{ background: `linear-gradient(180deg, ${c}22, ${c}11)`, border: `1px solid ${c}55`, color: c }}>
-      <span style={{ fontSize: 14 }}>🎲</span>
-      <span>{label}</span>
-      {formula && <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.85, fontWeight: 600 }}>{formula}</span>}
-    </button>
-  );
-}
-
-export default function SpellsTab({ character, roll, rollDamage, campaignId, updateCharacter }) {
+export default function SpellsTab({ character, roll, rawRoll, rollDamage, campaignId, updateCharacter }) {
   const [openCard, setOpenCard] = useState(null);
 
   const cardNames = character.domainCards || [];
@@ -46,6 +34,9 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId, upd
   const vaultNames = character.vaultCards || [];
   const loadout = cards.filter(c => !vaultNames.includes(c.name));
   const vault = cards.filter(c => vaultNames.includes(c.name));
+  // Notorious "doesn't count against your loadout maximum and can't be placed
+  // in your vault".
+  const loadoutCount = loadout.filter(c => c.name !== 'Notorious').length;
   const stressSlots = character.stressSlots || [false, false, false, false, false, false];
   const unmarkedStress = stressSlots.filter(s => !s).length;
 
@@ -69,17 +60,18 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId, upd
 
   const domains = [character.primaryDomain, character.secondaryDomain].filter(Boolean);
 
-  const handleSpellRoll = async (card) => {
-    if (!campaignId) return;
-    const traits = character.traits || {};
-    const best = Object.entries(traits).reduce((a, b) => b[1] > a[1] ? b : a, ['knowledge', 0]);
-    await roll({ label: `${card.name} (Spellcast)`, modifier: best[1] });
-  };
-
-  const handleDiceRoll = async (card, parsed) => {
-    if (!campaignId || !parsed) return;
-    await rollDamage({ label: card.name, ...parsed });
-  };
+  // Card buttons (Cast, trait rolls, dice, Hope/Stress costs, uses, tokens)
+  // come from the card's own text — see utils/cardActions.js.
+  const proficiency = getEffectiveProficiency(character);
+  const actionProps = (text, name, useKey) => ({
+    text, name, useKey, character, proficiency,
+    updateCharacter: updateCharacter || null,
+    canRoll: !!campaignId,
+    onRoll: (label, modifier, { reaction } = {}) => (reaction
+      ? (rawRoll || roll)({ label, modifier, kind: 'reaction' })
+      : roll({ label, modifier })),
+    onDice: (label, parsed) => rollDamage({ label, ...parsed }),
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -108,10 +100,10 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId, upd
       {/* Loadout */}
       {loadout.length > 0 && (
         <div>
-          <div className="lrp-section-label">Loadout — {loadout.length}/5 cards</div>
-          {loadout.length > 5 && (
+          <div className="lrp-section-label">Loadout — {loadoutCount}/5 cards</div>
+          {loadoutCount > 5 && (
             <div style={{ fontSize: 11, color: '#f5c76a', margin: '0 0 8px', padding: '6px 10px', borderRadius: 8, background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.3)' }}>
-              Over the 5-card limit — vault {loadout.length - 5} card{loadout.length - 5 > 1 ? 's' : ''}.
+              Over the 5-card limit — vault {loadoutCount - 5} card{loadoutCount - 5 > 1 ? 's' : ''}.
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -120,7 +112,6 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId, upd
               const glyph = DOMAIN_GLYPHS[card.domain] || '✦';
               const isOpen = openCard === card.name;
               const grimoireEntries = card.type === 'Grimoire' ? parseGrimoireEntries(card.description) : null;
-              const diceParsed = extractCardDice(card.description);
               return (
                 <div key={card.name} className="lrp-spell-card"
                   style={{ background: `linear-gradient(165deg, ${dc}22 0%, rgba(20,15,40,0.7) 70%)`, border: `1px solid ${dc}44` }}>
@@ -139,7 +130,7 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId, upd
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                         <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', letterSpacing: '0.15em', fontWeight: 700 }}>⚡ RECALL</span>
                         <span className="lrp-cinzel" style={{ fontSize: 12, color: '#eab308', fontWeight: 800 }}>{card.recallCost ?? 0}</span>
-                        {updateCharacter && (
+                        {updateCharacter && card.name !== 'Notorious' && (
                           <button
                             onClick={(e) => { e.stopPropagation(); moveToVault(card.name); }}
                             style={{ marginTop: 2, fontSize: 9, padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', letterSpacing: '0.1em', fontWeight: 700 }}
@@ -155,42 +146,29 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId, upd
                       {grimoireEntries ? (
                         /* Grimoire: show each spell as its own entry */
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 10 }}>
-                          {grimoireEntries.map((entry, ei) => {
-                            const entryDice = extractCardDice(entry.text);
-                            return (
-                              <div key={ei} style={{
-                                padding: '10px 12px', borderRadius: 10,
-                                background: `rgba(0,0,0,0.25)`, border: `1px solid ${dc}22`,
-                              }}>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: dc, marginBottom: 4 }}>{entry.name}</div>
-                                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5 }}>{entry.text}</div>
-                                {entryDice && (
-                                  <div style={{ marginTop: 8 }}>
-                                    <RollPill kind="spell" label="Roll"
-                                      formula={`${entryDice.quantity}d${entryDice.dieType}${entryDice.modifier ? `+${entryDice.modifier}` : ''}`}
-                                      onClick={() => handleDiceRoll(card, entryDice)} />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                          {grimoireEntries.map((entry, ei) => (
+                            <div key={ei} style={{
+                              padding: '10px 12px', borderRadius: 10,
+                              background: `rgba(0,0,0,0.25)`, border: `1px solid ${dc}22`,
+                            }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: dc, marginBottom: 4 }}>{entry.name}</div>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.72)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{entry.text}</div>
+                              <CardActions {...actionProps(entry.text, entry.name, `${card.name} · ${entry.name}`)} accent={dc} />
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         /* Regular card: show full description */
-                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5, marginBottom: 10 }}>
-                          {card.description}
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.78)', lineHeight: 1.5, whiteSpace: 'pre-line' }}>
+                            {card.description}
+                          </div>
+                          <CardActions {...actionProps(card.description, card.name, card.name)} accent={dc} />
+                          {card.name === 'Vitality' && updateCharacter && (
+                            <VitalityChoice character={character} updateCharacter={updateCharacter} accent={dc} />
+                          )}
                         </div>
                       )}
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {card.type === 'Spell' && (
-                          <RollPill kind="spell" label="Spellcast" onClick={() => handleSpellRoll(card)} />
-                        )}
-                        {!grimoireEntries && diceParsed && (
-                          <RollPill kind="spell" label="Roll"
-                            formula={`${diceParsed.quantity}d${diceParsed.dieType}${diceParsed.modifier ? `+${diceParsed.modifier}` : ''}`}
-                            onClick={() => handleDiceRoll(card, diceParsed)} />
-                        )}
-                      </div>
                     </div>
                   )}
                 </div>
@@ -207,7 +185,7 @@ export default function SpellsTab({ character, roll, rollDamage, campaignId, upd
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {vault.map(card => {
               const cost = card.recallCost || 0;
-              const loadoutFull = loadout.length >= 5;
+              const loadoutFull = loadoutCount >= 5;
               const cantAfford = cost > unmarkedStress;
               const disabled = loadoutFull || cantAfford;
               return (

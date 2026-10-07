@@ -93,6 +93,10 @@ import LevelUpWizard from '../src/components/Characters/LevelUpWizard.jsx';
 import RestModal from '../src/components/Characters/RestModal.jsx';
 import TakeDamageModal from '../src/components/Characters/TakeDamageModal.jsx';
 import PassiveEffectsNote from '../src/components/Characters/PassiveEffectsNote.jsx';
+import CardActions from '../src/components/Characters/CardActions.jsx';
+import { parseCardActions, diceFormula, usesClearedByRest, spellcastModifier, spendHope, markStress, hopeAvailable, stressAvailable } from '../src/utils/cardActions.js';
+import { applyVitalityChoice, rollBonusesFor, effectiveTraits } from '../src/data/daggerheartAbilityEffects.js';
+import { getCardByName } from '../src/data/daggerheartDomainCards.js';
 import PortalTableStatus from '../src/components/PlayerPortal/PortalTableStatus.jsx';
 import { bottomTabsFor } from '../src/components/Layout/BottomNav.jsx';
 import { navGroupsFor, navItemsFor, viewTitle, VIEWS } from '../src/config/navigation.js';
@@ -1215,6 +1219,98 @@ section('Cinematic recap timeline');
   assert(note.includes('Includes') && note.includes('Fortified Armor') && note.includes('+2 thresholds') && note.includes('needs armor equipped'),
     'the sheet shows which passive cards count, and why any don\'t');
   assert(renderToString(<PassiveEffectsNote effects={[]} />) === '', 'and shows nothing when no passive cards are owned');
+}
+
+// ── Domain cards: rulebook text and the buttons it calls for ──
+// The skills pass: every Spell used to get a Cast button that added +0 (sheet)
+// or the highest trait (portal); trait rolls, extra dice, Hope/Stress costs,
+// once-per-rest uses and tokens had no way to be used.
+section('Domain card actions');
+{
+  const text = (n) => getCardByName(n).description;
+  const kinds = (n) => parseCardActions(text(n));
+  const has = (acts, kind, pred = () => true) => acts.some(a => a.kind === kind && pred(a));
+
+  // Full rulebook wording, with the numbers the condensed text used to drop.
+  assert(/Reaction Roll \(17\)/.test(text('Ground Pound')) && /4d10\+8/.test(text('Ground Pound')), 'Ground Pound has its rulebook Reaction Roll (17) and 4d10+8');
+  assert(/Reaction Roll \(13\)/.test(text('Death Grip')), 'Death Grip keeps its Reaction Roll (13)');
+  assert(/Spellcast Roll \(16\)/.test(text('Teleport')) && /\+3 bonus/.test(text('Teleport')), 'Teleport keeps its difficulty and familiarity table');
+  const core = DOMAIN_CARDS.slice(0, 189);
+  assert(core.every(c => c.description && !/Appendix|�/.test(c.description)), 'no core card text carries page footers or broken bullets');
+
+  const cinder = kinds('Cinder Grasp');
+  assert(has(cinder, 'spellcast') && has(cinder, 'dice', a => a.quantity === 1 && a.dieType === 20 && a.modifier === 3) && has(cinder, 'dice', a => a.quantity === 2 && a.dieType === 6),
+    'Cinder Grasp: Cast, plus both its 1d20+3 and 2d6 dice');
+  const rune = kinds('Rune Ward');
+  assert(!has(rune, 'spellcast') && has(rune, 'hope', a => a.amount === 1) && has(rune, 'dice', a => a.dieType === 8),
+    'Rune Ward: no Cast (it calls for no roll), Spend 1 Hope and a d8');
+  const pound = kinds('Ground Pound');
+  assert(has(pound, 'trait', a => a.trait === 'strength') && has(pound, 'hope', a => a.amount === 2) && has(pound, 'dice', a => a.quantity === 4 && a.dieType === 10 && a.modifier === 8) && !has(pound, 'spellcast'),
+    'Ground Pound: Strength Roll, Spend 2 Hope, 4d10+8');
+  assert(has(kinds("Nature's Tongue"), 'trait', a => a.trait === 'instinct' && a.difficulty === 12), "Nature's Tongue: Instinct Roll vs 12");
+  assert(!has(kinds('Deft Maneuvers'), 'trait'), 'Deft Maneuvers ("without making an Agility Roll") offers no Agility roll');
+  assert(has(kinds('Counterspell'), 'spellcast', a => a.reaction), 'Counterspell is a reaction roll using the Spellcast trait');
+  assert(!has(kinds('Arcana-Touched'), 'spellcast') && has(kinds('Arcana-Touched'), 'uses', a => a.per === 'rest'), 'Arcana-Touched: a +1 to Spellcast Rolls is not a Cast; its once-per-rest swap is tracked');
+  assert(!has(kinds('Fane of the Wilds'), 'spellcast') && has(kinds('Fane of the Wilds'), 'tokens'), 'Fane of the Wilds: tokens, no Cast');
+  assert(has(kinds("Champion's Edge"), 'hope', a => a.amount === 1), '"spend up to 3 Hope" is paid one at a time');
+  assert(!has(kinds('Death Grip'), 'stress'), '"force them to mark 2 Stress" is not a cost for the caster');
+  const unyielding = kinds('Unyielding Armor').find(a => a.kind === 'dice');
+  assert(unyielding?.scale === 'proficiency' && diceFormula(unyielding, { proficiency: 3 }) === '3d6', '"d6s equal to your Proficiency" rolls Proficiency dice');
+  const spellCount = core.filter(c => c.type === 'Spell').length;
+  const casts = core.filter(c => c.type === 'Spell' && has(parseCardActions(c.description), 'spellcast')).length;
+  assert(casts < spellCount && casts > spellCount / 2, `only Spells that call for a Spellcast Roll get Cast (${casts} of ${spellCount})`);
+
+  // The modifier: the subclass's Spellcast trait, not +0 or the highest trait.
+  const wizard = { class: 'Wizard', subclass: 'School of Knowledge', traits: { knowledge: 2, strength: 3 } };
+  assert(spellcastModifier(wizard).trait === 'knowledge' && spellcastModifier(wizard).modifier === 2, 'a Wizard casts with Knowledge (+2), not their higher Strength');
+  assert(spellcastModifier({ class: 'Guardian', subclass: 'Stalwart', traits: { strength: 2 } }).modifier === 0, 'a subclass without a Spellcast trait adds nothing');
+  const arcana = ['Rune Ward', 'Unleash Chaos', 'Wall Walk', 'Arcana-Touched'];
+  assert(spellcastModifier({ ...wizard, domainCards: arcana }).modifier === 3, 'Arcana-Touched adds +1 with 4 Arcana cards in the loadout');
+  assert(spellcastModifier({ ...wizard, domainCards: arcana, vaultCards: ['Wall Walk'] }).modifier === 2, 'and nothing with only 3 in the loadout');
+
+  // Blade- and Bone-Touched.
+  const blade = DOMAIN_CARDS.filter(c => c.domain === 'Blade' && c.name !== 'Blade-Touched').slice(0, 3).map(c => c.name).concat('Blade-Touched');
+  assert(rollBonusesFor({ domainCards: blade }).attack === 2, 'Blade-Touched: +2 to attack rolls at 4 Blade cards');
+  const bone = DOMAIN_CARDS.filter(c => c.domain === 'Bone' && c.name !== 'Bone-Touched').slice(0, 3).map(c => c.name).concat('Bone-Touched');
+  assert(effectiveTraits({ traits: { agility: 1 }, domainCards: bone }).agility === 2, 'Bone-Touched: +1 Agility at 4 Bone cards');
+  assert(effectiveTraits({ traits: { agility: 1 }, domainCards: bone.slice(1) }).agility === 1, 'and not at 3');
+  const bladeDef = computeDefenses({ class: 'Warrior', level: 1, domainCards: blade }, []);
+  const plainDef = computeDefenses({ class: 'Warrior', level: 1 }, []);
+  assert(bladeDef.severeThreshold === plainDef.severeThreshold + 4 && bladeDef.majorThreshold === plainDef.majorThreshold, 'Blade-Touched: +4 to the Severe threshold only');
+
+  // Paying costs.
+  const pc = { hopeSlots: [true, true, false, false, false, false], stressSlots: [true, false, false, false, false, false] };
+  assert(hopeAvailable(pc) === 2 && JSON.stringify(spendHope(pc, 2).hopeSlots) === JSON.stringify([false, false, false, false, false, false]), 'Spend 2 Hope empties a 2-Hope track');
+  assert(spendHope(pc, 3) === null, "can't spend Hope you don't have");
+  assert(spendHope({ hopeSlots: [true, true, true, true, true, true], scars: 2 }, 1).hopeSlots[3] === false, 'spending takes from the last usable slot, not a scarred one');
+  assert(stressAvailable(pc) === 5 && markStress(pc, 2).stressSlots.filter(Boolean).length === 3, 'Mark 2 Stress fills two more slots');
+  assert(markStress({ stressSlots: [true, true, true, true, true, true] }, 1) === null, "can't mark Stress on a full track");
+
+  // Rests refresh uses.
+  const used = { a: { per: 'rest', used: true }, b: { per: 'short rest', used: true }, c: { per: 'long rest', used: true }, d: { per: 'session', used: true } };
+  const short = usesClearedByRest(used, 'short');
+  assert(!short.a.used && !short.b.used && short.c.used && short.d.used, 'a short rest refreshes per-rest and per-short-rest uses only');
+  const long = usesClearedByRest(used, 'long');
+  assert(!long.a.used && !long.b.used && !long.c.used && long.d.used, 'a long rest refreshes every rest-based use, not per-session ones');
+
+  // Vitality: two permanent choices, then the vault.
+  const vit = { class: 'Guardian', level: 5, domainCards: ['Vitality'], hpSlots: Array(6).fill(true), stressSlots: Array(6).fill(false) };
+  assert(applyVitalityChoice(vit, ['hp']) === null, 'Vitality needs exactly two choices');
+  const hpStress = applyVitalityChoice(vit, ['hp', 'stress']);
+  assert(hpStress.hpSlots.length === 7 && hpStress.stressSlots.length === 7 && hpStress.vaultCards.includes('Vitality'), 'HP + Stress: a slot of each, and the card goes to the vault');
+  const noVit = computeDefenses({ class: 'Guardian', level: 5 }, []);
+  const afterHpStress = computeDefenses({ ...vit, ...hpStress }, []);
+  assert(afterHpStress.majorThreshold === noVit.majorThreshold, 'without the threshold choice, Vitality adds no threshold bonus');
+  const withThresh = applyVitalityChoice(vit, ['hp', 'thresholds']);
+  const afterThresh = computeDefenses({ ...vit, ...withThresh }, []);
+  assert(afterThresh.majorThreshold === noVit.majorThreshold + 2 && !withThresh.stressSlots, 'with it, +2 thresholds from the vault, and no extra Stress slot');
+
+  // The shared button row.
+  const html = strip(renderToString(<CardActions text={text('Ground Pound')} name="Ground Pound" character={{ id: 'c1', traits: { strength: 2 }, hopeSlots: [true, true, false, false, false, false] }} updateCharacter={() => {}} onRoll={() => {}} onDice={() => {}} />));
+  assert(html.includes('Strength +2') && html.includes('4d10+8') && html.includes('Spend 2 Hope'), 'Ground Pound shows Strength +2, 4d10+8 and Spend 2 Hope');
+  const tokenHtml = strip(renderToString(<CardActions text={text('Fane of the Wilds')} name="Fane of the Wilds" character={{ id: 'c1', cardTokens: { 'Fane of the Wilds': 3 } }} updateCharacter={() => {}} />));
+  assert(tokenHtml.includes('Tokens') && tokenHtml.includes('>3<'), 'token cards show their count');
+  assert(renderToString(<CardActions text={text('Vitality')} name="Vitality" character={{}} />) === '', 'cards with nothing to do show no buttons');
 }
 
 // --- Player dice colors (roller color + Duality sets) ---

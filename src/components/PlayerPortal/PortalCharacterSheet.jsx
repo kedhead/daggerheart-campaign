@@ -188,7 +188,8 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   // Display only: the stored track stays hope.max long (see handleVitalToggle).
   const hopeAdjusted = { filled: Math.min(hope.filled, hope.max - scars), max: Math.max(0, hope.max - scars) };
 
-  const tabProps = { character, roll: rollAction, rollDamage, campaignId, campaign, rollBonus, setRollBonus, items, updateCharacter, stashFromCharacter };
+  // `rawRoll` is for reaction rolls (Counterspell), which never earn Hope or Fear.
+  const tabProps = { character, roll: rollAction, rawRoll: roll, rollDamage, campaignId, campaign, rollBonus, setRollBonus, items, updateCharacter, stashFromCharacter };
 
   return (
     <div className="lrp-portal">
