@@ -14,11 +14,11 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@3d-dice/dice-box": "^1.1.4",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "@sparticuz/chromium": "^143.0.4",
     "busboy": "^1.6.0",
+    "cannon-es": "^0.20.0",
     "dotenv": "^17.2.3",
     "firebase": "^12.6.0",
     "jose": "^5.10.0",

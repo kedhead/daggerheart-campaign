@@ -50,6 +50,9 @@ export async function publishRoll({ campaignId, system, config = {}, rollerInfo,
     // useLiveRoll to decide which docs are "new since I mounted." Doesn't
     // affect canonical numbers, only animation triggering.
     clientTime: Date.now(),
+    // Seeds the 3D throw (dice/engine): every screen of the same shape plays
+    // the same tumble. Cosmetic only — the numbers above are already final.
+    animSeed: Math.floor(Math.random() * 0x100000000) >>> 0,
     createdAt: serverTimestamp(),
   };
   const ref = await addDoc(collection(db, ROLLS_PATH(campaignId)), docData);

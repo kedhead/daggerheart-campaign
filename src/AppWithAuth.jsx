@@ -21,7 +21,7 @@ import BottomNav from './components/Layout/BottomNav';
 import './App.css';
 
 // Lazy-loaded: only needed off the critical login path, or pull in heavy
-// libraries (three.js, @3d-dice/dice-box) that shouldn't block initial load.
+// libraries (three.js, the dice engine) that shouldn't block initial load.
 const PlayerDisplay = lazy(() => import('./components/PlayerDisplay/PlayerDisplay'));
 const PublicChronicleView = lazy(() => import('./components/Storybook/PublicChronicleView'));
 const BattleMapDisplayWindow = lazy(() => import('./components/BattleMapDisplay/BattleMapDisplayWindow'));
