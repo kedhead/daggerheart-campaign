@@ -11,8 +11,11 @@
   background: rgba(0, 0, 0, 0);
   transition: background 0.3s ease;
   display: flex;
-  align-items: center;
+  /* Result cards sit low so the dice, which now show the real numbers, stay
+     visible above them. */
+  align-items: flex-end;
   justify-content: center;
+  padding-bottom: max(7vh, env(safe-area-inset-bottom, 0px) + 1.5rem);
 }
 .dice-tray.is-idle {
   /* Not merely transparent: a full-viewport WebGL surface left composited over

@@ -1,43 +1,29 @@
 // Pure helpers for the 3D tray. Kept out of DiceTray.jsx so they can be
-// tested without pulling in dice-box or Firebase.
+// tested without pulling in three.js or Firebase.
 
-// Ceiling on dice groups tumbling at once. Past this the physics cost on a
-// shared display isn't worth it; extra rolls land as toasts instead.
+import { seedFrom } from './engine/seed.js';
+
+// Ceiling on rolls tumbling at once. Past this extra rolls land as toasts
+// instead; the table would be too crowded to read anyway.
 export const MAX_CONCURRENT_ROLLS = 6;
 
-// Rune faces. The engine cannot be told what to land on, so the faces a die
-// settles on are meaningless — runes carry no number and therefore cannot
-// contradict the canonical total. A numbered theme ('default') exists in
-// public/assets/dice-box/themes but must not be used: its digits would
-// disagree with the result on the banner.
-export const THEME_RUNES = 'magic';
+/**
+ * The dice to throw for a canonical roll document: one entry per die, in the
+ * document's order, with the value it must land on and its colour (Hope,
+ * Fear, advantage, or the roller's colour). The engine makes each die land on
+ * exactly this value, so the faces always agree with the banner.
+ */
+export function throwSpec(roll) {
+  return (roll?.dice || [])
+    .filter(d => Number.isInteger(d?.sides) && Number.isInteger(d?.value))
+    .map(d => ({ sides: d.sides, value: d.value, color: d.color || '#6366f1' }));
+}
 
 /**
- * Translate a canonical roll document into dice-box notation.
- * Consecutive dice sharing sides+colour collapse into one group so the engine
- * renders them together.
- *
- * Note there is deliberately no `value:` here. dice-box determines a die's
- * result by ray-casting the face that ends up pointing at the ceiling
- * (Dice.js getRollResult) — a value passed in is read only by the non-3D
- * fallback path and is silently ignored for rendered dice. Passing one implies
- * a guarantee the engine does not honour.
+ * The seed for a roll's throw. New rolls carry one (service.js); older ones
+ * fall back to their document id, which is just as stable.
  */
-export function diceSpec(roll, theme = THEME_RUNES) {
-  const groups = [];
-  let cur = null;
-  for (const d of roll?.dice || []) {
-    if (cur && cur.sides === d.sides && cur.themeColor === d.color) {
-      cur.qty += 1;
-    } else {
-      cur = {
-        qty: 1,
-        sides: d.sides,
-        theme,
-        themeColor: d.color,
-      };
-      groups.push(cur);
-    }
-  }
-  return groups;
+export function throwSeed(roll) {
+  const s = Number(roll?.animSeed);
+  return Number.isInteger(s) && s >= 0 ? s >>> 0 : seedFrom(roll?.id);
 }

@@ -1,50 +1,41 @@
 // The single 3D dice animation overlay for the entire app. Mounted once
 // per surface (player view, battle map display, dashboard). Subscribes via
-// useLiveRoll, animates each incoming canonical roll document with
-// @3d-dice/dice-box, and shows its result.
+// useLiveRoll, throws each incoming canonical roll document with our own dice
+// engine (./engine), and shows its result.
 //
-// A die's face CANNOT be dictated. dice-box works out a result by ray-casting
-// whichever face points up once the die stops (Dice.js getRollResult); a
-// `value` in the notation is read only by the non-3D fallback path and is
-// ignored for rendered dice. An earlier version of this comment claimed the
-// opposite, which cost two attempts at "making the numbers match" before
-// anyone checked the engine.
-//
-// The tumble is therefore an ANIMATION of a result the crypto RNG already
-// decided (rng.js -> systems.js -> service.js), not the thing that produced
-// it. The faces it settles on are meaningless. That is exactly why the dice
-// wear the rune theme: rune faces carry no number, so they cannot contradict
-// the canonical total on the banner. Do not switch to a numbered theme — the
-// digits would be wrong, and only a screen that physically decides its own
-// rolls could ever show honest ones.
+// The numbers are decided before any die moves: the crypto RNG rolls them
+// (rng.js -> systems.js -> service.js) and they are written once to
+// Firestore. The engine then makes the dice LAND on those numbers. It works
+// the whole throw out in advance, sees which face each die comes to rest on,
+// and puts the rolled number on that face before playing the throw back.
+// So the faces always agree with the banner, on every screen. (The engine
+// this replaced read its result off whichever face happened to end up on top
+// and could not be told what to land on, which is why its dice wore runes.)
 //
 // Rolls animate CONCURRENTLY. When several players roll at once their dice
-// share the table, each in that player's colour, and their result cards sit
-// side by side. This relies on dice-box's `add()` rather than `roll()`:
-// `roll()` calls clear() first, so a second roll erased the first mid-tumble.
+// share the table, each in that player's colour and in its own lane, and
+// their result cards sit side by side.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import DiceBox from '@3d-dice/dice-box';
 import { initAudio, playRollSound, playCritSound, playDoublesSound } from '../utils/diceAudio.js';
 import SpecialResultOverlay from '../components/DiceRoller/SpecialResultOverlay.jsx';
 import RollResultBanner from './RollResultBanner.jsx';
 import { useLiveRoll } from './useLiveRoll.js';
-import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from './diceSpec.js';
+import { throwSpec, throwSeed, MAX_CONCURRENT_ROLLS } from './diceSpec.js';
 
 const CONTAINER_ID = 'dice-tray-canvas';
 const BANNER_DURATION = 3000;
 const SPECIAL_OVERLAY_DURATION = 2500;
-// If dice-box never resolves a roll, that roll would sit on the table
+// If the engine never resolves a roll, that roll would sit on the table
 // forever holding the scrim up over the whole screen — and, now that rolls
 // are concurrent, blocking everyone else's cleanup too. Force it through.
 const ROLL_WATCHDOG_MS = 15000;
 
 // The tray is display:none while idle, so its canvas measures 0x0 until the
-// frame that reveals it has been laid out. dice-box reads clientWidth /
-// clientHeight when it builds the world and whenever it re-measures, so every
-// path that touches the canvas has to wait for that frame first — not just the
-// first one. Getting this wrong sizes the physics world to nothing.
+// frame that reveals it has been laid out. The engine sizes the table from
+// the container's clientWidth / clientHeight on every throw, so every throw
+// has to wait for that frame first — not just the first one.
 const nextFrame = () => new Promise(resolve => requestAnimationFrame(() => resolve()));
 
 // Wait until the tray has real dimensions. One rAF is not enough on its own:
@@ -75,17 +66,6 @@ function setTrayRolling(rolling) {
   document.body.classList.toggle('dice-rolling', rollingTrays > 0);
 }
 
-// Ask dice-box to re-measure its canvas.
-//
-// There is no public resize() on DiceBox — the earlier `box.resize?.()` here
-// was optional-chained into a silent no-op and never did anything. What the
-// library actually exposes is resizeWorld(), and even that only REGISTERS a
-// rAF-debounced window-resize handler rather than resizing on the spot. So the
-// one supported way to make it re-measure is to fire the event it listens for.
-function requestDiceResize() {
-  window.dispatchEvent(new Event('resize'));
-}
-
 // Personal devices animate ONLY the local player's rolls in 3D — everyone
 // else's land as compact attributed toasts. Before this split, every phone
 // ran full physics for every roll at the table: four simultaneous rolls
@@ -94,12 +74,9 @@ function requestDiceResize() {
 // full spectacle.
 export default function DiceTray({ campaignId, currentUserId = null, animateRemote = false }) {
   const containerRef = useRef(null);
-  const boxRef = useRef(null);
-  const readyRef = useRef(false);
-  // In-flight init, so simultaneous rolls share one dice-box rather than racing.
+  const engineRef = useRef(null);
+  // In-flight init, so simultaneous rolls share one engine rather than racing.
   const initRef = useRef(null);
-  // Set when the viewport changed since the canvas was sized.
-  const staleSizeRef = useRef(false);
   const groupTimerRef = useRef(null);
   const specialTimerRef = useRef(null);
   const watchdogsRef = useRef(new Map()); // rollId -> timeout
@@ -107,9 +84,8 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
   // would fight over it, so the first one holds the slot.
   const specialBusyRef = useRef(false);
 
-  // Every roll currently on the table: { roll, results, settled }.
-  // `results` comes back from dice-box and is what remove() needs to tear
-  // down just this roll's dice.
+  // Every roll currently on the table: { roll, settled }. The engine knows
+  // each roll's dice by the roll id, which is what remove() takes.
   //
   // entriesRef is authoritative and updated synchronously; `entries` state
   // only mirrors it for rendering. Two rolls landing in the same tick both
@@ -137,18 +113,16 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
   const clearSettled = useCallback(() => {
     const current = entriesRef.current;
     const remaining = current.filter(e => !e.settled);
-    const box = boxRef.current;
+    const engine = engineRef.current;
 
-    if (box) {
+    if (engine) {
       try {
         if (remaining.length === 0) {
           // Nothing left in the air — a full clear is cheaper and can't leak.
-          box.clear();
+          engine.clear();
         } else {
           for (const e of current) {
-            if (e.settled && Array.isArray(e.results) && e.results.length) {
-              box.remove(e.results);
-            }
+            if (e.settled) engine.remove(e.roll.id);
           }
         }
       } catch (err) {
@@ -191,7 +165,7 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
 
   // Mark a roll settled whether or not the engine came back, so the group
   // timer can retire it.
-  const settleRoll = useCallback((rollId, results) => {
+  const settleRoll = useCallback((rollId) => {
     const watchdog = watchdogsRef.current.get(rollId);
     if (watchdog) {
       clearTimeout(watchdog);
@@ -201,95 +175,57 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     if (!entriesRef.current.some(e => e.roll.id === rollId)) return;
     commitEntries(entriesRef.current.map(e => (
       e.roll.id === rollId
-        ? { ...e, results, settled: true }
+        ? { ...e, settled: true }
         : e
     )));
     armGroupTimer();
   }, [armGroupTimer, commitEntries]);
 
-  // Create dice-box on the FIRST ROLL, not on mount.
+  // Create the engine on the FIRST ROLL, not on mount.
   //
   // It builds a WebGL canvas that fills .dice-tray — a position:fixed, inset:0,
   // z-index:9000 element. Initialising on mount left that surface composited
   // over the whole app for the entire session whether or not anyone rolled,
   // which is what made Android flicker: a large transparent GL layer over
   // scrolling content is far more fragile there than on iOS or desktop, and
-  // worst on the big high-resolution panels of foldables, whose GPU surface is
-  // also recreated on every fold/unfold.
-  const ensureBox = useCallback(async () => {
-    if (boxRef.current) return boxRef.current;
+  // worst on the big high-resolution panels of foldables. The import is lazy
+  // too, so three.js and the physics only download when someone first rolls.
+  const ensureEngine = useCallback(async () => {
+    if (engineRef.current) return engineRef.current;
     if (initRef.current) return initRef.current;
 
     initRef.current = (async () => {
-      const box = new DiceBox({
-        container: `#${CONTAINER_ID}`,
-        assetPath: '/assets/dice-box/',
-        scale: 6,
-        throwForce: 6,
-        gravity: 3,
-        theme: THEME_RUNES,
-        themeColor: '#3b82f6',
-        // Render on an OffscreenCanvas in a worker.
-        //
-        // world.onscreen.js drives the physics from the main thread — one
-        // stepSimulation per requestAnimationFrame — so on that path frame
-        // rate IS simulation speed: anything else competing for frames
-        // doesn't merely make the animation choppy, it makes the dice tumble
-        // in slow motion. world.offscreen.js contains no
-        // requestAnimationFrame and no stepSimulation at all; the render loop
-        // and the physics step both move into the worker, out of reach of
-        // whatever the app is doing.
-        //
-        // Measured in headless Chromium (software rendering, 2d12): ~4.7s to
-        // settle on the onscreen path, ~3.1s on this one, and the gap holds
-        // with the main thread under load. A real phone GPU should do better
-        // than that; the point is the direction, which was consistent.
-        //
-        // dice-box feature-detects this itself (OffscreenCanvas +
-        // transferControlToOffscreen) and silently falls back to the onscreen
-        // path where it isn't available, so nobody loses dice.
-        offscreen: true,
-        // Even off the main thread, the physics only steps once per rendered
-        // frame, and dice-box capped each step at 22 ms of simulated time — so
-        // a laptop drawing under ~45 fps (Chrome's battery saver caps at 30)
-        // rolled in slow motion. vite/diceBoxPatch.js lifts that cap at build
-        // time. This bounds the rest: the result is already decided (rng.js),
-        // so a tumble never needs to run past three seconds.
-        settleTimeout: 3000,
-        // Shadow maps are re-rendered every frame. They also make no visible
-        // difference here — the tray has no lit surface for dice to cast onto,
-        // just the app showing through — so this is cost with nothing bought.
-        // Screenshots with and without were indistinguishable.
-        enableShadows: false,
-      });
-      await box.init();
-      boxRef.current = box;
-      readyRef.current = true;
-      return box;
+      const { createDiceEngine } = await import('./engine/index.js');
+      const engine = await createDiceEngine(containerRef.current);
+      engineRef.current = engine;
+      return engine;
     })();
 
     try {
       return await initRef.current;
     } catch (err) {
-      console.error('[DiceTray] dice-box init failed:', err);
+      console.error('[DiceTray] dice engine init failed:', err);
       initRef.current = null;
       return null;
     }
   }, []);
 
-  // A viewport change (rotation, folding/unfolding a foldable, the URL bar
-  // collapsing) while the tray is hidden is worse than a stale size: dice-box's
-  // own resize handler runs anyway and measures the display:none canvas as
-  // 0x0, leaving the physics world with no floor to land on. Flag it here and
-  // re-measure on the next roll, once the tray is back on screen.
+  // Keep the canvas matched to the viewport (rotation, folding a foldable,
+  // the URL bar collapsing). While the tray is hidden the engine ignores the
+  // 0x0 measurement and keeps its last size; every throw re-measures anyway.
   useEffect(() => {
-    const markStale = () => { staleSizeRef.current = true; };
-    window.addEventListener('resize', markStale);
-    window.addEventListener('orientationchange', markStale);
+    const onResize = () => engineRef.current?.resize();
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
     return () => {
-      window.removeEventListener('resize', markStale);
-      window.removeEventListener('orientationchange', markStale);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
     };
+  }, []);
+
+  useEffect(() => () => {
+    engineRef.current?.dispose();
+    engineRef.current = null;
   }, []);
 
   // Blur is the single most expensive thing the compositor does, and during a
@@ -310,7 +246,7 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
       return;
     }
 
-    commitEntries([...entriesRef.current, { roll, results: null, settled: false }]);
+    commitEntries([...entriesRef.current, { roll, settled: false }]);
     setShow(true);
 
     initAudio();
@@ -320,7 +256,7 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
 
     watchdogsRef.current.set(roll.id, setTimeout(() => {
       console.warn('[DiceTray] roll never settled, retiring it:', roll.id);
-      settleRoll(roll.id, null);
+      settleRoll(roll.id);
     }, ROLL_WATCHDOG_MS));
 
     // Wait for the frame that actually puts the tray on screen before anything
@@ -329,30 +265,17 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     // otherwise size itself against a hidden, zero-width canvas.
     await waitForLayout(containerRef.current);
 
-    let results = null;
-    const box = await ensureBox();
-    if (box) {
+    const engine = await ensureEngine();
+    if (engine) {
       try {
-        if (staleSizeRef.current) {
-          // Order matters: the synthetic event reaches our own markStale
-          // listener synchronously, so the flag has to be cleared after the
-          // dispatch or it would immediately set itself again.
-          requestDiceResize();
-          staleSizeRef.current = false;
-          // dice-box debounces its resize by a frame; let it land before we
-          // throw dice into a world that may still be the wrong size.
-          await nextFrame();
-        }
-        // add(), not roll() — roll() clears the table first and would wipe
-        // any dice still tumbling from another player.
-        results = await box.add(diceSpec(roll));
+        await engine.throw(roll.id, throwSpec(roll), { seed: throwSeed(roll) });
       } catch (err) {
-        console.warn('[DiceTray] dice-box.add failed:', err);
+        console.warn('[DiceTray] dice throw failed:', err);
       }
     }
 
-    settleRoll(roll.id, results);
-  }, [pushToFeed, commitEntries, settleRoll, showSpecialFor, ensureBox]);
+    settleRoll(roll.id);
+  }, [pushToFeed, commitEntries, settleRoll, showSpecialFor, ensureEngine]);
 
   // Receive new canonical rolls from Firestore.
   useLiveRoll(campaignId, useCallback((roll) => {
@@ -381,8 +304,8 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     if (groupTimerRef.current) clearTimeout(groupTimerRef.current);
     for (const t of watchdogsRef.current.values()) clearTimeout(t);
     watchdogsRef.current.clear();
-    if (boxRef.current) {
-      try { boxRef.current.clear(); } catch (e) { /* noop */ }
+    if (engineRef.current) {
+      try { engineRef.current.clear(); } catch (e) { /* noop */ }
     }
     commitEntries([]);
     setShow(false);

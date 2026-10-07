@@ -41,7 +41,10 @@ import { pickEffectForText, createFX } from '../src/components/Storybook/cinemat
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { useBattleMapStore } from '../src/stores/battleMapStore.js';
-import { diceSpec, MAX_CONCURRENT_ROLLS, THEME_RUNES } from '../src/dice/diceSpec.js';
+import { throwSpec, throwSeed, MAX_CONCURRENT_ROLLS } from '../src/dice/diceSpec.js';
+import { dieShape, SUPPORTED_SIDES, topIndex, rotate } from '../src/dice/engine/dice.js';
+import { simulateThrow, seedFrom, mulberry32, FRAME_STRIDE, MAX_STEPS } from '../src/dice/engine/simulate.js';
+import { labelsFor } from '../src/dice/engine/labels.js';
 import { usableHopeMax, usableHopeFilled, normalizeHopeSlots, isScarredSlot } from '../src/utils/daggerheartHope.js';
 import {
   findConnectedComponent,
@@ -96,7 +99,6 @@ import PassiveEffectsNote from '../src/components/Characters/PassiveEffectsNote.
 import CardActions from '../src/components/Characters/CardActions.jsx';
 import { parseCardActions, diceFormula, usesClearedByRest, spellcastModifier, spendHope, markStress, hopeAvailable, stressAvailable, featureParts } from '../src/utils/cardActions.js';
 import FeaturesTab from '../src/components/PlayerPortal/tabs/FeaturesTab.jsx';
-import { transformDiceBox, patchPhysicsWorker, patchEngineCreation } from '../vite/diceBoxPatch.js';
 import { applyVitalityChoice, rollBonusesFor, effectiveTraits } from '../src/data/daggerheartAbilityEffects.js';
 import { getCardByName } from '../src/data/daggerheartDomainCards.js';
 import PortalTableStatus from '../src/components/PlayerPortal/PortalTableStatus.jsx';
@@ -1392,40 +1394,6 @@ section('Class and heritage features');
   assert(base({ ...war, hopeSlots: [true, false, false, false, false, false] }).evasion === base(war).evasion, 'and nothing with 1 Hope');
 }
 
-// ── Dice run in real time on slow frames ──
-// dice-box stepped physics once per rendered frame, at most 2 x 1/90 s, so
-// below ~45 fps (laptops, busy tables) the dice tumbled in slow motion.
-// vite/diceBoxPatch.js lifts that at build time; check it against the
-// installed library, so an upgrade that moves the code fails here.
-section('Dice-box patch');
-{
-  const dist = 'node_modules/@3d-dice/dice-box/dist/';
-  const inline = (code, name) => {
-    const m = code.match(new RegExp(`\\b${name}\\s*=\\s*"([A-Za-z0-9+/=]{1000,})"`));
-    return m ? Buffer.from(m[1], 'base64').toString('latin1') : '';
-  };
-  const physics = inline(transformDiceBox(readFileSync(dist + 'dice-box.es.js', 'utf8'), dist + 'dice-box.es.js'), 'ml');
-  assert(/stepSimulation\(\w+,5,1\/90\)/.test(physics) && !/stepSimulation\(\w+,2,1\/90\)/.test(physics),
-    'physics takes up to 5 substeps per frame (was 2)');
-  assert(/\w+=Math\.min\(\w+,50\)/.test(physics), 'and clamps a frame to 50 ms, so an idle gap cannot jump the dice');
-  let parses = true;
-  try { new Function(physics); } catch { parses = false; }
-  assert(parses, 'the patched physics worker is still valid JavaScript');
-
-  const render = inline(transformDiceBox(readFileSync(dist + 'world.offscreen.js', 'utf8'), dist + 'world.offscreen.js'), 'p');
-  assert(render.includes('preserveDrawingBuffer:!1') && render.includes('setHardwareScalingLevel(Math.min(2'),
-    'the offscreen renderer drops preserveDrawingBuffer and caps large canvases');
-  const onscreen = transformDiceBox(readFileSync(dist + 'world.onscreen.js', 'utf8'), dist + 'world.onscreen.js');
-  assert(onscreen.includes('preserveDrawingBuffer:!1'), 'and so does the onscreen fallback');
-
-  assert(transformDiceBox('export default 1', '/src/other.js') === null, 'other modules pass through untouched');
-  let threw = false;
-  try { patchPhysicsWorker('nothing to see'); } catch { threw = true; }
-  let threw2 = false;
-  try { patchEngineCreation('nothing to see'); } catch { threw2 = true; }
-  assert(threw && threw2, 'a dice-box version without the expected code fails the build instead of silently staying slow');
-}
-
 // --- Player dice colors (roller color + Duality sets) ---
 {
   const dice = [
@@ -1781,73 +1749,104 @@ section('Battle Map store');
   fresh();
 }
 
-section('Dice tray (concurrent rolls)');
+section('Dice engine');
 {
-  // A Daggerheart duality roll: two d12s in different colours must stay in
-  // separate groups so Hope and Fear keep their own dice.
-  {
-    const spec = diceSpec({ dice: [
-      { groupId: 'hope', sides: 12, color: '#fbbf24', value: 9 },
-      { groupId: 'fear', sides: 12, color: '#a855f7', value: 4 }
-    ]});
-    assert(spec.length === 2, `duality dice stay in two groups (got ${spec.length})`);
-    assert(spec[0].themeColor === '#fbbf24' && spec[1].themeColor === '#a855f7',
-      'each duality die keeps its own colour');
-    // dice-box decides a die's result by ray-casting the settled face; a
-    // `value` in the notation is ignored for rendered dice. Emitting one
-    // implied a guarantee the engine does not honour, which is how the
-    // numbers came to disagree with the dice in the first place.
-    assert(spec.every(g => !('value' in g)),
-      'no face values are passed to the engine — it cannot honour them');
-  }
+  // The dice land on the rolled numbers: the throw is simulated first, then
+  // the face each die lands on is relabelled with its value. These check the
+  // three pure parts — shapes, simulation, relabelling — in node.
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
-  // Same sides and colour collapse into one group carrying every face.
-  {
-    const spec = diceSpec({ dice: [
-      { sides: 6, color: '#3b82f6', value: 3 },
-      { sides: 6, color: '#3b82f6', value: 5 },
-      { sides: 6, color: '#3b82f6', value: 1 }
-    ]});
-    assert(spec.length === 1, `matching dice collapse into one group (got ${spec.length})`);
-    assert(spec[0].qty === 3, `group carries the full quantity (got ${spec[0].qty})`);
+  // Shapes.
+  const faceCounts = { 4: 4, 6: 6, 8: 8, 10: 10, 12: 12, 20: 20 };
+  for (const sides of SUPPORTED_SIDES) {
+    const shape = dieShape(sides);
+    const centres = shape.faces.map(f => f.reduce((a, i) => [a[0] + shape.vertices[i][0], a[1] + shape.vertices[i][1], a[2] + shape.vertices[i][2]], [0, 0, 0]));
+    const ok = shape.faces.length === faceCounts[sides]
+      && shape.normals.every((n, i) => Math.abs(Math.hypot(...n) - 1) < 1e-9 && dot(n, centres[i]) > 0)
+      && shape.faces.every((f, i) => { const d = f.map(k => dot(shape.vertices[k], shape.normals[i])); return Math.max(...d) - Math.min(...d) < 1e-6; })
+      && [...shape.labels].sort((a, b) => a - b).join() === Array.from({ length: sides }, (_, i) => i + 1).join();
+    assert(ok, `d${sides}: ${faceCounts[sides]} flat faces with outward normals, labelled 1–${sides} once each`);
+    if (shape.opposite) {
+      assert(shape.opposite.every((o, i) => shape.labels[i] + shape.labels[o] === sides + 1), `d${sides}: opposite faces add up to ${sides + 1}`);
+    }
   }
+  assert(dieShape(3) === null && dieShape(100) === null, 'dice we do not draw are reported as such (the banner still shows them)');
 
-  // The engine cannot be told what to land on, so the faces are meaningless.
-  // Runes carry no number and therefore cannot contradict the real total; a
-  // numbered theme here would print wrong digits next to the right answer.
-  {
-    const roll = { dice: [{ sides: 12, color: '#fbbf24', value: 9 }] };
-    assert(diceSpec(roll)[0].theme === THEME_RUNES, 'dice always wear the rune theme');
-    assert(THEME_RUNES === 'magic', 'the rune theme is the one shipped in public/assets');
+  // Simulation.
+  const arena = { width: 18, depth: 11 };
+  const a = simulateThrow({ dice: [12, 12, 6], seed: 42, arena });
+  const b = simulateThrow({ dice: [12, 12, 6], seed: 42, arena });
+  const c = simulateThrow({ dice: [12, 12, 6], seed: 43, arena });
+  assert(a.steps === b.steps && a.frames.every((v, i) => v === b.frames[i]) && a.landed.join() === b.landed.join(),
+    'the same seed and table give the identical throw');
+  assert(a.frames.length !== c.frames.length || a.frames.some((v, i) => v !== c.frames[i]), 'a different seed gives a different throw');
+  let allSettled = true, inside = true, flat = true, slowest = 0;
+  for (let seed = 1; seed <= 30; seed++) {
+    const dice = [[12, 12], [12, 12, 6], [20], [4, 6, 8, 10, 12, 20]][seed % 4];
+    const r = simulateThrow({ dice, seed: seed * 7919, arena });
+    allSettled &&= r.settled && r.steps <= MAX_STEPS;
+    slowest = Math.max(slowest, r.steps);
+    for (let i = 0; i < dice.length; i++) {
+      const o = (r.steps * dice.length + i) * FRAME_STRIDE;
+      const [x, y, z] = [r.frames[o], r.frames[o + 1], r.frames[o + 2]];
+      if (Math.abs(x) > arena.width / 2 || Math.abs(z) > arena.depth / 2 || y < 0) inside = false;
+      const q = [r.frames[o + 3], r.frames[o + 4], r.frames[o + 5], r.frames[o + 6]];
+      const shape = dieShape(dice[i]);
+      if (topIndex(shape, q) !== r.landed[i]) flat = false;
+      const v = shape.readAtVertex ? shape.vertices[r.landed[i]] : shape.normals[r.landed[i]];
+      if (rotate(q, v.map(x2 => x2 / Math.hypot(...v)))[1] < 0.97) flat = false;
+    }
   }
+  assert(allSettled, `every throw comes to rest within ${MAX_STEPS / 60} s (slowest ${(slowest / 60).toFixed(1)} s)`);
+  assert(inside, 'every die ends on the table');
+  assert(flat, 'every die ends flat, with the reported face on top (cocked throws are re-run)');
+  // A second player's throw treats dice already on the table as obstacles.
+  {
+    const first = simulateThrow({ dice: [12, 12], seed: 9, arena });
+    let minGap = Infinity;
+    for (let seed = 1; seed <= 12; seed++) {
+      const second = simulateThrow({ dice: [12, 12, 20], seed: seed * 31, arena, obstacles: [{ dice: [12, 12], frames: first.frames, steps: first.steps, from: first.steps }] });
+      for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) {
+        const o = (second.steps * 3 + i) * FRAME_STRIDE, p2 = (first.steps * 2 + j) * FRAME_STRIDE;
+        minGap = Math.min(minGap, Math.hypot(second.frames[o] - first.frames[p2], second.frames[o + 2] - first.frames[p2 + 2]));
+      }
+    }
+    // Two d12s side by side sit about 2 units apart, centre to centre.
+    assert(minGap > 1.5, `a later throw's dice never end up inside dice already on the table (closest ${minGap.toFixed(2)})`);
+  }
+  assert(seedFrom('abc') === seedFrom('abc') && seedFrom('abc') !== seedFrom('abd'), 'roll ids give stable, distinct seeds');
+  const rand = mulberry32(7);
+  const xs = Array.from({ length: 1000 }, rand);
+  assert(xs.every(x => x >= 0 && x < 1) && Math.abs(xs.reduce((s2, x) => s2 + x, 0) / 1000 - 0.5) < 0.05, 'the seeded generator is uniform on [0, 1)');
 
-  // Grouping is by *consecutive* runs — a colour change splits, and changing
-  // back opens a new group rather than rejoining the first.
-  {
-    const spec = diceSpec({ dice: [
-      { sides: 6, color: '#aaa', value: 1 },
-      { sides: 6, color: '#bbb', value: 2 },
-      { sides: 6, color: '#aaa', value: 3 }
-    ]});
-    assert(spec.length === 3, `a colour change splits consecutive runs (got ${spec.length})`);
+  // Relabelling: whatever face lands, it shows the rolled value.
+  let relabelOk = true;
+  for (const sides of SUPPORTED_SIDES) {
+    const shape = dieShape(sides);
+    const slots = shape.readAtVertex ? shape.vertices.length : shape.faces.length;
+    for (let landed = 0; landed < slots; landed++) {
+      for (let value = 1; value <= sides; value++) {
+        const labels = labelsFor(shape, landed, value);
+        const perm = [...labels].sort((x, y) => x - y).join() === [...shape.labels].sort((x, y) => x - y).join();
+        const pairs = !shape.opposite || shape.opposite.every((o, i) => labels[i] + labels[o] === sides + 1);
+        if (labels[landed] !== value || !perm || !pairs) relabelOk = false;
+      }
+    }
   }
+  assert(relabelOk, 'for every die, landed face and value: the landed face shows the value, labels stay 1–N, opposites still add up');
 
-  // Mixed sides never share a group, or dice would render with wrong faces.
-  {
-    const spec = diceSpec({ dice: [
-      { sides: 20, color: '#fff', value: 18 },
-      { sides: 6, color: '#fff', value: 4 }
-    ]});
-    assert(spec.length === 2, 'different sides never share a group');
-    assert(spec[0].sides === 20 && spec[1].sides === 6, 'each group keeps its die size');
-  }
-
-  // Defensive: a malformed or empty roll must not throw into the animation.
-  {
-    assert(diceSpec({ dice: [] }).length === 0, 'an empty roll yields no dice groups');
-    assert(diceSpec({}).length === 0, 'a roll with no dice field yields no groups');
-    assert(diceSpec(null).length === 0, 'a null roll yields no groups');
-  }
+  // Roll document → dice to throw.
+  const duality = throwSpec({ dice: [
+    { groupId: 'hope', sides: 12, color: '#fbbf24', value: 9 },
+    { groupId: 'fear', sides: 12, color: '#a855f7', value: 4 },
+    { groupId: 'advantage', sides: 6, color: '#22c55e', value: 5 },
+  ] });
+  assert(duality.length === 3 && duality[0].value === 9 && duality[0].color === '#fbbf24' && duality[1].value === 4 && duality[1].color === '#a855f7' && duality[2].sides === 6 && duality[2].value === 5,
+    'a Duality roll throws Hope and Fear d12s in their colours, plus the advantage d6, each landing on its value');
+  const generic = throwSpec({ dice: [{ sides: 8, color: '#f00', value: 1 }, { sides: 8, color: '#f00', value: 8 }, { sides: 10, color: '#f00', value: 10 }] });
+  assert(generic.map(d => d.value).join() === '1,8,10', 'generic dice keep their order, and a d10 rolled 10 lands on 10');
+  assert(throwSpec({ dice: [] }).length === 0 && throwSpec({}).length === 0 && throwSpec(null).length === 0, 'an empty or malformed roll throws nothing');
+  assert(throwSeed({ animSeed: 123, id: 'x' }) === 123 && throwSeed({ id: 'abc' }) === seedFrom('abc'), 'a roll uses its saved seed, or its id for older rolls');
 
   assert(MAX_CONCURRENT_ROLLS >= 4 && MAX_CONCURRENT_ROLLS <= 12,
     `concurrency cap is a sane table size (got ${MAX_CONCURRENT_ROLLS})`);
