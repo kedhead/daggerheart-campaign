@@ -249,6 +249,13 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
         // transferControlToOffscreen) and silently falls back to the onscreen
         // path where it isn't available, so nobody loses dice.
         offscreen: true,
+        // Even off the main thread, the physics only steps once per rendered
+        // frame, and dice-box capped each step at 22 ms of simulated time — so
+        // a laptop drawing under ~45 fps (Chrome's battery saver caps at 30)
+        // rolled in slow motion. vite/diceBoxPatch.js lifts that cap at build
+        // time. This bounds the rest: the result is already decided (rng.js),
+        // so a tumble never needs to run past three seconds.
+        settleTimeout: 3000,
         // Shadow maps are re-rendered every frame. They also make no visible
         // difference here — the tray has no lit surface for dice to cast onto,
         // just the app showing through — so this is cost with nothing bought.
