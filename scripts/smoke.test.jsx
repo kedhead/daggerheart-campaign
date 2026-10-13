@@ -1853,6 +1853,29 @@ section('Dice engine');
 }
 
 
+section('Dialogs stay light on phones');
+{
+  // Typing in the session form locked an iPhone up: the dialog's 100px blur
+  // glow and two full-screen backdrop blurs were redrawn on every keystroke,
+  // over cards that kept pulsing behind it.
+  const modal = readFileSync('src/components/Modal.jsx', 'utf8');
+  const modalCss = readFileSync('src/components/Modal.css', 'utf8');
+  const globals = readFileSync('src/styles/globals.css', 'utf8');
+  const focus = readFileSync('src/hooks/useDialogFocus.js', 'utf8');
+  const sessionsView = readFileSync('src/components/Sessions/SessionsView.jsx', 'utf8');
+  assert(!/filter:\s*'blur\(/.test(modal) && !/backdropFilter/.test(modal), 'the dialog has no blur filters inline (the glow is a gradient)');
+  assert(modal.includes('lr-modal-backdrop') && modal.includes('lr-modal-shell'), 'its backdrop and shell take their blur from classes');
+  const coarse = modalCss.slice(modalCss.indexOf('@media (pointer: coarse)'));
+  assert(coarse.includes('.lr-modal-shell') && coarse.includes('.lr-modal-backdrop') && /backdrop-filter:\s*none/.test(coarse),
+    'on touch devices the dialog drops its frosted glass');
+  assert(focus.includes("classList.toggle('lr-dialog-open'"), 'an open dialog marks the page');
+  assert(/body\.lr-dialog-open #root \*[^{]*\{\s*animation-play-state:\s*paused/.test(globals), 'and the page behind it pauses its animations');
+  assert(/@media \(pointer: coarse\)\s*\{\s*body\.lr-dialog-open #root \*/.test(globals), 'and, on touch devices, drops its own blurs');
+  assert(/#root \[role="dialog"\] \*[^{]*\{\s*animation-play-state:\s*running/.test(globals), 'dialogs rendered inside the page keep their own spinners turning');
+  assert(sessionsView.includes('entities={linkEntities}') && !sessionsView.includes('entities={{ npcs'),
+    "the session form gets the memoized entities, so the link registry isn't rebuilt while you type");
+}
+
 section('Hope & scars');
 {
   const full = [false, false, false, false, false, false];

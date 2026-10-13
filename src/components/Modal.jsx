@@ -27,15 +27,12 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
       className="fixed inset-0 z-[9400] flex items-center justify-center p-4 sm:p-6 lr-fade-in"
       style={{ fontFamily: 'var(--font-body)' }}
     >
-      {/* Backdrop */}
+      {/* Backdrop. Its blur lives in Modal.css so phones can drop it: on iOS
+          a full-screen backdrop-filter re-blurs on every keystroke, which is
+          how typing in the session form locked an iPhone up. */}
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 lr-modal-backdrop"
         onClick={onClose}
-        style={{
-          background: 'color-mix(in srgb, var(--bg) 78%, transparent)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
-        }}
       />
 
       {/* Modal Content */}
@@ -47,20 +44,17 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
         className={`relative w-full ${sizeClasses[size] || sizeClasses.medium} flex flex-col overflow-hidden rounded-2xl lr-modal-shell`}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'color-mix(in srgb, var(--surface) 94%, transparent)',
           border: '1px solid var(--line-strong)',
           boxShadow: '0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px color-mix(in srgb, var(--primary) 10%, transparent)',
-          backdropFilter: 'blur(18px)',
-          WebkitBackdropFilter: 'blur(18px)',
         }}
       >
-        {/* Decorative top glow */}
+        {/* Decorative top glow: a gradient, not a blurred disc. The old
+            filter: blur(100px) was redrawn with every keystroke — at a phone's
+            3x pixel density, a ~300px blur per letter typed. */}
         <div
-          className="absolute -top-20 left-10 w-72 h-72 pointer-events-none"
+          className="absolute -top-36 -left-10 w-[28rem] h-[28rem] pointer-events-none"
           style={{
-            background: 'color-mix(in srgb, var(--primary) 18%, transparent)',
-            filter: 'blur(100px)',
-            borderRadius: '50%',
+            background: 'radial-gradient(circle, color-mix(in srgb, var(--primary) 14%, transparent) 0%, transparent 62%)',
           }}
         />
 

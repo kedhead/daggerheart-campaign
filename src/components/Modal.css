@@ -41,6 +41,32 @@
 .lr-modal-shell {
   max-height: calc(100vh - 2rem);
   max-height: calc(100dvh - 2rem);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.lr-modal-backdrop {
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Phones and tablets: no frosted glass. A backdrop-filter is recomputed
+   whenever anything under or inside it repaints — every keystroke, the caret,
+   iOS scrolling the field above the keyboard — and on a 3x screen that was
+   enough to lock an iPhone up while typing in the session form. Dim instead. */
+@media (pointer: coarse) {
+  .lr-modal-shell {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .lr-modal-backdrop {
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 
 @keyframes slideUp {

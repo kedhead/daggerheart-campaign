@@ -10,6 +10,16 @@ const FOCUSABLE = [
 // neither fights it for focus nor closes it along with itself.
 const stack = [];
 
+// While any dialog is open, <body> carries `lr-dialog-open` so the page behind
+// can stand down (globals.css): its animations pause and, on touch devices, its
+// backdrop-filters switch off. Anything still moving under a blurred backdrop
+// makes the browser re-blur the whole screen every frame, and on an iPhone that
+// was enough to lock up typing in the session form.
+function markDialogOpen() {
+  if (typeof document === 'undefined') return;
+  document.body.classList.toggle('lr-dialog-open', stack.length > 0);
+}
+
 /**
  * Keyboard focus for a dialog.
  *
@@ -36,6 +46,7 @@ export function useDialogFocus(ref, active = true, onEscape) {
     const node = ref.current;
     const token = {};
     stack.push(token);
+    markDialogOpen();
 
     const focusables = () => (node ? [...node.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null || el === document.activeElement) : []);
 
@@ -69,6 +80,7 @@ export function useDialogFocus(ref, active = true, onEscape) {
       document.removeEventListener('keydown', onKey, true);
       const at = stack.lastIndexOf(token);
       if (at !== -1) stack.splice(at, 1);
+      markDialogOpen();
       if (opener && typeof opener.focus === 'function' && document.contains(opener)) opener.focus();
     };
   }, [ref, active]);
