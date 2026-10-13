@@ -279,7 +279,7 @@ export default function SessionsView({
           isDM={isDM}
           campaign={campaign}
           campaignContext={campaignContext}
-          entities={{ npcs, locations, lore, sessions, timelineEvents, encounters, notes }}
+          entities={linkEntities}
         />
       </Modal>
     </div>

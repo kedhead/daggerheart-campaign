@@ -207,45 +207,25 @@ export function useEntityRegistry(campaign, separateEntities = null, isDM = true
    * @param {string} query - Search query (empty query returns all entities)
    * @returns {Array} Array of matching entities (max 10 results)
    */
-  const search = (query) => {
-    /* console.log('[useEntityRegistry] search() called', {
-      query,
-      registrySize: registry.length
-    }); */
-
-    // If no query, return all entities (for autocomplete when typing [[)
-    if (!query || query.trim() === '') {
-      const results = registry.slice(0, 10);
-      console.log('[useEntityRegistry] Empty query, returning first 10:', results);
-      return results;
-    }
-
+  const search = useCallback((query) => {
+    // No query returns the first few (autocomplete right after typing [[).
+    if (!query || query.trim() === '') return registry.slice(0, 10);
     const lowerQuery = query.toLowerCase();
-    const results = registry
+    return registry
       .filter(entity => entity.searchText.includes(lowerQuery))
       .slice(0, 10);
-    console.log('[useEntityRegistry] Filtered results:', results);
-    return results;
-  };
+  }, [registry]);
 
   /**
    * Get entity by exact name match (case-insensitive)
    * @param {string} name - Entity name
    * @returns {Object|undefined} Matching entity or undefined
    */
-  const getByName = (name) => {
-    // console.log('[useEntityRegistry] getByName() called with:', name);
-    if (!name) {
-      // console.log('[useEntityRegistry] No name provided, returning undefined');
-      return undefined;
-    }
+  const getByName = useCallback((name) => {
+    if (!name) return undefined;
     const lowerName = name.toLowerCase().trim();
-    // console.log('[useEntityRegistry] Searching for:', lowerName);
-    // console.log('[useEntityRegistry] Available entities:', registry.map(e => e.name));
-    const result = registry.find(entity => entity.name.toLowerCase() === lowerName);
-    // console.log('[useEntityRegistry] Found:', result);
-    return result;
-  };
+    return registry.find(entity => entity.name.toLowerCase() === lowerName);
+  }, [registry]);
 
   /**
    * Auto-link: scan text for known entity names and wrap them in [[...]]

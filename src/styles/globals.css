@@ -516,6 +516,32 @@ select {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+/* A dialog is open (useDialogFocus). Dialogs are portalled to <body>, outside
+   #root, so this only touches the page behind them. Pausing its animations
+   means a blurred backdrop has nothing to re-blur every frame, and on touch
+   devices the page's own frosted-glass layers stand down too: on an iPhone the
+   stacked blurs made typing in a dialog lock the page up. */
+body.lr-dialog-open #root *,
+body.lr-dialog-open #root *::before,
+body.lr-dialog-open #root *::after {
+  animation-play-state: paused !important;
+}
+/* A few dialogs render inside #root rather than in a portal; their own
+   spinners and transitions keep running. */
+body.lr-dialog-open #root [role="dialog"] *,
+body.lr-dialog-open #root [role="dialog"] *::before,
+body.lr-dialog-open #root [role="dialog"] *::after {
+  animation-play-state: running !important;
+}
+@media (pointer: coarse) {
+  body.lr-dialog-open #root *,
+  body.lr-dialog-open #root *::before,
+  body.lr-dialog-open #root *::after {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
 /* Respect the OS "reduce motion" setting. Transitions and decorative
    animations collapse to an instant change. The 3D dice are driven from
    script, not CSS, so they still roll: the result is the content. */
