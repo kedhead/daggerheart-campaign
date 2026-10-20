@@ -88,6 +88,16 @@
   cursor: pointer;
 }
 .bp-print-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.bp-print-btn-alt { background: transparent; color: var(--bp-gilt); }
+
+.bp-download {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.65rem 0.8rem; border-radius: 0.6rem;
+  border: 1px solid rgba(169, 211, 154, 0.5);
+  background: rgba(169, 211, 154, 0.1);
+  color: #cfe8c4; text-decoration: none; font-weight: 600;
+}
+.bp-download:hover { background: rgba(169, 211, 154, 0.18); }
 
 /* ── The book ───────────────────────────────────────────────────────────── */
 
