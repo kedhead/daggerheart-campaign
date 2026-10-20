@@ -20,6 +20,12 @@ import './BookPress.css';
    ──────────────────────────────────────────────────────────────────────────── */
 
 const SAVE_DELAY_MS = 800;
+
+// iPadOS reports itself as a Mac, so a touch-capable "Mac" counts too.
+const IS_IOS = typeof navigator !== 'undefined' && (
+  /iPhone|iPad|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+);
 const LOW_DPI = 200;
 
 export default function BookPress({ campaign, campaignId, chapters, characters = [], npcs = [], updateCampaign, onClose }) {
@@ -84,18 +90,41 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
   };
 
   // Print only once fonts and every illustration have arrived, or the PDF
-  // gets fallback type and empty frames.
-  const handlePrint = async () => {
-    try {
-      await document.fonts?.ready;
-      const imgs = [...document.querySelectorAll('.bp-book img')].filter(img => !img.complete);
-      await Promise.all(imgs.map(img => new Promise(done => {
-        img.addEventListener('load', done, { once: true });
-        img.addEventListener('error', done, { once: true });
-      })));
-    } catch { /* print anyway */ }
-    window.print();
-  };
+  // gets fallback type and empty frames. The waiting happens here, ahead of
+  // the tap: Safari on iPhone only honours window.print() called straight from
+  // the tap, so awaiting anything inside the click handler made it do nothing.
+  const bookRef = useRef(null);
+  const [pendingAssets, setPendingAssets] = useState(1);
+  useEffect(() => {
+    const root = bookRef.current;
+    if (!root) return;
+    let cancelled = false;
+    const recount = () => {
+      if (cancelled) return;
+      const loadingImgs = [...root.querySelectorAll('img')].filter(img => !img.complete).length;
+      const fontsLoading = document.fonts && document.fonts.status !== 'loaded' ? 1 : 0;
+      setPendingAssets(loadingImgs + fontsLoading);
+    };
+    const imgs = [...root.querySelectorAll('img')];
+    imgs.forEach(img => {
+      img.addEventListener('load', recount);
+      img.addEventListener('error', recount);
+    });
+    document.fonts?.ready.then(recount);
+    document.fonts?.addEventListener?.('loadingdone', recount);
+    recount();
+    return () => {
+      cancelled = true;
+      imgs.forEach(img => {
+        img.removeEventListener('load', recount);
+        img.removeEventListener('error', recount);
+      });
+      document.fonts?.removeEventListener?.('loadingdone', recount);
+    };
+  }, [book]);
+  const printReady = pendingAssets === 0;
+
+  const handlePrint = () => window.print();
 
   const style = {
     '--bp-page-w': `${trim.width}in`,
@@ -184,6 +213,16 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
 
         <section className="bp-group">
           <h3>Print to PDF</h3>
+          {IS_IOS && (
+            <p className="bp-warn bp-note">
+              <AlertTriangle size={14} />
+              <span>
+                On iPhone and iPad, Safari prints on Letter/A4 paper without page numbers, so this makes a readable PDF
+                but not the print-ready one. For the file you send to the printer, open this page in Chrome or Edge
+                on a computer.
+              </span>
+            </p>
+          )}
           <ol className="bp-steps">
             <li>Use <strong>Chrome or Edge on a computer</strong> (phones ignore the page size).</li>
             <li>Destination: <strong>Save as PDF</strong>.</li>
@@ -191,14 +230,17 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
             <li>Tick <strong>Background graphics</strong>, untick <strong>Headers and footers</strong>.</li>
           </ol>
           <p className="bp-muted">The PDF is your book interior at exact trim size, fonts embedded. Upload it to Lulu, Blurb or KDP as the interior file.</p>
-          <button type="button" className="bp-print-btn" onClick={handlePrint} disabled={book.chapters.length === 0}>
-            <Printer size={16} /> Print / Save PDF
+          <button type="button" className="bp-print-btn" onClick={handlePrint} disabled={book.chapters.length === 0 || !printReady}>
+            <Printer size={16} /> {printReady ? 'Print / Save PDF' : `Preparing pages… (${pendingAssets})`}
           </button>
+          {IS_IOS && (
+            <p className="bp-muted">On iPhone: tap Print, then in the print preview tap the Share button and choose Save to Files.</p>
+          )}
         </section>
       </aside>
 
       <main className="bp-desk">
-        <article className="bp-book">
+        <article className="bp-book" ref={bookRef}>
           <FrontMatter settings={settings} book={book} />
           {book.chapters.map(ch => (
             <section key={ch.id} className="bp-sheet bp-chapter">
