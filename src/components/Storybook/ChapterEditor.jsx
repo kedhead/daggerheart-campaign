@@ -41,8 +41,16 @@ export default function ChapterEditor({
   // (Gemini 2.5 Flash Image v2) — reference-capable and the freshest model.
   const [regenModel, setRegenModel] = useState('nano-banana-2');
 
-  const styleKey = chapter.styleKey || campaign?.storybookStyle || DEFAULT_STYLE_KEY;
-  const styleCustom = chapter.styleCustom || campaign?.storybookStyleCustom || '';
+  // The chapter keeps the style it was drawn in, so redraws match its other
+  // scenes — but that also locked in a wrong style for good. The picker on the
+  // Scenes tab changes it, and saves it to the chapter so later redraws agree.
+  const [styleKey, setStyleKey] = useState(chapter.styleKey || campaign?.storybookStyle || DEFAULT_STYLE_KEY);
+  const [styleCustom, setStyleCustom] = useState(chapter.styleCustom || campaign?.storybookStyleCustom || '');
+  const campaignStyleKey = campaign?.storybookStyle || DEFAULT_STYLE_KEY;
+  const campaignStyleCustom = campaign?.storybookStyleCustom || '';
+  const matchesCampaignStyle = styleKey === campaignStyleKey
+    && (styleKey !== 'custom' || styleCustom === campaignStyleCustom);
+  const [redrawProgress, setRedrawProgress] = useState(null); // { done, total } while redrawing every scene
   const gameSystem = campaign?.gameSystem || 'daggerheart';
 
   const isDirty = title !== chapter.title || prose !== chapter.prose;
@@ -121,6 +129,70 @@ export default function ChapterEditor({
       s.id === scene.id ? { ...s, featuredEntityIds: next } : s
     );
     await storybook.updateChapter(chapter.id, { scenes });
+  };
+
+  const saveStyle = async (key, custom) => {
+    await storybook.updateChapter(chapter.id, {
+      styleKey: key,
+      styleCustom: key === 'custom' ? custom : ''
+    });
+  };
+
+  const handleStyleChange = async (key) => {
+    setStyleKey(key);
+    await saveStyle(key, styleCustom);
+  };
+
+  const useCampaignStyle = async () => {
+    setStyleKey(campaignStyleKey);
+    setStyleCustom(campaignStyleCustom);
+    await saveStyle(campaignStyleKey, campaignStyleCustom);
+  };
+
+  // Redraw every scene in the chosen style, one at a time. Each finished scene
+  // is saved straight away, so a failure part-way keeps the ones already done
+  // and the rest can be retried individually.
+  const handleRedrawAll = async () => {
+    const targets = (chapter.scenes || []).filter(s => s.prompt || editedPrompts[s.id]);
+    if (targets.length === 0) return;
+    const styleLabel = STORYBOOK_STYLES.find(st => st.key === styleKey)?.label || styleKey;
+    if (!await confirm({
+      message: `Redraw all ${targets.length} illustration${targets.length === 1 ? '' : 's'} in "${styleLabel}"? The current images will be replaced.`,
+      confirmLabel: 'Redraw'
+    })) return;
+
+    await saveStyle(styleKey, styleCustom);
+    let scenes = [...(chapter.scenes || [])];
+    let failed = 0;
+    setRedrawProgress({ done: 0, total: targets.length });
+    for (let i = 0; i < targets.length; i++) {
+      const scene = targets[i];
+      setRegeneratingId(scene.id);
+      try {
+        const newScene = await regenerateScene({
+          scene: { ...scene, prompt: promptValue(scene) },
+          chapter,
+          entities: { characters, npcs, adversaries },
+          campaignId,
+          apiKey,
+          gameSystem,
+          styleKey,
+          styleCustom,
+          imageModel: regenModel
+        });
+        scenes = scenes.map(s => s.id === scene.id ? { ...newScene, id: scene.id } : s);
+        await storybook.updateChapter(chapter.id, { scenes });
+      } catch (err) {
+        failed += 1;
+        console.warn(`Redraw failed for scene ${scene.id}:`, err);
+      }
+      setRedrawProgress({ done: i + 1, total: targets.length });
+    }
+    setRegeneratingId(null);
+    setRedrawProgress(null);
+    setEditedPrompts({});
+    if (failed) notify.error(`${failed} of ${targets.length} illustrations failed to redraw — use Regenerate on those to retry.`);
+    else notify.success(`All ${targets.length} illustrations redrawn.`);
   };
 
   const handleSceneRegenerate = async (scene) => {
@@ -262,6 +334,74 @@ export default function ChapterEditor({
 
       {activeTab === 'scenes' && (
         <div className="space-y-4">
+          {/* Art style for this chapter — saved on the chapter, used by every redraw */}
+          <div
+            className="space-y-3 p-3 rounded-lg border"
+            style={{
+              background: 'color-mix(in srgb, var(--surface) 60%, transparent)',
+              borderColor: matchesCampaignStyle ? 'var(--line)' : 'rgba(251, 191, 36, 0.45)'
+            }}
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-[11px] font-bold uppercase tracking-widest text-lr-text-dim">
+                Art style
+              </label>
+              <select
+                value={styleKey}
+                onChange={(e) => handleStyleChange(e.target.value)}
+                disabled={!!redrawProgress}
+                className="p-2 rounded bg-black/20 border border-white/10 text-white text-xs"
+              >
+                {STORYBOOK_STYLES.map(st => (
+                  <option key={st.key} value={st.key}>
+                    {st.label}{st.key === campaignStyleKey ? ' (campaign style)' : ''}
+                  </option>
+                ))}
+              </select>
+              {!matchesCampaignStyle && (
+                <button
+                  type="button"
+                  onClick={useCampaignStyle}
+                  disabled={!!redrawProgress}
+                  className="text-xs font-semibold text-amber-200 hover:text-white px-2 py-1 rounded border border-amber-300/40"
+                >
+                  Match the campaign style
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleRedrawAll}
+                disabled={!!redrawProgress || !!regeneratingId || (chapter.scenes || []).length === 0}
+                className="ml-auto inline-flex items-center gap-2 px-3 py-2 rounded-lg text-white text-xs font-bold disabled:opacity-40"
+                style={{
+                  background: 'color-mix(in srgb, var(--primary) 30%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--primary) 55%, transparent)'
+                }}
+              >
+                <Wand2 size={13} className={redrawProgress ? 'animate-spin' : ''} />
+                {redrawProgress
+                  ? `Redrawing ${Math.min(redrawProgress.done + 1, redrawProgress.total)} of ${redrawProgress.total}…`
+                  : 'Redraw all illustrations'}
+              </button>
+            </div>
+            {styleKey === 'custom' && (
+              <textarea
+                value={styleCustom}
+                onChange={(e) => setStyleCustom(e.target.value)}
+                onBlur={() => saveStyle(styleKey, styleCustom)}
+                disabled={!!redrawProgress}
+                placeholder="Describe the art style, e.g. muted gouache with heavy ink outlines"
+                rows={2}
+                className="w-full p-2 rounded-lg bg-black/20 border border-white/10 text-white text-xs"
+              />
+            )}
+            <p className="text-[11px] text-lr-text-dim">
+              {matchesCampaignStyle
+                ? 'Regenerate and Redraw use this style.'
+                : 'This chapter is set to a different style from the rest of the campaign. Pick the style you want, then Redraw all illustrations.'}
+            </p>
+          </div>
+
           {/* Image-model selector applied to every regeneration in this session */}
           <div
             className="flex flex-wrap items-center gap-3 p-3 rounded-lg border"
@@ -391,7 +531,7 @@ export default function ChapterEditor({
                   <button
                     type="button"
                     onClick={() => handleSceneRegenerate(scene)}
-                    disabled={regeneratingId === scene.id}
+                    disabled={regeneratingId === scene.id || !!redrawProgress}
                     className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-lr-text-muted bg-white/5 border border-white/10 hover:bg-white/10 disabled:opacity-50"
                   >
                     <RefreshCw size={12} className={regeneratingId === scene.id ? 'animate-spin' : ''} />
