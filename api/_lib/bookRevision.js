@@ -8,6 +8,8 @@
 //
 // Pure prompt building and response checking, so the smoke tests can cover it.
 
+import { dialogueGuidance, sampleLines, tableQuoteLines } from './dialogue.js';
+
 const MAX_PROSE_CHARS = 24000;
 const MAX_OUTLINE_ITEMS = 60;
 
@@ -26,7 +28,7 @@ const clip = (s, n) => {
  * @param {string} [p.threads]  - the DM's notes on what the story builds to
  * @param {string} [p.gameSystem]
  */
-export function buildRevisionPrompt({ chapter, outline = [], previousEnding = '', nextOpening = '', voices = [], threads = '', gameSystem = 'daggerheart' }) {
+export function buildRevisionPrompt({ chapter, outline = [], previousEnding = '', nextOpening = '', voices = [], threads = '', quotes = [], dialogue, gameSystem = 'daggerheart' }) {
   const genre = gameSystem === 'starwarsd6' ? 'space opera' : 'high fantasy';
   const total = outline.length;
   const isFinal = total > 0 && chapter.number === outline[outline.length - 1].number;
@@ -39,8 +41,11 @@ THE JOB
 - Foreshadow. Use the book outline and the threads below to plant small, subtle hints of what is coming — an image, an unease, a line of dialogue that will mean more later. Never reveal or spoil a later event outright, and never refer to future chapters.
 - Keep characters in voice. Where a voice note is given, every line of that character's dialogue, choice, and inner thought must fit it. Show it; never restate the note.
 - Keep continuity with the chapters around it: pick up from how the previous chapter ended, and ${isFinal ? 'as this is the final chapter, close the story with a resonant ending.' : 'end on a hook — an unanswered question, a turn, or a moment of tension that pulls the reader into the next chapter.'}
-- Write like a novel: past tense, third person, vivid and specific, varied rhythm, dialogue where it serves. You may deepen moments, interiority, atmosphere, and transitions, and the chapter may grow by up to half again its length — but don't pad.
+- Write like a novel: past tense, third person, vivid and specific, varied rhythm. You may deepen moments, interiority, atmosphere, and transitions, and the chapter may grow by up to half again its length — but don't pad.
 - Keep the chapter's title unless it gives away a later twist.
+
+${dialogueGuidance(dialogue)}
+- Lines already quoted in the original text were said at the table or chosen by the author: keep them word for word.
 
 OUTPUT
 Return JSON: {"title": "...", "prose": "...", "notes": ["...", "..."]}
@@ -52,15 +57,21 @@ Return JSON: {"title": "...", "prose": "...", "notes": ["...", "..."]}
   );
 
   const voiceLines = voices
-    .filter(v => v && v.name && v.voice)
+    .filter(v => v && v.name && (v.voice || v.lines))
     .slice(0, 20)
-    .map(v => `- ${clip(v.name, 60)}: ${clip(v.voice, 400)}`);
+    .map(v => {
+      const lines = sampleLines(v.lines);
+      const said = lines.length ? `Sample lines: ${lines.map(l => `"${l.replace(/^["“]|["”]$/g, '')}"`).join(' / ')}` : '';
+      return `- ${clip(v.name, 60)}: ${[clip(v.voice || '', 400), said].filter(Boolean).join(' ')}`;
+    });
+  const quoteLines = tableQuoteLines(quotes);
 
   const user = [
     `# The book (${total} chapter${total === 1 ? '' : 's'}; → marks this one)`,
     outlineLines.join('\n') || '(outline unavailable)',
     threads.trim() ? `\n# Threads the story builds to (from the author)\n${clip(threads, 2000)}` : '',
     voiceLines.length ? `\n# Character voices\n${voiceLines.join('\n')}` : '',
+    quoteLines.length ? `\n# Said at the table during this chapter — use every line word for word\n${quoteLines.map(q => `- ${q}`).join('\n')}` : '',
     previousEnding ? `\n# How the previous chapter ended\n${clip(previousEnding, 700)}` : '',
     nextOpening ? `\n# How the next chapter opens\n${clip(nextOpening, 500)}` : '',
     `\n# Chapter ${chapter.number}: ${clip(chapter.title, 120)} — original text to revise\n${String(chapter.prose || '').slice(0, MAX_PROSE_CHARS)}`,

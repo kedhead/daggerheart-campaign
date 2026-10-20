@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Wand2, Check as CheckIcon, AlertTriangle, RotateCcw, Trash2, ChevronRight } from 'lucide-react';
 import { writeSecondDraft } from '../../services/bookDraftGenerator';
 import { draftStatus, proseFingerprint } from '../../utils/bookLayout';
+import { DIALOGUE_OPTIONS } from '../../services/storybookGenerator';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Second Draft — the Book Press section that rewrites chapters for the book
@@ -16,7 +17,7 @@ const STATUS_LABEL = {
   stale: 'Chronicle changed'
 };
 
-export default function SecondDraftSection({ bound, characters, npcs, settings, set, updateChapter, apiKey, gameSystem }) {
+export default function SecondDraftSection({ bound, characters, npcs, sessions = [], settings, set, updateChapter, apiKey, gameSystem }) {
   const [run, setRun] = useState(null);        // { done, total, current } while drafting
   const [errors, setErrors] = useState({});    // chapterId -> message
   const [reviewId, setReviewId] = useState(null);
@@ -29,7 +30,7 @@ export default function SecondDraftSection({ bound, characters, npcs, settings, 
   const draftOne = async (index) => {
     const chapter = bound[index];
     try {
-      const bookDraft = await writeSecondDraft({ bound, index, characters, npcs, threads: settings.threads || '', gameSystem, apiKey });
+      const bookDraft = await writeSecondDraft({ bound, index, characters, npcs, sessions, threads: settings.threads || '', dialogue: settings.dialogue, gameSystem, apiKey });
       await updateChapter(chapter.id, { bookDraft });
       setErrors(prev => { const next = { ...prev }; delete next[chapter.id]; return next; });
       return true;
@@ -76,6 +77,11 @@ export default function SecondDraftSection({ bound, characters, npcs, settings, 
           placeholder="Secrets, reveals and payoffs to hint at, e.g. Mother Quill is the Ember Queen in disguise. Orwyn's lost brother returns at the end."
           onChange={e => set({ threads: e.target.value })}
         />
+      </label>
+      <label>Dialogue
+        <select value={settings.dialogue || 'fleshed'} onChange={e => set({ dialogue: e.target.value })}>
+          {DIALOGUE_OPTIONS.map(d => <option key={d.key} value={d.key}>{d.label}: {d.hint}</option>)}
+        </select>
       </label>
       <label className="bp-check">
         <input type="checkbox" checked={settings.useSecondDraft !== false} onChange={e => set({ useSecondDraft: e.target.checked })} />

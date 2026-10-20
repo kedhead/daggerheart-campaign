@@ -40,6 +40,15 @@ export const STORYBOOK_STYLES = [
 
 export const DEFAULT_STYLE_KEY = 'watercolor';
 
+// How much conversation the writers add (see api/_lib/dialogue.js for the rules
+// each one follows). Shared by chapter writing and the Second Draft.
+export const DIALOGUE_OPTIONS = [
+  { key: 'faithful', label: 'Faithful', hint: 'Only lines from your notes; the rest is told in narration.' },
+  { key: 'fleshed', label: 'Fleshed out', hint: 'Spoken scenes for the moments that happened: plans, arguments, reactions.' },
+  { key: 'rich', label: 'Rich', hint: 'All that, plus banter and quiet moments between the big beats.' }
+];
+export const DEFAULT_DIALOGUE = 'fleshed';
+
 // Scene images fail transiently often enough (provider rate limits, cold
 // starts, the odd 5xx) that one flaky request shouldn't cost the chapter an
 // illustration. Attempts are per scene, and the delay scales with the attempt.
@@ -440,8 +449,8 @@ export async function generateChapter({
   });
 
   const entityRoster = {
-    characters: cast.characters.filter(c => c.name).slice(0, 30).map(c => ({ id: c.id, name: c.name, tag: c.characterClass, ancestry: c.ancestry || '', voice: c.storyVoice || '' })),
-    npcs: cast.npcs.filter(n => n.name).slice(0, 30).map(n => ({ id: n.id, name: n.name, tag: n.occupation, ancestry: n.ancestry || '', voice: n.storyVoice || '' })),
+    characters: cast.characters.filter(c => c.name).slice(0, 30).map(c => ({ id: c.id, name: c.name, tag: c.characterClass, ancestry: c.ancestry || '', voice: c.storyVoice || '', lines: c.voiceLines || '' })),
+    npcs: cast.npcs.filter(n => n.name).slice(0, 30).map(n => ({ id: n.id, name: n.name, tag: n.occupation, ancestry: n.ancestry || '', voice: n.storyVoice || '', lines: n.voiceLines || '' })),
     adversaries: cast.adversaries.filter(a => a.name).slice(0, 30).map(a => ({ id: a.id, name: a.name, tag: a.role })),
     locations: locations.filter(l => l.name).slice(0, 30).map(l => ({ id: l.id, name: l.name, tag: l.type }))
   };
@@ -463,12 +472,14 @@ export async function generateChapter({
         summary: session.summary,
         highlights: session.highlights,
         dmNotes: session.dmNotes,
-        liveNotesCompiled: session.liveNotesCompiled
+        liveNotesCompiled: session.liveNotesCompiled,
+        tableQuotes: session.tableQuotes || []
       },
       priorChapterSummaries: priorSummaries,
       entityRoster,
       sceneCount,
       gameSystem,
+      dialogue: campaign?.storybookDialogue,
       apiKey: apiKey || undefined
     })
   });

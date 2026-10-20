@@ -76,6 +76,7 @@ export function buildCampaignContext(campaign, {
       if (c.subclass)        parts.push(c.subclass);
       let line = `- ${parts.join(', ')}`;
       if (c.storyVoice)      line += ` — voice: ${_truncate(c.storyVoice, 200)}`;
+      if (c.voiceLines)      line += ` — says things like: ${_truncate(c.voiceLines.split(/\n+/).slice(0, 2).join(' / '), 120)}`;
       lines.push(line);
     });
   }

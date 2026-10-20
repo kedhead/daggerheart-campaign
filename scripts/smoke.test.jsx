@@ -21,6 +21,7 @@ import { useNotify } from '../src/contexts/ToastContext.jsx';
 import generateImageHandler from '../api/generate-image.js';
 import generateStorybookHandler from '../api/generate-storybook.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
+import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
 import { generateKeyPair, SignJWT, exportJWK, createLocalJWKSet } from 'jose';
 import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
@@ -29,6 +30,7 @@ import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
 import { isVisibleToPlayers, visibleTo } from '../src/utils/playerVisibility.js';
 import SessionDateFilters from '../src/components/Filters/SessionDateFilters.jsx';
 import { linkedSessionIds, sessionFilterOptions, filterBySessionAndDate, createdAtMillis, SORTS as ENTITY_SORTS } from '../src/utils/sessionLinks.js';
+import { quotedLines } from '../src/utils/campaignMemory.js';
 import { isArchivedNote, starredHighlights, TRANSCRIPTION_NOTE_PREFIX, mergeHighlights, unresolvedLinks, appearancesFor, previouslyOn, recentPlayedSessions, stripWikiLinks } from '../src/utils/campaignMemory.js';
 import { isAtDeathsDoor, hpRemaining, hpMax, stressMarked, partyVitals, weaponAttackModifier } from '../src/utils/daggerheartVitals.js';
 import { sourcePortraitKey, cachedPortraitKey } from '../src/utils/storybookPortraitCache.js';
@@ -3358,6 +3360,49 @@ section('Book cover');
   assert(!readBookRequest({ campaignId: 'c', html: '<div class="bp-cover-wrap"></div>', css: '' }).error, 'the print server accepts a cover as well as a book');
 }
 
+section('Dialogue');
+{
+  assert(normalizeDialogue('rich') === 'rich' && normalizeDialogue('shouting') === 'fleshed' && normalizeDialogue(undefined) === 'fleshed',
+    'unknown dialogue levels fall back to fleshed out');
+  const faithful = dialogueGuidance('faithful'), fleshed = dialogueGuidance(), rich = dialogueGuidance('rich');
+  assert(/FAITHFUL/.test(faithful) && /only where the notes give their words/.test(faithful), 'faithful only quotes what the notes give');
+  assert(/FLESHED OUT/.test(fleshed) && /argument over a plan/.test(fleshed) && !/banter/.test(fleshed), 'fleshed out writes the key exchanges, no idle banter');
+  assert(/RICH/.test(rich) && /banter on the road/.test(rich) && /may not invent events/.test(rich), 'rich adds banter that may not invent events');
+  assert([faithful, fleshed, rich].every(g => /word for word/.test(g) && /may never add facts/.test(g) && /sample lines/.test(g)),
+    'every level keeps table quotes verbatim, forbids new facts in dialogue, and follows sample lines');
+  assert(JSON.stringify(sampleLines('"Hit it?"\n\n  Too many words.  \n1\n2\n3\n4')) === '["\\"Hit it?\\"","Too many words.","1","2","3"]',
+    'sample lines are one per line, trimmed, blanks dropped, at most five');
+  assert(tableQuoteLines(['  Yargal: "Hit it?" ', '', 42]).length === 1 && tableQuoteLines('nope').length === 0, 'table quotes are cleaned');
+
+  const rev = buildRevisionPrompt({ chapter: { number: 1, title: 'T', prose: 'x' }, outline: [{ number: 1, title: 'T', summary: 's' }],
+    voices: [{ name: 'Yargal', voice: 'Blunt.', lines: '"Hit it?"\nFood first.' }, { name: 'Quill', voice: '', lines: 'Mind the step, dearie.' }],
+    quotes: ['Orwyn: "Technically, it is an unscheduled loan."'], dialogue: 'rich' });
+  assert(/DIALOGUE — RICH/.test(rev.system) && /keep them word for word/.test(rev.system), 'the Second Draft follows the chosen dialogue level and keeps quoted lines');
+  assert(/Yargal: Blunt\. Sample lines: "Hit it\?" \/ "Food first\."/.test(rev.user) && /Quill: Sample lines: "Mind the step, dearie\."/.test(rev.user),
+    `sample lines reach the editor, even for someone with no voice note (got ${rev.user.split('\n').filter(l => /Sample/.test(l)).join(' | ')})`);
+  assert(/Said at the table during this chapter[^\n]*\n- Orwyn: "Technically, it is an unscheduled loan\."/.test(rev.user), 'table quotes reach the editor');
+  assert(/DIALOGUE — FLESHED OUT/.test(buildRevisionPrompt({ chapter: { number: 1, title: 'T', prose: 'x' } }).system), 'the default is fleshed out');
+
+  const notes = [
+    { content: ' Orwyn: "It is a loan." ', isQuote: true },
+    { content: 'They walked.', isQuote: false },
+    { content: 'Old line', isQuote: true, archived: true },
+    { content: `${TRANSCRIPTION_NOTE_PREFIX}\n\nrecap`, isQuote: true }
+  ];
+  assert(JSON.stringify(quotedLines(notes)) === '["Orwyn: \\"It is a loan.\\""]', 'only live, hand-marked quotes are collected');
+  assert(sessionNotesText({ title: 'S', tableQuotes: ['Mother Quill: "Mind the step."'] }).includes('Mother Quill'),
+    'a quote’s speaker counts as being in the session, so they join the chapter’s cast');
+
+  const ctx = revisionContext({
+    bound: [{ id: 'a', sessionId: 's1', chapterNumber: 1, status: 'published', title: 'T', prose: 'Yargal and Orwyn argued.' }],
+    index: 0,
+    characters: [{ id: 'y', name: 'Yargal', voiceLines: 'Hit it?' }, { id: 'o', name: 'Orwyn', storyVoice: 'Bookish.' }],
+    sessions: [{ id: 's1', tableQuotes: ['Yargal: "Hit it?"', ' '] }, { id: 's2', tableQuotes: ['other'] }]
+  });
+  assert(JSON.stringify(ctx.quotes) === '["Yargal: \\"Hit it?\\""]', 'the Second Draft gets the quotes from its own chapter’s session');
+  assert(ctx.voices.find(v => v.name === 'Yargal')?.lines === 'Hit it?' && ctx.voices.length === 2, 'and sample lines even without a voice note');
+}
+
 section('Campaign memory');
 {
   assert(isArchivedNote({ archived: true }) && !isArchivedNote({}) && !isArchivedNote(null),
@@ -3655,6 +3700,20 @@ async function runAuthTests() {
       res = mkRes();
       await generateStorybookHandler({ method: 'POST', headers: {}, body: { action: 'revise', chapter: { prose: '  ' } } }, res);
       assert(res.statusCode === 400, 'a chapter with no text is refused');
+
+      sent.length = 0;
+      globalThis.fetch = reply(JSON.stringify({ title: 'The Gate', prose: 'p', scenes: [{ caption: 'c', prompt: 'p', featuredEntityIds: ['y'] }, { caption: 'c', prompt: 'p', featuredEntityIds: [] }], spotlights: [] }));
+      res = mkRes();
+      await generateStorybookHandler({ method: 'POST', headers: {}, body: {
+        action: 'chapter', dialogue: 'rich', sceneCount: 2,
+        session: { title: 'The Gate', summary: 'They argued at the gate.', tableQuotes: ['Orwyn: "Technically, it is an unscheduled loan."'] },
+        entityRoster: { characters: [{ id: 'y', name: 'Yargal', voice: 'Blunt.', lines: '"Hit it?"\nFood first.' }] }
+      } }, res);
+      const chapterSys = sent[0]?.messages?.[0]?.content || '';
+      const chapterUser = sent[0]?.messages?.[1]?.content || '';
+      assert(res.statusCode === 200 && /DIALOGUE — RICH/.test(chapterSys), `chapters follow the campaign's dialogue level (got ${res.statusCode})`);
+      assert(/sample lines: "Hit it\?" \/ "Food first\."/.test(chapterUser), 'sample lines go into the chapter roster');
+      assert(/Said at the table[^\n]*\n- Orwyn: "Technically, it is an unscheduled loan\."/.test(chapterUser), 'table quotes go into the chapter notes');
 
       globalThis.fetch = reply(JSON.stringify({ title: 'Ten Winters On', prose: 'Snow fell.\n\nThey remembered.' }));
       res = mkRes();

@@ -21,6 +21,9 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
   });
 
   const [highlightInput, setHighlightInput] = useState('');
+  // Edited as text, one quote per line, and split on save: splitting on every
+  // keystroke would swallow the newline you just typed.
+  const [quotesText, setQuotesText] = useState((session?.tableQuotes || []).join('\n'));
   const [isPolishing, setIsPolishing] = useState(false);
   const [polishError, setPolishError] = useState(null);
 
@@ -75,7 +78,8 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    const tableQuotes = quotesText.split(/\n+/).map(q => q.trim()).filter(Boolean);
+    onSave({ ...formData, tableQuotes });
   };
 
   return (
@@ -208,6 +212,18 @@ export default function SessionForm({ session, onSave, onCancel, isDM, campaign,
             ))}
           </div>
         )}
+      </div>
+
+      <div className="space-y-1">
+        <label className="block text-sm font-semibold text-lr-text-muted">Said at the Table</label>
+        <textarea
+          value={quotesText}
+          onChange={(e) => setQuotesText(e.target.value)}
+          rows={3}
+          placeholder={'One per line, who said what, e.g.\nOrwyn: "Technically, it\'s an unscheduled loan."\nYargal: "Hit it?"'}
+          className="w-full p-3 bg-black/20 border border-white/10 rounded-lg text-white focus:outline-none focus:border-[rgb(var(--color-primary))] transition-colors"
+        />
+        <p className="text-xs text-lr-text-dim mt-1">The chapter for this session uses every line word for word. Quotes marked in Live Session land here.</p>
       </div>
 
       {isDM && (

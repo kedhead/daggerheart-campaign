@@ -43,6 +43,7 @@ export const DEFAULT_BOOK_SETTINGS = {
   includeJournals: true,
   useSecondDraft: true,
   threads: '',
+  dialogue: 'fleshed',     // how much conversation the Second Draft writes: faithful | fleshed | rich
   includeEpilogue: true,
   includeGlossary: true,
   epilogue: null,          // { title, prose, createdAt } once written
@@ -296,7 +297,7 @@ function bookText(chapter) {
  *
  * @param {Array} bound - the chapters in the book, in order (see bindableChapters)
  */
-export function revisionContext({ bound, index, characters = [], npcs = [], threads = '' }) {
+export function revisionContext({ bound, index, characters = [], npcs = [], sessions = [], threads = '' }) {
   const chapter = bound[index];
   const prev = bound[index - 1];
   const next = bound[index + 1];
@@ -307,8 +308,11 @@ export function revisionContext({ bound, index, characters = [], npcs = [], thre
   const living = characters.map(c => ({ ...c, deceased: false }));
   mentionedEntityIds({ characters: living, npcs }, chapter.prose || '').forEach(id => ids.add(id));
   const voices = [...characters, ...npcs]
-    .filter(e => e?.name && e.storyVoice?.trim() && ids.has(e.id))
-    .map(e => ({ name: e.name, voice: e.storyVoice.trim() }));
+    .filter(e => e?.name && (e.storyVoice?.trim() || e.voiceLines?.trim()) && ids.has(e.id))
+    .map(e => ({ name: e.name, voice: e.storyVoice?.trim() || '', lines: e.voiceLines?.trim() || '' }));
+  // What the table actually said during this chapter's session.
+  const session = chapter.sessionId ? sessions.find(s => s?.id === chapter.sessionId) : null;
+  const quotes = Array.isArray(session?.tableQuotes) ? session.tableQuotes.filter(q => typeof q === 'string' && q.trim()) : [];
 
   return {
     chapter: { number: index + 1, title: chapter.title || '', prose: stripWikiLinks(chapter.prose || '') },
@@ -316,6 +320,7 @@ export function revisionContext({ bound, index, characters = [], npcs = [], thre
     previousEnding: prev ? paras(bookText(prev)).slice(-2).join('\n\n') : '',
     nextOpening: next ? paras(next.prose)[0] || '' : '',
     voices,
+    quotes,
     threads
   };
 }
@@ -376,7 +381,8 @@ export function epilogueContext({ bound, characters = [], threads = '', guidance
       .map(c => ({
         name: c.name,
         line: [c.ancestry, c.characterClass || c.class].filter(Boolean).join(' '),
-        voice: c.storyVoice?.trim() || '',
+        voice: [c.storyVoice?.trim(), c.voiceLines?.trim() ? `Sounds like: ${c.voiceLines.trim().split(/\n+/).slice(0, 3).join(' / ')}` : '']
+          .filter(Boolean).join(' '),
         fallen: !!c.deceased
       })),
     threads,

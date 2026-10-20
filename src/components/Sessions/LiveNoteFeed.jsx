@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { Star, Trash2, User } from 'lucide-react';
+import { Star, Trash2, User, Quote } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import './LiveNoteFeed.css';
 
@@ -8,6 +8,7 @@ export default function LiveNoteFeed({
   currentUserId,
   isDM,
   onToggleHighlight,
+  onToggleQuote,
   onDeleteNote,
   entities,
   campaign,
@@ -79,7 +80,12 @@ export default function LiveNoteFeed({
               </div>
             )}
 
-            <div className="text-[0.95rem] leading-relaxed text-lr-text break-words pr-8">
+            {note.isQuote && (
+              <div className="flex items-center gap-1 mb-0.5 text-[0.65rem] font-semibold uppercase tracking-wider text-sky-400/80">
+                <Quote size={10} /> Said at the table
+              </div>
+            )}
+            <div className={`text-[0.95rem] leading-relaxed text-lr-text break-words pr-8 ${note.isQuote ? 'italic' : ''}`}>
               <WikiText
                 text={note.content}
                 entities={entities}
@@ -104,6 +110,20 @@ export default function LiveNoteFeed({
               >
                 <Star size={12} fill={note.isHighlight ? 'currentColor' : 'none'} />
               </button>
+
+              {onToggleQuote && (
+                <button
+                  className={`
+                    p-1 rounded bg-[var(--bg-primary)] border border-white/10 text-lr-text-dim cursor-pointer transition-colors
+                    hover:text-sky-400 hover:border-sky-400
+                    ${note.isQuote ? 'text-sky-400 border-sky-400/30' : ''}
+                  `}
+                  onClick={() => onToggleQuote(note.id)}
+                  title={note.isQuote ? 'Not a quote' : 'Mark as a quote: the chapter will use it word for word'}
+                >
+                  <Quote size={12} />
+                </button>
+              )}
 
               {canDelete(note) && (
                 <button

@@ -4,7 +4,7 @@ import { useSessionLive } from '../../hooks/useSessionLive';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import { autoLinkText } from '../../utils/autoLinkText';
-import { TRANSCRIPTION_NOTE_PREFIX, starredHighlights, mergeHighlights, unresolvedLinks } from '../../utils/campaignMemory';
+import { TRANSCRIPTION_NOTE_PREFIX, starredHighlights, quotedLines, mergeHighlights, unresolvedLinks } from '../../utils/campaignMemory';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { summarizeSessionNotes } from '../../services/sessionSummaryGenerator';
 import LiveNoteInput from './LiveNoteInput';
@@ -36,6 +36,7 @@ export default function SessionLive({
     loading,
     addLiveNote,
     toggleHighlight,
+    toggleQuote,
     deleteNote,
     clearAllNotes,
     archiveAllNotes,
@@ -101,8 +102,8 @@ export default function SessionLive({
     }
   };
 
-  const handleAddNote = async (content, isHighlight) => {
-    await addLiveNote(content, isHighlight);
+  const handleAddNote = async (content, isHighlight, isQuote) => {
+    await addLiveNote(content, isHighlight, isQuote);
   };
 
   const handleDeleteNote = async (noteId) => {
@@ -155,6 +156,11 @@ export default function SessionLive({
     };
     if (keepHighlights && starred.length > 0) {
       updates.highlights = mergeHighlights(session.highlights, starred);
+    }
+    // Quotes are always kept: they are what the chapter writer must use word for word.
+    const quotes = quotedLines(liveNotes);
+    if (quotes.length > 0) {
+      updates.tableQuotes = mergeHighlights(session.tableQuotes, quotes);
     }
     await onUpdateSession(session.id, updates);
 
@@ -295,6 +301,7 @@ export default function SessionLive({
         currentUserId={currentUserId}
         isDM={isDM}
         onToggleHighlight={toggleHighlight}
+        onToggleQuote={toggleQuote}
         onDeleteNote={handleDeleteNote}
         entities={entities}
         campaign={campaign}

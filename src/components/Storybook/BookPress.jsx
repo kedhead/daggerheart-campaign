@@ -34,7 +34,7 @@ const IS_IOS = typeof navigator !== 'undefined' && (
 );
 const LOW_DPI = 200;
 
-export default function BookPress({ campaign, campaignId, chapters, characters = [], npcs = [], locations = [], lore = [], updateCampaign, updateChapter, apiKey, onClose }) {
+export default function BookPress({ campaign, campaignId, chapters, characters = [], npcs = [], locations = [], lore = [], sessions = [], updateCampaign, updateChapter, apiKey, onClose }) {
   const [settings, setSettings] = useState(() => normalizeBookSettings(campaign?.bookSettings, campaign));
   const [imageWidths, setImageWidths] = useState({});
 
@@ -312,6 +312,7 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
             bound={bindableChapters(published, settings)}
             characters={characters}
             npcs={npcs}
+            sessions={sessions}
             settings={settings}
             set={set}
             updateChapter={updateChapter}

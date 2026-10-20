@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Send, Star, Loader2 } from 'lucide-react';
+import { Send, Star, Loader2, Quote } from 'lucide-react';
 import './LiveNoteInput.css';
 
 export default function LiveNoteInput({ onSubmit, disabled = false }) {
   const [content, setContent] = useState('');
   const [isHighlight, setIsHighlight] = useState(false);
+  // A quote is something said at the table; the chapter uses it word for word.
+  const [isQuote, setIsQuote] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -12,9 +14,10 @@ export default function LiveNoteInput({ onSubmit, disabled = false }) {
     if (!content.trim() || isSubmitting || disabled) return;
 
     setIsSubmitting(true);
-    await onSubmit(content, isHighlight);
+    await onSubmit(content, isHighlight, isQuote);
     setContent('');
     setIsHighlight(false);
+    setIsQuote(false);
     setIsSubmitting(false);
   };
 
@@ -46,12 +49,27 @@ export default function LiveNoteInput({ onSubmit, disabled = false }) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Add a note... (Enter to send, Ctrl+Enter for highlight)"
+          placeholder={isQuote ? 'Who said what, e.g. Orwyn: "Technically, it\'s an unscheduled loan."' : 'Add a note... (Enter to send, Ctrl+Enter for highlight)'}
           disabled={disabled || isSubmitting}
           rows={1}
           className="flex-1 bg-transparent border-0 text-[var(--text-primary)] text-[0.95rem] leading-relaxed resize-none min-h-[24px] max-h-[100px] p-1.5 focus:outline-none placeholder:text-lr-text-dim"
         />
         <div className="flex gap-1 items-center">
+          <button
+            type="button"
+            className={`
+              p-2 rounded-md transition-all duration-200
+              ${isQuote
+                ? 'bg-sky-500/10 text-sky-400 hover:bg-sky-500/20'
+                : 'text-lr-text-dim hover:bg-white/10 hover:text-sky-400'}
+            `}
+            onClick={() => setIsQuote(!isQuote)}
+            title={isQuote ? 'Not a quote' : 'Mark as a quote: something said at the table'}
+            aria-pressed={isQuote}
+            disabled={disabled || isSubmitting}
+          >
+            <Quote size={18} />
+          </button>
           <button
             type="button"
             className={`
@@ -81,8 +99,13 @@ export default function LiveNoteInput({ onSubmit, disabled = false }) {
       </div>
       <div className="min-h-[20px] mt-1 text-xs px-1">
         {isHighlight && (
-          <span className="inline-flex items-center gap-1 text-amber-500 font-medium animate-in fade-in duration-200">
+          <span className="inline-flex items-center gap-1 text-amber-500 font-medium animate-in fade-in duration-200 mr-3">
             <Star size={10} fill="currentColor" /> Will be highlighted
+          </span>
+        )}
+        {isQuote && (
+          <span className="inline-flex items-center gap-1 text-sky-400 font-medium animate-in fade-in duration-200">
+            <Quote size={10} /> Quote: the chapter will use it word for word
           </span>
         )}
       </div>

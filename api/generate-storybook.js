@@ -12,6 +12,7 @@
 
 import OpenAI from 'openai';
 import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
+import { dialogueGuidance, sampleLines, tableQuoteLines } from './_lib/dialogue.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from './_lib/bookRevision.js';
 
 export const config = {
@@ -99,7 +100,8 @@ async function generateChapter(req, res, openai) {
     priorChapterSummaries = [],
     entityRoster = { characters: [], npcs: [], adversaries: [], locations: [] },
     sceneCount = 3,
-    gameSystem = 'daggerheart'
+    gameSystem = 'daggerheart',
+    dialogue
   } = req.body;
 
   if (!session || !session.title) {
@@ -121,6 +123,8 @@ async function generateChapter(req, res, openai) {
       rosterLines.push(`  - ${e.id} :: ${e.name}${tagStr}`);
       const voice = typeof e.voice === 'string' ? e.voice.replace(/\s+/g, ' ').trim().slice(0, 600) : '';
       if (voice) rosterLines.push(`      voice: ${voice}`);
+      const lines = sampleLines(e.lines);
+      if (lines.length) rosterLines.push(`      sample lines: ${lines.map(l => `"${l.replace(/^["“]|["”]$/g, '')}"`).join(' / ')}`);
     });
   };
   pushRoster('Characters', entityRoster.characters);
@@ -138,15 +142,18 @@ async function generateChapter(req, res, openai) {
     session.dmNotes ? `DM notes:\n${session.dmNotes}` : null,
     session.liveNotesCompiled ? `Live notes:\n${session.liveNotesCompiled}` : null
   ].filter(Boolean).join('\n\n');
+  const quotes = tableQuoteLines(session.tableQuotes);
 
   const systemPrompt = `You are the chronicler of an ongoing ${gameSystem === 'starwarsd6' ? 'space opera' : 'high fantasy'} campaign. You transform a game session's notes into a captivating illustrated storybook chapter — a real, engrossing chapter of a novel, not a bullet-point recap.
 
 VOICE AND SHAPE:
 - Write in past-tense, third-person omniscient narrative voice, the kind you'd read in a printed fantasy novel. Confident, lyrical, specific.
 - Show, don't tell. Give us sensory detail: the smell of rain on stone, the catch in a character's breath, the way light falls across a face.
-- Let scenes breathe. Use dialogue when the notes imply it. Quote characters directly when the notes provide words; otherwise paraphrase naturally.
+- Let scenes breathe. Dialogue follows the DIALOGUE rules below.
 - Vary paragraph length — some urgent and short, others long and immersive. At least one paragraph per major beat in the notes.
 - Produce **8 to 14 paragraphs** of genuine prose. A chapter, not a blurb. Never fewer than 8 unless the notes are extremely thin.
+
+${dialogueGuidance(dialogue)}
 
 CHARACTER VOICES:
 - Some roster entries carry a "voice:" note written by the players. Treat it as canon for how that character speaks, thinks, and acts. Their dialogue, word choice, decisions, and inner thoughts must fit it in every scene: a slow, blunt brute never delivers an eloquent speech; a bookish scholar can be brilliant about theory and hopeless about street life.
@@ -177,6 +184,7 @@ ${session.sessionNumber ? `Number: ${session.sessionNumber}` : ''}
 ${session.date ? `Date: ${session.date}` : ''}
 
 ${sessionNotes || '(no notes provided — produce a short evocative recap using only the title)'}
+${quotes.length ? `\n# Said at the table — use every line word for word\n${quotes.map(q => `- ${q}`).join('\n')}` : ''}
 
 # Output JSON schema
 {
@@ -283,7 +291,7 @@ Produce exactly ${numScenes} scenes. Return ONLY the JSON object.`;
 // ── action: revise ────────────────────────────────────────────────────────────
 
 async function reviseChapter(req, res, openai) {
-  const { chapter, outline, previousEnding, nextOpening, voices, threads, gameSystem } = req.body || {};
+  const { chapter, outline, previousEnding, nextOpening, voices, threads, quotes, dialogue, gameSystem } = req.body || {};
   if (!chapter || typeof chapter.prose !== 'string' || !chapter.prose.trim()) {
     return res.status(400).json({ error: 'Missing required field: chapter.prose' });
   }
@@ -294,6 +302,8 @@ async function reviseChapter(req, res, openai) {
     nextOpening: typeof nextOpening === 'string' ? nextOpening : '',
     voices: Array.isArray(voices) ? voices : [],
     threads: typeof threads === 'string' ? threads : '',
+    quotes: Array.isArray(quotes) ? quotes : [],
+    dialogue,
     gameSystem
   });
 
