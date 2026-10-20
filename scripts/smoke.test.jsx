@@ -38,6 +38,7 @@ import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { damageOutcome, applyDamage, armorSlotsFree } from '../src/utils/playerDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
+import { isAllowedAssetUrl, readBookRequest, buildBookDocument, countPdfPages, bookStoragePath, uploadToStorage, MAX_HTML_BYTES } from '../api/_lib/bookRender.js';
 import { normalizeBookSettings, buildBook, buildCast, illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount, trimFor } from '../src/utils/bookLayout.js';
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
@@ -3206,6 +3207,34 @@ section('Book press');
   assert(trimFor('nope').key === '6x9', 'an unknown trim resolves to 6x9');
 }
 
+section('Book printing on the server');
+{
+  assert(isAllowedAssetUrl('https://firebasestorage.googleapis.com/v0/b/x/o/a.png?alt=media&token=t')
+    && isAllowedAssetUrl('https://lh3.googleusercontent.com/a/abc') && isAllowedAssetUrl('data:image/png;base64,AAAA'),
+    'the print browser may load app storage, Google avatars and inline data');
+  const refused = ['http://169.254.169.254/latest/meta-data', 'https://localhost/x.png', 'http://firebasestorage.googleapis.com/x',
+    'https://firebasestorage.googleapis.com:8443/x', 'https://evil.com/?firebasestorage.googleapis.com', 'https://firebasestorage.googleapis.com.evil.com/x',
+    'file:///etc/passwd', 'https://user:pw@storage.googleapis.com/x', 'not a url'];
+  assert(refused.every(u => !isAllowedAssetUrl(u)), `internal addresses, plain http, odd ports, look-alike hosts and files are refused (let through: ${refused.filter(isAllowedAssetUrl)})`);
+
+  const ok = readBookRequest({ campaignId: 'camp_1', html: '<article class="bp-book"></article>', css: 'a{}', title: 'T' });
+  assert(!ok.error && ok.campaignId === 'camp_1', 'a well-formed book request is accepted');
+  assert(readBookRequest({ campaignId: '../other', html: '<article class="bp-book">', css: '' }).error, 'a campaign id that could climb out of its folder is refused');
+  assert(readBookRequest({ campaignId: 'c', html: '<p>hi</p>', css: '' }).error, 'a request without the book is refused');
+  assert(/print it in parts/.test(readBookRequest({ campaignId: 'c', html: 'bp-book' + 'x'.repeat(MAX_HTML_BYTES), css: '' }).error || ''),
+    'an oversize book is refused with a hint to print in parts');
+
+  const doc = buildBookDocument({ html: '<article class="bp-book">Hi</article>', css: 'a{} </style><script>x()</script>' });
+  assert(/Content-Security-Policy/.test(doc) && /default-src 'none'/.test(doc) && !/<\/style><script>/.test(doc),
+    'the print page blocks scripts by policy and CSS cannot close its style tag early');
+
+  assert(countPdfPages(Buffer.from('<< /Type /Pages /Count 2 >> << /Type /Page >> << /Type/Page /Parent 1 0 R >>')) === 2,
+    'page objects are counted, the page-tree node is not');
+  assert(bookStoragePath('c1', 'The Ashen Crown!', 42) === 'campaigns/c1/storybook/media/the-ashen-crown-42.pdf'
+    && bookStoragePath('c1', '***', 1) === 'campaigns/c1/storybook/media/book-1.pdf',
+    'the PDF goes to the campaign’s storybook media with a tidy name');
+}
+
 section('Campaign memory');
 {
   assert(isArchivedNote({ archived: true }) && !isArchivedNote({}) && !isArchivedNote(null),
@@ -3473,6 +3502,20 @@ async function runAuthTests() {
 })()
   .then(() => runImageApiTests())
   .then(() => runAuthTests())
+  .then(async () => {
+    section('Book upload');
+    const seen = [];
+    const fetchImpl = async (url, init) => { seen.push({ url, init }); return { ok: true, json: async () => ({ downloadTokens: 'tok1,tok2' }) }; };
+    const url = await uploadToStorage({ bucket: 'b.appspot.com', path: 'campaigns/c/storybook/media/x.pdf', bytes: Buffer.from('%PDF'), idToken: 'ID', fetchImpl });
+    assert(seen[0].init.headers.Authorization === 'Firebase ID' && seen[0].url.includes('name=campaigns%2Fc%2Fstorybook%2Fmedia%2Fx.pdf'),
+      'the upload goes to Firebase Storage as the signed-in user, so the usual storage rules apply');
+    assert(url === 'https://firebasestorage.googleapis.com/v0/b/b.appspot.com/o/campaigns%2Fc%2Fstorybook%2Fmedia%2Fx.pdf?alt=media&token=tok1',
+      `the download link carries the first download token (got ${url})`);
+    let err;
+    try { await uploadToStorage({ bucket: 'b', path: 'p', bytes: Buffer.from(''), idToken: 'x', fetchImpl: async () => ({ ok: false, status: 403, text: async () => 'denied' }) }); }
+    catch (e) { err = e; }
+    assert(err?.status === 403, 'a refused upload surfaces its status, so the user is told about permissions');
+  })
   .catch((err) => { failures++; console.error('  FAIL: async tests threw:', err); })
   .finally(() => {
     console.log(failures === 0 ? '\nAll smoke tests passed.' : `\n${failures} test(s) FAILED.`);

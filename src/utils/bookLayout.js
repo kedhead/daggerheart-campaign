@@ -178,7 +178,7 @@ export function estimatePages(book, settings) {
   const base = trimFor('6x9');
   const scale = (area(t.width, t.height, t.margins) / area(base.width, base.height, base.margins)) * Math.pow(11 / t.fontPt, 2);
   const perPage = WORDS_PER_6X9_PAGE * scale;
-  const illusPages = settings.illustrations === 'full' ? 0.6 : 0.45;
+  const illusPages = settings.illustrations === 'full' ? 0.45 : 0.3;
 
   let pages = 2 + (settings.dedication ? 1 : 0) + (settings.includeContents ? 1 : 0);
   const castCount = book.cast.heroes.length + book.cast.others.length;

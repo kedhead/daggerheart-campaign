@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
-import { X, Printer, BookOpen, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, Printer, BookOpen, AlertTriangle, CheckCircle2, CloudCog, Download } from 'lucide-react';
+import { apiFetch } from '../../services/apiClient';
 import { useAllJournals } from '../../hooks/useStorybook';
 import {
   TRIM_SIZES, ILLUSTRATION_SIZES, normalizeBookSettings, buildBook, trimFor,
   illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount
 } from '../../utils/bookLayout';
-import { BOOK_FONT_CSS } from './bookFonts';
+import { BOOK_FONT_CSS, inlineBookFontCss } from './bookFonts';
+import bookCss from './BookPress.css?raw';
 import './BookPress.css';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -126,6 +128,38 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
 
   const handlePrint = () => window.print();
 
+  // Print on the server: the same Chromium print as desktop Chrome, for phones
+  // (whose browsers ignore the page size) or anyone who'd rather not fiddle
+  // with print settings. The finished PDF lands in campaign storage.
+  const [serverJob, setServerJob] = useState(null); // { state: 'working'|'done'|'error', ... }
+  const handleServerPdf = async () => {
+    const started = Date.now();
+    setServerJob({ state: 'working', started });
+    try {
+      const vars = Object.entries(style).map(([k, v]) => `${k}:${v}`).join(';');
+      const html = `<div class="bp-root" style="${vars}">${bookRef.current.outerHTML}</div>`;
+      const css = (await inlineBookFontCss()) + pageCss(settings) + bookCss;
+      const res = await apiFetch('/api/render-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId, html, css, title: settings.title })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Printing failed (${res.status}).`);
+      setServerJob({ state: 'done', ...data, seconds: Math.round((Date.now() - started) / 1000) });
+    } catch (err) {
+      setServerJob({ state: 'error', message: err.message });
+    }
+  };
+
+  // A ticking counter, so a minute-long print doesn't look frozen.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (serverJob?.state !== 'working') return;
+    const t = setInterval(() => setTick(n => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [serverJob?.state]);
+
   const style = {
     '--bp-page-w': `${trim.width}in`,
     '--bp-page-h': `${trim.height}in`,
@@ -235,6 +269,40 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
           </button>
           {IS_IOS && (
             <p className="bp-muted">On iPhone: tap Print, then in the print preview tap the Share button and choose Save to Files.</p>
+          )}
+        </section>
+
+        <section className="bp-group">
+          <h3>Print-ready PDF from the server</h3>
+          <p className="bp-muted">
+            Works from any device, phones included: the server prints the book exactly as desktop Chrome would and saves
+            the PDF to this campaign. Big books can take up to a minute.
+          </p>
+          <button
+            type="button"
+            className="bp-print-btn bp-print-btn-alt"
+            onClick={handleServerPdf}
+            disabled={book.chapters.length === 0 || !printReady || serverJob?.state === 'working'}
+          >
+            <CloudCog size={16} />
+            {serverJob?.state === 'working'
+              ? `Binding your book… ${Math.round((Date.now() - serverJob.started) / 1000)}s`
+              : 'Make print-ready PDF'}
+          </button>
+          {serverJob?.state === 'done' && (
+            <a className="bp-download" href={serverJob.url} target="_blank" rel="noopener noreferrer">
+              <Download size={15} />
+              <span>Download PDF · {serverJob.pages} pages · {(serverJob.bytes / 1048576).toFixed(1)} MB</span>
+            </a>
+          )}
+          {serverJob?.state === 'done' && serverJob.missing > 0 && (
+            <p className="bp-warn bp-note">
+              <AlertTriangle size={14} />
+              <span>{serverJob.missing} image{serverJob.missing === 1 ? '' : 's'} couldn’t be loaded and printed as empty frames. Try again; if it keeps happening, regenerate or re-upload those pictures.</span>
+            </p>
+          )}
+          {serverJob?.state === 'error' && (
+            <p className="bp-warn bp-note"><AlertTriangle size={14} /><span>{serverJob.message}</span></p>
           )}
         </section>
       </aside>

@@ -33,3 +33,25 @@ export const BOOK_FONT_CSS = [
   face('Book Cinzel', cinzel600, 600),
   face('Book Cinzel', cinzel700, 700)
 ].join('\n');
+
+/**
+ * The same faces with each file inlined as a data: URL, for printing on the
+ * server: its browser may only load data: fonts (api/_lib/bookRender.js), and
+ * a preview deployment's own URLs can sit behind Vercel's login anyway.
+ */
+export async function inlineBookFontCss() {
+  const urls = [...new Set([...BOOK_FONT_CSS.matchAll(/url\('([^']+)'\)/g)].map(m => m[1]))];
+  const inlined = await Promise.all(urls.map(async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Could not load a book font (${res.status}).`);
+    const blob = await res.blob();
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    return [url, dataUrl];
+  }));
+  return inlined.reduce((css, [url, dataUrl]) => css.split(`url('${url}')`).join(`url('${dataUrl}')`), BOOK_FONT_CSS);
+}
