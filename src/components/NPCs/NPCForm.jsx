@@ -27,6 +27,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
     location: '',
     relationship: 'neutral',
     description: '',
+    currentLook: '',
     storyVoice: '',
     voiceLines: '',
     notes: '',
@@ -385,6 +386,18 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
           rows={4}
         />
         <small className="form-hint">Type [[ to link to other entities</small>
+      </div>
+
+      <div className="input-group">
+        <label>Current Changes (for story art)</label>
+        <textarea
+          value={formData.currentLook || ''}
+          onChange={(e) => handleChange('currentLook', e.target.value)}
+          rows={2}
+          maxLength={300}
+          placeholder="Anything that's changed since the portrait, e.g. Now a ghost; scarred across the face"
+        />
+        <small className="form-hint">Story illustrations draw this over the portrait</small>
       </div>
 
       <div className="input-group">

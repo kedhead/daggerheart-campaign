@@ -3,6 +3,7 @@ import { ArrowLeft, Save, Eye, Trash2, RefreshCw, Image as ImageIcon, Users, Fil
 import MediaUploader from './MediaUploader';
 import { regenerateScene, STORYBOOK_STYLES, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { stripAppendedClauses } from '../../utils/storybookPrompt';
+import { currentLook, lookForScene } from '../../utils/characterState';
 import { useNotify } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
@@ -114,6 +115,20 @@ export default function ChapterEditor({
   // to the image model, so it — not the prompt text — is what actually controls
   // who gets drawn. Naming someone in the prompt without listing them here
   // leaves the model to invent their face.
+  // Who in this chapter looks different from their portrait — now, or when the
+  // chapter was written. The chapter's own record wins on redraw (see
+  // lookForScene), so an early chapter keeps Pippin alive after he dies; this
+  // lets the DM switch any of them to how they look now, or back.
+  const featuredIds = [...new Set((chapter.scenes || []).flatMap(sc => sc.featuredEntityIds || []))];
+  const stateRows = featuredIds
+    .map(id => [...(characters || []), ...(npcs || []), ...(adversaries || [])].find(e => e.id === id))
+    .filter(Boolean)
+    .map(entity => ({ entity, now: currentLook(entity), drawn: lookForScene(entity, chapter.castStates) }))
+    .filter(r => r.now || r.drawn);
+  const setDrawnLook = async (entityId, look) => {
+    await storybook.updateChapter(chapter.id, { castStates: { ...(chapter.castStates || {}), [entityId]: look } });
+  };
+
   const castOptions = [
     ...(characters || []).map(c => ({ id: c.id, name: c.name, group: 'Characters' })),
     ...(npcs || []).map(n => ({ id: n.id, name: n.name, group: 'NPCs' })),
@@ -401,6 +416,35 @@ export default function ChapterEditor({
                 : 'This chapter is set to a different style from the rest of the campaign. Pick the style you want, then Redraw all illustrations.'}
             </p>
           </div>
+
+          {stateRows.length > 0 && (
+            <div
+              className="space-y-2 p-3 rounded-lg border"
+              style={{ background: 'color-mix(in srgb, var(--surface) 60%, transparent)', borderColor: 'var(--line)' }}
+            >
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-lr-text-dim">
+                How they're drawn in this chapter
+              </label>
+              {stateRows.map(({ entity, now, drawn }) => (
+                <div key={entity.id} className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-white min-w-[7rem]">{entity.name}</span>
+                  <select
+                    value={drawn === now ? 'now' : drawn ? 'then' : 'portrait'}
+                    onChange={(e) => setDrawnLook(entity.id, e.target.value === 'now' ? now : e.target.value === 'then' ? drawn : '')}
+                    disabled={!!redrawProgress}
+                    className="flex-1 min-w-[12rem] p-2 rounded bg-black/20 border border-white/10 text-white text-xs"
+                  >
+                    {now && <option value="now">As they are now: {now.split(':')[0]}</option>}
+                    {drawn && drawn !== now && <option value="then">As when this chapter was written: {drawn.split(':')[0]}</option>}
+                    <option value="portrait">As in their portrait</option>
+                  </select>
+                </div>
+              ))}
+              <p className="text-[11px] text-lr-text-dim">
+                Applies to Regenerate and Redraw. Set a character back to their portrait for chapters from before they changed.
+              </p>
+            </div>
+          )}
 
           {/* Image-model selector applied to every regeneration in this session */}
           <div

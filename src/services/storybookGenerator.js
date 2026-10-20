@@ -24,6 +24,7 @@ import { ANCESTRY_VISUAL_HINTS } from './portraitGenerator';
 import { scopeRosters, sanitizeChapterCast } from '../utils/storybookCast';
 import { composeScenePrompt, stripAppendedClauses } from '../utils/storybookPrompt';
 import { sourcePortraitKey, cachedPortraitKey } from '../utils/storybookPortraitCache';
+import { currentLook, currentStateLabel, snapshotStates, lookForScene } from '../utils/characterState';
 import { apiFetch } from './apiClient';
 
 // ── Style presets (must stay in sync with api/generate-image.js) ──────────────
@@ -315,7 +316,7 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
 
 // ── Scene generation ──────────────────────────────────────────────────────────
 
-async function generateSceneImage({ scene, entityDescriptions, entityAncestryHints, entityPortraits, styleKey, styleCustom, gameSystem, campaignId, apiKey, imageModel }) {
+async function generateSceneImage({ scene, entityDescriptions, entityAncestryHints, entityPortraits, entityLooks = {}, entityNames = {}, styleKey, styleCustom, gameSystem, campaignId, apiKey, imageModel }) {
   // Build featured entity descriptions with ancestry hints prominently placed
   const featuredParts = (scene.featuredEntityIds || []).map(id => {
     const desc = entityDescriptions[id];
@@ -341,6 +342,9 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
     prompt: scene.prompt,
     hasReferenceImages: !!(canUseRefImages && referenceImages?.length),
     featuredDescriptions: featuredParts,
+    currentStates: (scene.featuredEntityIds || [])
+      .filter(id => entityLooks[id])
+      .map(id => ({ name: entityNames[id] || 'This character', look: entityLooks[id] })),
   });
   const effectiveStyleKey = styleKey === 'custom' ? (styleCustom || 'watercolor') : styleKey;
 
@@ -449,8 +453,8 @@ export async function generateChapter({
   });
 
   const entityRoster = {
-    characters: cast.characters.filter(c => c.name).slice(0, 30).map(c => ({ id: c.id, name: c.name, tag: c.characterClass, ancestry: c.ancestry || '', voice: c.storyVoice || '', lines: c.voiceLines || '' })),
-    npcs: cast.npcs.filter(n => n.name).slice(0, 30).map(n => ({ id: n.id, name: n.name, tag: n.occupation, ancestry: n.ancestry || '', voice: n.storyVoice || '', lines: n.voiceLines || '' })),
+    characters: cast.characters.filter(c => c.name).slice(0, 30).map(c => ({ id: c.id, name: c.name, tag: c.characterClass, ancestry: c.ancestry || '', voice: c.storyVoice || '', lines: c.voiceLines || '', state: currentStateLabel(c) })),
+    npcs: cast.npcs.filter(n => n.name).slice(0, 30).map(n => ({ id: n.id, name: n.name, tag: n.occupation, ancestry: n.ancestry || '', voice: n.storyVoice || '', lines: n.voiceLines || '', state: currentStateLabel(n) })),
     adversaries: cast.adversaries.filter(a => a.name).slice(0, 30).map(a => ({ id: a.id, name: a.name, tag: a.role })),
     locations: locations.filter(l => l.name).slice(0, 30).map(l => ({ id: l.id, name: l.name, tag: l.type }))
   };
@@ -575,11 +579,19 @@ export async function generateChapter({
   });
   await Promise.all(portraitJobs);
 
-  // Build ancestry hint map for scene generation
+  // Build ancestry hint map for scene generation, and note anyone who no
+  // longer looks like their portrait (a ghost, a werewolf, a lost arm).
   const entityAncestryHints = {};
+  const entityLooks = {};
+  const entityNames = {};
+  const featuredEntities = [];
   for (const entityId of featuredIds) {
     const { entity } = findEntityInRosters({ entityId, rosters });
-    if (entity?.ancestry) {
+    if (!entity) continue;
+    featuredEntities.push(entity);
+    entityNames[entityId] = entity.name;
+    entityLooks[entityId] = currentLook(entity);
+    if (entity.ancestry) {
       const hint = getAncestryVisualHint(entity.ancestry);
       if (hint) entityAncestryHints[entityId] = `${entity.name} is ${hint}`;
     }
@@ -614,6 +626,8 @@ export async function generateChapter({
           entityDescriptions,
           entityAncestryHints,
           entityPortraits: entitySourcePortraits,   // original portraits as references
+          entityLooks,
+          entityNames,
           styleKey,
           styleCustom,
           gameSystem,
@@ -706,6 +720,9 @@ export async function generateChapter({
     aiModel: chapterText.model,
     styleKey,
     styleCustom: styleKey === 'custom' ? styleCustom : '',
+    // How everyone drawn here looked when the chapter was written, so a later
+    // redraw shows Pippin alive in the chapters from before he became a ghost.
+    castStates: snapshotStates(featuredEntities),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -792,6 +809,8 @@ export async function regenerateScene({
   const entityDescriptions = {};
   const entityAncestryHints = {};
   const entityPortraits = {};   // original portraits — used as reference images
+  const entityLooks = {};
+  const entityNames = {};
   const featured = scene.featuredEntityIds || [];
   const refCapable = usesReferenceImages(imageModel);
   for (const id of featured) {
@@ -815,12 +834,16 @@ export async function regenerateScene({
       const hint = getAncestryVisualHint(entity.ancestry);
       if (hint) entityAncestryHints[id] = `${entity.name} is ${hint}`;
     }
+    entityNames[id] = entity.name;
+    entityLooks[id] = lookForScene(entity, chapter?.castStates);
   }
   return await generateSceneImage({
     scene: { ...scene, id: scene.id || `scene_${Date.now()}` },
     entityDescriptions,
     entityAncestryHints,
     entityPortraits,
+    entityLooks,
+    entityNames,
     styleKey,
     styleCustom,
     gameSystem,

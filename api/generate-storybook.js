@@ -122,6 +122,8 @@ async function generateChapter(req, res, openai) {
       const tagStr = parts.length ? ` (${parts.join(', ')})` : '';
       rosterLines.push(`  - ${e.id} :: ${e.name}${tagStr}`);
       const voice = typeof e.voice === 'string' ? e.voice.replace(/\s+/g, ' ').trim().slice(0, 600) : '';
+      const state = typeof e.state === 'string' ? e.state.replace(/\s+/g, ' ').trim().slice(0, 300) : '';
+      if (state) rosterLines.push(`      currently: ${state}`);
       if (voice) rosterLines.push(`      voice: ${voice}`);
       const lines = sampleLines(e.lines);
       if (lines.length) rosterLines.push(`      sample lines: ${lines.map(l => `"${l.replace(/^["“]|["”]$/g, '')}"`).join(' / ')}`);
@@ -158,6 +160,7 @@ ${dialogueGuidance(dialogue)}
 CHARACTER VOICES:
 - Some roster entries carry a "voice:" note written by the players. Treat it as canon for how that character speaks, thinks, and acts. Their dialogue, word choice, decisions, and inner thoughts must fit it in every scene: a slow, blunt brute never delivers an eloquent speech; a bookish scholar can be brilliant about theory and hopeless about street life.
 - Show the voice through behaviour and dialogue, not by restating the note. Never quote or paraphrase the note itself.
+- A roster entry marked "currently:" is that character's present condition (a ghost, a vampire, a lost arm). Write them that way throughout — how they move, what they can touch, how others react — unless the notes say it changed during this session.
 - If the session notes record a character doing something out of type, keep the event but play the contrast for character (surprise, effort, comedy) instead of silently changing who they are.
 
 STRICT RULES:

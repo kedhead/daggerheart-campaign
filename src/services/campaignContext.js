@@ -12,6 +12,8 @@
  *  - Pure function — call it anywhere, always returns fresh data
  */
 
+import { currentStateLabel } from '../utils/characterState';
+
 /**
  * Build the full campaign context string.
  *
@@ -75,6 +77,8 @@ export function buildCampaignContext(campaign, {
       if (c.level)           parts.push(`Lvl ${c.level}`);
       if (c.subclass)        parts.push(c.subclass);
       let line = `- ${parts.join(', ')}`;
+      const state = currentStateLabel(c);
+      if (state)             line += ` — currently ${state}`;
       if (c.storyVoice)      line += ` — voice: ${_truncate(c.storyVoice, 200)}`;
       if (c.voiceLines)      line += ` — says things like: ${_truncate(c.voiceLines.split(/\n+/).slice(0, 2).join(' / '), 120)}`;
       lines.push(line);

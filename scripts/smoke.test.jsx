@@ -36,7 +36,8 @@ import { isAtDeathsDoor, hpRemaining, hpMax, stressMarked, partyVitals, weaponAt
 import { sourcePortraitKey, cachedPortraitKey } from '../src/utils/storybookPortraitCache.js';
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration, narratableSlides } from '../src/components/Storybook/cinematicTimeline.js';
-import { stripAppendedClauses, composeScenePrompt, REFERENCE_CLAUSE, NO_EXTRAS_CLAUSE } from '../src/utils/storybookPrompt.js';
+import { stripAppendedClauses, composeScenePrompt, REFERENCE_CLAUSE, NO_EXTRAS_CLAUSE, CURRENT_STATE_LEAD } from '../src/utils/storybookPrompt.js';
+import { currentLook, currentStateLabel, snapshotStates, lookForScene, TRANSFORMATION_LOOKS } from '../src/utils/characterState.js';
 import { sessionNotesText, nameAppearsIn, mentionedEntityIds, scopeRosters, sanitizeChapterCast } from '../src/utils/storybookCast.js';
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { damageOutcome, applyDamage, armorSlotsFree } from '../src/utils/playerDamage.js';
@@ -3403,6 +3404,39 @@ section('Dialogue');
   assert(ctx.voices.find(v => v.name === 'Yargal')?.lines === 'Hit it?' && ctx.voices.length === 2, 'and sample lines even without a voice note');
 }
 
+section('Transformations in story art');
+{
+  const pippin = { id: 'p', name: 'Pippin', activeTransformation: 'ghost' };
+  const kara = { id: 'k', name: 'Kara', currentLook: 'Lost her left eye in the war.' };
+  const both = { id: 'b', name: 'Bran', activeTransformation: 'werewolf', currentLook: 'Silver-scarred palms.' };
+  const plain = { id: 'n', name: 'Nell' };
+  assert(currentLook(pippin).startsWith('a ghost: translucent') && currentLook(plain) === '' && currentLook(null) === '',
+    'a transformation becomes a visual description; an unchanged character has none');
+  assert(currentLook(kara) === 'Lost her left eye in the war.' && /^touched by the wolf.*; Silver-scarred palms\.$/.test(currentLook(both)),
+    'a player’s own current-look note is drawn too, alongside any transformation');
+  assert(currentLook({ activeTransformation: 'kraken' }) === '', 'an unknown transformation is ignored rather than guessed at');
+  assert(Object.keys(TRANSFORMATION_LOOKS).sort().join() === 'demigod,ghost,reanimated,shapeshifter,vampire,werewolf',
+    'every Hope & Fear transformation has a look');
+  assert(currentStateLabel(pippin) === 'transformed: Ghost' && currentStateLabel(both) === 'transformed: Werewolf; Silver-scarred palms.' && currentStateLabel(plain) === '',
+    'the story writer gets a short label');
+
+  const snap = snapshotStates([pippin, plain]);
+  assert(snap.p.startsWith('a ghost') && snap.n === '' && 'n' in snap, 'a chapter records everyone’s look, including "looked normal"');
+  assert(lookForScene({ ...plain, activeTransformation: 'ghost' }, snap) === '',
+    'redrawing an old chapter keeps the look it was written with — Nell became a ghost later, but not in this chapter');
+  assert(lookForScene(pippin, {}) .startsWith('a ghost') && lookForScene(pippin, undefined).startsWith('a ghost'),
+    'with no record (older chapters), the current look is used');
+
+  const composed = composeScenePrompt({ prompt: 'Pippin drifts through the hall.', hasReferenceImages: true,
+    currentStates: [{ name: 'Pippin', look: currentLook(pippin) }, { name: 'Nell', look: '' }] });
+  assert(composed.includes(REFERENCE_CLAUSE) && composed.includes(`${CURRENT_STATE_LEAD} Pippin is now a ghost: translucent`) && !/Nell is now/.test(composed),
+    'the scene prompt tells the image model the current state overrides the reference portrait');
+  assert(composed.indexOf(CURRENT_STATE_LEAD) > composed.indexOf(REFERENCE_CLAUSE) && composed.endsWith(NO_EXTRAS_CLAUSE.trimStart()) || composed.endsWith(NO_EXTRAS_CLAUSE),
+    'the override comes after the "preserve" clause it overrides');
+  assert(stripAppendedClauses(composed) === 'Pippin drifts through the hall.', 'the state clause is never saved into the author’s prompt');
+  assert(!composeScenePrompt({ prompt: 'x', hasReferenceImages: true }).includes(CURRENT_STATE_LEAD), 'no clause when nobody has changed');
+}
+
 section('Campaign memory');
 {
   assert(isArchivedNote({ archived: true }) && !isArchivedNote({}) && !isArchivedNote(null),
@@ -3714,6 +3748,15 @@ async function runAuthTests() {
       assert(res.statusCode === 200 && /DIALOGUE — RICH/.test(chapterSys), `chapters follow the campaign's dialogue level (got ${res.statusCode})`);
       assert(/sample lines: "Hit it\?" \/ "Food first\."/.test(chapterUser), 'sample lines go into the chapter roster');
       assert(/Said at the table[^\n]*\n- Orwyn: "Technically, it is an unscheduled loan\."/.test(chapterUser), 'table quotes go into the chapter notes');
+
+      sent.length = 0;
+      res = mkRes();
+      await generateStorybookHandler({ method: 'POST', headers: {}, body: {
+        action: 'chapter', sceneCount: 2, session: { title: 'Haunting' },
+        entityRoster: { characters: [{ id: 'p', name: 'Pippin', state: 'transformed: Ghost' }] }
+      } }, res);
+      assert(/Pippin[^\n]*\n\s+currently: transformed: Ghost/.test(sent[0]?.messages?.[1]?.content || '') && /marked "currently:"/.test(sent[0]?.messages?.[0]?.content || ''),
+        'the chapter writer knows Pippin is currently a ghost, and is told to write him that way');
 
       globalThis.fetch = reply(JSON.stringify({ title: 'Ten Winters On', prose: 'Snow fell.\n\nThey remembered.' }));
       res = mkRes();

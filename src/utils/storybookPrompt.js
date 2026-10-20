@@ -15,6 +15,11 @@
 
 export const REFERENCE_CLAUSE = ' The characters in this scene are the people shown in the reference images — preserve their exact faces, species, clothing, and gear from the references.';
 
+// A reference portrait shows how someone looked when it was drawn. A character
+// who has since become a ghost (or lost an arm, or been cursed) must be drawn
+// as they are now, so this clause explicitly outranks the "preserve" above.
+export const CURRENT_STATE_LEAD = ' Current state — this overrides the reference images:';
+
 // Nothing else in the prompt stops the model populating a scene with extras, and
 // generic invented bystanders were the usual result.
 export const NO_EXTRAS_CLAUSE = ' Depict only the characters described above; do not add any other people to the scene.';
@@ -25,6 +30,7 @@ export const NO_EXTRAS_CLAUSE = ' Depict only the characters described above; do
 const APPENDED_CLAUSE_MARKERS = [
   'The characters in this scene are the people shown in the reference images',
   'Characters in this scene (render their species accurately):',
+  'Current state — this overrides the reference images:',
   'Depict only the characters described above;',
 ];
 
@@ -46,13 +52,18 @@ export function stripAppendedClauses(prompt) {
  * @param {string} opts.prompt                - the scene's stored prompt (may carry old clauses)
  * @param {boolean} opts.hasReferenceImages   - whether portraits are attached to THIS call
  * @param {string[]} [opts.featuredDescriptions] - written descriptions, used when there are no references
+ * @param {Array<{ name: string, look: string }>} [opts.currentStates] - featured characters who look different now
  */
-export function composeScenePrompt({ prompt, hasReferenceImages, featuredDescriptions = [] }) {
+export function composeScenePrompt({ prompt, hasReferenceImages, featuredDescriptions = [], currentStates = [] }) {
   const base = stripAppendedClauses(prompt);
   const featured = hasReferenceImages
     ? REFERENCE_CLAUSE
     : featuredDescriptions.length
       ? ` Characters in this scene (render their species accurately): ${featuredDescriptions.join('; ')}.`
       : '';
-  return `${base}${featured}${NO_EXTRAS_CLAUSE}`;
+  const states = currentStates.filter(s => s?.name && s?.look);
+  const state = states.length
+    ? `${CURRENT_STATE_LEAD} ${states.map(s => `${s.name} is now ${s.look}`).join('; ')}. Keep each of them recognisable as themselves — same face, build and clothing — but show this change clearly.`
+    : '';
+  return `${base}${featured}${state}${NO_EXTRAS_CLAUSE}`;
 }

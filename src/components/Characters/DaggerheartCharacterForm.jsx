@@ -21,6 +21,7 @@ const DEFAULT_CHARACTER = {
   playerName: '',
   avatarUrl: '',
   appearanceDescription: '',
+  currentLook: '',
   class: '',
   subclass: '',
   level: 1,
@@ -297,6 +298,18 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
           rows="3"
           placeholder="Describe your character's physical appearance..."
         />
+      </div>
+
+      <div className="input-group">
+        <label>Current Changes (for story art)</label>
+        <textarea
+          value={formData.currentLook || ''}
+          onChange={(e) => handleChange('currentLook', e.target.value)}
+          rows="2"
+          maxLength={300}
+          placeholder="Anything that's changed since the portrait, e.g. Lost his left eye; hair turned white after the curse"
+        />
+        <small className="form-hint">Story illustrations draw this over the portrait. A Transformation (like Ghost) on the sheet is drawn automatically</small>
       </div>
 
       <div className="form-grid">
