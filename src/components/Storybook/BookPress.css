@@ -99,6 +99,74 @@
 }
 .bp-download:hover { background: rgba(169, 211, 154, 0.18); }
 
+/* ── Second Draft ───────────────────────────────────────────────────────── */
+
+.bp-sd-run { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.6rem 0.75rem; border-radius: 0.6rem; border: 1px solid rgba(226, 184, 96, 0.35); color: var(--bp-gilt); font-size: 0.82rem; }
+.bp-sd-spinner { width: 0.9rem; height: 0.9rem; border-radius: 50%; border: 2px solid rgba(226, 184, 96, 0.3); border-top-color: var(--bp-gilt); animation: bp-spin 0.9s linear infinite; }
+@keyframes bp-spin { to { transform: rotate(360deg); } }
+.bp-sd-link { background: none; border: 0; padding: 0; color: var(--bp-gilt); font: inherit; font-size: 0.8rem; text-decoration: underline; cursor: pointer; }
+.bp-sd-link:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.bp-sd-list { display: grid; gap: 0.5rem; max-height: 18rem; overflow-y: auto; padding-right: 0.25rem; }
+.bp-sd-row { display: grid; gap: 0.25rem; padding: 0.5rem 0.6rem; border-radius: 0.5rem; background: rgba(0, 0, 0, 0.2); }
+.bp-sd-row-main { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.bp-sd-title { font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bp-sd-chip { flex: none; font-size: 0.68rem; padding: 0.1rem 0.45rem; border-radius: 999px; border: 1px solid rgba(236, 220, 188, 0.25); color: var(--bp-panel-muted); }
+.bp-sd-chip-review { color: #f0c27a; border-color: rgba(240, 194, 122, 0.5); }
+.bp-sd-chip-accepted { color: #a9d39a; border-color: rgba(169, 211, 154, 0.5); }
+.bp-sd-chip-stale { color: #f0a07a; border-color: rgba(240, 160, 122, 0.5); }
+.bp-sd-actions { display: flex; gap: 0.9rem; }
+.bp-sd-error { font-size: 0.75rem; }
+
+.bp-sd-review {
+  position: fixed; inset: 0; z-index: 1010;
+  display: flex; flex-direction: column;
+  background: #1c120b; color: var(--bp-panel-text);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+.bp-sd-review-head, .bp-sd-notes, .bp-sd-tabs, .bp-sd-review-foot { flex: none; }
+.bp-sd-review-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 1rem 1.25rem 0.75rem; border-bottom: 1px solid rgba(226, 184, 96, 0.2); }
+.bp-sd-review-title {
+  display: block; width: 100%; margin-top: 0.2rem; padding: 0.2rem 0; box-sizing: border-box;
+  background: transparent; border: 0; border-bottom: 1px dashed rgba(226, 184, 96, 0.35);
+  color: var(--bp-panel-text); font-family: 'Cinzel', serif; font-size: 1.2rem;
+}
+.bp-sd-notes { padding: 0.75rem 1.25rem; display: grid; gap: 0.4rem; font-size: 0.82rem; border-bottom: 1px solid rgba(226, 184, 96, 0.12); max-height: 30vh; overflow-y: auto; }
+.bp-sd-notes-head { font-family: 'Cinzel', serif; font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--bp-gilt); }
+.bp-sd-notes ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.2rem; color: var(--bp-panel-muted); }
+
+.bp-sd-tabs { display: none; gap: 0.5rem; padding: 0.6rem 1.25rem 0; }
+.bp-sd-tabs button { flex: 1; padding: 0.45rem; border-radius: 0.5rem; border: 1px solid rgba(226, 184, 96, 0.3); background: transparent; color: var(--bp-panel-muted); font: inherit; font-size: 0.82rem; }
+.bp-sd-tabs button.on { background: rgba(226, 184, 96, 0.15); color: var(--bp-gilt); }
+
+.bp-sd-compare { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 1px; min-height: 0; background: rgba(226, 184, 96, 0.15); }
+.bp-sd-col { display: grid; grid-template-rows: auto 1fr; min-height: 0; background: #1c120b; }
+.bp-sd-col-head { padding: 0.5rem 1.25rem; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--bp-panel-muted); }
+.bp-sd-col-body {
+  box-sizing: border-box; width: 100%; height: 100%; min-height: 0; overflow-y: auto; margin: 0;
+  padding: 0.25rem 1.25rem 2rem;
+  font-family: 'EB Garamond', Georgia, serif; font-size: 1.08rem; line-height: 1.55; color: #eadcc0;
+}
+.bp-sd-original p { margin: 0 0 0.8em; }
+textarea.bp-sd-col-body { resize: none; border: 0; outline: none; background: rgba(255, 255, 255, 0.03); white-space: pre-wrap; }
+
+.bp-sd-review-foot { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1.25rem calc(0.75rem + env(safe-area-inset-bottom)); border-top: 1px solid rgba(226, 184, 96, 0.2); }
+.bp-sd-spacer { flex: 1; }
+.bp-sd-btn { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.55rem 0.85rem; border-radius: 0.55rem; border: 1px solid rgba(226, 184, 96, 0.35); background: transparent; color: var(--bp-panel-text); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.bp-sd-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.bp-sd-danger { color: #f3a39a; border-color: rgba(243, 163, 154, 0.4); }
+.bp-sd-accept { background: linear-gradient(180deg, #e2b860, #b9883a); color: #2a1a08; border-color: #e2b860; font-weight: 700; }
+
+@media (max-width: 860px) {
+  .bp-sd-tabs { display: flex; }
+  .bp-sd-compare { grid-template-columns: 1fr; }
+  .bp-sd-compare[data-pane='draft'] .bp-sd-original,
+  .bp-sd-compare[data-pane='original'] .bp-sd-draft { display: none; }
+  .bp-sd-spacer { display: none; }
+}
+
+@media print { .bp-sd-review { display: none !important; } }
+
 /* ── The book ───────────────────────────────────────────────────────────── */
 
 .bp-desk { overflow: auto; padding: 2rem 1rem 4rem; }
@@ -182,7 +250,90 @@
 .bp-journal-text { font-style: italic; }
 .bp-journal-text p { margin: 0.2em 0 0; }
 
+.bp-glossary dl { margin: 0; columns: 1; }
+.bp-gloss-entry { break-inside: avoid; margin-bottom: 0.7em; }
+.bp-glossary dt { margin: 0; line-height: 1.25; }
+.bp-gloss-term { font-variant: small-caps; font-weight: 600; letter-spacing: 0.04em; }
+.bp-gloss-kind { font-style: italic; font-size: 0.82em; color: var(--bp-ink-soft); }
+.bp-glossary dd { margin: 0.15em 0 0 1.1em; font-size: 0.92em; line-height: 1.35; }
+
 .bp-finis { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-style: italic; color: var(--bp-ink-soft); }
+
+/* ── Cover ───────────────────────────────────────────────────────────────── */
+
+.bp-art-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-top: 0.5rem; max-height: 14rem; overflow-y: auto; }
+.bp-art-choice { padding: 0; aspect-ratio: 1; border: 2px solid transparent; border-radius: 0.4rem; overflow: hidden; background: none; cursor: pointer; }
+.bp-art-choice.on { border-color: var(--bp-gilt); }
+.bp-art-choice img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.bp-cover-wrap { display: flex; justify-content: center; margin: 0 0 2rem; overflow-x: auto; }
+.bp-cover {
+  position: relative; flex: none; overflow: hidden;
+  zoom: var(--cv-zoom);
+  background: var(--cv-bg); color: var(--cv-ink);
+  font-family: 'Book Garamond', Georgia, serif;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+
+.bp-cover-back {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: calc(var(--cv-bleed) + var(--cv-trim-w));
+  box-sizing: border-box;
+  padding: calc(var(--cv-bleed) + 0.7in) 0.6in calc(var(--cv-bleed) + 0.6in) calc(var(--cv-bleed) + 0.6in);
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.bp-cover-blurb p { margin: 0 0 0.75em; font-size: 11.5pt; line-height: 1.45; }
+.bp-cover-blurb p:first-child { font-size: 13pt; font-style: italic; }
+.bp-cover-placeholder { opacity: 0.5; font-style: italic; }
+/* The barcode box sits bottom right; the footer stays to its left. */
+.bp-cover-back-foot { width: 55%; font-family: 'Book Cinzel', serif; font-size: 8.5pt; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cv-soft); }
+.bp-cover-rule { width: 1.2in; height: 1px; background: currentColor; margin-bottom: 0.6em; opacity: 0.7; }
+
+.bp-cover-spine {
+  position: absolute; top: 0; bottom: 0;
+  left: calc(var(--cv-bleed) + var(--cv-trim-w));
+  width: var(--cv-spine);
+  display: flex; align-items: center; justify-content: center;
+}
+.bp-cover-spine-text {
+  writing-mode: vertical-rl;
+  font-family: 'Book Cinzel', serif; font-weight: 600;
+  font-size: clamp(6pt, calc(var(--cv-spine) * 0.42), 16pt);
+  letter-spacing: 0.14em; white-space: nowrap;
+}
+
+.bp-cover-front {
+  position: absolute; top: 0; bottom: 0; right: 0;
+  width: calc(var(--cv-trim-w) + var(--cv-bleed));
+  overflow: hidden;
+}
+.bp-cover-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bp-cover-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--cv-bg) 88%, transparent) 0%,
+    color-mix(in srgb, var(--cv-bg) 30%, transparent) 30%,
+    transparent 48%, transparent 66%,
+    color-mix(in srgb, var(--cv-bg) 88%, transparent) 100%);
+}
+.bp-cover-front-title {
+  position: absolute; top: calc(var(--cv-bleed) + 0.75in); left: 0.5in; right: calc(var(--cv-bleed) + 0.5in);
+  text-align: center;
+}
+.bp-cover-front-title h1 { margin: 0; font-family: 'Book Cinzel', serif; font-weight: 700; font-size: 32pt; line-height: 1.08; letter-spacing: 0.03em; }
+.bp-cover-front-title p { margin: 0.5em 0 0; font-style: italic; font-size: 13pt; color: var(--cv-soft); }
+.bp-cover-front-byline {
+  position: absolute; bottom: calc(var(--cv-bleed) + 0.6in); left: 0.5in; right: calc(var(--cv-bleed) + 0.5in);
+  text-align: center; font-family: 'Book Cinzel', serif; font-size: 10pt; letter-spacing: 0.22em; text-transform: uppercase;
+}
+
+.bp-cover-guide { position: absolute; pointer-events: none; }
+.bp-cover-guide-trim { inset: var(--cv-bleed); border: 1px dashed rgba(255, 90, 90, 0.75); }
+.bp-cover-guide-spine-l,
+.bp-cover-guide-spine-r { top: 0; bottom: 0; border-left: 1px dashed rgba(255, 90, 90, 0.75); }
+.bp-cover-guide-spine-l { left: calc(var(--cv-bleed) + var(--cv-trim-w)); }
+.bp-cover-guide-spine-r { left: calc(var(--cv-bleed) + var(--cv-trim-w) + var(--cv-spine)); }
 
 /* ── Phones: panel above, book scaled into view ─────────────────────────── */
 
@@ -197,7 +348,7 @@
 
 @media print {
   /* No browser default margin: the server's print page has no app reset, and
-     its 8px body margin would shift every page off the trim. */
+     8px of body margin would push a full-bleed cover onto a second sheet. */
   html, body {
     height: auto !important;
     overflow: visible !important;
@@ -228,6 +379,14 @@
     break-before: page;
   }
   .bp-sheet:first-child { break-before: auto; }
+
+  /* The interior and the cover print as separate files. */
+  .bp-cover-wrap { display: none; }
+  .bp-root.bp-print-cover .bp-book { display: none; }
+  .bp-root.bp-print-cover .bp-cover-wrap { display: block; margin: 0; overflow: visible; }
+  .bp-cover { zoom: 1; box-shadow: none; break-inside: avoid; }
+  .bp-root.bp-print-cover .bp-desk { height: 0; }
+  .bp-cover-guide { display: none; }
 
   /* A hair under the page box, so a full-height page never spills a blank one. */
   .bp-title-page,

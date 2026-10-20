@@ -32,7 +32,7 @@ const CAMPAIGN_ID = /^[A-Za-z0-9_-]{1,128}$/;
 export function readBookRequest(body) {
   const { campaignId, html, css, title } = body || {};
   if (typeof campaignId !== 'string' || !CAMPAIGN_ID.test(campaignId)) return { error: 'A valid campaignId is required.' };
-  if (typeof html !== 'string' || !html.includes('bp-book')) return { error: 'The book is missing.' };
+  if (typeof html !== 'string' || !/bp-book|bp-cover/.test(html)) return { error: 'The book is missing.' };
   if (Buffer.byteLength(html) > MAX_HTML_BYTES) return { error: 'This book is too large to print in one go. Leave some chapters out and print it in parts.' };
   if (typeof css !== 'string' || Buffer.byteLength(css) > MAX_CSS_BYTES) return { error: 'The book styles are missing or too large.' };
   return { campaignId, html, css, title: typeof title === 'string' ? title.slice(0, 120) : '' };

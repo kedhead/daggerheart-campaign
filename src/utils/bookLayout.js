@@ -9,7 +9,7 @@
  */
 
 import { interleaveProseAndScenes } from '../components/Storybook/cinematicTimeline';
-import { mentionedEntityIds } from './storybookCast';
+import { mentionedEntityIds, nameAppearsIn } from './storybookCast';
 import { stripWikiLinks } from './campaignMemory';
 
 // Margins follow print-on-demand norms: Lulu and KDP ask for at least 0.5in
@@ -41,6 +41,19 @@ export const DEFAULT_BOOK_SETTINGS = {
   includeCast: true,
   includeContents: true,
   includeJournals: true,
+  useSecondDraft: true,
+  threads: '',
+  includeEpilogue: true,
+  includeGlossary: true,
+  epilogue: null,          // { title, prose, createdAt } once written
+  epilogueGuidance: '',
+  cover: {
+    imageUrl: '',
+    blurb: '',
+    paper: 'white',
+    theme: 'leather',
+    pageCount: null        // null = use the printed PDF's count, else the estimate
+  },
   excludedChapterIds: []
 };
 
@@ -55,6 +68,7 @@ export function normalizeBookSettings(saved, campaign) {
   if (!TRIM_SIZES.some(t => t.key === s.trim)) s.trim = DEFAULT_BOOK_SETTINGS.trim;
   if (!ILLUSTRATION_SIZES.some(i => i.key === s.illustrations)) s.illustrations = DEFAULT_BOOK_SETTINGS.illustrations;
   if (!Array.isArray(s.excludedChapterIds)) s.excludedChapterIds = [];
+  s.cover = { ...DEFAULT_BOOK_SETTINGS.cover, ...(saved?.cover || {}) };
   return s;
 }
 
@@ -84,14 +98,12 @@ export function printDpi(pixelWidth, printedWidthIn) {
  * afresh so leaving one out doesn't leave a gap. Only published chapters are
  * bound — drafts aren't the story yet.
  */
-export function buildBook({ chapters = [], characters = [], npcs = [], journalsByChapter = {}, settings }) {
-  const excluded = new Set(settings.excludedChapterIds || []);
-  const bound = chapters
-    .filter(c => c && c.status === 'published' && !excluded.has(c.id))
-    .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
+export function buildBook({ chapters = [], characters = [], npcs = [], locations = [], lore = [], journalsByChapter = {}, settings }) {
+  const bound = bindableChapters(chapters, settings);
 
   const bookChapters = bound.map((c, i) => {
-    const paragraphs = stripWikiLinks(c.prose || '').split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+    const useDraft = settings.useSecondDraft !== false && c.bookDraft?.status === 'accepted' && c.bookDraft.prose;
+    const paragraphs = stripWikiLinks(useDraft ? c.bookDraft.prose : (c.prose || '')).split(/\n\n+/).map(p => p.trim()).filter(Boolean);
     const scenes = settings.includeIllustrations
       ? (c.scenes || []).filter(s => s?.imageUrl)
       : [];
@@ -103,14 +115,25 @@ export function buildBook({ chapters = [], characters = [], npcs = [], journalsB
     return {
       id: c.id,
       number: i + 1,
-      title: c.title || `Chapter ${i + 1}`,
+      title: (useDraft && c.bookDraft.title) || c.title || `Chapter ${i + 1}`,
       blocks: interleaveProseAndScenes(paragraphs, scenes),
       journal
     };
   });
 
+  const bookProse = bookChapters
+    .map(c => c.blocks.filter(b => b.kind === 'p').map(b => b.value).join('\n\n'))
+    .join('\n\n');
+  const epilogue = settings.includeEpilogue && settings.epilogue?.prose?.trim()
+    ? { title: settings.epilogue.title || 'Epilogue', paragraphs: paras(settings.epilogue.prose) }
+    : null;
+
   return {
     chapters: bookChapters,
+    epilogue,
+    glossary: settings.includeGlossary
+      ? buildGlossary({ text: `${bookProse}\n\n${epilogue ? epilogue.paragraphs.join('\n\n') : ''}`, locations, lore })
+      : [],
     cast: settings.includeCast ? buildCast({ chapters: bound, characters, npcs }) : { heroes: [], others: [] },
     players: characters
       .filter(c => c?.name && c.playerName?.trim())
@@ -191,6 +214,8 @@ export function estimatePages(book, settings) {
     // Chapters open a third of the way down a fresh page.
     pages += Math.ceil(words / perPage + scenes * illusPages + 0.35);
   });
+  if (book.epilogue) pages += Math.ceil(book.epilogue.paragraphs.join(' ').split(/\s+/).length / perPage + 0.35);
+  if (book.glossary?.length) pages += Math.ceil(book.glossary.length / (10 * scale));
   return pages;
 }
 
@@ -226,4 +251,183 @@ export function pageCss(settings) {
   @top-center { content: none; }
 }
 `;
+}
+
+// ── Second Draft ─────────────────────────────────────────────────────────────
+
+/** A short fingerprint of a chapter's text, so a draft knows if its original changed. */
+export function proseFingerprint(prose) {
+  let h = 5381;
+  const t = String(prose || '');
+  for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+  return `${t.length}:${(h >>> 0).toString(36)}`;
+}
+
+/**
+ * Where a chapter's second draft stands: 'none', 'review' (written, waiting
+ * for the author), 'accepted', or 'stale' (the chronicle text was edited
+ * after the draft was written, so the draft may no longer match it).
+ */
+export function draftStatus(chapter) {
+  const d = chapter?.bookDraft;
+  if (!d?.prose) return 'none';
+  if (d.basedOn && d.basedOn !== proseFingerprint(chapter.prose)) return 'stale';
+  return d.status === 'accepted' ? 'accepted' : 'review';
+}
+
+const paras = (prose) => stripWikiLinks(prose || '').split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+
+/** First and last beats of a chapter, for the outline the editor sees. */
+function summarize(prose) {
+  const p = paras(prose);
+  if (p.length <= 2) return p.join(' ');
+  return `${p.slice(0, 2).join(' ')} … ${p[p.length - 1]}`;
+}
+
+/** The text a neighbour contributes: its accepted draft if there is one, so drafts chain together. */
+function bookText(chapter) {
+  return chapter.bookDraft?.status === 'accepted' && chapter.bookDraft.prose ? chapter.bookDraft.prose : chapter.prose;
+}
+
+/**
+ * Everything the editor needs to revise one chapter of the book: the outline
+ * of the whole book, the seams with the chapters either side, and the voices
+ * of whoever appears in it.
+ *
+ * @param {Array} bound - the chapters in the book, in order (see bindableChapters)
+ */
+export function revisionContext({ bound, index, characters = [], npcs = [], threads = '' }) {
+  const chapter = bound[index];
+  const prev = bound[index - 1];
+  const next = bound[index + 1];
+
+  const ids = new Set();
+  (chapter.spotlights || []).forEach(s => s?.entityId && ids.add(s.entityId));
+  (chapter.scenes || []).forEach(s => (s?.featuredEntityIds || []).forEach(id => ids.add(id)));
+  const living = characters.map(c => ({ ...c, deceased: false }));
+  mentionedEntityIds({ characters: living, npcs }, chapter.prose || '').forEach(id => ids.add(id));
+  const voices = [...characters, ...npcs]
+    .filter(e => e?.name && e.storyVoice?.trim() && ids.has(e.id))
+    .map(e => ({ name: e.name, voice: e.storyVoice.trim() }));
+
+  return {
+    chapter: { number: index + 1, title: chapter.title || '', prose: stripWikiLinks(chapter.prose || '') },
+    outline: bound.map((c, i) => ({ number: i + 1, title: c.title || '', summary: summarize(c.prose) })),
+    previousEnding: prev ? paras(bookText(prev)).slice(-2).join('\n\n') : '',
+    nextOpening: next ? paras(next.prose)[0] || '' : '',
+    voices,
+    threads
+  };
+}
+
+/** The chapters the book binds, in order — the same rule buildBook uses. */
+export function bindableChapters(chapters = [], settings) {
+  const excluded = new Set(settings?.excludedChapterIds || []);
+  return chapters
+    .filter(c => c && c.status === 'published' && !excluded.has(c.id))
+    .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
+}
+
+// ── Back matter ──────────────────────────────────────────────────────────────
+
+const firstSentences = (text, max = 220) => {
+  const t = stripWikiLinks(text || '').replace(/[#*_>`]/g, '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return stop > max * 0.4 ? cut.slice(0, stop + 1) : `${cut.slice(0, cut.lastIndexOf(' '))}…`;
+};
+
+/**
+ * The glossary: the places and lore the book actually mentions, with a line
+ * or two from their entries. Hidden entries stay out — they're the DM's.
+ */
+export function buildGlossary({ text = '', locations = [], lore = [] }) {
+  const seen = new Set();
+  const entries = [
+    ...locations.map(l => ({ term: l.name, kind: l.type || 'Place', desc: l.description, hidden: l.hidden || l.dmOnly })),
+    ...lore.map(l => ({ term: l.title, kind: l.type || 'Lore', desc: l.content, hidden: l.hidden || l.dmOnly }))
+  ];
+  return entries
+    .filter(e => e.term?.trim() && !e.hidden && nameAppearsIn(e.term.trim(), text))
+    .filter(e => {
+      const k = e.term.trim().toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .map(e => ({
+      term: e.term.trim(),
+      kind: e.kind.charAt(0).toUpperCase() + e.kind.slice(1),
+      definition: firstSentences(e.desc)
+    }))
+    .sort((a, b) => a.term.localeCompare(b.term));
+}
+
+/** What the epilogue writer gets: the book's outline, how it ends, and the company. */
+export function epilogueContext({ bound, characters = [], threads = '', guidance = '' }) {
+  const last = bound[bound.length - 1];
+  const appears = new Set(buildCast({ chapters: bound, characters }).heroes.map(h => h.id));
+  return {
+    outline: bound.map((c, i) => ({ number: i + 1, title: c.title || '', summary: summarize(c.prose) })),
+    finale: last ? paras(bookText(last)).slice(-3).join('\n\n') : '',
+    cast: characters
+      .filter(c => c?.name && appears.has(c.id))
+      .map(c => ({
+        name: c.name,
+        line: [c.ancestry, c.characterClass || c.class].filter(Boolean).join(' '),
+        voice: c.storyVoice?.trim() || '',
+        fallen: !!c.deceased
+      })),
+    threads,
+    guidance
+  };
+}
+
+// ── Cover ────────────────────────────────────────────────────────────────────
+
+// Paper thickness per page, from Amazon KDP's published spine formula. Lulu
+// and IngramSpark are within a few thousandths; their cover template for the
+// exact page count is the final word.
+export const PAPER_TYPES = [
+  { key: 'white', label: 'White paper (black & white interior)', inchesPerPage: 0.002252 },
+  { key: 'cream', label: 'Cream paper', inchesPerPage: 0.0025 },
+  { key: 'color', label: 'Color interior', inchesPerPage: 0.002347 }
+];
+
+export const COVER_THEMES = [
+  { key: 'leather', label: 'Leather & gilt', bg: '#24150d', ink: '#e9cf8f', soft: '#c9ad78' },
+  { key: 'midnight', label: 'Midnight', bg: '#0f1626', ink: '#e3cb93', soft: '#a9b3c8' },
+  { key: 'parchment', label: 'Parchment', bg: '#ecdfc0', ink: '#2a1e10', soft: '#5a4426' }
+];
+
+export const BLEED_IN = 0.125;
+// Below about 80 pages the spine is too narrow to hold type safely.
+export const MIN_SPINE_TEXT_PAGES = 80;
+
+/**
+ * The wraparound cover's measurements, in inches: back + spine + front, with
+ * bleed on every outside edge. Page counts are rounded up to even — every
+ * leaf has two sides.
+ */
+export function coverDimensions({ trim, pages, paper = 'white' }) {
+  const t = trimFor(trim);
+  const per = (PAPER_TYPES.find(p => p.key === paper) || PAPER_TYPES[0]).inchesPerPage;
+  const even = Math.max(2, Math.ceil((Number(pages) || 0) / 2) * 2);
+  const spine = +(even * per).toFixed(3);
+  return {
+    pages: even,
+    spine,
+    bleed: BLEED_IN,
+    width: +(2 * t.width + spine + 2 * BLEED_IN).toFixed(3),
+    height: +(t.height + 2 * BLEED_IN).toFixed(3),
+    trimWidth: t.width,
+    trimHeight: t.height,
+    spineText: even >= MIN_SPINE_TEXT_PAGES
+  };
+}
+
+/** @page rules for printing the cover: one sheet, edge to edge. */
+export function coverPageCss(dims) {
+  return `@page { size: ${dims.width}in ${dims.height}in; margin: 0; }`;
 }
