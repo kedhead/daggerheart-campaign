@@ -27,6 +27,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
     location: '',
     relationship: 'neutral',
     description: '',
+    storyVoice: '',
     notes: '',
     firstMet: '',
     avatarUrl: '',
@@ -383,6 +384,18 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
           rows={4}
         />
         <small className="form-hint">Type [[ to link to other entities</small>
+      </div>
+
+      <div className="input-group">
+        <label>Story Voice &amp; Personality</label>
+        <textarea
+          value={formData.storyVoice || ''}
+          onChange={(e) => handleChange('storyVoice', e.target.value)}
+          rows={3}
+          maxLength={600}
+          placeholder="How they talk, think and act. e.g. Fussy and precise, never uses contractions, quotes old texts, terrified of street crime."
+        />
+        <small className="form-hint">The AI storyteller follows this so the NPC stays in character in every chapter</small>
       </div>
 
       <div className="input-group">

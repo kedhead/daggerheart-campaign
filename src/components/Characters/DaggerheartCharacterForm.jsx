@@ -43,6 +43,7 @@ const DEFAULT_CHARACTER = {
   inventory: '',
   gold: 0,
   experiences: [],
+  storyVoice: '',
   backstory: '',
   playerNotes: '',
   dmNotes: '',
@@ -935,6 +936,18 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
 
       {/* ===== Section 8: Narrative ===== */}
       <h4 style={SECTION_STYLE}>Narrative</h4>
+
+      <div className="input-group">
+        <label>Story Voice &amp; Personality</label>
+        <textarea
+          value={formData.storyVoice || ''}
+          onChange={(e) => handleChange('storyVoice', e.target.value)}
+          rows="3"
+          maxLength={600}
+          placeholder="How they talk, think and act. e.g. Slow to speak, short blunt sentences, solves problems by hitting them, fiercely loyal, gentle with animals."
+        />
+        <small className="form-hint">The AI storyteller follows this so the character stays in character in every chapter</small>
+      </div>
 
       <div className="input-group">
         <label>Backstory</label>
