@@ -7,7 +7,7 @@
  * the book uses the draft only once the author accepts it.
  */
 import { apiFetch } from './apiClient';
-import { revisionContext, proseFingerprint } from '../utils/bookLayout';
+import { revisionContext, proseFingerprint, epilogueContext } from '../utils/bookLayout';
 
 export async function writeSecondDraft({ bound, index, characters, npcs, threads, gameSystem, apiKey }) {
   const ctx = revisionContext({ bound, index, characters, npcs, threads });
@@ -29,4 +29,15 @@ export async function writeSecondDraft({ bound, index, characters, npcs, threads
     basedOn: proseFingerprint(chapter.prose),
     createdAt: new Date().toISOString()
   };
+}
+
+export async function writeEpilogue({ bound, characters, threads, guidance, gameSystem, apiKey }) {
+  const res = await apiFetch('/api/generate-storybook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'epilogue', ...epilogueContext({ bound, characters, threads, guidance }), gameSystem, apiKey: apiKey || undefined })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || data.message || `Epilogue failed (${res.status}).`);
+  return { title: data.title || 'Epilogue', prose: data.prose, createdAt: new Date().toISOString() };
 }

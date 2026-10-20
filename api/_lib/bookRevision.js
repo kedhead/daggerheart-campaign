@@ -94,3 +94,40 @@ export function parseRevision(raw, original) {
     shrunk: ratio < 0.7
   };
 }
+
+/**
+ * The epilogue: where everyone ended up. Written from the outline of the
+ * whole book, the final chapter's closing, and the cast — so it can resolve
+ * threads without inventing a different ending.
+ *
+ * @param {object} p
+ * @param {Array<{ number, title, summary }>} p.outline
+ * @param {string} p.finale - the closing paragraphs of the last chapter
+ * @param {Array<{ name, line, voice, fallen }>} p.cast
+ */
+export function buildEpiloguePrompt({ outline = [], finale = '', cast = [], threads = '', guidance = '', gameSystem = 'daggerheart' }) {
+  const genre = gameSystem === 'starwarsd6' ? 'space opera' : 'high fantasy';
+  const system = `You are writing the epilogue of a ${genre} novel made from a tabletop campaign: a closing chapter set some time after the final events, telling where each member of the company ended up.
+
+- Stay true to everything that happened. Don't contradict the story, bring back the fallen, or invent new villains or adventures. You may imagine quiet, believable futures that grow from who each person was and what they lived through.
+- Give each member of the company a moment of their own, in their own voice where one is noted. Remember the fallen with weight.
+- Pay off the threads the author lists, if the story left them open.
+- No game terms: no dice, levels, classes as titles, Hope or Fear.
+- 500 to 900 words, past tense, novel prose, paragraphs separated by blank lines. End on an image that lingers.
+
+Return JSON: {"title": "...", "prose": "..."}`;
+
+  const user = [
+    `# The book`,
+    outline.slice(0, MAX_OUTLINE_ITEMS).map(o => `${o.number}. ${clip(o.title, 80)} — ${clip(o.summary, 260)}`).join('\n') || '(no outline)',
+    finale ? `\n# How the final chapter ends\n${clip(finale, 1500)}` : '',
+    cast.length ? `\n# The company\n${cast.slice(0, 12).map(c =>
+      `- ${clip(c.name, 60)}${c.line ? ` (${clip(c.line, 80)})` : ''}${c.fallen ? ' — fell during the story' : ''}${c.voice ? `. Voice: ${clip(c.voice, 300)}` : ''}`
+    ).join('\n')}` : '',
+    threads.trim() ? `\n# Threads the story built to\n${clip(threads, 1500)}` : '',
+    guidance.trim() ? `\n# The author's wishes for the epilogue\n${clip(guidance, 1000)}` : '',
+    '\nReturn ONLY the JSON object.'
+  ].filter(Boolean).join('\n');
+
+  return { system, user };
+}

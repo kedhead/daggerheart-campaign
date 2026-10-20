@@ -20,7 +20,7 @@ import { ConfirmProvider, useConfirm } from '../src/contexts/ConfirmContext.jsx'
 import { useNotify } from '../src/contexts/ToastContext.jsx';
 import generateImageHandler from '../api/generate-image.js';
 import generateStorybookHandler from '../api/generate-storybook.js';
-import { buildRevisionPrompt, parseRevision } from '../api/_lib/bookRevision.js';
+import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt } from '../api/_lib/bookRevision.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
 import { generateKeyPair, SignJWT, exportJWK, createLocalJWKSet } from 'jose';
 import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
@@ -41,7 +41,7 @@ import { damageOutcome, applyDamage, armorSlotsFree } from '../src/utils/playerD
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
 import { isAllowedAssetUrl, readBookRequest, buildBookDocument, countPdfPages, bookStoragePath, uploadToStorage, MAX_HTML_BYTES } from '../api/_lib/bookRender.js';
-import { proseFingerprint, draftStatus, revisionContext, bindableChapters } from '../src/utils/bookLayout.js';
+import { proseFingerprint, draftStatus, revisionContext, bindableChapters, buildGlossary, epilogueContext } from '../src/utils/bookLayout.js';
 import { normalizeBookSettings, buildBook, buildCast, illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount, trimFor } from '../src/utils/bookLayout.js';
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
@@ -3295,6 +3295,47 @@ section('Second Draft');
     `only people in this chapter with a voice note are sent (got ${JSON.stringify(ctx.voices.map(v => v.name))})`);
 }
 
+section('Back matter');
+{
+  const text = 'They reached Emberfall at dusk and spoke of the Ashen Pact. Nobody mentioned Hidden Keep.';
+  const g = buildGlossary({
+    text,
+    locations: [
+      { name: 'Emberfall', type: 'city', description: 'A city of forges. Its smoke never clears. ' + 'More detail. '.repeat(40) },
+      { name: 'Hidden Keep', description: 'Secret.', hidden: true },
+      { name: 'Unvisited Vale', description: 'Never in the book.' }
+    ],
+    lore: [{ title: 'The Ashen Pact', type: 'faction', content: '[[Emberfall]]’s ruling *council*.' }, { title: 'emberfall', content: 'dup' }]
+  });
+  assert(JSON.stringify(g.map(e => e.term)) === '["Emberfall","The Ashen Pact"]',
+    `the glossary holds what the book mentions — sorted, once each, hidden and unmentioned entries left out (got ${JSON.stringify(g.map(e => e.term))})`);
+  assert(g[0].kind === 'City' && g[0].definition.endsWith('.') && g[0].definition.length <= 220, 'definitions are trimmed to whole sentences');
+  assert(g[1].definition === 'Emberfall’s ruling council.', `wiki links and markdown are cleaned from definitions (got ${g[1].definition})`);
+
+  const s0 = normalizeBookSettings({ epilogue: { title: 'After', prose: 'Ten years on.\n\nEmberfall rebuilt.' } }, { name: 'X' });
+  const chs = [{ id: 'a', chapterNumber: 1, status: 'published', title: 'One', prose: 'Yargal came to Emberfall.\n\nHe stayed.' }];
+  const withEnd = buildBook({ chapters: chs, characters: [], locations: [{ name: 'Emberfall', description: 'Forges.' }], settings: s0 });
+  assert(withEnd.epilogue?.title === 'After' && withEnd.epilogue.paragraphs.length === 2 && withEnd.glossary.length === 1,
+    'a written epilogue and the glossary go in the book');
+  const bare = buildBook({ chapters: chs, locations: [{ name: 'Emberfall' }], settings: { ...s0, includeEpilogue: false, includeGlossary: false } });
+  assert(bare.epilogue === null && bare.glossary.length === 0, 'both can be left out');
+  assert(estimatePages(withEnd, s0) > estimatePages(bare, s0), 'back matter counts toward the page estimate');
+
+  const chars = [
+    { id: 'y', name: 'Yargal', ancestry: 'Orc', characterClass: 'Warrior', storyVoice: 'Blunt.' },
+    { id: 'o', name: 'Orwyn', deceased: true },
+    { id: 'z', name: 'Benchwarmer' }
+  ];
+  const bound2 = [{ ...chs[0], prose: 'Yargal and Orwyn came to Emberfall.\n\nOrwyn fell.\n\nYargal wept.\n\nThe end came.' }];
+  const ctx = epilogueContext({ bound: bound2, characters: chars, threads: 'T', guidance: 'Ten years later' });
+  assert(JSON.stringify(ctx.cast.map(c => [c.name, c.fallen])) === '[["Yargal",false],["Orwyn",true]]' && ctx.cast[0].voice === 'Blunt.',
+    'the epilogue knows who was in the story, who fell, and their voices');
+  assert(ctx.finale.startsWith('Orwyn fell.') && ctx.outline.length === 1 && ctx.guidance === 'Ten years later', 'and how the book ends');
+  const ep = buildEpiloguePrompt(ctx);
+  assert(/Orwyn — fell during the story/.test(ep.user) && /Ten years later/.test(ep.user) && /bring back the fallen/.test(ep.system),
+    'the epilogue prompt remembers the fallen without resurrecting them');
+}
+
 section('Campaign memory');
 {
   assert(isArchivedNote({ archived: true }) && !isArchivedNote({}) && !isArchivedNote(null),
@@ -3592,6 +3633,15 @@ async function runAuthTests() {
       res = mkRes();
       await generateStorybookHandler({ method: 'POST', headers: {}, body: { action: 'revise', chapter: { prose: '  ' } } }, res);
       assert(res.statusCode === 400, 'a chapter with no text is refused');
+
+      globalThis.fetch = reply(JSON.stringify({ title: 'Ten Winters On', prose: 'Snow fell.\n\nThey remembered.' }));
+      res = mkRes();
+      await generateStorybookHandler({ method: 'POST', headers: {}, body: { action: 'epilogue', outline: [{ number: 1, title: 'T', summary: 's' }], cast: [{ name: 'Yargal' }] } }, res);
+      assert(res.statusCode === 200 && res.payload.title === 'Ten Winters On' && res.payload.prose.includes('They remembered.'),
+        `the epilogue action returns a titled epilogue (got ${res.statusCode} ${JSON.stringify(res.payload)})`);
+      res = mkRes();
+      await generateStorybookHandler({ method: 'POST', headers: {}, body: { action: 'epilogue', outline: [] } }, res);
+      assert(res.statusCode === 400, 'an epilogue for an empty book is refused');
     } finally {
       globalThis.fetch = realFetch;
       if (realKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = realKey;

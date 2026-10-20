@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
-import { X, Printer, BookOpen, AlertTriangle, CheckCircle2, CloudCog, Download } from 'lucide-react';
+import { X, Printer, BookOpen, AlertTriangle, CheckCircle2, CloudCog, Download, Wand2 } from 'lucide-react';
 import { apiFetch } from '../../services/apiClient';
 import { useAllJournals } from '../../hooks/useStorybook';
 import {
@@ -9,6 +9,7 @@ import {
   illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount, bindableChapters
 } from '../../utils/bookLayout';
 import SecondDraftSection from './SecondDraft';
+import { writeEpilogue } from '../../services/bookDraftGenerator';
 import { BOOK_FONT_CSS, inlineBookFontCss } from './bookFonts';
 import bookCss from './BookPress.css?raw';
 import './BookPress.css';
@@ -31,7 +32,7 @@ const IS_IOS = typeof navigator !== 'undefined' && (
 );
 const LOW_DPI = 200;
 
-export default function BookPress({ campaign, campaignId, chapters, characters = [], npcs = [], updateCampaign, updateChapter, apiKey, onClose }) {
+export default function BookPress({ campaign, campaignId, chapters, characters = [], npcs = [], locations = [], lore = [], updateCampaign, updateChapter, apiKey, onClose }) {
   const [settings, setSettings] = useState(() => normalizeBookSettings(campaign?.bookSettings, campaign));
   const [imageWidths, setImageWidths] = useState({});
 
@@ -45,8 +46,8 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
   const journalsByChapter = useAllJournals(campaignId, settings.includeJournals ? chapterIds : []);
 
   const book = useMemo(
-    () => buildBook({ chapters: published, characters, npcs, journalsByChapter, settings }),
-    [published, characters, npcs, journalsByChapter, settings]
+    () => buildBook({ chapters: published, characters, npcs, locations, lore, journalsByChapter, settings }),
+    [published, characters, npcs, locations, lore, journalsByChapter, settings]
   );
 
   // Settings save themselves, so the next visit opens the same book.
@@ -128,6 +129,25 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
   const printReady = pendingAssets === 0;
 
   const handlePrint = () => window.print();
+
+  const [epilogueJob, setEpilogueJob] = useState(null); // { state: 'working'|'error', message }
+  const handleWriteEpilogue = async () => {
+    setEpilogueJob({ state: 'working' });
+    try {
+      const epilogue = await writeEpilogue({
+        bound: bindableChapters(published, settings),
+        characters,
+        threads: settings.threads || '',
+        guidance: settings.epilogueGuidance || '',
+        gameSystem: campaign?.gameSystem || 'daggerheart',
+        apiKey
+      });
+      set({ epilogue });
+      setEpilogueJob(null);
+    } catch (err) {
+      setEpilogueJob({ state: 'error', message: err.message });
+    }
+  };
 
   // Print on the server: the same Chromium print as desktop Chrome, for phones
   // (whose browsers ignore the page size) or anyone who'd rather not fiddle
@@ -243,6 +263,51 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
         )}
 
         <section className="bp-group">
+          <h3>Back matter</h3>
+          <Check label="Epilogue — where are they now" checked={settings.includeEpilogue} onChange={v => set({ includeEpilogue: v })} />
+          {settings.includeEpilogue && (
+            <>
+              <label>Wishes for the epilogue
+                <textarea
+                  rows={2}
+                  value={settings.epilogueGuidance || ''}
+                  placeholder="Optional, e.g. Ten years later. Yargal runs an inn; Orwyn finally learns to haggle."
+                  onChange={e => set({ epilogueGuidance: e.target.value })}
+                />
+              </label>
+              {settings.epilogue?.prose && (
+                <>
+                  <label>Epilogue title
+                    <input value={settings.epilogue.title || ''} onChange={e => set({ epilogue: { ...settings.epilogue, title: e.target.value } })} />
+                  </label>
+                  <label>Epilogue text (edit freely)
+                    <textarea rows={8} value={settings.epilogue.prose} onChange={e => set({ epilogue: { ...settings.epilogue, prose: e.target.value } })} />
+                  </label>
+                </>
+              )}
+              <button
+                type="button"
+                className="bp-print-btn bp-print-btn-alt"
+                onClick={handleWriteEpilogue}
+                disabled={epilogueJob?.state === 'working' || book.chapters.length === 0}
+              >
+                <Wand2 size={16} />
+                {epilogueJob?.state === 'working' ? 'Writing the epilogue…' : settings.epilogue?.prose ? 'Rewrite the epilogue' : 'Write the epilogue'}
+              </button>
+              {epilogueJob?.state === 'error' && <p className="bp-warn bp-note"><AlertTriangle size={14} /><span>{epilogueJob.message}</span></p>}
+            </>
+          )}
+          <Check label="Glossary of places and lore" checked={settings.includeGlossary} onChange={v => set({ includeGlossary: v })} />
+          {settings.includeGlossary && (
+            <p className="bp-muted">
+              {book.glossary.length
+                ? `${book.glossary.length} entr${book.glossary.length === 1 ? 'y' : 'ies'} from your Locations and Lore that the book mentions.`
+                : 'No Locations or Lore entries are mentioned in the book yet.'}
+            </p>
+          )}
+        </section>
+
+        <section className="bp-group">
           <h3>Preflight</h3>
           <ul className="bp-preflight">
             <li>{words.toLocaleString()} words · about <strong>{pages}</strong> pages at {trim.width} × {trim.height} in</li>
@@ -354,6 +419,33 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
               )}
             </section>
           ))}
+          {book.epilogue && (
+            <section className="bp-sheet bp-chapter bp-epilogue">
+              <header className="bp-chapter-head">
+                <span className="bp-chapter-num">Epilogue</span>
+                <h2 className="bp-chapter-title">{book.epilogue.title}</h2>
+                <Fleuron />
+              </header>
+              <div className="bp-prose">
+                {book.epilogue.paragraphs.map((p, i) => (
+                  <div key={i} className="bp-para"><ReactMarkdown>{p}</ReactMarkdown></div>
+                ))}
+              </div>
+            </section>
+          )}
+          {book.glossary.length > 0 && (
+            <section className="bp-sheet bp-glossary">
+              <h2 className="bp-section-title">Glossary</h2>
+              <dl>
+                {book.glossary.map(g => (
+                  <div key={g.term} className="bp-gloss-entry">
+                    <dt><span className="bp-gloss-term">{g.term}</span> <span className="bp-gloss-kind">{g.kind}</span></dt>
+                    {g.definition && <dd>{g.definition}</dd>}
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
           {book.chapters.length > 0 && (
             <section className="bp-sheet bp-finis">
               <Fleuron />
@@ -406,6 +498,8 @@ function FrontMatter({ settings, book }) {
             {book.chapters.map(c => (
               <li key={c.id}><span className="bp-contents-num">{c.number}</span>{c.title}</li>
             ))}
+            {book.epilogue && <li><span className="bp-contents-num" />Epilogue: {book.epilogue.title}</li>}
+            {book.glossary.length > 0 && <li><span className="bp-contents-num" />Glossary</li>}
           </ol>
         </section>
       )}

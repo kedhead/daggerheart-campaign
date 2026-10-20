@@ -6,11 +6,12 @@
  *   - action: 'chapter'  → GPT-4o writes a storybook chapter from session notes
  *   - action: 'describe' → GPT-4o-mini vision describes an existing portrait
  *   - action: 'revise'   → GPT-4o writes a chapter's Second Draft for the book
+ *   - action: 'epilogue' → GPT-4o writes the book's epilogue
  */
 
 import OpenAI from 'openai';
 import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
-import { buildRevisionPrompt, parseRevision } from './_lib/bookRevision.js';
+import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt } from './_lib/bookRevision.js';
 
 export const config = {
   maxDuration: 60
@@ -42,11 +43,12 @@ export default async function handler(req, res) {
     if (action === 'describe') return await describeImage(req, res, openai);
     if (action === 'chapter') return await generateChapter(req, res, openai);
     if (action === 'revise') return await reviseChapter(req, res, openai);
+    if (action === 'epilogue') return await writeEpilogue(req, res, openai);
     return res.status(400).json({ error: `Unknown action: ${action}` });
   } catch (err) {
     console.error(`generate-storybook [${action}] error:`, err);
     return res.status(500).json({
-      error: `Failed to ${action === 'describe' ? 'describe image' : action === 'revise' ? 'write the second draft' : 'generate storybook chapter'}`,
+      error: `Failed to ${action === 'describe' ? 'describe image' : action === 'revise' ? 'write the second draft' : action === 'epilogue' ? 'write the epilogue' : 'generate storybook chapter'}`,
       message: err.message
     });
   }
@@ -310,4 +312,38 @@ async function reviseChapter(req, res, openai) {
   const result = parseRevision(completion.choices[0]?.message?.content || '', chapter.prose);
   if (result.error) return res.status(502).json({ error: result.error });
   return res.status(200).json({ ...result, model: 'gpt-4o' });
+}
+
+// ── action: epilogue ──────────────────────────────────────────────────────────
+
+async function writeEpilogue(req, res, openai) {
+  const { outline, finale, cast, threads, guidance, gameSystem } = req.body || {};
+  if (!Array.isArray(outline) || outline.length === 0) {
+    return res.status(400).json({ error: 'Missing required field: outline' });
+  }
+  const { system, user } = buildEpiloguePrompt({
+    outline,
+    finale: typeof finale === 'string' ? finale : '',
+    cast: Array.isArray(cast) ? cast : [],
+    threads: typeof threads === 'string' ? threads : '',
+    guidance: typeof guidance === 'string' ? guidance : '',
+    gameSystem
+  });
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    temperature: 0.8,
+    max_tokens: 3000,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ]
+  });
+  if (completion.choices[0]?.finish_reason === 'length') {
+    return res.status(502).json({ error: 'The epilogue ran too long and was cut off. Try again.' });
+  }
+  // No original to compare against, so parseRevision's length check is moot.
+  const result = parseRevision(completion.choices[0]?.message?.content || '', '');
+  if (result.error) return res.status(502).json({ error: result.error });
+  return res.status(200).json({ title: result.title || 'Epilogue', prose: result.prose, model: 'gpt-4o' });
 }

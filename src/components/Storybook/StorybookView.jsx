@@ -199,6 +199,8 @@ export default function StorybookView({
           chapters={storybook.chapters}
           characters={characters}
           npcs={npcs}
+          locations={locations}
+          lore={lore}
           updateCampaign={updateCampaign}
           updateChapter={storybook.updateChapter}
           apiKey={openaiKey}

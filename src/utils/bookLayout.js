@@ -9,7 +9,7 @@
  */
 
 import { interleaveProseAndScenes } from '../components/Storybook/cinematicTimeline';
-import { mentionedEntityIds } from './storybookCast';
+import { mentionedEntityIds, nameAppearsIn } from './storybookCast';
 import { stripWikiLinks } from './campaignMemory';
 
 // Margins follow print-on-demand norms: Lulu and KDP ask for at least 0.5in
@@ -43,6 +43,10 @@ export const DEFAULT_BOOK_SETTINGS = {
   includeJournals: true,
   useSecondDraft: true,
   threads: '',
+  includeEpilogue: true,
+  includeGlossary: true,
+  epilogue: null,          // { title, prose, createdAt } once written
+  epilogueGuidance: '',
   excludedChapterIds: []
 };
 
@@ -86,7 +90,7 @@ export function printDpi(pixelWidth, printedWidthIn) {
  * afresh so leaving one out doesn't leave a gap. Only published chapters are
  * bound — drafts aren't the story yet.
  */
-export function buildBook({ chapters = [], characters = [], npcs = [], journalsByChapter = {}, settings }) {
+export function buildBook({ chapters = [], characters = [], npcs = [], locations = [], lore = [], journalsByChapter = {}, settings }) {
   const bound = bindableChapters(chapters, settings);
 
   const bookChapters = bound.map((c, i) => {
@@ -109,8 +113,19 @@ export function buildBook({ chapters = [], characters = [], npcs = [], journalsB
     };
   });
 
+  const bookProse = bookChapters
+    .map(c => c.blocks.filter(b => b.kind === 'p').map(b => b.value).join('\n\n'))
+    .join('\n\n');
+  const epilogue = settings.includeEpilogue && settings.epilogue?.prose?.trim()
+    ? { title: settings.epilogue.title || 'Epilogue', paragraphs: paras(settings.epilogue.prose) }
+    : null;
+
   return {
     chapters: bookChapters,
+    epilogue,
+    glossary: settings.includeGlossary
+      ? buildGlossary({ text: `${bookProse}\n\n${epilogue ? epilogue.paragraphs.join('\n\n') : ''}`, locations, lore })
+      : [],
     cast: settings.includeCast ? buildCast({ chapters: bound, characters, npcs }) : { heroes: [], others: [] },
     players: characters
       .filter(c => c?.name && c.playerName?.trim())
@@ -191,6 +206,8 @@ export function estimatePages(book, settings) {
     // Chapters open a third of the way down a fresh page.
     pages += Math.ceil(words / perPage + scenes * illusPages + 0.35);
   });
+  if (book.epilogue) pages += Math.ceil(book.epilogue.paragraphs.join(' ').split(/\s+/).length / perPage + 0.35);
+  if (book.glossary?.length) pages += Math.ceil(book.glossary.length / (10 * scale));
   return pages;
 }
 
@@ -301,4 +318,60 @@ export function bindableChapters(chapters = [], settings) {
   return chapters
     .filter(c => c && c.status === 'published' && !excluded.has(c.id))
     .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
+}
+
+// ── Back matter ──────────────────────────────────────────────────────────────
+
+const firstSentences = (text, max = 220) => {
+  const t = stripWikiLinks(text || '').replace(/[#*_>`]/g, '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return stop > max * 0.4 ? cut.slice(0, stop + 1) : `${cut.slice(0, cut.lastIndexOf(' '))}…`;
+};
+
+/**
+ * The glossary: the places and lore the book actually mentions, with a line
+ * or two from their entries. Hidden entries stay out — they're the DM's.
+ */
+export function buildGlossary({ text = '', locations = [], lore = [] }) {
+  const seen = new Set();
+  const entries = [
+    ...locations.map(l => ({ term: l.name, kind: l.type || 'Place', desc: l.description, hidden: l.hidden || l.dmOnly })),
+    ...lore.map(l => ({ term: l.title, kind: l.type || 'Lore', desc: l.content, hidden: l.hidden || l.dmOnly }))
+  ];
+  return entries
+    .filter(e => e.term?.trim() && !e.hidden && nameAppearsIn(e.term.trim(), text))
+    .filter(e => {
+      const k = e.term.trim().toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .map(e => ({
+      term: e.term.trim(),
+      kind: e.kind.charAt(0).toUpperCase() + e.kind.slice(1),
+      definition: firstSentences(e.desc)
+    }))
+    .sort((a, b) => a.term.localeCompare(b.term));
+}
+
+/** What the epilogue writer gets: the book's outline, how it ends, and the company. */
+export function epilogueContext({ bound, characters = [], threads = '', guidance = '' }) {
+  const last = bound[bound.length - 1];
+  const appears = new Set(buildCast({ chapters: bound, characters }).heroes.map(h => h.id));
+  return {
+    outline: bound.map((c, i) => ({ number: i + 1, title: c.title || '', summary: summarize(c.prose) })),
+    finale: last ? paras(bookText(last)).slice(-3).join('\n\n') : '',
+    cast: characters
+      .filter(c => c?.name && appears.has(c.id))
+      .map(c => ({
+        name: c.name,
+        line: [c.ancestry, c.characterClass || c.class].filter(Boolean).join(' '),
+        voice: c.storyVoice?.trim() || '',
+        fallen: !!c.deceased
+      })),
+    threads,
+    guidance
+  };
 }
