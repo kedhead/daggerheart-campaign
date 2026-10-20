@@ -37,6 +37,8 @@ import { sourcePortraitKey, cachedPortraitKey } from '../src/utils/storybookPort
 import { fuzzyMatchAdversary } from '../src/utils/adversaryNameMatch.js';
 import { buildTimeline, timelineDuration, narratableSlides } from '../src/components/Storybook/cinematicTimeline.js';
 import { stripAppendedClauses, composeScenePrompt, REFERENCE_CLAUSE, NO_EXTRAS_CLAUSE, CURRENT_STATE_LEAD } from '../src/utils/storybookPrompt.js';
+import StoryVoiceFields from '../src/components/Characters/StoryVoiceFields.jsx';
+import GenericForm from '../src/components/Characters/forms/GenericForm.jsx';
 import { currentLook, currentStateLabel, snapshotStates, lookForScene, TRANSFORMATION_LOOKS } from '../src/utils/characterState.js';
 import { sessionNotesText, nameAppearsIn, mentionedEntityIds, scopeRosters, sanitizeChapterCast } from '../src/utils/storybookCast.js';
 import { marksForDamage } from '../src/utils/thresholdDamage.js';
@@ -3435,6 +3437,17 @@ section('Transformations in story art');
     'the override comes after the "preserve" clause it overrides');
   assert(stripAppendedClauses(composed) === 'Pippin drifts through the hall.', 'the state clause is never saved into the author’s prompt');
   assert(!composeScenePrompt({ prompt: 'x', hasReferenceImages: true }).includes(CURRENT_STATE_LEAD), 'no clause when nobody has changed');
+}
+
+section('Story fields on every character form');
+{
+  const html = renderToString(<StoryVoiceFields values={{ storyVoice: 'Blunt.', voiceLines: 'Hit it?', currentLook: 'One eye.' }} onChange={() => {}} hintClass="input-hint" />);
+  assert(/Story Voice &amp; Personality/.test(html) && /Sample Lines/.test(html) && /Current Changes \(for story art\)/.test(html),
+    'the shared story fields render all three: voice, sample lines and current changes');
+  assert(/>Blunt\.<\/textarea>/.test(html) && />Hit it\?<\/textarea>/.test(html) && />One eye\.<\/textarea>/.test(html) && /class="input-hint"/.test(html),
+    'they show the character’s saved values, with the host form’s hint style');
+  const generic = renderToString(<GenericForm onSave={() => {}} onCancel={() => {}} />);
+  assert(/Sample Lines/.test(generic) && /Story Voice/.test(generic), 'other game systems’ forms carry the story fields too');
 }
 
 section('Campaign memory');

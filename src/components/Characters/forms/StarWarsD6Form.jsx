@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getGameSystem } from '../../../data/systems/index.js';
+import StoryVoiceFields from '../StoryVoiceFields';
 
 export default function StarWarsD6Form({ character, onSave, onCancel, isDM }) {
   const gameSystem = getGameSystem('starwarsd6');
@@ -139,6 +140,8 @@ export default function StarWarsD6Form({ character, onSave, onCancel, isDM }) {
 
       <div className="form-section">
         <h3>Additional Details</h3>
+
+        <StoryVoiceFields values={formData} onChange={(field, value) => setFormData({ ...formData, [field]: value })} />
 
         <div className="input-group">
           <label>Backstory</label>

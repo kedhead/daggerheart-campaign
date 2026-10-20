@@ -4,6 +4,7 @@ import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import './CharacterForm.css';
 import { useNotify } from '../../contexts/ToastContext';
+import StoryVoiceFields from './StoryVoiceFields';
 
 export default function CharacterFormSimple({ character, onSave, onCancel, isDM, campaign }) {
   const notify = useNotify();
@@ -15,7 +16,10 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
     playerNotes: '',
     backstory: '',
     dmNotes: '',
-    appearanceDescription: ''
+    appearanceDescription: '',
+    storyVoice: '',
+    voiceLines: '',
+    currentLook: ''
   });
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -209,6 +213,8 @@ export default function CharacterFormSimple({ character, onSave, onCancel, isDM,
           Your personal character notes (visible to you and DM)
         </small>
       </div>
+
+      <StoryVoiceFields values={formData} onChange={handleChange} hintClass="input-hint" />
 
       <div className="input-group">
         <label>Backstory</label>

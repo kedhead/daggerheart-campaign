@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Save, X, ExternalLink, Wand2, Loader2, Plus, Check, Sword, Shield, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { CLASSES, SUBCLASSES, DOMAINS, ANCESTRIES, COMMUNITIES, TRAIT_RANGE, STANDARD_ARRAY } from '../../data/systems/daggerheart';
 import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
+import StoryVoiceFields from './StoryVoiceFields';
 import { getCardsForCharacter, getCardByName } from '../../data/daggerheartDomainCards';
 import { generateCharacterPortrait } from '../../services/portraitGenerator';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -298,18 +299,6 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
           rows="3"
           placeholder="Describe your character's physical appearance..."
         />
-      </div>
-
-      <div className="input-group">
-        <label>Current Changes (for story art)</label>
-        <textarea
-          value={formData.currentLook || ''}
-          onChange={(e) => handleChange('currentLook', e.target.value)}
-          rows="2"
-          maxLength={300}
-          placeholder="Anything that's changed since the portrait, e.g. Lost his left eye; hair turned white after the curse"
-        />
-        <small className="form-hint">Story illustrations draw this over the portrait. A Transformation (like Ghost) on the sheet is drawn automatically</small>
       </div>
 
       <div className="form-grid">
@@ -951,29 +940,7 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
       {/* ===== Section 8: Narrative ===== */}
       <h4 style={SECTION_STYLE}>Narrative</h4>
 
-      <div className="input-group">
-        <label>Story Voice &amp; Personality</label>
-        <textarea
-          value={formData.storyVoice || ''}
-          onChange={(e) => handleChange('storyVoice', e.target.value)}
-          rows="3"
-          maxLength={600}
-          placeholder="How they talk, think and act. e.g. Slow to speak, short blunt sentences, solves problems by hitting them, fiercely loyal, gentle with animals."
-        />
-        <small className="form-hint">The AI storyteller follows this so the character stays in character in every chapter</small>
-      </div>
-
-      <div className="input-group">
-        <label>Sample Lines</label>
-        <textarea
-          value={formData.voiceLines || ''}
-          onChange={(e) => handleChange('voiceLines', e.target.value)}
-          rows="3"
-          maxLength={600}
-          placeholder={'A few things they would say, one per line, e.g.\n"Hit it?"\n"Too many words."\n"Food first. Then fighting."'}
-        />
-        <small className="form-hint">Real lines teach the AI their voice best. It echoes the rhythm, not the exact words every time</small>
-      </div>
+      <StoryVoiceFields values={formData} onChange={handleChange} />
 
       <div className="input-group">
         <label>Backstory</label>
