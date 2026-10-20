@@ -1,0 +1,32 @@
+/**
+ * Second Draft — asks the editor (api/generate-storybook, action 'revise') to
+ * rewrite one chapter for the book, and shapes the result for the chapter doc.
+ *
+ * The draft lives on the chapter as `bookDraft`, beside the chronicle text
+ * rather than over it: the Chronicle keeps the story as it was played, and
+ * the book uses the draft only once the author accepts it.
+ */
+import { apiFetch } from './apiClient';
+import { revisionContext, proseFingerprint } from '../utils/bookLayout';
+
+export async function writeSecondDraft({ bound, index, characters, npcs, threads, gameSystem, apiKey }) {
+  const ctx = revisionContext({ bound, index, characters, npcs, threads });
+  const res = await apiFetch('/api/generate-storybook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'revise', ...ctx, gameSystem, apiKey: apiKey || undefined })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || data.message || `Second draft failed (${res.status}).`);
+
+  const chapter = bound[index];
+  return {
+    prose: data.prose,
+    title: data.title && data.title !== chapter.title ? data.title : '',
+    notes: data.notes || [],
+    shrunk: !!data.shrunk,
+    status: 'review',
+    basedOn: proseFingerprint(chapter.prose),
+    createdAt: new Date().toISOString()
+  };
+}

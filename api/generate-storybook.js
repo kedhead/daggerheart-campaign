@@ -5,10 +5,12 @@
  * Hobby 12-function cap:
  *   - action: 'chapter'  → GPT-4o writes a storybook chapter from session notes
  *   - action: 'describe' → GPT-4o-mini vision describes an existing portrait
+ *   - action: 'revise'   → GPT-4o writes a chapter's Second Draft for the book
  */
 
 import OpenAI from 'openai';
 import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
+import { buildRevisionPrompt, parseRevision } from './_lib/bookRevision.js';
 
 export const config = {
   maxDuration: 60
@@ -39,11 +41,12 @@ export default async function handler(req, res) {
   try {
     if (action === 'describe') return await describeImage(req, res, openai);
     if (action === 'chapter') return await generateChapter(req, res, openai);
+    if (action === 'revise') return await reviseChapter(req, res, openai);
     return res.status(400).json({ error: `Unknown action: ${action}` });
   } catch (err) {
     console.error(`generate-storybook [${action}] error:`, err);
     return res.status(500).json({
-      error: `Failed to ${action === 'describe' ? 'describe image' : 'generate storybook chapter'}`,
+      error: `Failed to ${action === 'describe' ? 'describe image' : action === 'revise' ? 'write the second draft' : 'generate storybook chapter'}`,
       message: err.message
     });
   }
@@ -271,4 +274,40 @@ Produce exactly ${numScenes} scenes. Return ONLY the JSON object.`;
     spotlights,
     model: 'gpt-4o'
   });
+}
+
+// ── action: revise ────────────────────────────────────────────────────────────
+
+async function reviseChapter(req, res, openai) {
+  const { chapter, outline, previousEnding, nextOpening, voices, threads, gameSystem } = req.body || {};
+  if (!chapter || typeof chapter.prose !== 'string' || !chapter.prose.trim()) {
+    return res.status(400).json({ error: 'Missing required field: chapter.prose' });
+  }
+  const { system, user } = buildRevisionPrompt({
+    chapter: { number: Number(chapter.number) || 1, title: String(chapter.title || ''), prose: chapter.prose },
+    outline: Array.isArray(outline) ? outline : [],
+    previousEnding: typeof previousEnding === 'string' ? previousEnding : '',
+    nextOpening: typeof nextOpening === 'string' ? nextOpening : '',
+    voices: Array.isArray(voices) ? voices : [],
+    threads: typeof threads === 'string' ? threads : '',
+    gameSystem
+  });
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    temperature: 0.7,
+    max_tokens: 7000,
+    response_format: { type: 'json_object' },
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ]
+  });
+
+  if (completion.choices[0]?.finish_reason === 'length') {
+    return res.status(502).json({ error: 'The second draft ran too long and was cut off. Try again.' });
+  }
+  const result = parseRevision(completion.choices[0]?.message?.content || '', chapter.prose);
+  if (result.error) return res.status(502).json({ error: result.error });
+  return res.status(200).json({ ...result, model: 'gpt-4o' });
 }

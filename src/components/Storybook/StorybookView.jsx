@@ -200,6 +200,8 @@ export default function StorybookView({
           characters={characters}
           npcs={npcs}
           updateCampaign={updateCampaign}
+          updateChapter={storybook.updateChapter}
+          apiKey={openaiKey}
           onClose={() => setIsBookOpen(false)}
         />
       )}

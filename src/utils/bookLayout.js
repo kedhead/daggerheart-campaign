@@ -41,6 +41,8 @@ export const DEFAULT_BOOK_SETTINGS = {
   includeCast: true,
   includeContents: true,
   includeJournals: true,
+  useSecondDraft: true,
+  threads: '',
   excludedChapterIds: []
 };
 
@@ -85,13 +87,11 @@ export function printDpi(pixelWidth, printedWidthIn) {
  * bound — drafts aren't the story yet.
  */
 export function buildBook({ chapters = [], characters = [], npcs = [], journalsByChapter = {}, settings }) {
-  const excluded = new Set(settings.excludedChapterIds || []);
-  const bound = chapters
-    .filter(c => c && c.status === 'published' && !excluded.has(c.id))
-    .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
+  const bound = bindableChapters(chapters, settings);
 
   const bookChapters = bound.map((c, i) => {
-    const paragraphs = stripWikiLinks(c.prose || '').split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+    const useDraft = settings.useSecondDraft !== false && c.bookDraft?.status === 'accepted' && c.bookDraft.prose;
+    const paragraphs = stripWikiLinks(useDraft ? c.bookDraft.prose : (c.prose || '')).split(/\n\n+/).map(p => p.trim()).filter(Boolean);
     const scenes = settings.includeIllustrations
       ? (c.scenes || []).filter(s => s?.imageUrl)
       : [];
@@ -103,7 +103,7 @@ export function buildBook({ chapters = [], characters = [], npcs = [], journalsB
     return {
       id: c.id,
       number: i + 1,
-      title: c.title || `Chapter ${i + 1}`,
+      title: (useDraft && c.bookDraft.title) || c.title || `Chapter ${i + 1}`,
       blocks: interleaveProseAndScenes(paragraphs, scenes),
       journal
     };
@@ -226,4 +226,79 @@ export function pageCss(settings) {
   @top-center { content: none; }
 }
 `;
+}
+
+// ── Second Draft ─────────────────────────────────────────────────────────────
+
+/** A short fingerprint of a chapter's text, so a draft knows if its original changed. */
+export function proseFingerprint(prose) {
+  let h = 5381;
+  const t = String(prose || '');
+  for (let i = 0; i < t.length; i++) h = ((h << 5) + h + t.charCodeAt(i)) | 0;
+  return `${t.length}:${(h >>> 0).toString(36)}`;
+}
+
+/**
+ * Where a chapter's second draft stands: 'none', 'review' (written, waiting
+ * for the author), 'accepted', or 'stale' (the chronicle text was edited
+ * after the draft was written, so the draft may no longer match it).
+ */
+export function draftStatus(chapter) {
+  const d = chapter?.bookDraft;
+  if (!d?.prose) return 'none';
+  if (d.basedOn && d.basedOn !== proseFingerprint(chapter.prose)) return 'stale';
+  return d.status === 'accepted' ? 'accepted' : 'review';
+}
+
+const paras = (prose) => stripWikiLinks(prose || '').split(/\n\n+/).map(p => p.trim()).filter(Boolean);
+
+/** First and last beats of a chapter, for the outline the editor sees. */
+function summarize(prose) {
+  const p = paras(prose);
+  if (p.length <= 2) return p.join(' ');
+  return `${p.slice(0, 2).join(' ')} … ${p[p.length - 1]}`;
+}
+
+/** The text a neighbour contributes: its accepted draft if there is one, so drafts chain together. */
+function bookText(chapter) {
+  return chapter.bookDraft?.status === 'accepted' && chapter.bookDraft.prose ? chapter.bookDraft.prose : chapter.prose;
+}
+
+/**
+ * Everything the editor needs to revise one chapter of the book: the outline
+ * of the whole book, the seams with the chapters either side, and the voices
+ * of whoever appears in it.
+ *
+ * @param {Array} bound - the chapters in the book, in order (see bindableChapters)
+ */
+export function revisionContext({ bound, index, characters = [], npcs = [], threads = '' }) {
+  const chapter = bound[index];
+  const prev = bound[index - 1];
+  const next = bound[index + 1];
+
+  const ids = new Set();
+  (chapter.spotlights || []).forEach(s => s?.entityId && ids.add(s.entityId));
+  (chapter.scenes || []).forEach(s => (s?.featuredEntityIds || []).forEach(id => ids.add(id)));
+  const living = characters.map(c => ({ ...c, deceased: false }));
+  mentionedEntityIds({ characters: living, npcs }, chapter.prose || '').forEach(id => ids.add(id));
+  const voices = [...characters, ...npcs]
+    .filter(e => e?.name && e.storyVoice?.trim() && ids.has(e.id))
+    .map(e => ({ name: e.name, voice: e.storyVoice.trim() }));
+
+  return {
+    chapter: { number: index + 1, title: chapter.title || '', prose: stripWikiLinks(chapter.prose || '') },
+    outline: bound.map((c, i) => ({ number: i + 1, title: c.title || '', summary: summarize(c.prose) })),
+    previousEnding: prev ? paras(bookText(prev)).slice(-2).join('\n\n') : '',
+    nextOpening: next ? paras(next.prose)[0] || '' : '',
+    voices,
+    threads
+  };
+}
+
+/** The chapters the book binds, in order — the same rule buildBook uses. */
+export function bindableChapters(chapters = [], settings) {
+  const excluded = new Set(settings?.excludedChapterIds || []);
+  return chapters
+    .filter(c => c && c.status === 'published' && !excluded.has(c.id))
+    .sort((a, b) => (a.chapterNumber || 0) - (b.chapterNumber || 0));
 }

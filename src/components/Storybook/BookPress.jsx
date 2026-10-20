@@ -6,8 +6,9 @@ import { apiFetch } from '../../services/apiClient';
 import { useAllJournals } from '../../hooks/useStorybook';
 import {
   TRIM_SIZES, ILLUSTRATION_SIZES, normalizeBookSettings, buildBook, trimFor,
-  illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount
+  illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount, bindableChapters
 } from '../../utils/bookLayout';
+import SecondDraftSection from './SecondDraft';
 import { BOOK_FONT_CSS, inlineBookFontCss } from './bookFonts';
 import bookCss from './BookPress.css?raw';
 import './BookPress.css';
@@ -30,7 +31,7 @@ const IS_IOS = typeof navigator !== 'undefined' && (
 );
 const LOW_DPI = 200;
 
-export default function BookPress({ campaign, campaignId, chapters, characters = [], npcs = [], updateCampaign, onClose }) {
+export default function BookPress({ campaign, campaignId, chapters, characters = [], npcs = [], updateCampaign, updateChapter, apiKey, onClose }) {
   const [settings, setSettings] = useState(() => normalizeBookSettings(campaign?.bookSettings, campaign));
   const [imageWidths, setImageWidths] = useState({});
 
@@ -227,6 +228,19 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
           </div>
           <p className="bp-muted">Only published chapters are bound. Order follows the Reorder dialog.</p>
         </section>
+
+        {updateChapter && (
+          <SecondDraftSection
+            bound={bindableChapters(published, settings)}
+            characters={characters}
+            npcs={npcs}
+            settings={settings}
+            set={set}
+            updateChapter={updateChapter}
+            apiKey={apiKey}
+            gameSystem={campaign?.gameSystem || 'daggerheart'}
+          />
+        )}
 
         <section className="bp-group">
           <h3>Preflight</h3>
