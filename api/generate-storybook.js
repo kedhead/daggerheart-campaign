@@ -112,6 +112,8 @@ async function generateChapter(req, res, openai) {
       const parts = [e.tag, e.ancestry].filter(Boolean);
       const tagStr = parts.length ? ` (${parts.join(', ')})` : '';
       rosterLines.push(`  - ${e.id} :: ${e.name}${tagStr}`);
+      const voice = typeof e.voice === 'string' ? e.voice.replace(/\s+/g, ' ').trim().slice(0, 600) : '';
+      if (voice) rosterLines.push(`      voice: ${voice}`);
     });
   };
   pushRoster('Characters', entityRoster.characters);
@@ -138,6 +140,11 @@ VOICE AND SHAPE:
 - Let scenes breathe. Use dialogue when the notes imply it. Quote characters directly when the notes provide words; otherwise paraphrase naturally.
 - Vary paragraph length — some urgent and short, others long and immersive. At least one paragraph per major beat in the notes.
 - Produce **8 to 14 paragraphs** of genuine prose. A chapter, not a blurb. Never fewer than 8 unless the notes are extremely thin.
+
+CHARACTER VOICES:
+- Some roster entries carry a "voice:" note written by the players. Treat it as canon for how that character speaks, thinks, and acts. Their dialogue, word choice, decisions, and inner thoughts must fit it in every scene: a slow, blunt brute never delivers an eloquent speech; a bookish scholar can be brilliant about theory and hopeless about street life.
+- Show the voice through behaviour and dialogue, not by restating the note. Never quote or paraphrase the note itself.
+- If the session notes record a character doing something out of type, keep the event but play the contrast for character (surprise, effort, comedy) instead of silently changing who they are.
 
 STRICT RULES:
 1. Use only facts present in the session notes or campaign context. DO NOT invent major new plot points, NPCs, or locations that weren't mentioned. You MAY flesh out moments, interiority, atmosphere, and implied details.

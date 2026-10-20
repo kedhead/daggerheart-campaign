@@ -74,7 +74,9 @@ export function buildCampaignContext(campaign, {
       if (c.characterClass)  parts.push(c.characterClass);
       if (c.level)           parts.push(`Lvl ${c.level}`);
       if (c.subclass)        parts.push(c.subclass);
-      lines.push(`- ${parts.join(', ')}`);
+      let line = `- ${parts.join(', ')}`;
+      if (c.storyVoice)      line += ` — voice: ${_truncate(c.storyVoice, 200)}`;
+      lines.push(line);
     });
   }
 
@@ -88,6 +90,7 @@ export function buildCampaignContext(campaign, {
       if (n.relationship)  line += ` (${n.relationship})`;
       if (n.location)      line += ` — ${_stripWikiLinks(n.location)}`;
       if (n.description)   line += `: ${_truncate(n.description, 80)}`;
+      if (n.storyVoice)    line += ` — voice: ${_truncate(n.storyVoice, 120)}`;
       lines.push(line);
     });
     if (visibleNPCs.length > 40) lines.push(`  *(…and ${visibleNPCs.length - 40} more)*`);
