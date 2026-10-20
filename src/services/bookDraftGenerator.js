@@ -9,12 +9,12 @@
 import { apiFetch } from './apiClient';
 import { revisionContext, proseFingerprint, epilogueContext } from '../utils/bookLayout';
 
-export async function writeSecondDraft({ bound, index, characters, npcs, threads, gameSystem, apiKey }) {
-  const ctx = revisionContext({ bound, index, characters, npcs, threads });
+export async function writeSecondDraft({ bound, index, characters, npcs, sessions, threads, dialogue, gameSystem, apiKey }) {
+  const ctx = revisionContext({ bound, index, characters, npcs, sessions, threads });
   const res = await apiFetch('/api/generate-storybook', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'revise', ...ctx, gameSystem, apiKey: apiKey || undefined })
+    body: JSON.stringify({ action: 'revise', ...ctx, dialogue, gameSystem, apiKey: apiKey || undefined })
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || data.message || `Second draft failed (${res.status}).`);

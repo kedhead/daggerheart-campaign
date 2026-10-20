@@ -28,6 +28,7 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
     relationship: 'neutral',
     description: '',
     storyVoice: '',
+    voiceLines: '',
     notes: '',
     firstMet: '',
     avatarUrl: '',
@@ -396,6 +397,18 @@ export default function NPCForm({ npc, onSave, onCancel, campaign, entities, isD
           placeholder="How they talk, think and act. e.g. Fussy and precise, never uses contractions, quotes old texts, terrified of street crime."
         />
         <small className="form-hint">The AI storyteller follows this so the NPC stays in character in every chapter</small>
+      </div>
+
+      <div className="input-group">
+        <label>Sample Lines</label>
+        <textarea
+          value={formData.voiceLines || ''}
+          onChange={(e) => handleChange('voiceLines', e.target.value)}
+          rows={3}
+          maxLength={600}
+          placeholder={'A few things they would say, one per line, e.g.\n"Coin first, questions never."\n"Mind the step, dearie."'}
+        />
+        <small className="form-hint">Real lines teach the AI their voice best</small>
       </div>
 
       <div className="input-group">

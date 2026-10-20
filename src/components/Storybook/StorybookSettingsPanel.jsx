@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link2, Check } from 'lucide-react';
 import Modal from '../Modal';
-import { STORYBOOK_STYLES, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
+import { STORYBOOK_STYLES, DEFAULT_STYLE_KEY, DIALOGUE_OPTIONS, DEFAULT_DIALOGUE } from '../../services/storybookGenerator';
 import { useNotify } from '../../contexts/ToastContext';
 
 export default function StorybookSettingsPanel({ isOpen, onClose, campaign, updateCampaign }) {
@@ -9,6 +9,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
   const [styleKey, setStyleKey] = useState(campaign?.storybookStyle || DEFAULT_STYLE_KEY);
   const [styleCustom, setStyleCustom] = useState(campaign?.storybookStyleCustom || '');
   const [chroniclePublic, setChroniclePublic] = useState(!!campaign?.chroniclePublic);
+  const [dialogue, setDialogue] = useState(campaign?.storybookDialogue || DEFAULT_DIALOGUE);
   const [linkCopied, setLinkCopied] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -33,6 +34,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
       await updateCampaign({
         storybookStyle: styleKey,
         storybookStyleCustom: styleKey === 'custom' ? styleCustom : '',
+        storybookDialogue: dialogue,
         chroniclePublic
       });
       onClose();
@@ -94,6 +96,39 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
             </p>
           </div>
         )}
+
+        {/* ── Dialogue ─────────────────────────────────────────────────── */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim">
+            Dialogue in new chapters
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            {DIALOGUE_OPTIONS.map(d => (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => setDialogue(d.key)}
+                className="text-left px-4 py-3 rounded-xl border transition"
+                style={{
+                  background: dialogue === d.key
+                    ? 'color-mix(in srgb, var(--primary) 20%, transparent)'
+                    : 'color-mix(in srgb, var(--surface) 70%, transparent)',
+                  borderColor: dialogue === d.key
+                    ? 'color-mix(in srgb, var(--primary) 50%, transparent)'
+                    : 'var(--line)',
+                  color: 'var(--text)'
+                }}
+              >
+                <div className="text-sm font-bold">{d.label}</div>
+                <div className="text-[11px] text-lr-text-dim mt-1 leading-snug">{d.hint}</div>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-lr-text-dim">
+            Characters speak in their Story Voice and Sample Lines. Invented dialogue only acts out what happened, never adds to it,
+            and lines marked as quotes in Live Session are always used word for word.
+          </p>
+        </div>
 
         {/* ── Public Chronicle ─────────────────────────────────────────── */}
         <div

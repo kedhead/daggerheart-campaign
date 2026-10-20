@@ -78,8 +78,9 @@ export function useSessionLive(campaignId, sessionId, isDM = false) {
    * Add a new live note
    * @param {string} content - Note content (supports wiki links)
    * @param {boolean} isHighlight - Mark as highlight for summary
+   * @param {boolean} isQuote - Something said at the table, for the chapter to use word for word
    */
-  const addLiveNote = async (content, isHighlight = false) => {
+  const addLiveNote = async (content, isHighlight = false, isQuote = false) => {
     if (!basePath || !currentUser || !content.trim()) {
       return null;
     }
@@ -90,6 +91,7 @@ export function useSessionLive(campaignId, sessionId, isDM = false) {
         authorId: currentUser.uid,
         authorName: currentUser.displayName || currentUser.email || 'Unknown',
         isHighlight,
+        isQuote,
         timestamp: serverTimestamp(),
         order: liveNotes.length
       };
@@ -121,6 +123,24 @@ export function useSessionLive(campaignId, sessionId, isDM = false) {
       return true;
     } catch (err) {
       console.error('[useSessionLive] Error toggling highlight:', err);
+      setError(err.message);
+      return false;
+    }
+  };
+
+  /**
+   * Toggle whether a note is a table quote
+   * @param {string} noteId - Note ID to toggle
+   */
+  const toggleQuote = async (noteId) => {
+    if (!basePath) return false;
+    const note = liveNotes.find(n => n.id === noteId);
+    if (!note) return false;
+    try {
+      await updateDoc(doc(db, basePath, noteId), { isQuote: !note.isQuote });
+      return true;
+    } catch (err) {
+      console.error('[useSessionLive] Error toggling quote:', err);
       setError(err.message);
       return false;
     }
@@ -270,6 +290,7 @@ export function useSessionLive(campaignId, sessionId, isDM = false) {
     error,
     addLiveNote,
     toggleHighlight,
+    toggleQuote,
     updateNote,
     deleteNote,
     clearAllNotes,

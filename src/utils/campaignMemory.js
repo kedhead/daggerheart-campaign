@@ -39,6 +39,17 @@ export function starredHighlights(notes = []) {
     .filter(text => text && !text.startsWith(TRANSCRIPTION_NOTE_PREFIX));
 }
 
+/**
+ * Live notes marked as quotes: things someone actually said at the table.
+ * The chapter writer must use each one word for word.
+ */
+export function quotedLines(notes = []) {
+  return (notes || [])
+    .filter(n => n && n.isQuote && !isArchivedNote(n))
+    .map(n => (typeof n.content === 'string' ? n.content.trim() : ''))
+    .filter(text => text && !text.startsWith(TRANSCRIPTION_NOTE_PREFIX));
+}
+
 /** Starred notes join the session's highlights, without duplicating any. */
 export function mergeHighlights(existing = [], additions = []) {
   const out = [];

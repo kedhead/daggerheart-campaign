@@ -44,6 +44,7 @@ const DEFAULT_CHARACTER = {
   gold: 0,
   experiences: [],
   storyVoice: '',
+  voiceLines: '',
   backstory: '',
   playerNotes: '',
   dmNotes: '',
@@ -947,6 +948,18 @@ export default function DaggerheartCharacterForm({ character, onSave, onCancel, 
           placeholder="How they talk, think and act. e.g. Slow to speak, short blunt sentences, solves problems by hitting them, fiercely loyal, gentle with animals."
         />
         <small className="form-hint">The AI storyteller follows this so the character stays in character in every chapter</small>
+      </div>
+
+      <div className="input-group">
+        <label>Sample Lines</label>
+        <textarea
+          value={formData.voiceLines || ''}
+          onChange={(e) => handleChange('voiceLines', e.target.value)}
+          rows="3"
+          maxLength={600}
+          placeholder={'A few things they would say, one per line, e.g.\n"Hit it?"\n"Too many words."\n"Food first. Then fighting."'}
+        />
+        <small className="form-hint">Real lines teach the AI their voice best. It echoes the rhythm, not the exact words every time</small>
       </div>
 
       <div className="input-group">

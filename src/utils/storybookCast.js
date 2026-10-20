@@ -21,6 +21,8 @@ export function sessionNotesText(session) {
     Array.isArray(session.highlights) ? session.highlights.join('\n') : session.highlights,
     session.dmNotes,
     session.liveNotesCompiled,
+    // A quote names its speaker, so whoever said it is in the chapter.
+    Array.isArray(session.tableQuotes) ? session.tableQuotes.join('\n') : '',
   ];
   return parts.filter(Boolean).join('\n');
 }

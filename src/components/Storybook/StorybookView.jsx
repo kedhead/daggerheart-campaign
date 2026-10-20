@@ -201,6 +201,7 @@ export default function StorybookView({
           npcs={npcs}
           locations={locations}
           lore={lore}
+          sessions={sessions}
           updateCampaign={updateCampaign}
           updateChapter={storybook.updateChapter}
           apiKey={openaiKey}
