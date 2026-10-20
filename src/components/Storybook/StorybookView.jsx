@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BookMarked, Wand2, Settings as SettingsIcon, Sparkles, ListOrdered } from 'lucide-react';
+import { BookMarked, BookOpen, Wand2, Settings as SettingsIcon, Sparkles, ListOrdered } from 'lucide-react';
 import { useStorybook } from '../../hooks/useStorybook';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import ChapterReader from './ChapterReader';
@@ -7,6 +7,7 @@ import ChapterEditor from './ChapterEditor';
 import GenerateChapterModal from './GenerateChapterModal';
 import StorybookSettingsPanel from './StorybookSettingsPanel';
 import ReorderChaptersModal from './ReorderChaptersModal';
+import BookPress from './BookPress';
 import PendingDraftBanner from './PendingDraftBanner';
 import './Storybook.css';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -40,6 +41,7 @@ export default function StorybookView({
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReorderOpen, setIsReorderOpen] = useState(false);
+  const [isBookOpen, setIsBookOpen] = useState(false);
 
   const editingChapter = useMemo(
     () => storybook.chapters.find(c => c.id === editingChapterId) || null,
@@ -97,6 +99,12 @@ export default function StorybookView({
               <button type="button" onClick={() => setIsReorderOpen(true)} className="sb-toolbar-btn">
                 <ListOrdered size={13} />
                 Reorder
+              </button>
+            )}
+            {storybook.publishedChapters.length > 0 && (
+              <button type="button" onClick={() => setIsBookOpen(true)} className="sb-toolbar-btn">
+                <BookOpen size={13} />
+                Make a book
               </button>
             )}
             <button type="button" onClick={() => setIsSettingsOpen(true)} className="sb-toolbar-btn">
@@ -181,6 +189,18 @@ export default function StorybookView({
           onClose={() => setIsReorderOpen(false)}
           chapters={storybook.chapters}
           updateChapter={storybook.updateChapter}
+        />
+      )}
+
+      {isBookOpen && (
+        <BookPress
+          campaign={campaign}
+          campaignId={campaignId}
+          chapters={storybook.chapters}
+          characters={characters}
+          npcs={npcs}
+          updateCampaign={updateCampaign}
+          onClose={() => setIsBookOpen(false)}
         />
       )}
 

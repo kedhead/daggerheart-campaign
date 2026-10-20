@@ -38,6 +38,7 @@ import { marksForDamage } from '../src/utils/thresholdDamage.js';
 import { damageOutcome, applyDamage, armorSlotsFree } from '../src/utils/playerDamage.js';
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
+import { normalizeBookSettings, buildBook, buildCast, illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount, trimFor } from '../src/utils/bookLayout.js';
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
 import { useBattleMapStore } from '../src/stores/battleMapStore.js';
@@ -3128,6 +3129,83 @@ section('Session filters');
 }
 
 // ── Campaign memory ──
+section('Book press');
+{
+  const campaign = { name: 'The Ashen Crown' };
+  const s0 = normalizeBookSettings(undefined, campaign);
+  assert(s0.title === 'The Ashen Crown' && s0.trim === '6x9' && s0.includeCast,
+    'a fresh book takes the campaign name as its title and defaults to 6x9 with the cast list');
+  const bad = normalizeBookSettings({ trim: 'scroll', illustrations: 'huge', excludedChapterIds: 'x', title: 'Mine' }, campaign);
+  assert(bad.trim === '6x9' && bad.illustrations === 'crisp' && Array.isArray(bad.excludedChapterIds) && bad.title === 'Mine',
+    'unknown trim / illustration keys fall back to defaults; a chosen title is kept');
+
+  const characters = [
+    { id: 'c1', name: 'Yargal', ancestry: 'Orc', characterClass: 'Warrior', playerName: 'Sam' },
+    { id: 'c2', name: 'Orwyn Vale', ancestry: 'Elf', characterClass: 'Wizard', deceased: true },
+    { id: 'c3', name: 'Benched Bob' }
+  ];
+  const npcs = [
+    { id: 'n1', name: 'Mother Quill', occupation: 'Innkeeper' },
+    { id: 'n2', name: 'Secret Villain', hidden: true },
+    { id: 'n3', name: 'Absent Al' }
+  ];
+  const chapters = [
+    { id: 'b', chapterNumber: 3, status: 'published', title: 'The Road', prose: 'Orwyn read aloud.\n\nSecret Villain watched.', scenes: [] },
+    { id: 'a', chapterNumber: 1, status: 'published', title: 'The Inn', prose: 'Rain fell on [[Mother Quill]].\n\nYargal ate.\n\nThey slept.',
+      scenes: [{ id: 's1', imageUrl: 'http://x/1.png', caption: 'Supper', featuredEntityIds: ['c1'] }, { id: 's2', imageUrl: null }] },
+    { id: 'd', chapterNumber: 2, status: 'draft', title: 'Unfinished', prose: 'Absent Al appears.' },
+    { id: 'e', chapterNumber: 4, status: 'published', title: 'Left Out', prose: 'Benched Bob.' }
+  ];
+  const settings = { ...s0, excludedChapterIds: ['e'] };
+  const journals = { a: [{ id: 'j1', characterName: 'Yargal', content: ' Food good. ' }, { id: 'j2', content: '   ' }] };
+  const book = buildBook({ chapters, characters, npcs, journalsByChapter: journals, settings });
+
+  assert(JSON.stringify(book.chapters.map(c => [c.number, c.title])) === JSON.stringify([[1, 'The Inn'], [2, 'The Road']]),
+    `only published, included chapters are bound, in order, renumbered without gaps (got ${JSON.stringify(book.chapters.map(c => [c.number, c.title]))})`);
+  const inn = book.chapters[0];
+  assert(inn.blocks.filter(b => b.kind === 'scene').length === 1 && inn.blocks.filter(b => b.kind === 'p').length === 3,
+    'scenes without art are left out of the book; every paragraph is kept');
+  assert(inn.blocks[0].value === 'Rain fell on Mother Quill.', `wiki links print as plain text (got ${inn.blocks[0].value})`);
+  assert(inn.journal.length === 1 && inn.journal[0].name === 'Yargal' && inn.journal[0].content === 'Food good.',
+    'journal entries follow their chapter, trimmed, with empty ones dropped');
+
+  const heroNames = book.cast.heroes.map(h => h.name);
+  assert(heroNames.includes('Yargal') && heroNames.includes('Orwyn Vale') && !heroNames.includes('Benched Bob'),
+    `the cast is who appears in the bound chapters — the fallen included, the excluded chapter's people not (got ${heroNames})`);
+  assert(book.cast.heroes.find(h => h.name === 'Orwyn Vale').deceased && book.cast.heroes.find(h => h.name === 'Yargal').player === 'Sam',
+    'fallen heroes are marked and players are credited');
+  const otherNames = book.cast.others.map(o => o.name);
+  assert(JSON.stringify(otherNames) === JSON.stringify(['Mother Quill']),
+    `NPCs appear when named, but hidden NPCs and ones only in drafts never do (got ${otherNames})`);
+  assert(JSON.stringify(book.players) === JSON.stringify([{ player: 'Sam', character: 'Yargal' }]), 'the company credits list only characters with a player name');
+
+  const noExtras = buildBook({ chapters, characters, npcs, journalsByChapter: journals,
+    settings: { ...settings, includeIllustrations: false, includeJournals: false, includeCast: false } });
+  assert(noExtras.chapters[0].blocks.every(b => b.kind === 'p') && noExtras.chapters[0].journal.length === 0 && noExtras.cast.heroes.length === 0,
+    'illustrations, journals and the cast can each be left out');
+
+  assert(illustrationWidthIn({ trim: '6x9', illustrations: 'crisp' }) === 3.41 && printDpi(1024, 3.41) === 300,
+    'crisp illustrations are sized to print 1024px art at 300 DPI');
+  const full = illustrationWidthIn({ trim: '6x9', illustrations: 'full' });
+  assert(full === 4.6 && printDpi(1024, full) < 250, `full width fills the 6x9 text block, at lower DPI (got ${full})`);
+  assert(illustrationWidthIn({ trim: '5.5x8.5', illustrations: 'crisp' }) <= 5.5 - 0.75 - 0.55, 'crisp art never overflows a narrow text block');
+
+  const css = pageCss({ ...settings, title: 'A "Quoted" Tale' });
+  assert(css.includes('size: 6in 9in') && css.includes('@page :left') && css.includes('@page front') && css.includes('"A \\"QUOTED\\" TALE"'),
+    'page CSS sets the trim, mirrors margins, has an unnumbered front matter page and escapes the running title');
+  assert(chapterLabel(7) === 'Chapter Seven' && chapterLabel(24) === 'Chapter 24', 'chapters are spelled out to twenty, numerals after');
+
+  assert(wordCount(book) === 15, `word count covers chapter prose (got ${wordCount(book)})`);
+  const est = estimatePages(book, settings);
+  assert(est >= 6 && est <= 10, `a two-chapter book estimates a handful of pages (got ${est})`);
+  const big = { ...book, chapters: Array.from({ length: 20 }, (_, i) => ({ ...inn, id: `x${i}`, blocks: [{ kind: 'p', value: 'word '.repeat(1300) }], journal: [] })) };
+  const pages6x9 = estimatePages(big, settings);
+  const pages85 = estimatePages(big, { ...settings, trim: '8.5x11' });
+  assert(pages6x9 > 80 && pages6x9 < 120 && pages85 < pages6x9,
+    `a 26k-word book lands near 90 pages at 6x9 and fewer on a bigger trim (got ${pages6x9} / ${pages85})`);
+  assert(trimFor('nope').key === '6x9', 'an unknown trim resolves to 6x9');
+}
+
 section('Campaign memory');
 {
   assert(isArchivedNote({ archived: true }) && !isArchivedNote({}) && !isArchivedNote(null),

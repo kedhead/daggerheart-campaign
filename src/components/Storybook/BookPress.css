@@ -1,0 +1,221 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Book Press — on screen, a settings panel beside the book at its real trim
+   width; in print, only the book, paginated by the @page rules pageCss() emits.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.bp-root {
+  --bp-paper: #fbf7ee;
+  --bp-ink: #1d160d;
+  --bp-ink-soft: #4a3a26;
+  --bp-rule: #b9883a;
+  --bp-leather: #24150d;
+  --bp-gilt: #e2b860;
+  --bp-panel-text: #ecdcbc;
+  --bp-panel-muted: rgba(236, 220, 188, 0.6);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) 1fr;
+  background: var(--bp-leather);
+}
+
+/* ── Settings panel ─────────────────────────────────────────────────────── */
+
+.bp-panel {
+  overflow-y: auto;
+  padding: 1.25rem 1.25rem 2rem;
+  background: linear-gradient(180deg, #3a2416, #1c0f08);
+  border-right: 1px solid rgba(226, 184, 96, 0.25);
+  color: var(--bp-panel-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.875rem;
+}
+
+.bp-panel-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.bp-eyebrow { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.35em; text-transform: uppercase; color: var(--bp-gilt); }
+.bp-panel-title { display: flex; align-items: center; gap: 0.5rem; margin: 0.15rem 0 0; font-family: 'Cinzel', serif; font-size: 1.25rem; color: var(--bp-panel-text); }
+
+.bp-icon-btn {
+  display: grid; place-items: center; width: 2.25rem; height: 2.25rem;
+  border-radius: 999px; border: 1px solid rgba(226, 184, 96, 0.35);
+  background: transparent; color: var(--bp-panel-text); cursor: pointer;
+}
+.bp-icon-btn:hover { background: rgba(226, 184, 96, 0.12); }
+
+.bp-group { padding: 1rem 0; border-top: 1px solid rgba(226, 184, 96, 0.15); display: grid; gap: 0.6rem; }
+.bp-group h3 { margin: 0; font-family: 'Cinzel', serif; font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--bp-gilt); }
+
+.bp-group label:not(.bp-check) { display: grid; gap: 0.3rem; font-size: 0.78rem; color: var(--bp-panel-muted); }
+.bp-group input:not([type='checkbox']),
+.bp-group textarea,
+.bp-group select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(226, 184, 96, 0.3);
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--bp-panel-text);
+  font: inherit;
+  font-size: 16px; /* below 16px iOS zooms the page on focus */
+}
+.bp-group textarea { resize: vertical; }
+
+.bp-check { display: flex; align-items: center; gap: 0.55rem; cursor: pointer; font-size: 0.85rem; }
+.bp-check input { accent-color: var(--bp-gilt); width: 1rem; height: 1rem; flex: none; }
+
+.bp-chapter-list { display: grid; gap: 0.4rem; max-height: 14rem; overflow-y: auto; padding-right: 0.25rem; }
+.bp-muted { color: var(--bp-panel-muted); font-size: 0.78rem; margin: 0; font-weight: 400; letter-spacing: 0; text-transform: none; }
+
+.bp-preflight { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.bp-preflight li { display: flex; gap: 0.45rem; align-items: flex-start; line-height: 1.4; }
+.bp-preflight svg { flex: none; margin-top: 0.15rem; }
+.bp-warn { color: #f0c27a; }
+.bp-ok { color: #a9d39a; }
+
+.bp-steps { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem; line-height: 1.45; }
+
+.bp-print-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  margin-top: 0.25rem; padding: 0.75rem 1rem; border-radius: 0.65rem;
+  border: 1px solid var(--bp-gilt);
+  background: linear-gradient(180deg, #e2b860, #b9883a);
+  color: #2a1a08; font-family: 'Cinzel', serif; font-weight: 700; letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.bp-print-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── The book ───────────────────────────────────────────────────────────── */
+
+.bp-desk { overflow: auto; padding: 2rem 1rem 4rem; }
+.bp-book {
+  display: grid; gap: 1.5rem; justify-content: center;
+  color: var(--bp-ink);
+  font-family: 'Book Garamond', Georgia, serif;
+  font-size: var(--bp-font);
+  line-height: 1.42;
+}
+
+/* On screen each sheet is a page-width card padded like the printed page;
+   long chapters simply run long — the print preview shows the real breaks. */
+.bp-sheet {
+  box-sizing: border-box;
+  width: var(--bp-page-w);
+  min-height: var(--bp-page-h);
+  padding: var(--bp-m-top) var(--bp-m-outside) var(--bp-m-bottom) var(--bp-m-inside);
+  background: var(--bp-paper);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.bp-front { page: front; }
+
+.bp-title-page { display: flex; align-items: center; justify-content: center; text-align: center; }
+.bp-title-block { display: grid; gap: 0.6em; }
+.bp-book-title { margin: 0; font-family: 'Book Cinzel', serif; font-weight: 700; font-size: 2.6em; line-height: 1.1; letter-spacing: 0.04em; }
+.bp-book-subtitle { margin: 0; font-style: italic; font-size: 1.25em; color: var(--bp-ink-soft); }
+.bp-book-byline { margin: 0; font-family: 'Book Cinzel', serif; letter-spacing: 0.18em; font-size: 0.9em; text-transform: uppercase; }
+
+.bp-fleuron { display: flex; justify-content: center; color: var(--bp-rule); margin: 0.5em 0; }
+.bp-fleuron svg { width: 1.1in; height: auto; }
+
+.bp-credits { display: flex; flex-direction: column; justify-content: flex-end; font-size: 0.85em; color: var(--bp-ink-soft); }
+.bp-credits p { margin: 0 0 0.35em; }
+.bp-credits-players { margin: 0.8em 0; }
+.bp-smallcaps { font-variant: small-caps; letter-spacing: 0.08em; font-weight: 600; color: var(--bp-ink); margin: 0 0 0.4em; font-size: 1.05em; }
+
+.bp-dedication { display: flex; align-items: flex-start; justify-content: center; text-align: center; padding-top: calc(var(--bp-m-top) + 1.6in); font-style: italic; font-size: 1.1em; }
+.bp-dedication p { max-width: 80%; margin: 0; white-space: pre-line; }
+
+.bp-section-title { margin: 0.6in 0 0.35in; text-align: center; font-family: 'Book Cinzel', serif; font-weight: 600; font-size: 1.5em; letter-spacing: 0.1em; }
+
+.bp-contents ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45em; }
+.bp-contents li { display: flex; gap: 0.8em; }
+.bp-contents-num { min-width: 1.6em; text-align: right; font-family: 'Book Cinzel', serif; color: var(--bp-ink-soft); }
+
+.bp-cast-group { margin-bottom: 0.3in; }
+.bp-cast-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.15in 0.2in; }
+.bp-cast-card { display: flex; gap: 0.12in; align-items: center; break-inside: avoid; }
+.bp-cast-portrait { width: 0.7in; height: 0.7in; flex: none; border-radius: 50%; object-fit: cover; border: 1px solid var(--bp-rule); }
+.bp-cast-initial { display: grid; place-items: center; font-family: 'Book Cinzel', serif; font-size: 1.4em; color: var(--bp-ink-soft); background: #efe5cf; }
+.bp-cast-name { font-weight: 600; line-height: 1.2; }
+.bp-cast-line { font-size: 0.82em; font-style: italic; color: var(--bp-ink-soft); line-height: 1.25; }
+
+.bp-chapter-head { text-align: center; padding-top: 1.1in; margin-bottom: 0.3in; break-after: avoid; }
+.bp-chapter-num { display: block; font-family: 'Book Cinzel', serif; font-size: 0.8em; letter-spacing: 0.3em; text-transform: uppercase; color: var(--bp-ink-soft); }
+.bp-chapter-title { margin: 0.25em 0 0; font-family: 'Book Cinzel', serif; font-weight: 600; font-size: 1.75em; line-height: 1.15; }
+
+.bp-prose { text-align: justify; hyphens: auto; -webkit-hyphens: auto; }
+.bp-para p { margin: 0; text-indent: 1.3em; orphans: 2; widows: 2; }
+.bp-prose > .bp-para:first-child p:first-child,
+.bp-figure + .bp-para p:first-child { text-indent: 0; }
+.bp-prose > .bp-para:first-child p:first-child::first-letter {
+  float: left;
+  font-family: 'Book Cinzel', serif;
+  font-size: 3.3em;
+  line-height: 0.85;
+  padding: 0.06em 0.08em 0 0;
+  color: #6e4c12;
+}
+
+.bp-figure { margin: 0.22in auto; width: var(--bp-illus); max-width: 100%; text-align: center; break-inside: avoid; }
+.bp-figure img { display: block; width: 100%; height: auto; border: 1px solid rgba(110, 76, 18, 0.4); }
+.bp-figure figcaption { margin-top: 0.4em; font-size: 0.82em; font-style: italic; color: var(--bp-ink-soft); line-height: 1.3; text-align: center; }
+
+.bp-journal { margin-top: 0.35in; padding-top: 0.2in; border-top: 1px solid var(--bp-rule); }
+.bp-journal-head { text-align: center; font-family: 'Book Cinzel', serif; letter-spacing: 0.25em; text-transform: uppercase; font-size: 0.75em; color: var(--bp-ink-soft); margin-bottom: 0.15in; }
+.bp-journal-entry { margin-bottom: 0.18in; padding-left: 0.15in; border-left: 2px solid rgba(185, 136, 58, 0.5); }
+.bp-journal-name { font-variant: small-caps; font-weight: 600; letter-spacing: 0.06em; break-after: avoid; }
+.bp-journal-text { font-style: italic; }
+.bp-journal-text p { margin: 0.2em 0 0; }
+
+.bp-finis { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-style: italic; color: var(--bp-ink-soft); }
+
+/* ── Phones: panel above, book scaled into view ─────────────────────────── */
+
+@media (max-width: 860px) {
+  .bp-root { grid-template-columns: 1fr; grid-template-rows: auto 1fr; overflow-y: auto; }
+  .bp-panel { overflow: visible; border-right: 0; border-bottom: 1px solid rgba(226, 184, 96, 0.25); }
+  .bp-desk { overflow: visible; padding: 1rem 0 3rem; }
+  .bp-book { zoom: 0.55; }
+}
+
+/* ── Print: the book and nothing else ───────────────────────────────────── */
+
+@media print {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  body > *:not(.bp-root) { display: none !important; }
+
+  .bp-root {
+    position: static;
+    display: block;
+    background: #fff;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .bp-panel { display: none; }
+  .bp-desk { padding: 0; overflow: visible; }
+  .bp-book { display: block; zoom: 1; }
+
+  /* @page margins do the padding in print; each sheet starts a fresh page. */
+  .bp-sheet {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    break-before: page;
+  }
+  .bp-sheet:first-child { break-before: auto; }
+
+  /* A hair under the page box, so a full-height page never spills a blank one. */
+  .bp-title-page,
+  .bp-credits,
+  .bp-finis { height: calc(var(--bp-page-h) - var(--bp-m-top) - var(--bp-m-bottom) - 0.1in); }
+  .bp-dedication { padding-top: 1.6in; }
+}
