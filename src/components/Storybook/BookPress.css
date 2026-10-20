@@ -196,9 +196,13 @@
 /* ── Print: the book and nothing else ───────────────────────────────────── */
 
 @media print {
+  /* No browser default margin: the server's print page has no app reset, and
+     its 8px body margin would shift every page off the trim. */
   html, body {
     height: auto !important;
     overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: #fff !important;
   }
   body > *:not(.bp-root) { display: none !important; }
