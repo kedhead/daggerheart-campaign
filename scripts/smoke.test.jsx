@@ -20,7 +20,7 @@ import { ConfirmProvider, useConfirm } from '../src/contexts/ConfirmContext.jsx'
 import { useNotify } from '../src/contexts/ToastContext.jsx';
 import generateImageHandler from '../api/generate-image.js';
 import generateStorybookHandler from '../api/generate-storybook.js';
-import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt } from '../api/_lib/bookRevision.js';
+import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
 import { generateKeyPair, SignJWT, exportJWK, createLocalJWKSet } from 'jose';
 import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
@@ -41,7 +41,7 @@ import { damageOutcome, applyDamage, armorSlotsFree } from '../src/utils/playerD
 import { splitCardFeatures } from '../src/utils/domainCardText.js';
 import { pickEffectForText, createFX } from '../src/components/Storybook/cinematicFX.js';
 import { isAllowedAssetUrl, readBookRequest, buildBookDocument, countPdfPages, bookStoragePath, uploadToStorage, MAX_HTML_BYTES } from '../api/_lib/bookRender.js';
-import { proseFingerprint, draftStatus, revisionContext, bindableChapters, buildGlossary, epilogueContext } from '../src/utils/bookLayout.js';
+import { proseFingerprint, draftStatus, revisionContext, bindableChapters, buildGlossary, epilogueContext, coverDimensions, coverPageCss } from '../src/utils/bookLayout.js';
 import { normalizeBookSettings, buildBook, buildCast, illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount, trimFor } from '../src/utils/bookLayout.js';
 import { pickThemeForText, buildScore, segmentAt, musicPlanFor } from '../src/components/Storybook/cinematicMusic.js';
 import { computeDefenses } from '../src/utils/daggerheartDefenses.js';
@@ -3336,6 +3336,28 @@ section('Back matter');
     'the epilogue prompt remembers the fallen without resurrecting them');
 }
 
+section('Book cover');
+{
+  const d = coverDimensions({ trim: '6x9', pages: 105, paper: 'white' });
+  assert(d.pages === 106 && d.spine === 0.239 && d.width === 12.489 && d.height === 9.25 && d.spineText,
+    `a 105-page 6x9 on white paper: 106 pages, 0.239in spine, 12.489 x 9.25in sheet with bleed (got ${JSON.stringify(d)})`);
+  const thin = coverDimensions({ trim: '5.5x8.5', pages: 40, paper: 'cream' });
+  assert(thin.spine === 0.1 && !thin.spineText && thin.width === 11.35, `a thin book gets no spine title (got ${JSON.stringify(thin)})`);
+  assert(coverDimensions({ trim: '6x9', pages: 0 }).pages === 2 && coverDimensions({ trim: '6x9', pages: 200, paper: 'nope' }).spine === 0.45,
+    'nonsense page counts and paper fall back sensibly');
+  assert(coverPageCss(d) === '@page { size: 12.489in 9.25in; margin: 0; }', 'the cover prints edge to edge on one sheet');
+  const cs = normalizeBookSettings({ cover: { blurb: 'Hi' } }, { name: 'X' });
+  assert(cs.cover.blurb === 'Hi' && cs.cover.paper === 'white' && cs.cover.theme === 'leather' && cs.cover.pageCount === null,
+    'saved cover settings merge over the defaults');
+
+  const outline = Array.from({ length: 10 }, (_, i) => ({ number: i + 1, title: `T${i + 1}`, summary: i === 9 ? 'The queen dies.' : `s${i + 1}` }));
+  const bl = buildBlurbPrompt({ outline, cast: [{ name: 'Yargal', line: 'Orc Warrior' }], title: 'The Ashen Crown' });
+  assert(/T4 — s4/.test(bl.user) && !/T5/.test(bl.user) && !/queen dies/.test(bl.user),
+    'the blurb writer only sees the opening chapters, so it cannot spoil the ending');
+  assert(/never reveal how it ends/.test(bl.system) && /Yargal \(Orc Warrior\)/.test(bl.user), 'and is told not to');
+  assert(!readBookRequest({ campaignId: 'c', html: '<div class="bp-cover-wrap"></div>', css: '' }).error, 'the print server accepts a cover as well as a book');
+}
+
 section('Campaign memory');
 {
   assert(isArchivedNote({ archived: true }) && !isArchivedNote({}) && !isArchivedNote(null),
@@ -3642,6 +3664,15 @@ async function runAuthTests() {
       res = mkRes();
       await generateStorybookHandler({ method: 'POST', headers: {}, body: { action: 'epilogue', outline: [] } }, res);
       assert(res.statusCode === 400, 'an epilogue for an empty book is refused');
+
+      globalThis.fetch = reply(JSON.stringify({ blurb: 'Five strangers.\n\n\n\nOne crown.' }));
+      res = mkRes();
+      await generateStorybookHandler({ method: 'POST', headers: {}, body: { action: 'blurb', outline: [{ number: 1, title: 'T', summary: 's' }] } }, res);
+      assert(res.statusCode === 200 && res.payload.blurb === 'Five strangers.\n\nOne crown.', `the blurb action returns tidy copy (got ${JSON.stringify(res.payload)})`);
+      globalThis.fetch = reply('{"blurb": ""}');
+      res = mkRes();
+      await generateStorybookHandler({ method: 'POST', headers: {}, body: { action: 'blurb', outline: [{ number: 1, title: 'T', summary: 's' }] } }, res);
+      assert(res.statusCode === 502, 'an empty blurb is an error, not a blank back cover');
     } finally {
       globalThis.fetch = realFetch;
       if (realKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = realKey;

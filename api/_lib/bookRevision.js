@@ -131,3 +131,25 @@ Return JSON: {"title": "...", "prose": "..."}`;
 
   return { system, user };
 }
+
+/** Back-cover copy: sells the story without giving the ending away. */
+export function buildBlurbPrompt({ outline = [], cast = [], title = '', gameSystem = 'daggerheart' }) {
+  const genre = gameSystem === 'starwarsd6' ? 'space opera' : 'fantasy';
+  // The blurb only needs the setup; the back half of the book is where the spoilers live.
+  const setup = outline.slice(0, Math.max(1, Math.ceil(outline.length * 0.4)));
+  const system = `You write back-cover copy for ${genre} novels. Write the blurb for this one.
+
+- 110 to 170 words. Present tense. Open with a hook line, introduce the company and what's at stake, and close on a question or a promise.
+- Sell the story; never reveal how it ends or any late twist. You only know the opening chapters on purpose.
+- No game terms. No quotation marks around the title.
+
+Return JSON: {"blurb": "..."} — paragraphs separated by blank lines.`;
+  const user = [
+    title ? `# Title\n${clip(title, 120)}` : '',
+    `# How the story opens`,
+    setup.map(o => `${o.number}. ${clip(o.title, 80)} — ${clip(o.summary, 300)}`).join('\n') || '(no chapters)',
+    cast.length ? `\n# The company\n${cast.slice(0, 8).map(c => `- ${clip(c.name, 60)}${c.line ? ` (${clip(c.line, 60)})` : ''}`).join('\n')}` : '',
+    '\nReturn ONLY the JSON object.'
+  ].filter(Boolean).join('\n');
+  return { system, user };
+}

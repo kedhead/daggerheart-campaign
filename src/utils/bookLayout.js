@@ -47,6 +47,13 @@ export const DEFAULT_BOOK_SETTINGS = {
   includeGlossary: true,
   epilogue: null,          // { title, prose, createdAt } once written
   epilogueGuidance: '',
+  cover: {
+    imageUrl: '',
+    blurb: '',
+    paper: 'white',
+    theme: 'leather',
+    pageCount: null        // null = use the printed PDF's count, else the estimate
+  },
   excludedChapterIds: []
 };
 
@@ -61,6 +68,7 @@ export function normalizeBookSettings(saved, campaign) {
   if (!TRIM_SIZES.some(t => t.key === s.trim)) s.trim = DEFAULT_BOOK_SETTINGS.trim;
   if (!ILLUSTRATION_SIZES.some(i => i.key === s.illustrations)) s.illustrations = DEFAULT_BOOK_SETTINGS.illustrations;
   if (!Array.isArray(s.excludedChapterIds)) s.excludedChapterIds = [];
+  s.cover = { ...DEFAULT_BOOK_SETTINGS.cover, ...(saved?.cover || {}) };
   return s;
 }
 
@@ -374,4 +382,52 @@ export function epilogueContext({ bound, characters = [], threads = '', guidance
     threads,
     guidance
   };
+}
+
+// ── Cover ────────────────────────────────────────────────────────────────────
+
+// Paper thickness per page, from Amazon KDP's published spine formula. Lulu
+// and IngramSpark are within a few thousandths; their cover template for the
+// exact page count is the final word.
+export const PAPER_TYPES = [
+  { key: 'white', label: 'White paper (black & white interior)', inchesPerPage: 0.002252 },
+  { key: 'cream', label: 'Cream paper', inchesPerPage: 0.0025 },
+  { key: 'color', label: 'Color interior', inchesPerPage: 0.002347 }
+];
+
+export const COVER_THEMES = [
+  { key: 'leather', label: 'Leather & gilt', bg: '#24150d', ink: '#e9cf8f', soft: '#c9ad78' },
+  { key: 'midnight', label: 'Midnight', bg: '#0f1626', ink: '#e3cb93', soft: '#a9b3c8' },
+  { key: 'parchment', label: 'Parchment', bg: '#ecdfc0', ink: '#2a1e10', soft: '#5a4426' }
+];
+
+export const BLEED_IN = 0.125;
+// Below about 80 pages the spine is too narrow to hold type safely.
+export const MIN_SPINE_TEXT_PAGES = 80;
+
+/**
+ * The wraparound cover's measurements, in inches: back + spine + front, with
+ * bleed on every outside edge. Page counts are rounded up to even — every
+ * leaf has two sides.
+ */
+export function coverDimensions({ trim, pages, paper = 'white' }) {
+  const t = trimFor(trim);
+  const per = (PAPER_TYPES.find(p => p.key === paper) || PAPER_TYPES[0]).inchesPerPage;
+  const even = Math.max(2, Math.ceil((Number(pages) || 0) / 2) * 2);
+  const spine = +(even * per).toFixed(3);
+  return {
+    pages: even,
+    spine,
+    bleed: BLEED_IN,
+    width: +(2 * t.width + spine + 2 * BLEED_IN).toFixed(3),
+    height: +(t.height + 2 * BLEED_IN).toFixed(3),
+    trimWidth: t.width,
+    trimHeight: t.height,
+    spineText: even >= MIN_SPINE_TEXT_PAGES
+  };
+}
+
+/** @page rules for printing the cover: one sheet, edge to edge. */
+export function coverPageCss(dims) {
+  return `@page { size: ${dims.width}in ${dims.height}in; margin: 0; }`;
 }

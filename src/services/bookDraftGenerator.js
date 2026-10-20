@@ -41,3 +41,15 @@ export async function writeEpilogue({ bound, characters, threads, guidance, game
   if (!res.ok) throw new Error(data.error || data.message || `Epilogue failed (${res.status}).`);
   return { title: data.title || 'Epilogue', prose: data.prose, createdAt: new Date().toISOString() };
 }
+
+export async function writeBlurb({ bound, characters, title, gameSystem, apiKey }) {
+  const { outline, cast } = epilogueContext({ bound, characters });
+  const res = await apiFetch('/api/generate-storybook', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'blurb', outline, cast, title, gameSystem, apiKey: apiKey || undefined })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || data.message || `Blurb failed (${res.status}).`);
+  return data.blurb;
+}

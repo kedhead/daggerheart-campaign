@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import { X, Printer, BookOpen, AlertTriangle, CheckCircle2, CloudCog, Download, Wand2 } from 'lucide-react';
 import { apiFetch } from '../../services/apiClient';
 import { useAllJournals } from '../../hooks/useStorybook';
 import {
   TRIM_SIZES, ILLUSTRATION_SIZES, normalizeBookSettings, buildBook, trimFor,
-  illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount, bindableChapters
+  illustrationWidthIn, printDpi, pageCss, chapterLabel, estimatePages, wordCount, bindableChapters,
+  coverDimensions, coverPageCss, COVER_THEMES
 } from '../../utils/bookLayout';
+import { CoverSheet, CoverSection, frontArtDpi } from './BookCover';
 import SecondDraftSection from './SecondDraft';
-import { writeEpilogue } from '../../services/bookDraftGenerator';
+import { writeEpilogue, writeBlurb } from '../../services/bookDraftGenerator';
 import { BOOK_FONT_CSS, inlineBookFontCss } from './bookFonts';
 import bookCss from './BookPress.css?raw';
 import './BookPress.css';
@@ -151,35 +153,91 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
 
   // Print on the server: the same Chromium print as desktop Chrome, for phones
   // (whose browsers ignore the page size) or anyone who'd rather not fiddle
-  // with print settings. The finished PDF lands in campaign storage.
-  const [serverJob, setServerJob] = useState(null); // { state: 'working'|'done'|'error', ... }
-  const handleServerPdf = async () => {
+  // with print settings. The finished PDF lands in campaign storage. The
+  // interior and the cover are separate files, as printers ask for them.
+  const [serverJobs, setServerJobs] = useState({}); // target -> { state: 'working'|'done'|'error', ... }
+  const serverJob = serverJobs.book;
+  const coverJob = serverJobs.cover;
+  const setJob = (target, job) => setServerJobs(prev => ({ ...prev, [target]: job }));
+  const handleServerPdf = async (target = 'book') => {
     const started = Date.now();
-    setServerJob({ state: 'working', started });
+    setJob(target, { state: 'working', started });
     try {
       const vars = Object.entries(style).map(([k, v]) => `${k}:${v}`).join(';');
-      const html = `<div class="bp-root" style="${vars}">${bookRef.current.outerHTML}</div>`;
-      const css = (await inlineBookFontCss()) + pageCss(settings) + bookCss;
+      const html = target === 'cover'
+        ? `<div class="bp-root bp-print-cover" style="${vars}">${coverRef.current.outerHTML}</div>`
+        : `<div class="bp-root" style="${vars}">${bookRef.current.outerHTML}</div>`;
+      const css = (await inlineBookFontCss()) + (target === 'cover' ? coverPageCss(dims) : pageCss(settings)) + bookCss;
       const res = await apiFetch('/api/render-book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campaignId, html, css, title: settings.title })
+        body: JSON.stringify({ campaignId, html, css, title: target === 'cover' ? `${settings.title} cover` : settings.title })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Printing failed (${res.status}).`);
-      setServerJob({ state: 'done', ...data, seconds: Math.round((Date.now() - started) / 1000) });
+      setJob(target, { state: 'done', ...data, seconds: Math.round((Date.now() - started) / 1000) });
     } catch (err) {
-      setServerJob({ state: 'error', message: err.message });
+      setJob(target, { state: 'error', message: err.message });
     }
+  };
+
+  // ── Cover ──────────────────────────────────────────────────────────────────
+  const coverRef = useRef(null);
+  const setCover = (patch) => setSettings(s => ({ ...s, cover: { ...s.cover, ...patch } }));
+  const artChoices = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    const add = (url, label) => { if (url && !seen.has(url)) { seen.add(url); out.push({ url, label }); } };
+    published.forEach(c => (c.scenes || []).forEach(sc => add(sc.imageUrl, sc.caption || c.title)));
+    [...characters, ...npcs].forEach(e => add(e.avatarUrl, e.name));
+    return out;
+  }, [published, characters, npcs]);
+  const coverImage = settings.cover.imageUrl || artChoices[0]?.url || '';
+  // The spine follows the real page count once the server has printed the
+  // interior; until then, the estimate — and the author can always type it.
+  const coverPages = settings.cover.pageCount ?? (serverJob?.state === 'done' ? serverJob.pages : pages);
+  const pageSource = settings.cover.pageCount != null
+    ? 'as entered'
+    : serverJob?.state === 'done' ? 'from your print-ready PDF' : 'estimated, so print the interior first for the exact count';
+  const dims = coverDimensions({ trim: settings.trim, pages: coverPages, paper: settings.cover.paper });
+  const coverTheme = COVER_THEMES.find(t => t.key === settings.cover.theme) || COVER_THEMES[0];
+  const [artWidth, setArtWidth] = useState(0);
+  const [blurbJob, setBlurbJob] = useState(null);
+  const handleWriteBlurb = async () => {
+    setBlurbJob({ state: 'working' });
+    try {
+      const blurb = await writeBlurb({
+        bound: bindableChapters(published, settings), characters, title: settings.title,
+        gameSystem: campaign?.gameSystem || 'daggerheart', apiKey
+      });
+      setCover({ blurb });
+      setBlurbJob(null);
+    } catch (err) {
+      setBlurbJob({ state: 'error', message: err.message });
+    }
+  };
+
+  // Printing the cover swaps the page rules and what's visible, then prints —
+  // synchronously, for the same iPhone reason as the book — and swaps back
+  // once the print dialog is done with.
+  const [printTarget, setPrintTarget] = useState('book');
+  useEffect(() => {
+    const reset = () => setPrintTarget('book');
+    window.addEventListener('afterprint', reset);
+    return () => window.removeEventListener('afterprint', reset);
+  }, []);
+  const handlePrintCover = () => {
+    flushSync(() => setPrintTarget('cover'));
+    window.print();
   };
 
   // A ticking counter, so a minute-long print doesn't look frozen.
   const [, setTick] = useState(0);
   useEffect(() => {
-    if (serverJob?.state !== 'working') return;
+    if (serverJob?.state !== 'working' && coverJob?.state !== 'working') return;
     const t = setInterval(() => setTick(n => n + 1), 1000);
     return () => clearInterval(t);
-  }, [serverJob?.state]);
+  }, [serverJob?.state, coverJob?.state]);
 
   const style = {
     '--bp-page-w': `${trim.width}in`,
@@ -193,8 +251,8 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
   };
 
   return createPortal(
-    <div className="bp-root" style={style}>
-      <style>{BOOK_FONT_CSS + pageCss(settings)}</style>
+    <div className={`bp-root ${printTarget === 'cover' ? 'bp-print-cover' : ''}`} style={style}>
+      <style>{BOOK_FONT_CSS + (printTarget === 'cover' ? coverPageCss(dims) : pageCss(settings))}</style>
 
       <aside className="bp-panel" aria-label="Book settings">
         <div className="bp-panel-head">
@@ -307,6 +365,18 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
           )}
         </section>
 
+        <CoverSection
+          settings={settings}
+          setCover={setCover}
+          dims={dims}
+          pageSource={pageSource}
+          artChoices={artChoices}
+          imageUrl={coverImage}
+          artDpi={artWidth ? frontArtDpi(artWidth, dims) : 0}
+          onWriteBlurb={handleWriteBlurb}
+          blurbJob={blurbJob}
+        />
+
         <section className="bp-group">
           <h3>Preflight</h3>
           <ul className="bp-preflight">
@@ -360,7 +430,7 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
           <button
             type="button"
             className="bp-print-btn bp-print-btn-alt"
-            onClick={handleServerPdf}
+            onClick={() => handleServerPdf('book')}
             disabled={book.chapters.length === 0 || !printReady || serverJob?.state === 'working'}
           >
             <CloudCog size={16} />
@@ -384,9 +454,48 @@ export default function BookPress({ campaign, campaignId, chapters, characters =
             <p className="bp-warn bp-note"><AlertTriangle size={14} /><span>{serverJob.message}</span></p>
           )}
         </section>
+
+        <section className="bp-group">
+          <h3>Print the cover</h3>
+          <p className="bp-muted">
+            A separate {dims.width} × {dims.height} in PDF. Leave the bottom right of the back cover clear: printers put the barcode there.
+          </p>
+          <button type="button" className="bp-print-btn" onClick={handlePrintCover}>
+            <Printer size={16} /> Print / Save cover PDF
+          </button>
+          <button
+            type="button"
+            className="bp-print-btn bp-print-btn-alt"
+            onClick={() => handleServerPdf('cover')}
+            disabled={coverJob?.state === 'working'}
+          >
+            <CloudCog size={16} />
+            {coverJob?.state === 'working'
+              ? `Printing the cover… ${Math.round((Date.now() - coverJob.started) / 1000)}s`
+              : 'Make print-ready cover PDF'}
+          </button>
+          {coverJob?.state === 'done' && (
+            <a className="bp-download" href={coverJob.url} target="_blank" rel="noopener noreferrer">
+              <Download size={15} />
+              <span>Download cover PDF · {(coverJob.bytes / 1048576).toFixed(1)} MB</span>
+            </a>
+          )}
+          {coverJob?.state === 'error' && (
+            <p className="bp-warn bp-note"><AlertTriangle size={14} /><span>{coverJob.message}</span></p>
+          )}
+        </section>
       </aside>
 
       <main className="bp-desk">
+        <div ref={coverRef}>
+          <CoverSheet
+            settings={settings}
+            dims={dims}
+            theme={coverTheme}
+            imageUrl={coverImage}
+            onArtLoad={(e) => setArtWidth(e.currentTarget.naturalWidth || 0)}
+          />
+        </div>
         <article className="bp-book" ref={bookRef}>
           <FrontMatter settings={settings} book={book} />
           {book.chapters.map(ch => (

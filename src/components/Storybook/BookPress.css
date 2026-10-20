@@ -259,6 +259,82 @@ textarea.bp-sd-col-body { resize: none; border: 0; outline: none; background: rg
 
 .bp-finis { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-style: italic; color: var(--bp-ink-soft); }
 
+/* ── Cover ───────────────────────────────────────────────────────────────── */
+
+.bp-art-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; margin-top: 0.5rem; max-height: 14rem; overflow-y: auto; }
+.bp-art-choice { padding: 0; aspect-ratio: 1; border: 2px solid transparent; border-radius: 0.4rem; overflow: hidden; background: none; cursor: pointer; }
+.bp-art-choice.on { border-color: var(--bp-gilt); }
+.bp-art-choice img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.bp-cover-wrap { display: flex; justify-content: center; margin: 0 0 2rem; overflow-x: auto; }
+.bp-cover {
+  position: relative; flex: none; overflow: hidden;
+  zoom: var(--cv-zoom);
+  background: var(--cv-bg); color: var(--cv-ink);
+  font-family: 'Book Garamond', Georgia, serif;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+
+.bp-cover-back {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  width: calc(var(--cv-bleed) + var(--cv-trim-w));
+  box-sizing: border-box;
+  padding: calc(var(--cv-bleed) + 0.7in) 0.6in calc(var(--cv-bleed) + 0.6in) calc(var(--cv-bleed) + 0.6in);
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.bp-cover-blurb p { margin: 0 0 0.75em; font-size: 11.5pt; line-height: 1.45; }
+.bp-cover-blurb p:first-child { font-size: 13pt; font-style: italic; }
+.bp-cover-placeholder { opacity: 0.5; font-style: italic; }
+/* The barcode box sits bottom right; the footer stays to its left. */
+.bp-cover-back-foot { width: 55%; font-family: 'Book Cinzel', serif; font-size: 8.5pt; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cv-soft); }
+.bp-cover-rule { width: 1.2in; height: 1px; background: currentColor; margin-bottom: 0.6em; opacity: 0.7; }
+
+.bp-cover-spine {
+  position: absolute; top: 0; bottom: 0;
+  left: calc(var(--cv-bleed) + var(--cv-trim-w));
+  width: var(--cv-spine);
+  display: flex; align-items: center; justify-content: center;
+}
+.bp-cover-spine-text {
+  writing-mode: vertical-rl;
+  font-family: 'Book Cinzel', serif; font-weight: 600;
+  font-size: clamp(6pt, calc(var(--cv-spine) * 0.42), 16pt);
+  letter-spacing: 0.14em; white-space: nowrap;
+}
+
+.bp-cover-front {
+  position: absolute; top: 0; bottom: 0; right: 0;
+  width: calc(var(--cv-trim-w) + var(--cv-bleed));
+  overflow: hidden;
+}
+.bp-cover-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.bp-cover-shade {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--cv-bg) 88%, transparent) 0%,
+    color-mix(in srgb, var(--cv-bg) 30%, transparent) 30%,
+    transparent 48%, transparent 66%,
+    color-mix(in srgb, var(--cv-bg) 88%, transparent) 100%);
+}
+.bp-cover-front-title {
+  position: absolute; top: calc(var(--cv-bleed) + 0.75in); left: 0.5in; right: calc(var(--cv-bleed) + 0.5in);
+  text-align: center;
+}
+.bp-cover-front-title h1 { margin: 0; font-family: 'Book Cinzel', serif; font-weight: 700; font-size: 32pt; line-height: 1.08; letter-spacing: 0.03em; }
+.bp-cover-front-title p { margin: 0.5em 0 0; font-style: italic; font-size: 13pt; color: var(--cv-soft); }
+.bp-cover-front-byline {
+  position: absolute; bottom: calc(var(--cv-bleed) + 0.6in); left: 0.5in; right: calc(var(--cv-bleed) + 0.5in);
+  text-align: center; font-family: 'Book Cinzel', serif; font-size: 10pt; letter-spacing: 0.22em; text-transform: uppercase;
+}
+
+.bp-cover-guide { position: absolute; pointer-events: none; }
+.bp-cover-guide-trim { inset: var(--cv-bleed); border: 1px dashed rgba(255, 90, 90, 0.75); }
+.bp-cover-guide-spine-l,
+.bp-cover-guide-spine-r { top: 0; bottom: 0; border-left: 1px dashed rgba(255, 90, 90, 0.75); }
+.bp-cover-guide-spine-l { left: calc(var(--cv-bleed) + var(--cv-trim-w)); }
+.bp-cover-guide-spine-r { left: calc(var(--cv-bleed) + var(--cv-trim-w) + var(--cv-spine)); }
+
 /* ── Phones: panel above, book scaled into view ─────────────────────────── */
 
 @media (max-width: 860px) {
@@ -271,9 +347,13 @@ textarea.bp-sd-col-body { resize: none; border: 0; outline: none; background: rg
 /* ── Print: the book and nothing else ───────────────────────────────────── */
 
 @media print {
+  /* No browser default margin: the server's print page has no app reset, and
+     8px of body margin would push a full-bleed cover onto a second sheet. */
   html, body {
     height: auto !important;
     overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: #fff !important;
   }
   body > *:not(.bp-root) { display: none !important; }
@@ -299,6 +379,14 @@ textarea.bp-sd-col-body { resize: none; border: 0; outline: none; background: rg
     break-before: page;
   }
   .bp-sheet:first-child { break-before: auto; }
+
+  /* The interior and the cover print as separate files. */
+  .bp-cover-wrap { display: none; }
+  .bp-root.bp-print-cover .bp-book { display: none; }
+  .bp-root.bp-print-cover .bp-cover-wrap { display: block; margin: 0; overflow: visible; }
+  .bp-cover { zoom: 1; box-shadow: none; break-inside: avoid; }
+  .bp-root.bp-print-cover .bp-desk { height: 0; }
+  .bp-cover-guide { display: none; }
 
   /* A hair under the page box, so a full-height page never spills a blank one. */
   .bp-title-page,
