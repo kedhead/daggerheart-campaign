@@ -3,6 +3,7 @@ import { Save, X, Plus, Trash2, ExternalLink } from 'lucide-react';
 import './GenericForm.css';
 import '../CharacterForm.css';
 import { useNotify } from '../../../contexts/ToastContext';
+import StoryVoiceFields from '../StoryVoiceFields';
 
 export default function GenericForm({ character, onSave, onCancel, isDM }) {
   const notify = useNotify();
@@ -439,6 +440,9 @@ export default function GenericForm({ character, onSave, onCancel, isDM }) {
           />
         </div>
       </div>
+
+      {/* How the AI storyteller writes and draws them */}
+      <StoryVoiceFields values={formData} onChange={handleChange} />
 
       {/* Backstory */}
       <div className="input-group">

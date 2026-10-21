@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Save, X, ExternalLink } from 'lucide-react';
 import '../CharacterForm.css';
 import { useNotify } from '../../../contexts/ToastContext';
+import StoryVoiceFields from '../StoryVoiceFields';
 
 export default function DnD5eForm({ character, onSave, onCancel, isDM }) {
   const notify = useNotify();
@@ -157,6 +158,9 @@ export default function DnD5eForm({ character, onSave, onCancel, isDM }) {
           rows="4"
         />
       </div>
+
+      {/* How the AI storyteller writes and draws them */}
+      <StoryVoiceFields values={formData} onChange={handleChange} />
 
       {/* Backstory */}
       <div className="input-group">
