@@ -18,7 +18,9 @@ import { promptBuilder } from '../src/services/promptBuilder.js';
 import ErrorBoundary from '../src/components/ErrorBoundary.jsx';
 import { ConfirmProvider, useConfirm } from '../src/contexts/ConfirmContext.jsx';
 import { useNotify } from '../src/contexts/ToastContext.jsx';
-import generateImageHandler from '../api/generate-image.js';
+import { particleCount, normalizeEffects, AVAILABLE_EFFECTS as WEATHER_EFFECTS } from '../src/components/BattleMapStudio/Canvas/weatherEngine.js';
+import generateImageHandler, { setMapUploaderForTests } from '../api/generate-image.js';
+import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, shouldTryNextModel, readMapRequest, mapStoragePath, MAP_MODELS } from '../api/_lib/battleMap.js';
 import generateStorybookHandler from '../api/generate-storybook.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
@@ -3450,6 +3452,57 @@ section('Story fields on every character form');
   assert(/Sample Lines/.test(generic) && /Story Voice/.test(generic), 'other game systems’ forms carry the story fields too');
 }
 
+section('AI battle maps');
+{
+  const p = buildMapPrompt({ description: 'A ruined chapel in a swamp, sunken pews, a collapsed bell tower', style: 'grim', lighting: 'night' });
+  assert(/directly overhead/.test(p) && /orthographic/.test(p) && /ruined chapel in a swamp/.test(p),
+    'the map prompt asks for a true top-down view of the described scene');
+  assert(/grim dark fantasy/.test(p) && /moonlit night/.test(p) && /16:9 widescreen/.test(p) && /edge to edge/.test(p),
+    'it carries the chosen style and lighting, and fills a 16:9 frame edge to edge');
+  assert(/Do not draw any border/.test(p) && /grid lines/.test(p) && /people, creatures or tokens/.test(p),
+    'it forbids anything that would sit on the players’ screen: frames, text, grid, creatures');
+  assert(/painted digital fantasy/.test(buildMapPrompt({ description: 'x', style: 'nope', lighting: 'nope' })), 'unknown styles fall back to painted');
+  const r = buildRefinePrompt({ instruction: 'add a rope bridge over the chasm' });
+  assert(/rope bridge/.test(r) && /Keep everything else exactly as it is/.test(r), 'a refine changes one thing and keeps the rest');
+
+  const chain = modelChain(false);
+  assert(chain[0].model === MAP_MODELS.standard && chain[0].size === '2560x1440' && chain.at(-1).model === 'gpt-image-1' && chain.at(-1).size === '1536x1024',
+    'maps start with GPT Image 2.5 at 2560x1440 and end with gpt-image-1 at the size it supports');
+  assert(modelChain(true)[0].model === MAP_MODELS.premium && modelChain(true)[1].model === MAP_MODELS.standard, 'premium tries Sunburst, then Flare');
+
+  assert(shouldTryNextModel(404, {}) && shouldTryNextModel(400, { error: { code: 'model_not_found' } })
+    && shouldTryNextModel(400, { error: { message: 'The model `gpt-image-2.5-flare` does not exist' } })
+    && shouldTryNextModel(400, { error: { param: 'size', message: 'Invalid size' } }),
+    'a missing model or an unsupported size moves on to the next model');
+  assert(!shouldTryNextModel(400, { error: { code: 'moderation_blocked', message: 'Your request was rejected by the safety system' } })
+    && !shouldTryNextModel(401, { error: { message: 'Incorrect API key' } }) && !shouldTryNextModel(429, { error: { message: 'Rate limit' } }),
+    'refusals, bad keys and rate limits are reported, not retried on another model');
+
+  assert(readMapRequest({ campaignId: 'c1', description: 'a cave' }).quality === 'high' && readMapRequest({ campaignId: 'c1', description: 'a cave' }).style === 'painted',
+    'a plain request defaults to high quality, painted style');
+  assert(readMapRequest({ campaignId: '../x', description: 'a' }).error && readMapRequest({ campaignId: 'c', description: ' ' }).error
+    && readMapRequest({ campaignId: 'c', instruction: 'add a door' }).error,
+    'bad campaign ids, empty descriptions and refines without a map are refused');
+  assert(mapStoragePath('c1', 7) === 'campaigns/c1/battleMaps/ai_7.jpg', 'maps save to the campaign’s battle maps folder');
+}
+
+section('Battle map weather');
+{
+  const ids = WEATHER_EFFECTS.map(e => e.id);
+  assert(['rain', 'heavyRain', 'snow', 'blizzard', 'fog', 'mist', 'dust', 'leaves', 'embers', 'firelight', 'waterShimmer'].every(id => ids.includes(id)),
+    'every effect saved on older maps still exists');
+  assert(['storm', 'night', 'fireflies', 'arcane', 'sunbeams'].every(id => ids.includes(id)), 'the new effects are offered');
+  assert(JSON.stringify(normalizeEffects(['rain', 'rain', 'lava', null, 'fog'])) === '["rain","fog"]' && normalizeEffects(undefined).length === 0,
+    'unknown and duplicate effects are dropped');
+  const hd = particleCount('rain', 1920, 1080, 1);
+  const qhd = particleCount('rain', 2560, 1440, 1);
+  const phone = particleCount('rain', 390, 220, 1);
+  assert(hd === 260 && qhd > hd && qhd < hd * 1.78 && phone < hd / 2,
+    `particle counts follow the screen size, more on a 1440p monitor but not wastefully so (got ${phone}/${hd}/${qhd})`);
+  assert(particleCount('rain', 1920, 1080, 2) === 520 && particleCount('heavyRain', 1920, 1080, 1) > particleCount('rain', 1920, 1080, 1) && particleCount('rain', 1920, 1080, 0) === 0 && particleCount('fog', 1920, 1080, 1) === 0,
+    'intensity scales particles; effects drawn without particles (fog) have none');
+}
+
 section('Campaign memory');
 {
   assert(isArchivedNote({ archived: true }) && !isArchivedNote({}) && !isArchivedNote(null),
@@ -3717,6 +3770,74 @@ async function runAuthTests() {
 })()
   .then(() => runImageApiTests())
   .then(() => runAuthTests())
+  .then(async () => {
+    section('AI battle map endpoint');
+    setTokenVerifierForTests(async () => ({ uid: 'dm', email: null }));
+    const realFetch = globalThis.fetch;
+    const env = { key: process.env.OPENAI_API_KEY, bucket: process.env.VITE_FIREBASE_STORAGE_BUCKET };
+    process.env.OPENAI_API_KEY = 'sk-test';
+    process.env.VITE_FIREBASE_STORAGE_BUCKET = 'b.appspot.com';
+    const uploads = [];
+    setMapUploaderForTests(async (u) => { uploads.push(u); return `https://firebasestorage.googleapis.com/v0/b/b/o/${encodeURIComponent(u.path)}?alt=media`; });
+    const mkRes = () => ({ statusCode: 0, payload: null, setHeader() {}, status(c) { this.statusCode = c; return this; }, json(p) { this.payload = p; return this; }, end() { return this; } });
+    const calls = [];
+    const openai = (handlers) => async (url, init = {}) => {
+      const isForm = init.body instanceof FormData;
+      const body = isForm ? Object.fromEntries([...init.body.entries()].filter(([k]) => k !== 'image')) : (init.body ? JSON.parse(init.body) : null);
+      calls.push({ url: String(url), body, hasImage: isForm && init.body.has('image') });
+      const h = handlers.shift();
+      return h(url);
+    };
+    const json = (status, obj) => async () => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json' } });
+    const image = json(200, { data: [{ b64_json: Buffer.from('jpegbytes').toString('base64') }] });
+    try {
+      globalThis.fetch = openai([image]);
+      let res = mkRes();
+      await generateImageHandler({ method: 'POST', headers: { authorization: 'Bearer ID' }, body: { type: 'ai-map', campaignId: 'c1', description: 'a misty harbour', style: 'painted', lighting: 'golden' } }, res);
+      assert(res.statusCode === 200 && res.payload.width === 2560 && res.payload.height === 1440 && res.payload.model === MAP_MODELS.standard,
+        `a map is made with GPT Image 2.5 at 2560x1440 (got ${res.statusCode} ${JSON.stringify(res.payload)?.slice(0, 160)})`);
+      assert(calls[0].url.endsWith('/images/generations') && calls[0].body.size === '2560x1440' && calls[0].body.quality === 'high' && calls[0].body.output_format === 'jpeg'
+        && /misty harbour/.test(calls[0].body.prompt), 'the request asks for a high-quality 16:9 JPEG of the described scene');
+      assert(uploads[0]?.contentType === 'image/jpeg' && uploads[0]?.idToken === 'ID' && /battleMaps\/ai_\d+\.jpg$/.test(uploads[0]?.path) && Buffer.from(uploads[0].bytes).toString() === 'jpegbytes',
+        'the image is saved to campaign storage as the DM, so the response stays small');
+      assert(/^https:\/\/firebasestorage/.test(res.payload.imageUrl), 'the client gets a storage URL, not megabytes of base64');
+
+      calls.length = 0;
+      globalThis.fetch = openai([json(404, { error: { message: 'The model `gpt-image-2.5-flare` does not exist', code: 'model_not_found' } }),
+        json(400, { error: { message: 'Invalid size', param: 'size' } }), image]);
+      res = mkRes();
+      await generateImageHandler({ method: 'POST', headers: { authorization: 'Bearer ID' }, body: { type: 'ai-map', campaignId: 'c1', description: 'x' } }, res);
+      assert(res.statusCode === 200 && res.payload.model === 'gpt-image-1' && res.payload.width === 1536 && calls.map(c => c.body.model).join() === `${MAP_MODELS.standard},gpt-image-2,gpt-image-1`,
+        `when newer models are unavailable it falls back down the chain (got ${calls.map(c => c.body.model)})`);
+
+      calls.length = 0;
+      globalThis.fetch = openai([json(400, { error: { message: 'Your request was rejected by the safety system', code: 'moderation_blocked' } })]);
+      res = mkRes();
+      await generateImageHandler({ method: 'POST', headers: { authorization: 'Bearer ID' }, body: { type: 'ai-map', campaignId: 'c1', description: 'x' } }, res);
+      assert(res.statusCode === 400 && /safety system/.test(res.payload.error) && calls.length === 1, 'a refusal is reported once, not retried');
+
+      calls.length = 0;
+      globalThis.fetch = openai([json(200, {}), image]);
+      globalThis.fetch = async (url, init = {}) => {
+        if (String(url).startsWith('https://firebasestorage')) return new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+        const isForm = init.body instanceof FormData;
+        calls.push({ url: String(url), model: isForm ? init.body.get('model') : null, prompt: isForm ? init.body.get('prompt') : null, hasImage: isForm && init.body.has('image') });
+        return image();
+      };
+      res = mkRes();
+      await generateImageHandler({ method: 'POST', headers: { authorization: 'Bearer ID' }, body: { type: 'ai-map', campaignId: 'c1', instruction: 'add a rope bridge', imageUrl: 'https://firebasestorage.googleapis.com/v0/b/b/o/m.jpg?alt=media' } }, res);
+      assert(res.statusCode === 200 && calls[0]?.url.endsWith('/images/edits') && calls[0].hasImage && /rope bridge/.test(calls[0].prompt),
+        `refining sends the current map to the edit endpoint with the change (got ${res.statusCode} ${JSON.stringify(calls[0])})`);
+      res = mkRes();
+      await generateImageHandler({ method: 'POST', headers: { authorization: 'Bearer ID' }, body: { type: 'ai-map', campaignId: 'c1', instruction: 'x', imageUrl: 'http://169.254.169.254/latest' } }, res);
+      assert(res.statusCode === 400, 'only maps saved in the app can be refined — the server will not fetch arbitrary URLs');
+    } finally {
+      globalThis.fetch = realFetch;
+      setMapUploaderForTests(null);
+      if (env.key === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = env.key;
+      if (env.bucket === undefined) delete process.env.VITE_FIREBASE_STORAGE_BUCKET; else process.env.VITE_FIREBASE_STORAGE_BUCKET = env.bucket;
+    }
+  })
   .then(async () => {
     section('Second Draft endpoint');
     setTokenVerifierForTests(async () => ({ uid: 'u', email: null }));

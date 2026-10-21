@@ -61,6 +61,42 @@ export async function generateBattleMap(options) {
 }
 
 /**
+ * Generate an AI battle map with the new pipeline: GPT Image 2.5 at
+ * 2560x1440, saved straight to campaign storage by the server (see
+ * api/_lib/battleMap.js). Returns { url, width, height, model, prompt }.
+ *
+ * @param {object} opts
+ * @param {string} opts.campaignId
+ * @param {string} opts.description - what the map shows
+ * @param {string} [opts.style]     - painted | realistic | inked | grim | storybook
+ * @param {string} [opts.lighting]  - day | golden | overcast | night | torchlit | eerie
+ * @param {string} [opts.quality]   - medium | high
+ * @param {boolean} [opts.premium]  - use the slower premium model
+ */
+export async function generateAiMap({ campaignId, description, style, lighting, quality, premium }) {
+  return callAiMap({ campaignId, description, style, lighting, quality, premium });
+}
+
+/**
+ * Change part of an existing AI map ("add a rope bridge"), keeping the rest.
+ * Same result shape as generateAiMap.
+ */
+export async function refineAiMap({ campaignId, imageUrl, instruction, quality, premium }) {
+  return callAiMap({ campaignId, imageUrl, instruction, quality, premium });
+}
+
+async function callAiMap(body) {
+  const response = await apiFetch('/api/generate-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'ai-map', ...body })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || data.message || `Map generation failed (${response.status}).`);
+  return { url: data.imageUrl, width: data.width, height: data.height, model: data.model, prompt: data.prompt };
+}
+
+/**
  * Generate a map asset/tile using AI
  * @param {object} options - Generation options
  * @param {string} options.prompt - Description of the asset
@@ -229,6 +265,8 @@ export const assetCategories = {
 
 export const battleMapGeneratorService = {
   generateBattleMap,
+  generateAiMap,
+  refineAiMap,
   generateMapAsset,
   saveGeneratedImage,
   mapPromptTemplates,

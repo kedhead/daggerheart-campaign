@@ -1,236 +1,98 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { Stage, Layer, Image as KonvaImage, Rect } from 'react-konva';
-import useImage from 'use-image';
-import { Maximize, Minimize, RotateCw, Grid } from 'lucide-react';
+import { Maximize, Minimize, RotateCw, Map as MapIcon, Expand, Shrink } from 'lucide-react';
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
-// Shared with the studio so the two views cannot drift apart again.
-import GridOverlay from '../BattleMapStudio/Canvas/GridOverlay';
-import FogOfWarLayer from '../BattleMapStudio/Canvas/FogOfWarLayer';
-import TokenLayer from '../BattleMapStudio/Canvas/TokenLayer';
-import DrawingLayer from '../BattleMapStudio/Canvas/DrawingLayer';
 import { DiceTray, DiceRoller, RollHistory } from '../../dice';
 import AudioReceiver from '../Soundboard/AudioReceiver';
+import { useWakeLock } from '../../hooks/useWakeLock';
 import './BattleMapDisplayWindow.css';
 
-const noop = () => {};
+// How the map meets the screen: 'fill' covers it edge to edge (a 16:9 map on
+// a 16:9 monitor loses nothing), 'fit' shows the whole map with bars if the
+// shapes differ. Remembered per screen.
+const FIT_KEY = 'battleMapDisplay.fit';
+const readFit = () => { try { return localStorage.getItem(FIT_KEY) === 'fit' ? 'fit' : 'fill'; } catch { return 'fill'; } };
 
 /**
- * Main map canvas component
+ * The map itself, sized to the screen rather than to the map's stored pixel
+ * size. It used to draw onto a canvas at the map's resolution and stretch it
+ * with a CSS transform, which went soft on a 1440p monitor and left gaps
+ * whenever the stored size was missing or wrong.
  */
-function MapCanvas({ mapState }) {
-  const isVideo = mapState?.mapImage?.isVideo;
-  const isYouTube = mapState?.mapImage?.isYouTube;
-  const isStaticImage = !isVideo && !isYouTube;
-  const [mapImage] = useImage(isStaticImage ? mapState?.mapImage?.url : null, 'anonymous');
-
-  if (!mapState?.mapImage) {
+function MapView({ mapState, fit }) {
+  const map = mapState?.mapImage;
+  if (!map) {
     return (
       <div className="no-map-message">
-        <Grid size={64} />
+        <MapIcon size={64} />
         <h2>No Battle Map</h2>
-        <p>Waiting for DM to broadcast a map...</p>
+        <p>Waiting for the DM to show a map...</p>
       </div>
     );
   }
-
-  const {
-    mapImage: mapData,
-    tokens = [],
-    showTokenLabels = true,
-    drawings = [],
-    gridSize = 50,
-    gridType = 'square',
-    gridVisible = true,
-    gridColor = 'rgba(255,255,255,0.3)',
-    fogRevealed = [],
-    fogEnabled = true,
-    animationEffects = [],
-    animationIntensity = 1,
-    animationEnabled = false
-  } = mapState;
-
-  // Fog with nothing revealed means the DM has covered the whole map — that
-  // must render as fully fogged, not as no fog at all.
-  const showFog = fogEnabled;
-
-  // Same split as the studio: scenery renders beneath creature tokens.
-  const backgroundTokens = tokens.filter(t => t.layer === 'background');
-  const foregroundTokens = tokens.filter(t => t.layer !== 'background');
+  const objectFit = fit === 'fit' ? 'contain' : 'cover';
+  const { animationEffects = [], animationIntensity = 1, animationEnabled = false } = mapState;
 
   return (
-    <div style={{ position: 'relative', width: mapData.width, height: mapData.height }}>
-      {/* YouTube iframe background */}
-      {isYouTube && mapData.youtubeId && (
+    <div className="bmd-map">
+      {map.isYouTube && map.youtubeId ? (
         <iframe
-          src={`https://www.youtube.com/embed/${mapData.youtubeId}?autoplay=1&loop=1&controls=0&mute=1&playlist=${mapData.youtubeId}&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1`}
+          className={`bmd-youtube ${objectFit}`}
+          src={`https://www.youtube.com/embed/${map.youtubeId}?autoplay=1&loop=1&controls=0&mute=1&playlist=${map.youtubeId}&showinfo=0&rel=0&modestbranding=1&iv_load_policy=3&disablekb=1`}
           allow="autoplay; encrypted-media"
-          allowFullScreen
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            border: 'none',
-            pointerEvents: 'none',
-            zIndex: 0
-          }}
-          title="Battle Map Background"
+          title="Battle map"
         />
-      )}
-      {/* Video background for animated maps */}
-      {isVideo && !isYouTube && (
+      ) : map.isVideo ? (
         <video
-          src={mapData.url}
+          className="bmd-media"
+          src={map.url}
           autoPlay
           loop
           muted
           playsInline
-          crossOrigin={mapData.isExternal ? 'anonymous' : undefined}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            pointerEvents: 'none',
-            zIndex: 0
-          }}
+          crossOrigin={map.isExternal ? 'anonymous' : undefined}
+          style={{ objectFit }}
         />
+      ) : map.url && !map.isBlank ? (
+        <img className="bmd-media" src={map.url} alt="" style={{ objectFit }} />
+      ) : (
+        <div className="bmd-media" style={{ background: map.bgColor || '#1a1a2e' }} />
       )}
-      <Stage
-        width={mapData.width}
-        height={mapData.height}
-        style={{ background: isStaticImage ? '#000' : 'transparent', position: 'relative', zIndex: 1 }}
-      >
-        {/* Background layer - only for static images */}
-        {isStaticImage && (
-          <Layer>
-            {/* Blank canvases carry no image, just a fill colour */}
-            {(mapData.isBlank || !mapData.url) ? (
-              <Rect
-                x={0}
-                y={0}
-                width={mapData.width}
-                height={mapData.height}
-                fill={mapData.bgColor || '#1a1a2e'}
-              />
-            ) : mapImage && (
-              <KonvaImage
-                image={mapImage}
-                width={mapData.width}
-                height={mapData.height}
-              />
-            )}
-          </Layer>
-        )}
 
-        {/* Scenery, beneath grid and creatures */}
-        {backgroundTokens.length > 0 && (
-          <Layer listening={false}>
-            <TokenLayer
-              tokens={backgroundTokens}
-              selectedIds={[]}
-              onSelect={noop}
-              onUpdate={noop}
-              gridSize={gridSize}
-              snapToGrid={false}
-              isSelectable={false}
-              showLabels={showTokenLabels}
-            />
-          </Layer>
-        )}
-
-        {/* Grid layer */}
-        {gridVisible && gridType !== 'none' && (
-          <Layer listening={false}>
-            <GridOverlay
-              width={mapData.width}
-              height={mapData.height}
-              gridType={gridType}
-              gridSize={gridSize}
-              gridColor={gridColor}
-            />
-          </Layer>
-        )}
-
-        {/* DM annotations — broadcast all along but never rendered here */}
-        <DrawingLayer drawings={drawings} />
-
-        {/* Tokens layer */}
-        <Layer listening={false}>
-          <TokenLayer
-            tokens={foregroundTokens}
-            selectedIds={[]}
-            onSelect={noop}
-            onUpdate={noop}
-            gridSize={gridSize}
-            snapToGrid={false}
-            isSelectable={false}
-            showLabels={showTokenLabels}
-          />
-        </Layer>
-
-        {/* Fog of War layer - on top of everything */}
-        {showFog && (
-          <Layer listening={false}>
-            <FogOfWarLayer
-              width={mapData.width}
-              height={mapData.height}
-              revealed={fogRevealed}
-            />
-          </Layer>
-        )}
-      </Stage>
-
-      {/* Animation overlay */}
-      {animationEnabled && animationEffects.length > 0 && (
-        <MapAnimationOverlay
-          width={mapData.width}
-          height={mapData.height}
-          effects={animationEffects}
-          intensity={animationIntensity}
-          enabled={animationEnabled}
-        />
-      )}
+      <MapAnimationOverlay
+        effects={animationEffects}
+        intensity={animationIntensity}
+        enabled={animationEnabled}
+      />
     </div>
   );
 }
 
 /**
- * Battle Map Display Window
- * Standalone display for battle maps, separate from the main Player Display
+ * Battle Map Display Window — the screen the players look at.
  */
 export default function BattleMapDisplayWindow({ campaignId }) {
   const [mapState, setMapState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
-  // Rotate map by 90 degrees
-  const rotateMap = useCallback(() => {
-    setRotation(prev => (prev + 90) % 360);
-  }, []);
+  const [fit, setFit] = useState(readFit);
+  const hideTimer = useRef(null);
 
-  // Subscribe to battle map display state
+  // A map screen runs for a whole session; don't let it sleep.
+  useWakeLock(true);
+
   useEffect(() => {
     if (!campaignId) {
       setLoading(false);
       return;
     }
-
     const unsubscribe = onSnapshot(
       doc(db, `campaigns/${campaignId}/battleMapDisplay/current`),
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          setMapState(docSnapshot.data());
-        } else {
-          setMapState(null);
-        }
+      (snap) => {
+        setMapState(snap.exists() ? snap.data() : null);
         setLoading(false);
       },
       (error) => {
@@ -238,49 +100,35 @@ export default function BattleMapDisplayWindow({ campaignId }) {
         setLoading(false);
       }
     );
-
     return unsubscribe;
   }, [campaignId]);
 
-  // Auto-scale map to fit window
   useEffect(() => {
-    if (!mapState?.mapImage) return;
-
-    const updateScale = () => {
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
-      const mapWidth = mapState.mapImage.width;
-      const mapHeight = mapState.mapImage.height;
-
-      const scaleX = windowWidth / mapWidth;
-      const scaleY = windowHeight / mapHeight;
-      setScale(Math.max(scaleX, scaleY)); // Cover: fill screen, clip overflow
-    };
-
-    updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
-  }, [mapState?.mapImage]);
-
-  // Fullscreen toggle
-  const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
-        setIsFullscreen(true);
-      }).catch(err => console.error('Fullscreen error:', err));
-    } else {
-      document.exitFullscreen().then(() => {
-        setIsFullscreen(false);
-      });
-    }
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
-  // Mouse move to show controls
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(err => console.error('Fullscreen error:', err));
+    else document.exitFullscreen?.();
+  }, []);
+
+  const toggleFit = useCallback(() => {
+    setFit(prev => {
+      const next = prev === 'fill' ? 'fit' : 'fill';
+      try { localStorage.setItem(FIT_KEY, next); } catch { /* per-screen nicety only */ }
+      return next;
+    });
+  }, []);
+
+  // Show the controls while the mouse moves, hide them 3s after it stops.
   const handleMouseMove = useCallback(() => {
     setShowControls(true);
-    const timer = setTimeout(() => setShowControls(false), 3000);
-    return () => clearTimeout(timer);
+    clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setShowControls(false), 3000);
   }, []);
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
 
   if (loading) {
     return (
@@ -291,37 +139,32 @@ export default function BattleMapDisplayWindow({ campaignId }) {
     );
   }
 
+  // Turned sideways, the frame swaps width and height so it still fills the screen.
+  const sideways = rotation % 180 !== 0;
+
   return (
-    <div
-      className="battle-map-display-window"
-      onMouseMove={handleMouseMove}
-    >
-      {/* Controls overlay */}
+    <div className="battle-map-display-window" onMouseMove={handleMouseMove}>
       <div className={`display-controls ${showControls ? 'visible' : ''}`}>
-        <button onClick={rotateMap} title={`Rotate Map (${rotation}°)`}>
+        <button onClick={toggleFit} title={fit === 'fill' ? 'Show the whole map' : 'Fill the screen'}>
+          {fit === 'fill' ? <Shrink size={24} /> : <Expand size={24} />}
+        </button>
+        <button onClick={() => setRotation(r => (r + 90) % 360)} title={`Rotate map (${rotation}°)`}>
           <RotateCw size={24} />
         </button>
-        <button onClick={toggleFullscreen} title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}>
+        <button onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
           {isFullscreen ? <Minimize size={24} /> : <Maximize size={24} />}
         </button>
       </div>
 
-      {/* Map container with scaling and rotation */}
       <div
-        className="map-container"
-        style={{
-          transform: `scale(${scale}) rotate(${rotation}deg)`,
-          transformOrigin: 'center center'
-        }}
+        className={`bmd-frame ${sideways ? 'sideways' : ''}`}
+        style={{ transform: `translate(-50%, -50%) rotate(${rotation}deg)` }}
       >
-        <MapCanvas mapState={mapState} />
+        <MapView mapState={mapState} fit={fit} />
       </div>
 
-      {/* Campaign ID display (for debugging) */}
       {!mapState && (
-        <div className="campaign-id-hint">
-          Campaign: {campaignId || 'Not specified'}
-        </div>
+        <div className="campaign-id-hint">Campaign: {campaignId || 'Not specified'}</div>
       )}
 
       {/* Unified dice system: every viewer reads canonical roll docs from
@@ -330,7 +173,6 @@ export default function BattleMapDisplayWindow({ campaignId }) {
       <RollHistory campaignId={campaignId} variant="sidebar" />
       <DiceRoller campaignId={campaignId} variant="fab" />
 
-      {/* Audio Receiver for DM Soundboard */}
       <AudioReceiver campaignId={campaignId} />
     </div>
   );

@@ -67,11 +67,11 @@ export function bookStoragePath(campaignId, title, now = Date.now()) {
  * same storage rules apply as for an upload from the app, and no service
  * account is needed. Returns a download URL.
  */
-export async function uploadToStorage({ bucket, path, bytes, idToken, fetchImpl = fetch }) {
+export async function uploadToStorage({ bucket, path, bytes, idToken, contentType = 'application/pdf', fetchImpl = fetch }) {
   const endpoint = `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket)}/o?name=${encodeURIComponent(path)}`;
   const res = await fetchImpl(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/pdf', Authorization: `Firebase ${idToken}` },
+    headers: { 'Content-Type': contentType, Authorization: `Firebase ${idToken}` },
     body: bytes
   });
   if (!res.ok) {

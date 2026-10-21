@@ -723,7 +723,7 @@ export default function AppRouter({
       );
 
     case 'battleMapStudio':
-      return <BattleMapStudio campaign={campaign} isDM={isDM} />;
+      return <BattleMapStudio campaign={campaign} isDM={isDM} locations={locations} />;
 
     case 'storybook':
       return (

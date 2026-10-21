@@ -9,7 +9,9 @@
  * sends one of those model names gets gpt-image-1.
  */
 
-import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
+import { requireUser, bearerToken, ALLOWED_HEADERS } from './_lib/auth.js';
+import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, readMapRequest, mapStoragePath } from './_lib/battleMap.js';
+import { uploadToStorage, isAllowedAssetUrl } from './_lib/bookRender.js';
 
 // Extend timeout - 300s on Pro plan, 60s on Hobby.
 // NOTE: vercel.json caps api/*.js at 60s and the Hobby plan enforces 60s
@@ -58,6 +60,10 @@ export default async function handler(req, res) {
   // Every endpoint spends API credit — signed-in users only (api/_lib/auth.js).
   const user = await requireUser(req, res);
   if (!user) return;
+
+  // AI battle maps have their own pipeline: GPT Image 2.5 at the monitor's
+  // 16:9 resolution, saved straight to campaign storage.
+  if (req.body?.type === 'ai-map') return handleAiMap(req, res);
 
   try {
     const {
@@ -589,5 +595,103 @@ export default async function handler(req, res) {
       error: 'Internal server error',
       message: error.message
     });
+  }
+}
+
+// ── AI battle maps ───────────────────────────────────────────────────────────
+
+// Stop with a clear message before the 60 s function limit kills the call.
+const MAP_DEADLINE_MS = 55000;
+
+// Tests replace the upload; everything else goes through the real code.
+let uploadMap = uploadToStorage;
+export function setMapUploaderForTests(fn) { uploadMap = fn || uploadToStorage; }
+
+async function openaiJson(res) {
+  const text = await res.text().catch(() => '');
+  try { return JSON.parse(text); } catch { return { error: { message: text.slice(0, 300) } }; }
+}
+
+/**
+ * type 'ai-map': generate a new map from a description, or — with an
+ * `instruction` and the current `imageUrl` — refine an existing one.
+ * The image is returned as a storage URL: a 2560x1440 image is too big for
+ * Vercel's 4.5 MB response cap as inline base64.
+ */
+async function handleAiMap(req, res) {
+  const request = readMapRequest(req.body);
+  if (request.error) return res.status(400).json({ error: request.error });
+
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) return res.status(500).json({ error: 'Map generation is not configured: OPENAI_API_KEY is not set on the server.' });
+  const bucket = process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET;
+  if (!bucket) return res.status(500).json({ error: 'Storage bucket is not configured on the server.' });
+
+  const refining = !!request.instruction;
+  if (refining && !isAllowedAssetUrl(request.imageUrl)) {
+    return res.status(400).json({ error: 'Only maps saved in this app can be refined.' });
+  }
+  const prompt = refining
+    ? buildRefinePrompt({ instruction: request.instruction })
+    : buildMapPrompt({ description: request.description, style: request.style, lighting: request.lighting });
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), MAP_DEADLINE_MS);
+  try {
+    let source = null;
+    if (refining) {
+      const imgRes = await fetch(request.imageUrl, { signal: controller.signal });
+      if (!imgRes.ok) return res.status(400).json({ error: `Couldn't load the map to refine (${imgRes.status}).` });
+      source = new Blob([await imgRes.arrayBuffer()], { type: imgRes.headers.get('content-type') || 'image/png' });
+    }
+
+    const send = async ({ model, size }) => {
+      const common = { model, prompt, size, quality: request.quality, n: 1, output_format: 'jpeg', output_compression: 90 };
+      let r;
+      if (refining) {
+        const form = new FormData();
+        Object.entries(common).forEach(([k, v]) => form.append(k, String(v)));
+        form.append('image', source, 'map.png');
+        r = await fetch('https://api.openai.com/v1/images/edits', {
+          method: 'POST', headers: { Authorization: `Bearer ${openaiKey}` }, body: form, signal: controller.signal
+        });
+      } else {
+        r = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+          body: JSON.stringify(common),
+          signal: controller.signal
+        });
+      }
+      return { ok: r.ok, status: r.status, body: await openaiJson(r) };
+    };
+
+    const result = await runModelChain(modelChain(request.premium), send);
+    if (!result?.ok) {
+      const message = result?.body?.error?.message || 'unknown error';
+      return res.status(result?.status && result.status < 500 ? result.status : 502).json({ error: `The map couldn't be made: ${message}` });
+    }
+    const b64 = result.body?.data?.[0]?.b64_json;
+    if (!b64) return res.status(502).json({ error: 'The image model returned no picture. Try again.' });
+
+    const path = mapStoragePath(request.campaignId);
+    const imageUrl = await uploadMap({ bucket, path, bytes: Buffer.from(b64, 'base64'), idToken: bearerToken(req), contentType: 'image/jpeg' });
+    return res.status(200).json({
+      imageUrl,
+      storagePath: path,
+      width: result.step.width,
+      height: result.step.height,
+      model: result.step.model,
+      prompt
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      return res.status(504).json({ error: 'The map took too long to paint. Try again, or use Standard quality for a faster map.' });
+    }
+    if (err?.status === 403) return res.status(403).json({ error: 'Only the DM can save maps to this campaign.' });
+    console.error('[ai-map]', err);
+    return res.status(500).json({ error: `The map couldn't be made: ${err?.message || 'unknown error'}` });
+  } finally {
+    clearTimeout(timer);
   }
 }
