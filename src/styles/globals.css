@@ -516,6 +516,19 @@ select {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
+/* Touch screens: no text field under 16px, whatever its own classes say.
+   Mobile Safari zooms the page in when a smaller field takes focus and never
+   zooms back out, and inside a dialog's scrolling body that zoom left the
+   caret and taps misplaced, so typing stopped and the dialog ignored presses
+   (the Generate NPC box was text-sm). .input-group fields were already 16px;
+   this covers the Tailwind-styled ones too. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
 /* A dialog is open (useDialogFocus). Dialogs are portalled to <body>, outside
    #root, so this only touches the page behind them. Pausing its animations
    means a blurred backdrop has nothing to re-blur every frame, and on touch
