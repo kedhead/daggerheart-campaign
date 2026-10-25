@@ -5,6 +5,7 @@
 
 import { aiService } from './aiService';
 import { apiFetch } from './apiClient';
+import { artStyleRequestFields } from './artStyle';
 
 /**
  * Generate a map description using AI
@@ -329,7 +330,8 @@ async function generateMapImage(prompt, apiKey) {
       prompt,
       type: 'portrait',
       apiKey: apiKey || undefined, // backend uses server key if omitted
-      size: '1024x1024'
+      size: '1024x1024',
+      ...artStyleRequestFields()
     })
   });
 
