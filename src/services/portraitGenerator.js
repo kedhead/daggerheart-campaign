@@ -7,6 +7,7 @@ import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../config/firebase';
 import { ANCESTRIES } from '../data/systems/daggerheart';
 import { apiFetch } from './apiClient';
+import { artStyleRequestFields } from './artStyle';
 
 /**
  * Visual appearance hints for Daggerheart ancestries.
@@ -76,7 +77,7 @@ async function generatePortraitImage(prompt, apiKey) {
   const response = await apiFetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, apiKey: apiKey || undefined, type: 'portrait' })
+    body: JSON.stringify({ prompt, apiKey: apiKey || undefined, type: 'portrait', ...artStyleRequestFields() })
   });
 
   if (!response.ok) {

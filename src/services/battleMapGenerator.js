@@ -6,6 +6,7 @@
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../config/firebase';
 import { apiFetch } from './apiClient';
+import { artStyleRequestFields } from './artStyle';
 
 /**
  * Generate a battle map image using AI
@@ -41,7 +42,8 @@ export async function generateBattleMap(options) {
       type,
       size,
       style,
-      animated
+      animated,
+      ...artStyleRequestFields()
     })
   });
 
@@ -73,8 +75,9 @@ export async function generateBattleMap(options) {
  * @param {string} [opts.quality]   - medium | high
  * @param {boolean} [opts.premium]  - use the slower premium model
  */
-export async function generateAiMap({ campaignId, description, style, lighting, quality, premium }) {
-  return callAiMap({ campaignId, description, style, lighting, quality, premium });
+export async function generateAiMap({ campaignId, description, style, lighting, quality, premium, artStyle, artStyleCustom }) {
+  const styleFields = artStyle ? { artStyle, artStyleCustom } : {};
+  return callAiMap({ campaignId, description, style, lighting, quality, premium, ...styleFields });
 }
 
 /**
@@ -89,7 +92,7 @@ async function callAiMap(body) {
   const response = await apiFetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'ai-map', ...body })
+    body: JSON.stringify({ type: 'ai-map', ...artStyleRequestFields(), ...body })
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || data.message || `Map generation failed (${response.status}).`);
@@ -122,7 +125,8 @@ export async function generateMapAsset(options) {
       prompt,
       type: 'asset',
       transparent: !!removeBackground,
-      size: '1024x1024'
+      size: '1024x1024',
+      ...artStyleRequestFields()
     })
   });
 

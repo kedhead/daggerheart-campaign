@@ -10,6 +10,8 @@
 // Kept apart from api/generate-image.js so the smoke tests can cover it
 // without a network.
 
+import { mapArtStyle, ART_STYLE_KEYS } from './artStyle.js';
+
 export const MAP_WIDTH = 2560;
 export const MAP_HEIGHT = 1440;
 
@@ -63,9 +65,11 @@ const clip = (s, n) => {
  * to fight in, and nothing drawn over the art — the image fills the monitor
  * edge to edge, so a frame, title or grid would end up on the players' screen.
  */
-export function buildMapPrompt({ description, style = 'painted', lighting = 'day', landscape = true }) {
+export function buildMapPrompt({ description, style = 'painted', lighting = 'day', landscape = true, artStyle, artStyleCustom }) {
   const scene = clip(description, 1500);
-  const look = MAP_STYLES[style] || MAP_STYLES.painted;
+  // 'campaign' paints the map in the campaign's own art style, so maps match
+  // the portraits and storybook (a fantasy-anime campaign gets anime maps).
+  const look = (style === 'campaign' && mapArtStyle({ artStyle, artStyleCustom })) || MAP_STYLES[style] || MAP_STYLES.painted;
   const light = MAP_LIGHTING[lighting] || MAP_LIGHTING.day;
   return [
     'A battle map for a tabletop roleplaying game, seen from directly overhead: a true top-down, orthographic, 90-degree bird\'s-eye view with no perspective, no tilt and no horizon.',
@@ -124,7 +128,7 @@ const CAMPAIGN_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 /** Validate a map request. Returns { error } or the cleaned fields. */
 export function readMapRequest(body) {
-  const { campaignId, description, style, lighting, quality, premium, instruction, imageUrl } = body || {};
+  const { campaignId, description, style, lighting, quality, premium, instruction, imageUrl, artStyle, artStyleCustom } = body || {};
   if (typeof campaignId !== 'string' || !CAMPAIGN_ID.test(campaignId)) return { error: 'A valid campaignId is required.' };
   const refine = typeof instruction === 'string' && instruction.trim();
   if (refine) {
@@ -137,7 +141,9 @@ export function readMapRequest(body) {
     description: typeof description === 'string' ? description : '',
     instruction: refine ? instruction : '',
     imageUrl: refine ? imageUrl : '',
-    style: MAP_STYLES[style] ? style : 'painted',
+    style: (MAP_STYLES[style] || (style === 'campaign' && (ART_STYLE_KEYS.includes(artStyle) || artStyle === 'custom'))) ? style : 'painted',
+    artStyle: ART_STYLE_KEYS.includes(artStyle) || artStyle === 'custom' ? artStyle : '',
+    artStyleCustom: typeof artStyleCustom === 'string' ? artStyleCustom.slice(0, 400) : '',
     lighting: MAP_LIGHTING[lighting] ? lighting : 'day',
     quality: MAP_QUALITY.includes(quality) ? quality : 'high',
     premium: !!premium

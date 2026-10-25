@@ -9,6 +9,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
   const [styleKey, setStyleKey] = useState(campaign?.storybookStyle || DEFAULT_STYLE_KEY);
   const [styleCustom, setStyleCustom] = useState(campaign?.storybookStyleCustom || '');
   const [chroniclePublic, setChroniclePublic] = useState(!!campaign?.chroniclePublic);
+  const [unifiedArtStyle, setUnifiedArtStyle] = useState(!!campaign?.unifiedArtStyle);
   const [dialogue, setDialogue] = useState(campaign?.storybookDialogue || DEFAULT_DIALOGUE);
   const [linkCopied, setLinkCopied] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -35,6 +36,7 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
         storybookStyle: styleKey,
         storybookStyleCustom: styleKey === 'custom' ? styleCustom : '',
         storybookDialogue: dialogue,
+        unifiedArtStyle,
         chroniclePublic
       });
       onClose();
@@ -96,6 +98,32 @@ export default function StorybookSettingsPanel({ isOpen, onClose, campaign, upda
             </p>
           </div>
         )}
+
+        {/* ── Campaign-wide art style ─────────────────────────────────── */}
+        <label
+          className="flex items-start gap-3 cursor-pointer p-4 rounded-lg border"
+          style={{
+            background: 'color-mix(in srgb, var(--surface) 60%, transparent)',
+            borderColor: unifiedArtStyle ? 'color-mix(in srgb, var(--primary) 50%, transparent)' : 'var(--line)'
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={unifiedArtStyle}
+            onChange={(e) => setUnifiedArtStyle(e.target.checked)}
+            className="mt-1"
+          />
+          <div className="flex-1">
+            <div className="text-sm font-bold text-white">
+              Use this style for all campaign art
+            </div>
+            <p className="text-xs text-lr-text-dim mt-1 leading-relaxed">
+              New portraits for characters, NPCs and adversaries, plus locations, lore, handouts, display images and
+              battle maps, are all painted in this style, so everything on the table looks like it belongs together.
+              Images you already have stay as they are until you regenerate them.
+            </p>
+          </div>
+        </label>
 
         {/* ── Dialogue ─────────────────────────────────────────────────── */}
         <div className="space-y-2">

@@ -8,6 +8,7 @@ import { useBattleMap } from '../../hooks/useBattleMap';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { generateAiMap, refineAiMap, mapPromptTemplates } from '../../services/battleMapGenerator';
+import { campaignArtStyle } from '../../services/artStyle';
 import MapAnimationOverlay, { AVAILABLE_EFFECTS } from './Canvas/MapAnimationOverlay';
 import AnimatedMapLibrary from './Panels/AnimatedMapLibrary';
 import DMSoundboard from '../Soundboard/DMSoundboard';
@@ -82,7 +83,9 @@ export default function BattleMapStudio({ campaign, isDM, locations = [] }) {
 
   // What to make. Pre-filled from the open map, so its recipe can be tweaked.
   const [description, setDescription] = useState(mapImage?.description || '');
-  const [style, setStyle] = useState(mapImage?.style || 'painted');
+  // With a campaign art style on, maps default to it so they match the rest of the campaign's art.
+  const campaignStyle = campaignArtStyle(campaign);
+  const [style, setStyle] = useState(mapImage?.style || (campaignStyle ? 'campaign' : 'painted'));
   const [lighting, setLighting] = useState(mapImage?.lighting || 'day');
   const [quality, setQuality] = useState('high');
   const [ideaGroup, setIdeaGroup] = useState('dungeon');
@@ -138,7 +141,7 @@ export default function BattleMapStudio({ campaign, isDM, locations = [] }) {
     setError(null);
     setJob({ kind: 'generate', started: Date.now() });
     try {
-      const result = await generateAiMap({ campaignId, description: description.trim(), style, lighting, ...qualityParams(quality) });
+      const result = await generateAiMap({ campaignId, description: description.trim(), style, lighting, ...campaignStyle, ...qualityParams(quality) });
       applyResult(result, { label: 'Original' });
       // Name it after the place: "Emberfall Docks (harbour): smoky…" → "Emberfall Docks".
       if (!mapName || mapName === 'Untitled Map') setMapName(description.trim().split(/[:,.(—–]/)[0].trim().slice(0, 40) || 'AI map');
@@ -359,6 +362,7 @@ export default function BattleMapStudio({ campaign, isDM, locations = [] }) {
           <div>
             <SectionLabel>Style</SectionLabel>
             <div className="flex flex-wrap gap-1.5">
+              {campaignStyle && <Chip active={style === 'campaign'} onClick={() => setStyle('campaign')}>Campaign style</Chip>}
               {STYLES.map(s => <Chip key={s.key} active={style === s.key} onClick={() => setStyle(s.key)}>{s.label}</Chip>)}
             </div>
           </div>

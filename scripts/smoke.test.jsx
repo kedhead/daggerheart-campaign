@@ -22,6 +22,8 @@ import { particleCount, normalizeEffects, AVAILABLE_EFFECTS as WEATHER_EFFECTS }
 import generateImageHandler, { setMapUploaderForTests } from '../api/generate-image.js';
 import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, shouldTryNextModel, readMapRequest, mapStoragePath, MAP_MODELS } from '../api/_lib/battleMap.js';
 import generateStorybookHandler from '../api/generate-storybook.js';
+import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
+import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3486,6 +3488,38 @@ section('AI battle maps');
   assert(mapStoragePath('c1', 7) === 'campaigns/c1/battleMaps/ai_7.jpg', 'maps save to the campaign’s battle maps folder');
 }
 
+section('Campaign art style');
+{
+  const anime = { artStyle: 'fantasy-anime' };
+  const portrait = applyArtStyle('Fantasy character portrait of a dwarf innkeeper, detailed fantasy art style, painterly quality, dramatic lighting', anime);
+  assert(portrait.startsWith('Art style (use this style only') && /cel-shaded/.test(portrait) && /dwarf innkeeper/.test(portrait),
+    'a portrait in a fantasy-anime campaign leads with the anime style and keeps the subject');
+  assert(!/painterly quality|detailed fantasy art style/.test(portrait), 'the old built-in style words are taken out so they do not argue with it');
+  assert(applyArtStyle('a goblin, concept art', {}) === 'a goblin, concept art', 'with no campaign style, prompts pass through untouched');
+  assert(applyArtStyle('a goblin', { artStyle: 'bogus' }) === 'a goblin', 'an unknown style is ignored');
+  assert(/Sci-fi anime/.test(artStylePreamble({ artStyle: 'fantasy-anime', gameSystem: 'starwarsd6' })), 'a sci-fi campaign gets the sci-fi wording of its style');
+  assert(/pulp gouache/.test(artStylePreamble({ artStyle: 'custom', artStyleCustom: 'pulp gouache' })) && artStylePreamble({ artStyle: 'custom' }) === '',
+    'a custom style uses the campaign’s own words, and an empty one is no style');
+  assert(stripCompetingStyle('an ogre, oil painting style, photorealistic, in a cave') === 'an ogre, in a cave', 'stripping leaves tidy punctuation');
+  assert(/top-down background painting from a modern fantasy anime/.test(applyMapArtStyle('dungeon map', anime)) && !/character poses/.test(mapArtStyle(anime)),
+    'maps get the map wording of the style, not the portrait wording');
+  const mp = buildMapPrompt({ description: 'a harbour', style: 'campaign', lighting: 'day', ...anime });
+  assert(/fantasy anime battle map/.test(mp) && !/painted digital fantasy/.test(mp), 'an AI map in campaign style is painted in the campaign’s style');
+  assert(readMapRequest({ campaignId: 'c', description: 'x', style: 'campaign', artStyle: 'fantasy-anime' }).style === 'campaign'
+    && readMapRequest({ campaignId: 'c', description: 'x', style: 'campaign' }).style === 'painted',
+    'campaign style is kept only when the request carries a style to use');
+
+  assert(campaignArtStyle({ storybookStyle: 'fantasy-anime' }) === null, 'the storybook style stays storybook-only until the campaign turns it on');
+  assert(campaignArtStyle({ unifiedArtStyle: true, storybookStyle: 'fantasy-anime' }).artStyle === 'fantasy-anime'
+    && campaignArtStyle({ unifiedArtStyle: true }).artStyle === 'watercolor'
+    && campaignArtStyle({ unifiedArtStyle: true, storybookStyle: 'custom', storybookStyleCustom: ' ' }) === null,
+    'turned on, the campaign style is its storybook style (watercolor by default; an empty custom style is none)');
+  setCampaignArtStyle({ unifiedArtStyle: true, storybookStyle: 'fantasy-anime' });
+  assert(artStyleRequestFields().artStyle === 'fantasy-anime', 'image requests carry the open campaign’s style');
+  setCampaignArtStyle(null);
+  assert(Object.keys(artStyleRequestFields()).length === 0, 'and nothing once no campaign style is set');
+}
+
 section('Battle map weather');
 {
   const ids = WEATHER_EFFECTS.map(e => e.id);
@@ -3697,6 +3731,15 @@ async function runImageApiTests() {
         `a battle map asked for with model ${model ?? '(none)'} renders with OpenAI`);
       assert(!r.requests.some(q => q.url.includes('1min')), `and nothing for ${model ?? '(none)'} is sent to 1min.ai`);
     }
+
+    const styled = await call({ prompt: 'Portrait of a goblin raider, detailed fantasy art style', type: 'portrait', artStyle: 'fantasy-anime' });
+    assert(/^Art style/.test(styled.requests[0]?.body?.prompt || '') && /cel-shaded/.test(styled.requests[0]?.body?.prompt || '')
+      && !/detailed fantasy art style/.test(styled.requests[0]?.body?.prompt || ''),
+      'a portrait request carrying the campaign style is painted in it');
+    const plain = await call({ prompt: 'Portrait of a goblin raider', type: 'portrait' });
+    assert(plain.requests[0]?.body?.prompt === 'Portrait of a goblin raider', 'without a campaign style the portrait prompt is unchanged');
+    const styledMap = await call({ prompt: 'a crypt', type: 'dungeon', artStyle: 'fantasy-anime' });
+    assert(/fantasy anime battle map/.test(styledMap.requests[0]?.body?.prompt || ''), 'a legacy battle map uses the map wording of the campaign style');
 
     const noKey = await call({ prompt: 'a crypt', type: 'dungeon' }, { key: null });
     assert(noKey.res.statusCode === 500 && noKey.requests.length === 0 && /OPENAI_API_KEY/.test(noKey.res.payload?.error || ''),

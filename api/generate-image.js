@@ -12,6 +12,7 @@
 import { requireUser, bearerToken, ALLOWED_HEADERS } from './_lib/auth.js';
 import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, readMapRequest, mapStoragePath } from './_lib/battleMap.js';
 import { uploadToStorage, isAllowedAssetUrl } from './_lib/bookRender.js';
+import { ART_STYLE_PREAMBLES, applyArtStyle, applyMapArtStyle } from './_lib/artStyle.js';
 
 // Extend timeout - 300s on Pro plan, 60s on Hobby.
 // NOTE: vercel.json caps api/*.js at 60s and the Hobby plan enforces 60s
@@ -76,6 +77,8 @@ export default async function handler(req, res) {
       gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
       imageModel,             // optional: 'nano-banana' | 'gpt-image-1' | 'flux-pro' | '' (gpt-image-1 fallback)
       referenceImages,        // optional: array of image URLs to use as likeness reference
+      artStyle,               // optional: the campaign's art style key, applied to every image type
+      artStyleCustom,         // optional: the campaign's own style text when artStyle is 'custom'
       apiKey: rawClientKey   // optional client-provided key (used by portrait callers)
     } = req.body;
 
@@ -168,23 +171,7 @@ export default async function handler(req, res) {
 
     // --- Storybook mode: illustrated style images ---
     if (type === 'storybook-scene' || type === 'storybook-portrait') {
-      const fantasyPreambles = {
-        watercolor: 'Soft watercolor storybook illustration, washed pastel tones, loose expressive brushwork, fairytale atmosphere, painterly, no text or labels',
-        oil: 'Classical oil painting fairytale illustration, rich textured brushwork, warm golden lighting, Arthur Rackham inspired, no text or labels',
-        'ink-wash': 'Ink and watercolor wash storybook illustration, expressive brushstrokes, muted palette, intimate composition, no text or labels',
-        illuminated: 'Illuminated manuscript illustration, gilded borders, medieval tapestry aesthetic, stylised figures, no text or labels',
-        'children-storybook': "Classic children's storybook illustration, friendly line art with soft colour fills, whimsical, Tony DiTerlizzi inspired, no text or labels",
-        'fantasy-anime': 'Fantasy anime illustration, bold black ink outlines, vibrant saturated colour palette, painterly cel-shaded fills with soft highlights, expressive stylised character poses, rich adventure atmosphere reminiscent of modern western-anime fantasy box art, no text or labels'
-      };
-      const scifiPreambles = {
-        watercolor: 'Soft watercolor sci-fi illustration, washed pastel tones, painterly space opera atmosphere, no text or labels',
-        oil: 'Oil painting sci-fi concept illustration, textured brushwork, dramatic cinematic lighting, space opera, no text or labels',
-        'ink-wash': 'Ink and watercolor wash sci-fi illustration, expressive strokes, muted palette, no text or labels',
-        illuminated: 'Retro-futurist illuminated sci-fi illustration, ornamental borders, stylised figures, no text or labels',
-        'children-storybook': "Classic children's storybook sci-fi illustration, friendly line art with soft colour fills, whimsical, no text or labels",
-        'fantasy-anime': 'Sci-fi anime illustration, bold black ink outlines, vibrant saturated colour palette, painterly cel-shaded fills with soft highlights, expressive stylised character poses, sleek space-opera adventure atmosphere, no text or labels'
-      };
-      const presets = gameSystem === 'starwarsd6' ? scifiPreambles : fantasyPreambles;
+      const presets = gameSystem === 'starwarsd6' ? ART_STYLE_PREAMBLES.scifi : ART_STYLE_PREAMBLES.fantasy;
       const preamble = (styleKey && styleKey !== 'custom' && presets[styleKey])
         || (styleKey && styleKey.length > 6 ? styleKey : null) // treat as custom preamble if long
         || presets.watercolor;
@@ -450,7 +437,7 @@ export default async function handler(req, res) {
       const portraitResponse = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
-        body: JSON.stringify({ model: 'gpt-image-1', prompt, n: 1, size: imageSize, quality: IMAGE_QUALITY })
+        body: JSON.stringify({ model: 'gpt-image-1', prompt: applyArtStyle(prompt, { artStyle, artStyleCustom, gameSystem }), n: 1, size: imageSize, quality: IMAGE_QUALITY })
       });
       if (!portraitResponse.ok) {
         const err = await portraitResponse.json().catch(() => ({ error: { message: portraitResponse.statusText } }));
@@ -484,6 +471,12 @@ export default async function handler(req, res) {
         : 'isolated on a plain white background';
       enhancedPrompt = `${prompt}, top-down view token for D&D VTT, ${backdrop}, high detail fantasy style, clean edges, suitable for tabletop RPG battle map`;
     }
+
+    // The campaign's art style, if it has one: maps get the map wording of it.
+    const styleOpts = { artStyle, artStyleCustom, gameSystem };
+    enhancedPrompt = ['battle-map', 'special', 'dungeon', 'outdoor', 'city'].includes(type)
+      ? applyMapArtStyle(enhancedPrompt, styleOpts)
+      : applyArtStyle(enhancedPrompt, styleOpts);
 
     // --- Gemini 2.5 Flash Image ("nano-banana") for Handouts ---
     if (type === 'handout') {
@@ -633,7 +626,7 @@ async function handleAiMap(req, res) {
   }
   const prompt = refining
     ? buildRefinePrompt({ instruction: request.instruction })
-    : buildMapPrompt({ description: request.description, style: request.style, lighting: request.lighting });
+    : buildMapPrompt({ description: request.description, style: request.style, lighting: request.lighting, artStyle: request.artStyle, artStyleCustom: request.artStyleCustom });
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), MAP_DEADLINE_MS);

@@ -1,5 +1,6 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { useCampaignData } from '../contexts/CampaignDataContext';
+import { setCampaignArtStyle } from '../services/artStyle';
 
 const DashboardView = lazy(() => import('./Dashboard/DashboardView'));
 const CharactersView = lazy(() => import('./Characters/CharactersView'));
@@ -154,6 +155,11 @@ export default function AppRouter({
   // An unsaved encounter handed over from the environment builder, so
   // "Save & Build Encounter" lands in the encounter builder prefilled.
   const [pendingEncounterDraft, setPendingEncounterDraft] = useState(null);
+
+  // Every image the app generates follows the campaign's art style, when it has one.
+  useEffect(() => {
+    setCampaignArtStyle(campaign);
+  }, [campaign?.id, campaign?.unifiedArtStyle, campaign?.storybookStyle, campaign?.storybookStyleCustom]);
 
   const publishedStorybookChapters = storybookChapters?.filter(c => c.status === 'published') || [];
 

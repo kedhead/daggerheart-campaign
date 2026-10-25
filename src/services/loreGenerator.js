@@ -6,6 +6,7 @@
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { storage } from '../config/firebase';
 import { apiFetch } from './apiClient';
+import { artStyleRequestFields } from './artStyle';
 
 /**
  * Download an image from a URL and convert to data URL via proxy
@@ -38,7 +39,7 @@ async function generateLoreVisual(prompt, apiKey) {
     const response = await apiFetch('/api/generate-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, type: 'portrait', apiKey: apiKey || null })
+        body: JSON.stringify({ prompt, type: 'portrait', apiKey: apiKey || null, ...artStyleRequestFields() })
     });
 
     if (!response.ok) {

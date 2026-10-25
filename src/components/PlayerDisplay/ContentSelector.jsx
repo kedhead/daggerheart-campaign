@@ -8,6 +8,7 @@ import './DMDisplayControl.css';
 import { useNotify } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { apiFetch } from '../../services/apiClient';
+import { artStyleRequestFields } from '../../services/artStyle';
 
 // Extract YouTube video ID for thumbnail
 function getYouTubeVideoId(url) {
@@ -292,7 +293,8 @@ export default function ContentSelector({
           prompt: fullPrompt,
           type: 'portrait',
           apiKey: openaiKeyInfo?.key || undefined,
-          size: '1792x1024'
+          size: '1792x1024',
+          ...artStyleRequestFields()
         })
       });
 
