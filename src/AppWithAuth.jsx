@@ -125,12 +125,22 @@ function CampaignAppShell({ currentCampaignId, setCurrentCampaignId, userRole, o
   return (
     <ThemeProvider gameSystem={campaign?.gameSystem}>
       <div className={`app min-h-screen flex bg-arcane-navy selection:bg-indigo-500/30 font-sans relative overflow-hidden ${isDM ? 'dm-mode' : 'player-mode'}`}>
-        {/* Global Background Visuals */}
-        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full animate-pulse" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-emerald-500/5 blur-[100px] rounded-full animate-pulse delay-1000" />
-          <div className="absolute top-[20%] right-[10%] w-[20%] h-[20%] bg-blue-500/5 blur-[80px] rounded-full animate-pulse delay-500" />
-        </div>
+        {/* Global Background Visuals: soft glows drawn as static gradients.
+            These were blurred, pulsing discs (filter: blur up to 120px) on a
+            fixed layer behind every page. On a 3x iPhone that is a ~360px
+            blur kernel, and newer iOS Safari redraws the fixed layer as the
+            keyboard nudges the viewport while you type, which froze typing
+            in dialogs. A radial gradient looks the same and costs nothing. */}
+        <div
+          className="fixed inset-0 pointer-events-none overflow-hidden z-0"
+          style={{
+            background: [
+              'radial-gradient(ellipse 45% 45% at 10% 10%, rgba(99, 102, 241, 0.06), transparent 70%)',
+              'radial-gradient(ellipse 38% 38% at 85% 85%, rgba(16, 185, 129, 0.05), transparent 70%)',
+              'radial-gradient(ellipse 28% 28% at 80% 30%, rgba(59, 130, 246, 0.05), transparent 70%)'
+            ].join(', ')
+          }}
+        />
 
         <div className="relative z-10 flex flex-1">
           <SidebarWithAuth

@@ -170,7 +170,7 @@ export default function AdversaryPicker({
 
       {/* Adversary Picker Modal/Dropdown */}
       {showPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowPicker(false)}>
+        <div className="lr-dialog-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowPicker(false)}>
           <div
             ref={pickerRef}
             role="dialog"

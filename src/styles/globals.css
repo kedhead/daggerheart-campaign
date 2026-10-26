@@ -546,6 +546,23 @@ body.lr-dialog-open #root [role="dialog"] *::before,
 body.lr-dialog-open #root [role="dialog"] *::after {
   animation-play-state: running !important;
 }
+/* Touch screens: while a dialog is open, stop drawing the page behind it at
+   all. It sits under a 92% scrim and can barely be seen, but Safari still
+   composites every layer of it whenever the keyboard shifts the viewport,
+   and on newer iPhones that froze typing in dialogs. Dialogs that render
+   inside #root (role="dialog", and their .lr-dialog-layer backdrops) and
+   toasts stay visible. visibility keeps the layout and scroll position
+   exactly as they were, so closing the dialog changes nothing. */
+@media (pointer: coarse) {
+  body.lr-dialog-open #root {
+    visibility: hidden;
+  }
+  body.lr-dialog-open #root .toast-container,
+  body.lr-dialog-open #root .lr-dialog-layer,
+  body.lr-dialog-open #root [role="dialog"] {
+    visibility: visible;
+  }
+}
 @media (pointer: coarse) {
   body.lr-dialog-open #root *,
   body.lr-dialog-open #root *::before,
