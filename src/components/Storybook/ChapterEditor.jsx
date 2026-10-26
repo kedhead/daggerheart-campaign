@@ -464,8 +464,7 @@ export default function ChapterEditor({
             >
               <option value="nano-banana-2">Gemini 2.5 Flash Image v2 — references portraits (recommended)</option>
               <option value="nano-banana">Gemini 2.5 Flash Image v1 — references portraits</option>
-              <option value="gpt-image-2">OpenAI gpt-image-2 — references portraits</option>
-              <option value="gpt-image-1">OpenAI gpt-image-1 — references portraits</option>
+              <option value="gpt-image-2">OpenAI GPT Image (newest available) — references portraits</option>
               <option value="flux-pro">Flux 1.1 Pro — stylised, no references</option>
             </select>
           </div>

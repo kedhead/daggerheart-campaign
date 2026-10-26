@@ -1,18 +1,20 @@
 /**
  * Vercel Serverless Function - AI Image Generation
  *
- * Battle maps, map assets, portraits and handouts render with OpenAI
- * gpt-image-1; storybook art and scene video can also use Replicate.
+ * Battle maps, map assets, portraits and handouts render with OpenAI's
+ * newest image model on the account (see _lib/openaiImage.js); storybook art
+ * and scene video can also use Replicate.
  *
  * Battle maps and assets used to go through 1min.ai (Magic Art, Flux, SD3).
  * That path is gone: its key leaked and was revoked. An old client that still
- * sends one of those model names gets gpt-image-1.
+ * sends one of those model names gets OpenAI.
  */
 
 import { requireUser, bearerToken, ALLOWED_HEADERS } from './_lib/auth.js';
 import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, readMapRequest, mapStoragePath } from './_lib/battleMap.js';
 import { uploadToStorage, isAllowedAssetUrl } from './_lib/bookRender.js';
 import { ART_STYLE_PREAMBLES, applyArtStyle, applyMapArtStyle } from './_lib/artStyle.js';
+import { generateOpenAIImage, runImageChain, openaiImageSize, imageFromBody, imageErrorMessage } from './_lib/openaiImage.js';
 
 // Extend timeout - 300s on Pro plan, 60s on Hobby.
 // NOTE: vercel.json caps api/*.js at 60s and the Hobby plan enforces 60s
@@ -23,7 +25,7 @@ export const config = {
   maxDuration: 300
 };
 
-// Image quality for every gpt-image-1 request.
+// Image quality for every OpenAI image request.
 //
 // Left unset, OpenAI applies its own default, which bills at the top of the
 // range — roughly a 15x spread between the cheapest and dearest setting at
@@ -70,12 +72,12 @@ export default async function handler(req, res) {
     const {
       prompt,
       type = 'battle-map',
-      model,                  // ignored beyond logging: maps and assets always use gpt-image-1
+      model,                  // ignored: maps and assets always use OpenAI
       transparent = false,    // type 'asset' only: render on a transparent background
       size = '1024x1024',
       styleKey,               // optional: for storybook-* types
       gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
-      imageModel,             // optional: 'nano-banana' | 'gpt-image-1' | 'flux-pro' | '' (gpt-image-1 fallback)
+      imageModel,             // optional: 'nano-banana' | 'gpt-image-2' (or legacy 'gpt-image-1') | 'flux-pro' | '' (OpenAI fallback)
       referenceImages,        // optional: array of image URLs to use as likeness reference
       artStyle,               // optional: the campaign's art style key, applied to every image type
       artStyleCustom,         // optional: the campaign's own style text when artStyle is 'custom'
@@ -261,7 +263,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // --- OpenAI gpt-image-1 / gpt-image-2 (reference-capable) ---
+      // --- OpenAI GPT Image (reference-capable; any gpt-image-* pick runs the model chain) ---
       //     Uses /v1/images/edits when references are provided, otherwise
       //     /v1/images/generations. Requires a verified OpenAI organisation
       //     (and gpt-image-2 may require a higher org tier).
@@ -274,55 +276,42 @@ export default async function handler(req, res) {
         }
         console.log(`Using OpenAI ${imageModel} for storybook image, refs:`, refs.length);
         try {
-          const sizeForGpt = imageSize === '1792x1024' ? '1536x1024'
-            : imageSize === '1024x1792' ? '1024x1536'
-            : '1024x1024';
-          let gptRes;
-          let imagesAdded = 0;
-          let form = null;
-          if (refs.length > 0) {
-            form = new FormData();
-            form.append('model', imageModel);
-            form.append('prompt', fullPrompt);
-            form.append('size', sizeForGpt);
-            form.append('n', '1');
-            form.append('quality', IMAGE_QUALITY);
-            for (let i = 0; i < Math.min(refs.length, 4); i++) {
-              const imgRes = await fetch(refs[i]);
-              if (!imgRes.ok) continue;
-              const buf = await imgRes.arrayBuffer();
-              form.append('image[]', new Blob([buf], { type: imgRes.headers.get('content-type') || 'image/png' }), `ref${i}.png`);
-              imagesAdded++;
-            }
+          const sizeForGpt = openaiImageSize(imageSize);
+          // Download the references once; each model in the chain gets its own form.
+          const refBlobs = [];
+          for (let i = 0; i < Math.min(refs.length, 4); i++) {
+            const imgRes = await fetch(refs[i]);
+            if (!imgRes.ok) continue;
+            const buf = await imgRes.arrayBuffer();
+            refBlobs.push(new Blob([buf], { type: imgRes.headers.get('content-type') || 'image/png' }));
           }
-          if (imagesAdded > 0) {
-            // Edits endpoint — uses the downloaded reference images for likeness
-            gptRes = await fetch('https://api.openai.com/v1/images/edits', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${openaiKey}` },
-              body: form
-            });
-          } else {
+          // Whichever OpenAI model was picked (gpt-image-1 is retired), use the
+          // newest one this account has, down the chain.
+          const result = refBlobs.length > 0
+            ? await runImageChain(model => {
+                // Edits endpoint — uses the downloaded reference images for likeness
+                const form = new FormData();
+                form.append('model', model);
+                form.append('prompt', fullPrompt);
+                form.append('size', sizeForGpt);
+                form.append('n', '1');
+                form.append('quality', IMAGE_QUALITY);
+                refBlobs.forEach((blob, i) => form.append('image[]', blob, `ref${i}.png`));
+                return fetch('https://api.openai.com/v1/images/edits', {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${openaiKey}` },
+                  body: form
+                });
+              })
             // No references available (or all downloads failed) — use generations
-            gptRes = await fetch('https://api.openai.com/v1/images/generations', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${openaiKey}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: imageModel, prompt: fullPrompt, size: sizeForGpt, n: 1, quality: IMAGE_QUALITY })
-            });
+            : await generateOpenAIImage({ apiKey: openaiKey, prompt: fullPrompt, size: sizeForGpt, quality: IMAGE_QUALITY });
+          if (!result.ok) {
+            console.error('OpenAI storybook image error:', result.status, result.body);
+            return res.status(result.status || 500).json({ error: truncateErr(imageErrorMessage(result)) });
           }
-          if (!gptRes.ok) {
-            const errText = await gptRes.text().catch(() => gptRes.statusText);
-            console.error(`${imageModel} error:`, errText);
-            return res.status(gptRes.status || 500).json({
-              error: `${imageModel} error: ${truncateErr(errText)}`
-            });
-          }
-          const data = await gptRes.json();
-          const b64 = data.data?.[0]?.b64_json;
-          const directUrl = data.data?.[0]?.url;
-          if (b64) return res.status(200).json({ imageUrl: `data:image/png;base64,${b64}`, prompt: fullPrompt, model: imageModel });
-          if (directUrl) return res.status(200).json({ imageUrl: directUrl, prompt: fullPrompt, model: imageModel });
-          return res.status(500).json({ error: `${imageModel} returned no image data.` });
+          const imageUrl = imageFromBody(result.body);
+          if (imageUrl) return res.status(200).json({ imageUrl, prompt: fullPrompt, model: result.model });
+          return res.status(500).json({ error: `${result.model} returned no image data.` });
         } catch (err) {
           console.error(`${imageModel} error:`, err);
           return res.status(500).json({ error: `${imageModel} request failed: ${err.message}` });
@@ -361,7 +350,7 @@ export default async function handler(req, res) {
           if (!createRes.ok) {
             const err = await createRes.json().catch(() => ({ detail: createRes.statusText }));
             console.error('Replicate API error:', err);
-            // Fall through to gpt-image-1
+            // Fall through to OpenAI
           } else {
             let prediction = await createRes.json();
 
@@ -384,14 +373,14 @@ export default async function handler(req, res) {
                 return res.status(200).json({ imageUrl: fluxUrl, prompt: fullPrompt, model: 'flux-1.1-pro' });
               }
             }
-            console.warn('Flux prediction failed or timed out, falling back to gpt-image-1:', prediction.status, prediction.error);
+            console.warn('Flux prediction failed or timed out, falling back to OpenAI:', prediction.status, prediction.error);
           }
         } catch (fluxErr) {
-          console.error('Replicate Flux error, falling back to gpt-image-1:', fluxErr.message);
+          console.error('Replicate Flux error, falling back to OpenAI:', fluxErr.message);
         }
       }
 
-      // --- gpt-image-1 fallback (default for storybook) ---
+      // --- OpenAI fallback (default for storybook) ---
       const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
       if (!effectiveKey) {
         return res.status(500).json({
@@ -399,28 +388,14 @@ export default async function handler(req, res) {
         });
       }
 
-      const sizeForGpt = imageSize === '1792x1024' ? '1536x1024'
-        : imageSize === '1024x1792' ? '1024x1536'
-        : '1024x1024';
-
-      const sbResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
-        body: JSON.stringify({ model: 'gpt-image-1', prompt: fullPrompt, n: 1, size: sizeForGpt, quality: IMAGE_QUALITY })
-      });
-      if (!sbResponse.ok) {
-        const err = await sbResponse.json().catch(() => ({ error: { message: sbResponse.statusText } }));
-        return res.status(sbResponse.status).json({ error: `gpt-image-1 API error: ${err.error?.message || sbResponse.statusText}` });
-      }
-      const sbData = await sbResponse.json();
-      const sbB64 = sbData.data?.[0]?.b64_json;
-      const sbUrl = sbData.data?.[0]?.url;
-      if (sbB64) return res.status(200).json({ imageUrl: `data:image/png;base64,${sbB64}`, prompt: fullPrompt, model: 'gpt-image-1' });
-      if (sbUrl) return res.status(200).json({ imageUrl: sbUrl, prompt: fullPrompt, model: 'gpt-image-1' });
-      return res.status(500).json({ error: 'No image data returned from gpt-image-1' });
+      const sb = await generateOpenAIImage({ apiKey: effectiveKey, prompt: fullPrompt, size: imageSize, quality: IMAGE_QUALITY });
+      if (!sb.ok) return res.status(sb.status || 500).json({ error: imageErrorMessage(sb) });
+      const sbImage = imageFromBody(sb.body);
+      if (sbImage) return res.status(200).json({ imageUrl: sbImage, prompt: fullPrompt, model: sb.model });
+      return res.status(500).json({ error: 'No image data returned from OpenAI' });
     }
 
-    // --- Portrait mode: gpt-image-1 direct ---
+    // --- Portrait mode: OpenAI, newest model available ---
     if (type === 'portrait') {
       const effectiveKey = clientApiKey || process.env.OPENAI_API_KEY;
       if (!effectiveKey) {
@@ -428,27 +403,16 @@ export default async function handler(req, res) {
           error: 'No OpenAI API key available. Add OPENAI_API_KEY to environment variables or configure one in Settings.'
         });
       }
-      const validSizes = ['1024x1024', '1024x1536', '1536x1024', '1024x1792', '1792x1024'];
-      const rawSize = validSizes.includes(size) ? size : '1024x1024';
-      // Map legacy DALL-E sizes to gpt-image-1 equivalents
-      const imageSize = rawSize === '1792x1024' ? '1536x1024'
-        : rawSize === '1024x1792' ? '1024x1536'
-        : rawSize;
-      const portraitResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${effectiveKey}` },
-        body: JSON.stringify({ model: 'gpt-image-1', prompt: applyArtStyle(prompt, { artStyle, artStyleCustom, gameSystem }), n: 1, size: imageSize, quality: IMAGE_QUALITY })
+      const portrait = await generateOpenAIImage({
+        apiKey: effectiveKey,
+        prompt: applyArtStyle(prompt, { artStyle, artStyleCustom, gameSystem }),
+        size,
+        quality: IMAGE_QUALITY
       });
-      if (!portraitResponse.ok) {
-        const err = await portraitResponse.json().catch(() => ({ error: { message: portraitResponse.statusText } }));
-        return res.status(portraitResponse.status).json({ error: `gpt-image-1 API error: ${err.error?.message || portraitResponse.statusText}` });
-      }
-      const portraitData = await portraitResponse.json();
-      const portraitB64 = portraitData.data?.[0]?.b64_json;
-      const portraitUrl = portraitData.data?.[0]?.url;
-      if (portraitB64) return res.status(200).json({ imageUrl: `data:image/png;base64,${portraitB64}` });
-      if (portraitUrl) return res.status(200).json({ imageUrl: portraitUrl });
-      return res.status(500).json({ error: 'No image data returned from gpt-image-1' });
+      if (!portrait.ok) return res.status(portrait.status || 500).json({ error: imageErrorMessage(portrait) });
+      const portraitImage = imageFromBody(portrait.body);
+      if (portraitImage) return res.status(200).json({ imageUrl: portraitImage, model: portrait.model });
+      return res.status(500).json({ error: 'No image data returned from OpenAI' });
     }
 
     // Build the enhanced prompt based on type - emphasizing overhead/orthographic D&D battle map style
@@ -515,7 +479,7 @@ export default async function handler(req, res) {
               const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
               if (url) return res.status(200).json({ imageUrl: url, prompt: enhancedPrompt, model: 'nano-banana' });
             }
-            console.warn('nano-banana handout failed, falling back to gpt-image-1:', prediction.status, prediction.error);
+            console.warn('nano-banana handout failed, falling back to OpenAI:', prediction.status, prediction.error);
           } else {
             const errText = await createRes.text().catch(() => createRes.statusText);
             console.error('Replicate nano-banana error:', errText);
@@ -526,59 +490,35 @@ export default async function handler(req, res) {
       }
     }
 
-    // --- gpt-image-1 for battle maps and map assets ---
+    // --- OpenAI (newest model available) for battle maps and map assets ---
     const openaiKey = process.env.OPENAI_API_KEY;
     if (!openaiKey) {
       return res.status(500).json({
         error: 'Image generation is not configured: OPENAI_API_KEY is not set on the server.'
       });
     }
-    if (model && model !== 'gpt-image-1') {
-      console.log(`Model "${model}" is no longer offered; using gpt-image-1`);
-    }
 
-    const gptSize = ['1024x1024', '1024x1536', '1536x1024'].includes(size) ? size
-      : size === '1792x1024' ? '1536x1024'
-      : size === '1024x1792' ? '1024x1536'
-      : '1024x1024';
     const wantsTransparency = type === 'asset' && !!transparent;
-
-    const openaiResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiKey}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-image-1',
-        prompt: enhancedPrompt,
-        n: 1,
-        size: gptSize,
-        quality: IMAGE_QUALITY,
-        // Transparency needs a format with an alpha channel; PNG is the default.
-        ...(wantsTransparency ? { background: 'transparent', output_format: 'png' } : {})
-      })
+    const generated = await generateOpenAIImage({
+      apiKey: openaiKey,
+      prompt: enhancedPrompt,
+      size,
+      quality: IMAGE_QUALITY,
+      // Transparency needs a format with an alpha channel; PNG is the default.
+      extra: wantsTransparency ? { background: 'transparent', output_format: 'png' } : {}
     });
-
-    if (!openaiResponse.ok) {
-      const err = await openaiResponse.json().catch(() => ({ error: { message: openaiResponse.statusText } }));
-      return res.status(openaiResponse.status).json({
-        error: `gpt-image-1 API error: ${err.error?.message || openaiResponse.statusText}`
-      });
+    if (!generated.ok) {
+      return res.status(generated.status || 500).json({ error: imageErrorMessage(generated) });
     }
-
-    const openaiData = await openaiResponse.json();
-    const b64 = openaiData.data?.[0]?.b64_json;
-    const directUrl = openaiData.data?.[0]?.url;
-    const imageUrl = b64 ? `data:image/png;base64,${b64}` : directUrl;
+    const imageUrl = imageFromBody(generated.body);
     if (!imageUrl) {
-      return res.status(500).json({ error: 'No image data returned from gpt-image-1' });
+      return res.status(500).json({ error: 'No image data returned from OpenAI' });
     }
 
     return res.status(200).json({
       imageUrl,
       prompt: enhancedPrompt,
-      model: 'gpt-image-1',
+      model: generated.model,
       animated: false
     });
 
