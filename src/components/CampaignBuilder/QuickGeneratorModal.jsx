@@ -3,6 +3,8 @@ import Modal from '../Modal';
 import DirectAPIGenerator from './generators/DirectAPIGenerator';
 import { useAIGeneration } from '../../hooks/useAIGeneration';
 import { useAPIKey } from '../../hooks/useAPIKey';
+import { useOptionalCampaignData } from '../../contexts/CampaignDataContext';
+import { currentStorySnapshot } from '../../utils/currentStory';
 import { generateNPCPortrait } from '../../services/portraitGenerator';
 import { generateAdversaryStatblock, generateBossStatblock } from '../../services/adversaryGenerator';
 import { Wand2, AlertCircle, ImageIcon, Loader2, Swords, Plus, Trash2 } from 'lucide-react';
@@ -49,6 +51,9 @@ export default function QuickGeneratorModal({
   } = useAIGeneration();
 
   const { keys, hasKey, getEffectiveKey } = useAPIKey(campaign?.createdBy);
+  // Sessions, chapters and quests, so generated content fits where the story
+  // is now rather than where the campaign frame says it started.
+  const campaignData = useOptionalCampaignData();
 
   // Check if OpenAI key is available (own or shared)
   const openaiKeyInfo = getEffectiveKey('openai');
@@ -176,6 +181,11 @@ export default function QuickGeneratorModal({
       // it had already written.
       existingEncounters: type === 'encounter' ? existingContent : undefined,
       availableAdversaries: type === 'encounter' ? existingAdversaries : undefined,
+      currentStory: currentStorySnapshot({
+        sessions: campaignData?.sessions,
+        chapters: campaignData?.storybookChapters,
+        quests: campaignData?.quests
+      }),
       requirements
     };
 
