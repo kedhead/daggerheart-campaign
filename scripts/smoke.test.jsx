@@ -3695,7 +3695,8 @@ async function runImageApiTests() {
     const requests = [];
     globalThis.fetch = async (url, init = {}) => {
       requests.push({ url: String(url), body: init.body ? JSON.parse(init.body) : null });
-      return { ok: true, status: 200, json: async () => ({ data: [{ b64_json: 'AAAA' }] }), text: async () => '' };
+      const data = { data: [{ b64_json: 'AAAA' }] };
+      return { ok: true, status: 200, json: async () => data, text: async () => JSON.stringify(data) };
     };
     if (key) process.env.OPENAI_API_KEY = key; else delete process.env.OPENAI_API_KEY;
     const res = {
@@ -3714,8 +3715,8 @@ async function runImageApiTests() {
     const asset = await call({ prompt: 'a barrel', type: 'asset', transparent: true });
     assert(asset.requests.length === 1 && asset.requests[0]?.url.includes('api.openai.com'),
       'a map asset is rendered by OpenAI, in one request');
-    assert(asset.requests[0]?.body?.background === 'transparent' && asset.requests[0]?.body?.model === 'gpt-image-1',
-      'a transparent asset asks gpt-image-1 for a transparent background — no separate removal step');
+    assert(asset.requests[0]?.body?.background === 'transparent' && asset.requests[0]?.body?.model === MAP_MODELS.standard,
+      'a transparent asset asks the newest image model for a transparent background — no separate removal step');
     assert(/transparent background/.test(asset.requests[0]?.body?.prompt || ''),
       'and the prompt asks for transparency instead of the old "plain solid color background"');
     assert(asset.res.statusCode === 200 && asset.res.payload?.imageUrl?.startsWith('data:image/png;base64,'),
@@ -3740,6 +3741,33 @@ async function runImageApiTests() {
     assert(plain.requests[0]?.body?.prompt === 'Portrait of a goblin raider', 'without a campaign style the portrait prompt is unchanged');
     const styledMap = await call({ prompt: 'a crypt', type: 'dungeon', artStyle: 'fantasy-anime' });
     assert(/fantasy anime battle map/.test(styledMap.requests[0]?.body?.prompt || ''), 'a legacy battle map uses the map wording of the campaign style');
+
+    // A retired model falls through to the next one; a real error does not.
+    const replies = (list) => {
+      const seen = [];
+      globalThis.fetch = async (url, init = {}) => {
+        const body = init.body ? JSON.parse(init.body) : null;
+        seen.push(body?.model);
+        const [status, data] = list[Math.min(seen.length - 1, list.length - 1)];
+        return { ok: status === 200, status, json: async () => data, text: async () => JSON.stringify(data) };
+      };
+      return seen;
+    };
+    const mkRes = () => ({ statusCode: 0, payload: null, setHeader() {}, status(c) { this.statusCode = c; return this; }, json(p) { this.payload = p; return this; }, end() { return this; } });
+    process.env.OPENAI_API_KEY = 'sk-test';
+    let seen = replies([[400, { error: { message: "The model 'gpt-image-2.5-flare' does not exist." } }], [404, { error: { code: 'model_not_found', message: 'nope' } }], [200, { data: [{ b64_json: 'BBBB' }] }]]);
+    let r = mkRes();
+    await generateImageHandler({ method: 'POST', body: { prompt: 'a goblin', type: 'portrait' } }, r);
+    assert(r.statusCode === 200 && r.payload.imageUrl === 'data:image/png;base64,BBBB' && JSON.stringify(seen) === JSON.stringify([MAP_MODELS.standard, 'gpt-image-2', 'gpt-image-1']),
+      `a portrait walks newest-first down the models until one exists (got ${r.statusCode}, ${JSON.stringify(seen)})`);
+    seen = replies([[400, { error: { code: 'moderation_blocked', message: 'Your request was rejected by the safety system' } }]]);
+    r = mkRes();
+    await generateImageHandler({ method: 'POST', body: { prompt: 'a goblin', type: 'portrait' } }, r);
+    assert(r.statusCode === 400 && seen.length === 1 && /safety system/.test(r.payload.error), 'a refusal is reported, not retried on older models');
+    seen = replies([[400, { error: { message: "The model 'gpt-image-1' does not exist." } }]]);
+    r = mkRes();
+    await generateImageHandler({ method: 'POST', body: { prompt: 'a goblin', type: 'portrait' } }, r);
+    assert(r.statusCode === 400 && seen.length === 3 && /does not exist/.test(r.payload.error), 'when no model is available, the last error is reported');
 
     const noKey = await call({ prompt: 'a crypt', type: 'dungeon' }, { key: null });
     assert(noKey.res.statusCode === 500 && noKey.requests.length === 0 && /OPENAI_API_KEY/.test(noKey.res.payload?.error || ''),

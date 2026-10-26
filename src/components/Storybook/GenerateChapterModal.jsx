@@ -318,8 +318,7 @@ export default function GenerateChapterModal({
               >
                 <option value="nano-banana-2">Gemini 2.5 Flash Image v2 — uses portraits as references (recommended)</option>
                 <option value="nano-banana">Gemini 2.5 Flash Image v1 — uses portraits as references</option>
-                <option value="gpt-image-2">OpenAI gpt-image-2 — uses portraits as references</option>
-                <option value="gpt-image-1">OpenAI gpt-image-1 — uses portraits as references</option>
+                <option value="gpt-image-2">OpenAI GPT Image (newest available) — uses portraits as references</option>
                 <option value="flux-pro">Flux 1.1 Pro — fast, stylised</option>
               </select>
               <p className="text-[11px] text-lr-text-dim">
@@ -327,10 +326,8 @@ export default function GenerateChapterModal({
                   ? 'Passes each character\'s existing portrait to Google\'s newest Gemini Flash Image (v2) via Replicate — best for preserving actual likeness. Requires REPLICATE_API_TOKEN.'
                   : imageModel === 'nano-banana'
                   ? 'Original Gemini 2.5 Flash Image via Replicate — also reference-capable. Use if v2 isn\'t cooperating.'
-                  : imageModel === 'gpt-image-2'
-                  ? 'OpenAI\'s newest reference-capable image model. Requires a verified OpenAI organisation with image-2 access.'
-                  : imageModel === 'gpt-image-1'
-                  ? 'Original OpenAI gpt-image-1 with portrait references. Requires a verified OpenAI organisation.'
+                  : imageModel === 'gpt-image-2' || imageModel === 'gpt-image-1'
+                  ? 'OpenAI\'s newest image model on your account (GPT Image 2.5, falling back to older ones), with portrait references. Requires a verified OpenAI organisation.'
                   : imageModel === 'flux-pro'
                   ? 'Flux 1.1 Pro via Replicate — stylised but text-only (no reference images).'
                   : ''}
