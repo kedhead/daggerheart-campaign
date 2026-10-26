@@ -24,6 +24,7 @@ import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, shouldTry
 import generateStorybookHandler from '../api/generate-storybook.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
+import { currentStorySnapshot } from '../src/utils/currentStory.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3518,6 +3519,32 @@ section('Campaign art style');
   assert(artStyleRequestFields().artStyle === 'fantasy-anime', 'image requests carry the open campaign’s style');
   setCampaignArtStyle(null);
   assert(Object.keys(artStyleRequestFields()).length === 0, 'and nothing once no campaign style is set');
+}
+
+section('Generators know where the story is now');
+{
+  const snap = currentStorySnapshot({
+    sessions: [
+      { number: 1, date: '2026-01-01', status: 'completed', title: 'Into the Obsidian Prison', summary: 'The party is locked in the Obsidian Prison of Korak.' },
+      { number: 9, date: '2026-09-01', status: 'completed', title: 'The Sky Docks', summary: 'Free at last, the party bargains for passage at the [[Sky Docks]] of Mythis.' },
+      { number: 10, date: '2026-12-01', status: 'planned', title: 'Prep', summary: 'DM notes for next time' }
+    ],
+    chapters: [{ chapterNumber: 9, status: 'published', title: 'Wings over Mythis', prose: 'Long ago… ' + 'x'.repeat(800) + ' They watched the airship rise over Mythis.' }],
+    quests: [{ name: 'Find the Ribbet elders', status: 'active', description: 'Seek the three elder robber seraphs.' }, { name: 'Escape Korak', status: 'completed' }]
+  });
+  assert(snap.sessions.at(-1).text.includes('Sky Docks of Mythis') && !snap.sessions.some(s => /Prep/.test(s.label)),
+    'the latest played session comes last, wiki links read as plain text, and planned sessions are left out');
+  assert(/airship rise over Mythis\.$/.test(snap.chapters[0].text) && snap.chapters[0].text.length <= 500, 'a chapter keeps its ending, which is where the party is now');
+  assert(snap.quests.length === 1 && snap.quests[0].name === 'Find the Ribbet elders', 'only open quests are listed');
+  const npcPrompt = promptBuilder.build('npc', { campaign: { name: 'C' }, campaignFrame: { pitch: 'Escape the Obsidian Prison', startingQuests: [{ name: 'Escape Korak' }] }, currentStory: snap, requirements: { description: 'Pippin\'s ancestor' } });
+  assert(/WHERE THE STORY IS NOW/.test(npcPrompt) && /Sky Docks of Mythis/.test(npcPrompt) && /describe how the campaign BEGAN/.test(npcPrompt)
+    && npcPrompt.indexOf('WHERE THE STORY IS NOW') < npcPrompt.indexOf('SPECIFIC REQUEST'),
+    'the NPC prompt says where the story is now, that the frame is only the beginning, ahead of the GM’s request');
+  assert(/STARTING QUESTS \(from the start of the campaign\)/.test(npcPrompt), 'starting quests are labelled as the opening');
+  for (const type of ['location', 'lore', 'encounter']) {
+    assert(/WHERE THE STORY IS NOW/.test(promptBuilder.build(type, { campaign: {}, campaignFrame: {}, currentStory: snap, requirements: {} })), `the ${type} prompt carries it too`);
+  }
+  assert(!/WHERE THE STORY IS NOW/.test(promptBuilder.build('npc', { campaign: {}, campaignFrame: {}, requirements: {} })), 'with no sessions yet, nothing is added');
 }
 
 section('Battle map weather');

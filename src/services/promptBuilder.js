@@ -5,6 +5,7 @@
  */
 
 import { getGameSystem } from '../data/systems/index.js';
+import { hasCurrentStory } from '../utils/currentStory.js';
 
 export const promptBuilder = {
   /**
@@ -95,10 +96,33 @@ export const promptBuilder = {
    * @param {object} campaignFrame - Campaign frame data
    * @returns {string} Starting quests context string
    */
+  /**
+   * Where the story is now: the latest played sessions, the newest chapters
+   * and the open quests (see utils/currentStory). The frame above only says
+   * how the campaign began, so without this every new NPC, place or secret
+   * landed back in the opening arc.
+   * @param {object} currentStory - currentStorySnapshot() output
+   * @param {string} noun - what is being made ("NPC", "location"…)
+   */
+  _buildCurrentStoryContext(currentStory, noun) {
+    if (!hasCurrentStory(currentStory)) return '';
+    let context = '\n\nWHERE THE STORY IS NOW (most recent last):';
+    currentStory.sessions.forEach(s => { context += `\n- ${s.label}${s.text ? `: ${s.text}` : ''}`; });
+    currentStory.chapters.forEach(c => { context += `\n- ${c.label}: ${c.text}`; });
+    if (currentStory.quests.length > 0) {
+      context += '\nOPEN QUESTS:';
+      currentStory.quests.forEach(q => { context += `\n- ${q.name}${q.text ? `: ${q.text}` : ''}`; });
+    }
+    context += noun === 'lore'
+      ? '\nThe pitch, Session Zero answers and starting quests describe how the campaign BEGAN; the party has moved on since. Make this lore matter to where the story is NOW, unless the Game Master\'s request asks otherwise.'
+      : `\nIMPORTANT: The pitch, Session Zero answers and starting quests describe how the campaign BEGAN; the party has moved on since. Ground this ${noun} in where the story is NOW. Do not tie it to places or events from the opening arc unless the Game Master's request asks for that.`;
+    return context;
+  },
+
   _buildStartingQuestsContext(campaignFrame) {
     if (!campaignFrame?.startingQuests?.length) return '';
 
-    let context = '\n\nSTARTING QUESTS:';
+    let context = '\n\nSTARTING QUESTS (from the start of the campaign):';
     campaignFrame.startingQuests.forEach(quest => {
       if (quest.name) {
         context += `\n- ${quest.name}`;
@@ -175,6 +199,8 @@ Game System: ${gameSystem.name}`;
       });
       prompt += `\nIMPORTANT: Assign this NPC to one of the locations above using its exact name in the "location" field.`;
     }
+
+    prompt += this._buildCurrentStoryContext(context.currentStory, 'NPC');
 
     // If the user described a specific request, make it the top priority
     if (requirements.description) {
@@ -253,6 +279,8 @@ Game System: ${gameSystem.name}`;
       prompt += this._buildStartingQuestsContext(campaignFrame);
     }
 
+    prompt += this._buildCurrentStoryContext(context.currentStory, 'location');
+
     // If the user described a specific request, make it the top priority
     if (requirements.description) {
       prompt += `\n\nSPECIFIC REQUEST FROM GAME MASTER: ${requirements.description}`;
@@ -319,6 +347,8 @@ CAMPAIGN CONTEXT:`;
         if (fact.fact) prompt += `\n- ${fact.fact}`;
       });
     }
+
+    prompt += this._buildCurrentStoryContext(context.currentStory, 'lore');
 
     if (requirements.description) {
       prompt += `\n\nSPECIFIC REQUEST FROM GAME MASTER: ${requirements.description}`;
@@ -393,6 +423,8 @@ Adversaries should be Tier ${partyTier} to match the party (a lower-tier adversa
     prompt += requirements.difficulty ? `\nDifficulty: ${requirements.difficulty}` : '\nDifficulty: Suggest appropriate difficulty (easy, medium, hard, or deadly)';
     prompt += requirements.environment ? `\nEnvironment: ${requirements.environment}` : '\nEnvironment: Suggest an environment';
     prompt += requirements.enemyTypes ? `\nEnemy Types: ${requirements.enemyTypes}` : '\nEnemy Types: Suggest appropriate enemies';
+
+    prompt += this._buildCurrentStoryContext(context.currentStory, 'encounter');
 
     // The DM's own words. This is the whole point of the feature and it used to
     // be dropped here: every other builder (NPC, Location, Lore) splices the

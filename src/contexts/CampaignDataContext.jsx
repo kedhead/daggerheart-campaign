@@ -31,3 +31,8 @@ export function useCampaignData() {
   if (!ctx) throw new Error('useCampaignData must be used within CampaignDataProvider');
   return ctx;
 }
+
+/** The campaign data when inside a CampaignDataProvider, otherwise null. */
+export function useOptionalCampaignData() {
+  return useContext(CampaignDataContext);
+}
