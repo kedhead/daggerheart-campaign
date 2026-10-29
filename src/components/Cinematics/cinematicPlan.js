@@ -96,12 +96,25 @@ export function parseIntroSubtitles(text) {
 // ── "Previously on…" recaps ──────────────────────────────────────────────────
 
 const sessionTime = (s) => String(s?.date || '');
+const sessionNo = (s) => Number(s?.sessionNumber ?? s?.number) || 0;
 
-/** Played sessions, oldest first. */
-export function playedSessions(sessions = []) {
+/**
+ * Sessions that were played, oldest first. The same test the chapter writer
+ * uses: marked completed, or with a summary or quotes written up. Sessions
+ * are often logged as planned and never switched over once played, so the
+ * status alone would hide most of them. A session with a chapter was played
+ * whatever its status says.
+ */
+export function playedSessions(sessions = [], chapters = []) {
+  const withChapter = new Set((chapters || []).map(c => c?.sessionId).filter(Boolean));
   return (sessions || [])
-    .filter(s => s && s.status !== 'planned' && !s.isPlanned)
-    .sort((a, b) => sessionTime(a).localeCompare(sessionTime(b)));
+    .filter(s => s && (s.status === 'completed' || String(s.summary || '').trim() || s.highlights?.length || withChapter.has(s.id)))
+    .sort((a, b) => (sessionNo(a) - sessionNo(b)) || sessionTime(a).localeCompare(sessionTime(b)));
+}
+
+/** The session's own number if it has one, else its place among played sessions. */
+export function sessionNumberOf(session, played) {
+  return sessionNo(session) || (played.findIndex(s => s.id === session?.id) + 1);
 }
 
 /**
@@ -109,13 +122,13 @@ export function playedSessions(sessions = []) {
  * little run-up, and the chapters written from them.
  */
 export function recapSources({ session, sessions = [], chapters = [] }) {
-  const played = playedSessions(sessions);
+  const played = playedSessions(sessions, chapters);
   const at = played.findIndex(s => s.id === session?.id);
   const picked = at > 0 ? [played[at - 1], played[at]] : session ? [session] : [];
   const sourceChapters = picked
     .map(s => (chapters || []).find(c => c?.sessionId === s.id && c.status === 'published') || (chapters || []).find(c => c?.sessionId === s.id))
     .filter(Boolean);
-  return { sessions: picked, chapters: sourceChapters, sessionNumber: at >= 0 ? at + 1 : played.length };
+  return { sessions: picked, chapters: sourceChapters, sessionNumber: session ? sessionNumberOf(session, played) : played.length };
 }
 
 /** The prompt for a recap script. */

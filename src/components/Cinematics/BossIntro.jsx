@@ -13,21 +13,26 @@ export const BOSS_INTRO_BEATS = { whoosh: 120, artSlam: 420, nameSlam: 900, out:
  * @param {object} props
  * @param {{name: string, subtitle?: string, tag?: string, imageUrl?: string, videoUrl?: string, accent?: string}} props.intro
  * @param {() => void} [props.onDone]
+ * @param {object} [props.sfx] - a createSoundPlayer() player; without one the intro uses synthesised hits
  */
-export default function BossIntro({ intro, onDone }) {
+export default function BossIntro({ intro, onDone, sfx }) {
   // By ref, so a parent re-render never restarts the intro.
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   useEffect(() => {
+    const play = sfx
+      ? (cue, volume) => sfx.play(cue, volume)
+      : (cue) => ({ whoosh: () => playWhoosh(0.4), impact: () => playSlam(0.7), slam: () => playSlam(0.9) })[cue]?.();
     const timers = [
-      setTimeout(() => playWhoosh(0.4), BOSS_INTRO_BEATS.whoosh),
-      setTimeout(() => playSlam(0.7), BOSS_INTRO_BEATS.artSlam),
-      setTimeout(() => playSlam(0.9), BOSS_INTRO_BEATS.nameSlam),
-      setTimeout(() => playWhoosh(0.3, 0.45), BOSS_INTRO_BEATS.out),
+      setTimeout(() => play('whoosh', 0.7), BOSS_INTRO_BEATS.whoosh),
+      // The big hit lands with the art; its tail carries the name and subtitle.
+      setTimeout(() => play('impact', 1), BOSS_INTRO_BEATS.artSlam),
+      setTimeout(() => play('slam', 0.9), BOSS_INTRO_BEATS.nameSlam),
+      setTimeout(() => play('whoosh', 0.5), BOSS_INTRO_BEATS.out),
       setTimeout(() => doneRef.current?.(), BOSS_INTRO_BEATS.done)
     ];
     return () => timers.forEach(clearTimeout);
-  }, [intro]);
+  }, [intro, sfx]);
 
   const accent = intro?.accent || '#ef4444';
   return (

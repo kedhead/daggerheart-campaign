@@ -14,8 +14,9 @@ const MOVES = ['rr-move-in-left', 'rr-move-out', 'rr-move-in-right', 'rr-move-up
  * @param {{title: string, endLabel: string, slides: Array<{line: string, imageUrl?: string, videoUrl?: string}>, narration?: {url: string, duration: number}, musicUrl?: string}} props.recap
  * @param {() => void} [props.onDone]
  * @param {(blocked: boolean) => void} [props.onSoundBlocked] - the browser refused to play sound until a click
+ * @param {object} [props.sfx] - a createSoundPlayer() player; without one the reel uses synthesised hits
  */
-export default function RecapReel({ recap, onDone, onSoundBlocked }) {
+export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const slides = useMemo(() => recap?.slides || [], [recap]);
   const timing = useMemo(() => recapTimings(slides, recap?.narration?.duration || 0), [slides, recap]);
   const [t, setT] = useState(0);
@@ -66,13 +67,22 @@ export default function RecapReel({ recap, onDone, onSoundBlocked }) {
 
   // Sound cues on each change of picture.
   const lastIndex = useRef(-2);
-  const cued = useRef({ riser: false, slam: false });
+  const cued = useRef({ open: false, riser: false, slam: false });
   useEffect(() => {
-    if (index !== lastIndex.current && index >= 0) playWhoosh(0.25, 0.5);
+    const play = (cue, volume) => {
+      if (sfx) { sfx.play(cue, volume); return; }
+      if (cue === 'whoosh') playWhoosh(0.25, 0.5);
+      else if (cue === 'riser') playRiser(0.22, 1.6);
+      else playSlam(0.85);
+    };
+    // A boom under the title card, whooshes between pictures, then a riser
+    // into the slam of tonight's session card.
+    if (!cued.current.open && t >= 0.15) { cued.current.open = true; play('impact', 0.8); }
+    if (index !== lastIndex.current && index > 0) play('whoosh', 0.45);
     lastIndex.current = index;
-    if (!cued.current.riser && t >= timing.total - RECAP_END_SECONDS - 1.6) { cued.current.riser = true; playRiser(0.22, 1.6); }
-    if (!cued.current.slam && onEnd) { cued.current.slam = true; playSlam(0.85); }
-  }, [index, t, onEnd, timing.total]);
+    if (!cued.current.riser && t >= timing.total - RECAP_END_SECONDS - (sfx ? 2.8 : 1.6)) { cued.current.riser = true; play('riser', 0.6); }
+    if (!cued.current.slam && onEnd) { cued.current.slam = true; play('impact', 1); }
+  }, [index, t, onEnd, timing.total, sfx]);
 
   // Duck the music under the narrator and fade it out at the end.
   useEffect(() => {
