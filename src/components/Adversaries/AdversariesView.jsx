@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Search, Download, Check, Skull, Filter } from 'lucide-react';
 import AdversaryCard from './AdversaryCard';
+import IntroLauncher from '../Cinematics/IntroLauncher';
 import AdversaryForm from './AdversaryForm';
 import StarWarsD6AdversaryCard from './StarWarsD6AdversaryCard';
 import StarWarsD6AdversaryForm from './StarWarsD6AdversaryForm';
@@ -52,6 +53,7 @@ export default function AdversariesView({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTier, setFilterTier] = useState('all');
   const [filterRole, setFilterRole] = useState('all');
+  const [introFor, setIntroFor] = useState(null); // the adversary whose boss intro is open
   const [filterSource, setFilterSource] = useState('all');
   const [filterClassification, setFilterClassification] = useState('all');
   const [filterAffiliation, setFilterAffiliation] = useState('all');
@@ -408,6 +410,7 @@ export default function AdversariesView({
                 onDelete={isDM ? handleDelete : null}
                 onGenerateImage={isDM ? handleGenerateImage : null}
                 onRegenerate={isDM ? handleRegenerate : null}
+                onIntro={isDM ? setIntroFor : null}
                 regenerating={regeneratingId === adversary.id}
                 isDM={isDM}
                 campaignId={campaign?.id}
@@ -581,6 +584,18 @@ export default function AdversariesView({
           </div>
         </div>
       </Modal>
+
+      {introFor && (
+        <IntroLauncher
+          isOpen
+          onClose={() => setIntroFor(null)}
+          // The live copy, so a saved subtitle or clip shows straight away.
+          entity={adversaries.find(a => a.id === introFor.id) || introFor}
+          kind="adversary"
+          campaign={campaign}
+          onSave={updateAdversary}
+        />
+      )}
     </div>
   );
 }

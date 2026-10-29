@@ -1,0 +1,38 @@
+.cinematic-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 9800; /* above the map, the dice tray (9000) and dialogs */
+  background: transparent;
+  overflow: hidden;
+}
+
+.cs-close,
+.cs-sound {
+  position: absolute;
+  z-index: 20;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.cs-close {
+  top: 2vh;
+  right: 2vw;
+  padding: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.cinematic-stage:hover .cs-close { opacity: 0.8; }
+
+.cs-sound {
+  bottom: 2.5vh;
+  right: 2vw;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font: 600 14px/1 'Inter', system-ui, sans-serif;
+  animation: cs-pulse 1.6s ease-in-out infinite;
+}
+@keyframes cs-pulse { 50% { background: rgba(124, 58, 237, 0.7); } }

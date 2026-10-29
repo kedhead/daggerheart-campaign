@@ -1,0 +1,152 @@
+/* "Previously on…" reel. vw/vh sizing so it reads across the room. */
+
+.recap-reel {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+}
+
+.rr-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+.rr-slide.is-on { opacity: 1; }
+
+.rr-media {
+  position: absolute;
+  inset: -4%;
+  width: 108%;
+  height: 108%;
+  object-fit: cover;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+.rr-media-empty {
+  background: radial-gradient(ellipse at center, #1e1b4b, #000 70%);
+}
+
+.rr-move-in-left { animation-name: rr-in-left; }
+.rr-move-out { animation-name: rr-out; }
+.rr-move-in-right { animation-name: rr-in-right; }
+.rr-move-up { animation-name: rr-up; }
+@keyframes rr-in-left { from { transform: scale(1.02) translate(-2%, 0); } to { transform: scale(1.14) translate(1.5%, 1%); } }
+@keyframes rr-out { from { transform: scale(1.16); } to { transform: scale(1.02); } }
+@keyframes rr-in-right { from { transform: scale(1.04) translate(2%, -1%); } to { transform: scale(1.15) translate(-1.5%, 0.5%); } }
+@keyframes rr-up { from { transform: scale(1.1) translate(0, 2.5%); } to { transform: scale(1.1) translate(0, -2.5%); } }
+
+.rr-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.75));
+  pointer-events: none;
+}
+
+/* A dark band under the captions so they read over bright art. */
+.rr-vignette::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42vh;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.45) 55%, transparent);
+}
+
+.rr-letterbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8vh;
+  background: #000;
+}
+.rr-letterbox-top { top: 0; }
+.rr-letterbox-bottom { bottom: 0; }
+
+.rr-caption {
+  position: absolute;
+  left: 8vw;
+  right: 8vw;
+  bottom: 12vh;
+  text-align: center;
+  font-family: 'EB Garamond', 'Georgia', serif;
+  font-size: clamp(20px, 4.2vh, 64px);
+  line-height: 1.25;
+  text-shadow: 0 2px 8px #000, 0 0 30px rgba(0, 0, 0, 0.9);
+  animation: rr-caption-in 0.7s ease-out both;
+}
+@keyframes rr-caption-in { from { opacity: 0; transform: translateY(2vh); } }
+
+.rr-title,
+.rr-end {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(20, 16, 40, 0.75), #000 75%);
+  text-align: center;
+  padding: 0 6vw;
+}
+.rr-title { animation: rr-title-out 3.2s ease both; }
+@keyframes rr-title-out { 0% { opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+.rr-title-kicker,
+.rr-end-kicker {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(14px, 3vh, 40px);
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: #d4af37;
+  animation: rr-track 3.2s ease-out both;
+}
+@keyframes rr-track { from { letter-spacing: 0.15em; opacity: 0; } to { letter-spacing: 0.5em; opacity: 1; } }
+
+.rr-title-name {
+  margin-top: 2vh;
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: clamp(32px, 10vh, 160px);
+  line-height: 1;
+  background: linear-gradient(100deg, #b8902f 20%, #fff6d5 45%, #b8902f 60%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: rr-glint 3s ease-in-out both;
+}
+@keyframes rr-glint { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.rr-title-rule {
+  margin-top: 3vh;
+  width: 30vw;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #d4af37, transparent);
+  animation: rr-rule 1.4s 0.4s ease-out both;
+}
+@keyframes rr-rule { from { transform: scaleX(0); } }
+
+.rr-end { animation: rr-fade-in 0.25s both; }
+@keyframes rr-fade-in { from { opacity: 0; } }
+.rr-end-label {
+  margin-top: 2vh;
+  font-family: 'Bangers', 'Impact', sans-serif;
+  font-size: clamp(48px, 16vh, 260px);
+  line-height: 0.95;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+  -webkit-text-stroke: 0.5vh #000;
+  paint-order: stroke fill;
+  text-shadow: 0.9vh 0.9vh 0 #7c3aed;
+  animation: rr-slam 0.45s cubic-bezier(.2,1.4,.35,1) both, rr-end-out 0.6s 3s ease-in forwards;
+}
+@keyframes rr-slam { from { transform: scale(3) rotate(-4deg); opacity: 0; } }
+@keyframes rr-end-out { to { opacity: 0; transform: scale(0.96); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .recap-reel *, .recap-reel *::before { animation-duration: 0.01s !important; }
+}

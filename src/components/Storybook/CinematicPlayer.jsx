@@ -9,34 +9,10 @@ import { persistAudio, persistVideo, deleteStoredFile } from '../../services/aud
 import { exportCinematicWebM } from './cinematicExporter';
 import './CinematicPlayer.css';
 import { apiFetch } from '../../services/apiClient';
+import { NARRATOR_VOICES, DEFAULT_VOICE_KEY, probeDuration } from './narratorVoices';
+import { animateStill } from '../../services/animateStill';
 
 
-// Curated narrator presets. `id` is an ElevenLabs premade voice; `style` +
-// `fallbackVoice` steer the OpenAI fallback (gpt-4o-mini-tts) so the presets
-// still sound distinct when ElevenLabs is unavailable.
-const NARRATOR_VOICES = [
-  {
-    key: 'wizard', label: '🧙 Wizened Wizard', id: 'N2lVS1w4EtoT3dr4eOWO', // Callum — raspy, weathered
-    fallbackVoice: 'ash',
-    style: 'Speak as a wise, ancient wizard telling an epic tale by firelight: unhurried, warm and gravelly, with gentle dramatic pauses and quiet wonder.',
-  },
-  {
-    key: 'elder', label: '📖 Old Storyteller', id: 'pqHfZKP75CvOlQylNhV4', // Bill — aged, warm
-    fallbackVoice: 'fable',
-    style: 'Speak as a kindly old storyteller by the hearth: slow, warm, weathered voice with fond amusement.',
-  },
-  {
-    key: 'herald', label: '📯 Deep Herald', id: 'onwK4e9ZLuTAKqWW03F9', // Daniel — deep British
-    fallbackVoice: 'onyx',
-    style: 'Speak as a solemn royal herald: deep, formal, resonant delivery with gravity and precision.',
-  },
-  {
-    key: 'bard', label: '🎻 Warm Bard', id: 'JBFqnCBsd6RMkjVDRZzb', // George — warm narrator
-    fallbackVoice: 'ballad',
-    style: 'Speak as a warm travelling bard: rich, engaging storytelling voice with easy charm.',
-  },
-];
-const DEFAULT_VOICE_KEY = 'wizard';
 
 export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapter, narrationClientKey = '', onClose }) {
   const timeline = useMemo(() => buildTimeline(chapter, chapter?.narration), [chapter]);
@@ -250,56 +226,11 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     if (!isDM || !updateChapter || !slide?.sceneKey || !slide.imageUrl) return;
     setError(null);
     setAnimating({ label: 'Starting…' });
-    const post = (body) => apiFetch('/api/generate-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
     try {
       const motionPrompt = slide.text
         ? `Subtle cinematic motion, preserve the art style of the source image. ${slide.text}`.slice(0, 480)
         : undefined;
-      const createResp = await post({ type: 'scene-video', imageUrl: slide.imageUrl, prompt: motionPrompt });
-      const created = await createResp.json().catch(() => ({}));
-      if (!createResp.ok || !created.predictionId) {
-        throw new Error(created.error || `Could not start animation (HTTP ${createResp.status})`);
-      }
-
-      setAnimating({ label: 'Animating… (~1–3 min)' });
-      const deadline = Date.now() + 8 * 60 * 1000;
-      let videoUrl = null;
-      while (Date.now() < deadline) {
-        await new Promise(r => setTimeout(r, 8000));
-        const st = await post({ type: 'video-status', predictionId: created.predictionId });
-        const data = await st.json().catch(() => ({}));
-        if (!st.ok) throw new Error(data.error || `Status check failed (HTTP ${st.status})`);
-        if (data.status === 'succeeded' && data.videoUrl) { videoUrl = data.videoUrl; break; }
-        if (data.status === 'failed' || data.status === 'canceled') {
-          throw new Error(data.error || 'Video generation failed.');
-        }
-      }
-      if (!videoUrl) throw new Error('Video generation timed out — try again in a minute.');
-
-      setAnimating({ label: 'Saving clip…' });
-      // Fetch the clip: replicate.delivery allows CORS; fall back to the proxy.
-      let blob = null;
-      try {
-        const direct = await fetch(videoUrl);
-        if (direct.ok) blob = await direct.blob();
-      } catch { /* CORS or network — use the proxy below */ }
-      if (!blob) {
-        const pr = await apiFetch('/api/download-proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageUrl: videoUrl })
-        });
-        if (pr.ok) {
-          const { dataUrl } = await pr.json();
-          blob = await (await fetch(dataUrl)).blob();
-        }
-      }
-      if (!blob || blob.size < 1000) throw new Error('Could not download the generated clip.');
-
+      const blob = await animateStill({ imageUrl: slide.imageUrl, prompt: motionPrompt, onStatus: label => setAnimating({ label }) });
       const saved = await persistVideo(campaignId, blob, `scene-${chapter.id}-${slide.sceneKey}`);
       await updateChapter(chapter.id, {
         sceneVideos: { ...(chapter.sceneVideos || {}), [slide.sceneKey]: saved }
@@ -636,13 +567,3 @@ function readVol(key, fallback) {
   }
 }
 
-// Probe an mp3's duration client-side.
-function probeDuration(url) {
-  return new Promise((resolve) => {
-    const a = new Audio();
-    a.preload = 'metadata';
-    a.onloadedmetadata = () => resolve(Number.isFinite(a.duration) ? a.duration : 5);
-    a.onerror = () => resolve(5);
-    a.src = url;
-  });
-}

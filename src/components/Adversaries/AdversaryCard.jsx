@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Edit, Trash2, Eye, EyeOff, Skull, Swords, Heart, Zap, Target, ChevronDown, ChevronUp, ImageIcon, Wand2, Loader2, RefreshCw } from 'lucide-react';
+import { Edit, Trash2, Eye, EyeOff, Skull, Swords, Heart, Zap, Target, ChevronDown, ChevronUp, ImageIcon, Wand2, Loader2, RefreshCw, Clapperboard } from 'lucide-react';
 import './AdversariesView.css';
 import { useDice, parseDamageNotation } from '../../dice';
 
@@ -9,6 +9,7 @@ export default function AdversaryCard({
   onDelete,
   onGenerateImage,
   onRegenerate,
+  onIntro,
   regenerating = false,
   isDM,
   compact = false,
@@ -223,6 +224,11 @@ export default function AdversaryCard({
               title="Regenerate stats & features with AI (keeps name and portrait)"
             >
               {regenerating ? <Loader2 size={14} className="spinner" /> : <RefreshCw size={14} />}
+            </button>
+          )}
+          {onIntro && (
+            <button className="btn btn-ghost btn-sm" onClick={() => onIntro(adversary)} title="Boss intro on the battle map monitor">
+              <Clapperboard size={14} />
             </button>
           )}
           {onEdit && (

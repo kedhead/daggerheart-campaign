@@ -5,6 +5,7 @@ import { Maximize, Minimize, RotateCw, Map as MapIcon, Expand, Shrink } from 'lu
 import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 import { DiceTray, DiceRoller, RollHistory } from '../../dice';
 import AudioReceiver from '../Soundboard/AudioReceiver';
+import MonitorCinematics from '../Cinematics/MonitorCinematics';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import './BattleMapDisplayWindow.css';
 
@@ -174,6 +175,9 @@ export default function BattleMapDisplayWindow({ campaignId }) {
       <DiceRoller campaignId={campaignId} variant="fab" />
 
       <AudioReceiver campaignId={campaignId} />
+
+      {/* Boss intros and "Previously on…" recaps the DM sends to the table. */}
+      <MonitorCinematics campaignId={campaignId} />
     </div>
   );
 }

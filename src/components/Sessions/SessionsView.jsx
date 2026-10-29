@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import ConfirmDeleteModal from '../ConfirmDeleteModal';
-import { Plus, BookOpen, ScrollText, Sparkles } from 'lucide-react';
+import { Plus, BookOpen, ScrollText, Sparkles, Clapperboard } from 'lucide-react';
+import RecapStudio from '../Cinematics/RecapStudio';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
 import SessionLive from './SessionLive';
@@ -71,6 +72,7 @@ export default function SessionsView({
 
   const [liveSession, setLiveSession] = useState(null);
   const [isGMAssistantOpen, setIsGMAssistantOpen] = useState(false);
+  const [isRecapOpen, setIsRecapOpen] = useState(false);
 
   const gmAssistantHandlers = {
     addSession,
@@ -173,6 +175,15 @@ export default function SessionsView({
         </div>
         {isDM && (
           <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-secondary flex items-center gap-2 px-5 py-3"
+              onClick={() => setIsRecapOpen(true)}
+              title="A narrated, animated recap for the battle map monitor"
+            >
+              <Clapperboard size={20} />
+              Previously on…
+            </button>
             {gmAssistantReady && (
               <button
                 type="button"
@@ -282,6 +293,21 @@ export default function SessionsView({
           entities={linkEntities}
         />
       </Modal>
+
+      {isDM && isRecapOpen && (
+        <RecapStudio
+          isOpen
+          onClose={() => setIsRecapOpen(false)}
+          campaign={campaign}
+          sessions={sessions}
+          updateSession={updateSession}
+          chapters={storybookChapters}
+          characters={characters}
+          npcs={npcs}
+          adversaries={adversaries}
+          locations={locations}
+        />
+      )}
     </div>
   );
 }
