@@ -148,7 +148,7 @@ ${material.join('\n\n')}
 
 Rules:
 - 6 to 8 beats, in story order, mostly from the LAST SESSION. Use the session before only for set-up.
-- Write it like a TV trailer voice-over: present tense, punchy, dramatic, with humour where the table had fun. Vary the rhythm: mostly one sentence of 8 to 18 words, with a couple of very short punches ("Then the floor gave way.").
+- Write it for the classic movie-theatre trailer narrator: present tense, epic and dramatic, with humour where the table had fun. Open like a trailer, with "In a world where…" or a three-part set-up ("One party. One prison. No way out."). Vary the rhythm: mostly one sentence of 8 to 18 words, with a couple of very short punches ("Then the floor gave way.").
 - Use only what happened in the material above. Do not invent events, deaths or revelations.
 - The last beat sets up the cliffhanger: where things stand right now.
 - For each beat give "focus": the name of the one character, NPC, creature or place it is most about (or "" if none).
@@ -287,7 +287,13 @@ export function recapTimings(slides, narrationSeconds = 0, { question = '', ques
   return { slides: out, cliff, endStart, total: endStart + RECAP_END_SECONDS, narrationStart: RECAP_TITLE_SECONDS };
 }
 
-/** The full narration script: the beats read one after another. */
-export function narrationScript(slides) {
-  return slides.map(s => clean(s.line)).filter(Boolean).join(' ');
+/**
+ * The full narration script: the beats read one after another. With
+ * `trailer`, each beat ends on an ellipsis, which the voice reads as the
+ * long, heavy pause of a movie-trailer narrator.
+ */
+export function narrationScript(slides, { trailer = false } = {}) {
+  const lines = slides.map(s => clean(s.line)).filter(Boolean);
+  if (!trailer) return lines.join(' ');
+  return lines.map(l => l.replace(/[.!]+$/, '') + (/[?]$/.test(l) ? '' : '…')).join(' ');
 }

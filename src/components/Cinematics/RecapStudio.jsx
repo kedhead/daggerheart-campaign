@@ -104,7 +104,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     const stamp = Date.now();
     const title = campaign?.name || 'our story';
     const intro = await narrate({ campaignId, text: `Previously on… ${title}.`, voiceKey, fileName: `recap-${session.id}-intro-${stamp}` });
-    const body = await narrate({ campaignId, text: narrationScript(slides), voiceKey, fileName: `recap-${session.id}-${stamp}` });
+    const body = await narrate({ campaignId, text: narrationScript(slides, { trailer: voiceKey === RECAP_VOICE_KEY }), voiceKey, fileName: `recap-${session.id}-${stamp}` });
     const ask = saved?.question
       ? await narrate({ campaignId, text: saved.question, voiceKey, fileName: `recap-${session.id}-question-${stamp}` })
       : null;

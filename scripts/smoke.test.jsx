@@ -20,6 +20,7 @@ import { ConfirmProvider, useConfirm } from '../src/contexts/ConfirmContext.jsx'
 import { useNotify } from '../src/contexts/ToastContext.jsx';
 import { particleCount, normalizeEffects, AVAILABLE_EFFECTS as WEATHER_EFFECTS } from '../src/components/BattleMapStudio/Canvas/weatherEngine.js';
 import generateImageHandler, { setMapUploaderForTests } from '../api/generate-image.js';
+import generateNarrationHandler, { voiceSettingsFrom } from '../api/generate-narration.js';
 import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, shouldTryNextModel, readMapRequest, mapStoragePath, MAP_MODELS } from '../api/_lib/battleMap.js';
 import generateStorybookHandler from '../api/generate-storybook.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
@@ -3599,10 +3600,12 @@ section('Table cinematics');
   assert(timed.slides[0].duration > timed.slides[2].duration, 'longer lines stay on screen longer');
   assert(recapTimings(slides, 0).slides.every(s => s.duration >= 3.5), 'without narration every line gets time to be read');
   assert(narrationScript(slides).startsWith('Last time, the party broke out of Korak. At the Sky Docks'), 'the narrator reads the beats in order');
+  assert(narrationScript([{ line: 'One party.' }, { line: 'One prison!' }, { line: 'Will they escape?' }], { trailer: true }) === 'One party… One prison… Will they escape?',
+    'the trailer voice gets a long pause after every beat, questions left as they are');
 
   assert(parseRecapQuestion('{"beats":[],"question":"Will the elders trust a ghost"}') === 'Will the elders trust a ghost?' && parseRecapQuestion('{"beats":[]}') === '',
     'the cliffhanger question is read from the answer, and gets its question mark');
-  assert(/"question"/.test(rp) && /TV trailer/.test(rp), 'the recap prompt asks for trailer pacing and a cliffhanger question');
+  assert(/"question"/.test(rp) && /movie-theatre trailer narrator/.test(rp) && /In a world where/.test(rp), 'the recap prompt asks for trailer pacing and a cliffhanger question');
   const lines = ['Opening shot of the prison.', 'They run.', 'At the Sky Docks a ghost with a very wide grin claims to be family.', 'Pippin, it turns out, is three times great-grandson to a frog.', 'Now the airship rises toward the elders.'];
   const layouts = lines.map((l, i) => montageLayout(i, lines.length, l));
   assert(layouts.join() === 'full,full,split3,split2,full', `short lines punch full-screen, long ones get comic spreads, the first and last are full (got ${layouts})`);
@@ -3873,6 +3876,25 @@ async function runImageApiTests() {
     r = mkRes();
     await generateImageHandler({ method: 'POST', body: { prompt: 'a goblin', type: 'portrait' } }, r);
     assert(r.statusCode === 400 && seen.length === 3 && /does not exist/.test(r.payload.error), 'when no model is available, the last error is reported');
+
+    // Narration: a preset's own voice settings, and its voices tried in order.
+    const realEleven = process.env.ELEVENLABS_API_KEY;
+    process.env.ELEVENLABS_API_KEY = 'el-test';
+    const tried = [];
+    globalThis.fetch = async (url, init = {}) => {
+      const voice = String(url).split('/').pop();
+      tried.push({ voice, body: init.body ? JSON.parse(init.body) : null });
+      if (voice === 'nPczCjzI2devNBz1zQrb') return { ok: false, status: 400, text: async () => '{"detail":{"status":"voice_not_found"}}' };
+      return { ok: true, status: 200, arrayBuffer: async () => new Uint8Array(500).buffer };
+    };
+    r = mkRes();
+    await generateNarrationHandler({ method: 'POST', headers: {}, body: { text: 'In a world…', voiceId: 'nPczCjzI2devNBz1zQrb', voiceIds: ['pNInz6obpgDQGcFmaJgB'], voiceSettings: { stability: 0.28, style: 0.8, speed: 0.86 } } }, r);
+    assert(r.statusCode === 200 && r.payload.voiceFallback && tried.map(x => x.voice).join() === 'nPczCjzI2devNBz1zQrb,pNInz6obpgDQGcFmaJgB'
+      && tried[1].body.voice_settings.style === 0.8 && tried[1].body.voice_settings.speed === 0.86,
+      `a missing trailer voice falls to the next deep voice, keeping the trailer delivery (got ${JSON.stringify(tried.map(x => x.voice))})`);
+    assert(voiceSettingsFrom({ stability: 5, style: -1, speed: 3 }).stability === 1 && voiceSettingsFrom({ style: -1 }).style === 0 && voiceSettingsFrom({ speed: 3 }).speed === 1.2
+      && voiceSettingsFrom(null).style === 0.35 && !('speed' in voiceSettingsFrom({})), 'voice settings are clamped, and the old narrators keep their delivery');
+    if (realEleven === undefined) delete process.env.ELEVENLABS_API_KEY; else process.env.ELEVENLABS_API_KEY = realEleven;
 
     const noKey = await call({ prompt: 'a crypt', type: 'dungeon' }, { key: null });
     assert(noKey.res.statusCode === 500 && noKey.requests.length === 0 && /OPENAI_API_KEY/.test(noKey.res.payload?.error || ''),
