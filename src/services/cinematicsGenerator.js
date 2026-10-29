@@ -38,7 +38,15 @@ export async function narrate({ campaignId, text, voiceKey = DEFAULT_VOICE_KEY, 
   const resp = await apiFetch('/api/generate-narration', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, voiceId: voice.id, style: voice.style, fallbackVoice: voice.fallbackVoice, apiKey: '__shared__' })
+    body: JSON.stringify({
+      text,
+      voiceId: voice.id,
+      voiceIds: voice.altIds || [],
+      voiceSettings: voice.settings,
+      style: voice.style,
+      fallbackVoice: voice.fallbackVoice,
+      apiKey: '__shared__'
+    })
   });
   if (!resp.ok) {
     const e = await resp.json().catch(() => ({}));

@@ -26,9 +26,14 @@ export const NARRATOR_VOICES = [
     style: 'Speak as a warm travelling bard: rich, engaging storytelling voice with easy charm.',
   },
   {
-    key: 'announcer', label: '🎬 Trailer Announcer', id: 'pNInz6obpgDQGcFmaJgB', // Adam — deep, punchy
+    // The movie-theatre trailer voice: as deep and booming as the library
+    // goes, slowed down, with the drama turned right up.
+    key: 'announcer', label: '🎬 Movie Trailer Voice',
+    id: 'nPczCjzI2devNBz1zQrb', // Brian — deep, resonant
+    altIds: ['pNInz6obpgDQGcFmaJgB', 'onwK4e9ZLuTAKqWW03F9'], // Adam, then Daniel, if the account lacks Brian
+    settings: { stability: 0.28, similarity_boost: 0.85, style: 0.8, speed: 0.86 },
     fallbackVoice: 'onyx',
-    style: 'Speak as a movie-trailer and TV "previously on" announcer: deep, punchy and dramatic, with big emphasis on key words, short charged pauses between sentences, and rising intensity toward the end.',
+    style: 'You are the classic movie-theatre trailer narrator. Speak in an extremely deep, booming, gravelly bass voice, slow and heavy with gravitas. Leave long, dramatic pauses at every ellipsis and between sentences. Ominous, epic and larger than life, every word landing like thunder.',
   },
 ];
 export const DEFAULT_VOICE_KEY = 'wizard';

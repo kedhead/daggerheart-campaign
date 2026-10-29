@@ -20,7 +20,22 @@ const DEFAULT_ELEVENLABS_VOICE = 'N2lVS1w4EtoT3dr4eOWO';
 const DEFAULT_STYLE =
   'Speak as a wise, ancient wizard telling an epic tale by firelight: unhurried, warm and gravelly, with gentle dramatic pauses and quiet wonder.';
 
-async function narrateViaElevenLabs(apiKey, text, voiceId) {
+// The default delivery. A preset can ask for its own (the trailer announcer
+// wants far more drama and a slower pace); values are clamped to the API's ranges.
+const DEFAULT_SETTINGS = { stability: 0.45, similarity_boost: 0.7, style: 0.35 };
+const clamp = (v, lo, hi, d) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Number(v))) : d);
+export function voiceSettingsFrom(raw) {
+  if (!raw || typeof raw !== 'object') return DEFAULT_SETTINGS;
+  const out = {
+    stability: clamp(raw.stability, 0, 1, DEFAULT_SETTINGS.stability),
+    similarity_boost: clamp(raw.similarity_boost, 0, 1, DEFAULT_SETTINGS.similarity_boost),
+    style: clamp(raw.style, 0, 1, DEFAULT_SETTINGS.style)
+  };
+  if (raw.speed !== undefined) out.speed = clamp(raw.speed, 0.7, 1.2, 1);
+  return out;
+}
+
+async function narrateViaElevenLabs(apiKey, text, voiceId, settings = DEFAULT_SETTINGS) {
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId || DEFAULT_ELEVENLABS_VOICE}`,
     {
@@ -33,7 +48,7 @@ async function narrateViaElevenLabs(apiKey, text, voiceId) {
       body: JSON.stringify({
         text,
         model_id: 'eleven_multilingual_v2',
-        voice_settings: { stability: 0.45, similarity_boost: 0.7, style: 0.35 }
+        voice_settings: settings
       })
     }
   );
@@ -92,7 +107,12 @@ export default async function handler(req, res) {
   if (!user) return;
 
   try {
-    const { text, voiceId, style, fallbackVoice, apiKey: rawClientKey } = req.body || {};
+    const { text, voiceId, voiceIds, voiceSettings, style, fallbackVoice, apiKey: rawClientKey } = req.body || {};
+    // A preset may name several voices, best first: if the account lacks one,
+    // the next is tried before falling back to the default narrator.
+    const VOICE_ID = /^[A-Za-z0-9]{10,40}$/;
+    const candidates = [...new Set([voiceId, ...(Array.isArray(voiceIds) ? voiceIds : [])].filter(v => typeof v === 'string' && VOICE_ID.test(v)))].slice(0, 4);
+    const settings = voiceSettingsFrom(voiceSettings);
     // '__shared__' = client sentinel for "use the server's shared key"
     const clientKey = rawClientKey === '__shared__' ? null : rawClientKey;
 
@@ -107,24 +127,23 @@ export default async function handler(req, res) {
 
     let fallbackReason = null;
     if (elevenKey) {
-      try {
-        const audio = await narrateViaElevenLabs(elevenKey, trimmed, voiceId);
-        return res.status(200).json({ audio, provider: 'elevenlabs' });
-      } catch (err) {
-        console.error('ElevenLabs narration failed:', err.message);
-        // A voice-specific rejection shouldn't lose the provider — retry once
-        // with the known-good default voice before falling back to OpenAI.
-        if (voiceId && voiceId !== DEFAULT_ELEVENLABS_VOICE && /voice/i.test(err.message)) {
-          try {
-            const audio = await narrateViaElevenLabs(elevenKey, trimmed, DEFAULT_ELEVENLABS_VOICE);
-            return res.status(200).json({ audio, provider: 'elevenlabs', voiceFallback: true });
-          } catch (retryErr) {
-            console.error('ElevenLabs default-voice retry failed:', retryErr.message);
-          }
+      let lastErr = null;
+      // The preset's voices in order, then the known-good default — but only
+      // past a voice-specific rejection; any other error goes to OpenAI.
+      const chain = [...(candidates.length ? candidates : [DEFAULT_ELEVENLABS_VOICE])];
+      if (!chain.includes(DEFAULT_ELEVENLABS_VOICE)) chain.push(DEFAULT_ELEVENLABS_VOICE);
+      for (let i = 0; i < chain.length; i++) {
+        try {
+          const audio = await narrateViaElevenLabs(elevenKey, trimmed, chain[i], settings);
+          return res.status(200).json({ audio, provider: 'elevenlabs', ...(i > 0 ? { voiceFallback: true } : {}) });
+        } catch (err) {
+          console.error(`ElevenLabs narration failed (${chain[i]}):`, err.message);
+          lastErr = err;
+          if (!/voice/i.test(err.message)) break;
         }
-        fallbackReason = err.message.slice(0, 200);
-        if (!openaiKey) throw err;
       }
+      fallbackReason = lastErr.message.slice(0, 200);
+      if (!openaiKey) throw lastErr;
     } else {
       fallbackReason = 'ELEVENLABS_API_KEY is not set on the server';
     }
