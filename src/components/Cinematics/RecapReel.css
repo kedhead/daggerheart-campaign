@@ -8,77 +8,166 @@
   color: #fff;
 }
 
-.rr-slide {
+/* ── The montage ──────────────────────────────────────────────────────────
+   Each beat is a comic spread: one full-bleed panel, or two or three tilted
+   panels on white "paper" gutters. A new beat wipes in over the last one in
+   an ink splash, with a one-frame white flash on the cut. */
+
+.rr-beat {
   position: absolute;
   inset: 0;
-  opacity: 0;
-  transition: opacity 0.7s ease;
+  background: #f4f1e8; /* the paper the gutters show */
+  overflow: hidden;
 }
-.rr-slide.is-on { opacity: 1; }
+.rr-full { background: #000; }
+.rr-beat.is-entering { animation: rr-ink-wipe 0.5s cubic-bezier(.6,.05,.3,1) both; }
+@keyframes rr-ink-wipe {
+  from { clip-path: circle(0% at 12% 88%); }
+  to { clip-path: circle(150% at 12% 88%); }
+}
+
+.rr-cut-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: rr-cut-flash 0.18s ease-out both;
+}
+@keyframes rr-cut-flash { from { opacity: 0.85; } to { opacity: 0; } }
+
+.rr-panel {
+  position: absolute;
+  overflow: hidden;
+  background: #111;
+}
+/* The zoom punch as a panel lands (the picture inside drifts separately). */
+.is-entering .rr-panel { animation: rr-punch 0.42s cubic-bezier(.15,.9,.3,1.15) both; }
+@keyframes rr-punch {
+  from { transform: scale(1.35); opacity: 0; }
+  40% { opacity: 1; }
+  to { transform: none; opacity: 1; }
+}
+
+.rr-full .rr-panel-0 { inset: 0; }
+
+/* Two panels split on a slanted gutter. */
+.rr-split2 .rr-panel-0 { left: 0; top: 0; bottom: 0; width: 58%; clip-path: polygon(0 0, 100% 0, 79.3% 100%, 0 100%); }
+.rr-split2 .rr-panel-1 { left: 48%; top: 0; bottom: 0; width: 52%; clip-path: polygon(23% 0, 100% 0, 100% 100%, 0 100%); }
+.rr-split2.is-entering .rr-panel-1 { animation-name: rr-slide-in; }
+
+/* A big panel and two stacked beside it. */
+.rr-split3 .rr-panel-0 { left: 0; top: 0; bottom: 0; width: 56%; clip-path: polygon(0 0, 100% 0, 89.3% 100%, 0 100%); }
+.rr-split3 .rr-panel-1 { left: 54.9%; top: 0; width: 45.1%; height: 53%; clip-path: polygon(6.9% 0, 100% 0, 100% 88.7%, 0 100%); }
+.rr-split3 .rr-panel-2 { left: 52%; top: 50%; width: 48%; height: 50%; clip-path: polygon(5.4% 12%, 100% 0, 100% 100%, 0 100%); }
+.rr-split3.is-entering .rr-panel-1,
+.rr-split3.is-entering .rr-panel-2 { animation-name: rr-slide-in; }
+
+@keyframes rr-slide-in {
+  from { transform: translateX(30%) scale(1.15); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
 
 .rr-media {
   position: absolute;
-  inset: -4%;
-  width: 108%;
-  height: 108%;
+  inset: -5%;
+  width: 110%;
+  height: 110%;
   object-fit: cover;
   animation-timing-function: linear;
   animation-fill-mode: both;
 }
 .rr-media-empty {
+  inset: 0;
   background: radial-gradient(ellipse at center, #1e1b4b, #000 70%);
 }
+.rr-drift-a { animation-name: rr-drift-a; }
+.rr-drift-b { animation-name: rr-drift-b; }
+.rr-drift-c { animation-name: rr-drift-c; }
+@keyframes rr-drift-a { from { transform: scale(1.02) translate(-1.5%, 0); } to { transform: scale(1.12) translate(1.5%, 1%); } }
+@keyframes rr-drift-b { from { transform: scale(1.14); } to { transform: scale(1.02); } }
+@keyframes rr-drift-c { from { transform: scale(1.08) translate(0, 2%); } to { transform: scale(1.08) translate(0, -2%); } }
 
-.rr-move-in-left { animation-name: rr-in-left; }
-.rr-move-out { animation-name: rr-out; }
-.rr-move-in-right { animation-name: rr-in-right; }
-.rr-move-up { animation-name: rr-up; }
-@keyframes rr-in-left { from { transform: scale(1.02) translate(-2%, 0); } to { transform: scale(1.14) translate(1.5%, 1%); } }
-@keyframes rr-out { from { transform: scale(1.16); } to { transform: scale(1.02); } }
-@keyframes rr-in-right { from { transform: scale(1.04) translate(2%, -1%); } to { transform: scale(1.15) translate(-1.5%, 0.5%); } }
-@keyframes rr-up { from { transform: scale(1.1) translate(0, 2.5%); } to { transform: scale(1.1) translate(0, -2.5%); } }
-
-.rr-vignette {
+/* Comic dot texture over the art. */
+.rr-halftone {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.75));
   pointer-events: none;
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.22) 1px, transparent 1.3px);
+  background-size: 6px 6px;
+  mix-blend-mode: multiply;
+  opacity: 0.5;
 }
 
-/* A dark band under the captions so they read over bright art. */
-.rr-vignette::after {
-  content: '';
+.rr-preload {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 42vh;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.45) 55%, transparent);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
+.rr-preload img { width: 1px; height: 1px; }
 
 .rr-letterbox {
   position: absolute;
   left: 0;
   right: 0;
-  height: 8vh;
+  height: 6vh;
   background: #000;
 }
 .rr-letterbox-top { top: 0; }
 .rr-letterbox-bottom { bottom: 0; }
 
+/* The narrator's line in a comic caption box. */
 .rr-caption {
   position: absolute;
-  left: 8vw;
-  right: 8vw;
-  bottom: 12vh;
-  text-align: center;
-  font-family: 'EB Garamond', 'Georgia', serif;
-  font-size: clamp(20px, 4.2vh, 64px);
+  left: 5vw;
+  bottom: 10vh;
+  max-width: 62vw;
+  padding: 1.4vh 1.6vw;
+  background: #fde68a;
+  color: #111;
+  border: 0.45vh solid #000;
+  box-shadow: 0.8vh 0.8vh 0 #000;
+  font-family: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(18px, 3.4vh, 56px);
   line-height: 1.25;
-  text-shadow: 0 2px 8px #000, 0 0 30px rgba(0, 0, 0, 0.9);
-  animation: rr-caption-in 0.7s ease-out both;
+  transform: rotate(-1.2deg);
+  animation: rr-caption-in 0.35s 0.15s cubic-bezier(.2,1.3,.35,1) both;
 }
-@keyframes rr-caption-in { from { opacity: 0; transform: translateY(2vh); } }
+@keyframes rr-caption-in { from { opacity: 0; transform: rotate(-1.2deg) translateX(-8vw) scale(0.9); } }
+
+/* ── The cliffhanger: black, silence, then the question slams on. ───────── */
+.rr-cliff {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8vw;
+  text-align: center;
+}
+.rr-cliff-question {
+  font-family: 'Bangers', 'Impact', sans-serif;
+  font-size: clamp(40px, 12vh, 200px);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+  -webkit-text-stroke: 0.4vh #000;
+  paint-order: stroke fill;
+  text-shadow: 0.8vh 0.8vh 0 #dc2626;
+  animation: rr-slam 0.4s cubic-bezier(.2,1.4,.35,1) both, rr-cliff-shake 0.5s 0.38s both;
+}
+@keyframes rr-cliff-shake {
+  0%, 100% { translate: 0 0; }
+  20% { translate: -1vw 0.6vh; }
+  40% { translate: 0.8vw -0.6vh; }
+  60% { translate: -0.5vw 0.4vh; }
+  80% { translate: 0.3vw -0.2vh; }
+}
 
 .rr-title,
 .rr-end {

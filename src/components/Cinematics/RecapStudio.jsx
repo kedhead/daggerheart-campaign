@@ -8,7 +8,7 @@ import { audioContext } from './cinematicSfx';
 import { ensureSoundSet } from './cinematicSounds';
 import { useOptionalCampaignData } from '../../contexts/CampaignDataContext';
 import { writeRecapScript, narrate, animateToClip, textProvider } from '../../services/cinematicsGenerator';
-import { NARRATOR_VOICES, DEFAULT_VOICE_KEY } from '../Storybook/narratorVoices';
+import { NARRATOR_VOICES, RECAP_VOICE_KEY } from '../Storybook/narratorVoices';
 import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
 import { useAPIKey } from '../../hooks/useAPIKey';
 import { useNotify } from '../../contexts/ToastContext';
@@ -38,7 +38,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const saved = session?.recap || null;
 
   const [busy, setBusy] = useState(null); // what is running, for the buttons
-  const [voiceKey, setVoiceKey] = useState(saved?.narration?.voiceKey || DEFAULT_VOICE_KEY);
+  const [voiceKey, setVoiceKey] = useState(saved?.narration?.voiceKey || RECAP_VOICE_KEY);
   const [picking, setPicking] = useState(null); // slide index whose picture is being chosen
   const [preview, setPreview] = useState(null);
 
@@ -70,15 +70,22 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     if (!sources.sessions.some(s => (s.summary || s.notes || '').trim())) {
       throw new Error('This session has no summary yet. Add one in the Session Log first.');
     }
-    const beats = await writeRecapScript({ campaign, sources, characters, ...textProvider(getEffectiveKey) });
+    const { beats, question } = await writeRecapScript({ campaign, sources, characters, ...textProvider(getEffectiveKey) });
     const art = pickRecapArt(beats, { chapters: sources.chapters.length ? sources.chapters : chapters, npcs, characters, adversaries, locations });
     await save({
       slides: beats.map((b, i) => ({ line: b.line, imageUrl: art[i]?.imageUrl || '', videoUrl: art[i]?.videoUrl || '' })),
+      question,
       narration: null,
       endLabel,
       musicTrack
     });
   });
+
+  const editQuestion = (question) => {
+    // Its narration no longer matches; the beats' narration still does.
+    const narration = saved?.narration ? { ...saved.narration, questionUrl: '', questionDuration: 0 } : null;
+    save({ question, narration });
+  };
 
   const editLine = (i, line) => {
     const next = slides.map((s, j) => (j === i ? { ...s, line } : s));
@@ -91,9 +98,24 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     setPicking(null);
   };
 
+  // Three reads: "Previously on…" over the title card, the beats, and the
+  // cliffhanger question after the silence.
   const readAloud = () => run('narrate', async () => {
-    const narration = await narrate({ campaignId, text: narrationScript(slides), voiceKey, fileName: `recap-${session.id}-${Date.now()}` });
-    await save({ narration });
+    const stamp = Date.now();
+    const title = campaign?.name || 'our story';
+    const intro = await narrate({ campaignId, text: `Previously on… ${title}.`, voiceKey, fileName: `recap-${session.id}-intro-${stamp}` });
+    const body = await narrate({ campaignId, text: narrationScript(slides), voiceKey, fileName: `recap-${session.id}-${stamp}` });
+    const ask = saved?.question
+      ? await narrate({ campaignId, text: saved.question, voiceKey, fileName: `recap-${session.id}-question-${stamp}` })
+      : null;
+    await save({
+      narration: {
+        ...body,
+        introUrl: intro.url,
+        questionUrl: ask?.url || '',
+        questionDuration: ask?.duration || 0
+      }
+    });
   });
 
   const animateSlide = (i) => run(`animate-${i}`, async () => {
@@ -112,10 +134,13 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     title: campaign?.name || 'Our Story',
     endLabel,
     slides,
+    question: saved?.question || '',
+    // More of the campaign's art for the comic panels.
+    extras: gallery.map(g => g.url).slice(0, 40),
     narration: saved?.narration || null,
     musicUrl: musicTrack ? getTrackUrl(musicTrack) : ''
   };
-  const seconds = Math.round(recapTimings(slides, reel.narration?.duration || 0).total);
+  const seconds = Math.round(recapTimings(slides, reel.narration?.duration || 0, { question: reel.question, questionSeconds: reel.narration?.questionDuration || 0 }).total);
 
   // The reel with its trailer sounds (made once, the first time).
   const withSounds = async () => {
@@ -212,6 +237,20 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim mb-1">Cliffhanger</label>
+                    <input
+                      key={`${sessionId}-q-${saved?.question || ''}`}
+                      type="text"
+                      defaultValue={saved?.question || ''}
+                      maxLength={80}
+                      placeholder="e.g. Will the elders trust a ghost?"
+                      onBlur={(e) => { if (e.target.value.trim() !== (saved?.question || '')) editQuestion(e.target.value.trim()); }}
+                      className="w-full p-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm"
+                    />
+                    <p className="text-[11px] mt-1 text-lr-text-dim">The music cuts, a beat of silence, then this slams on screen. Leave empty to skip it.</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -25,8 +25,15 @@ export const NARRATOR_VOICES = [
     fallbackVoice: 'ballad',
     style: 'Speak as a warm travelling bard: rich, engaging storytelling voice with easy charm.',
   },
+  {
+    key: 'announcer', label: '🎬 Trailer Announcer', id: 'pNInz6obpgDQGcFmaJgB', // Adam — deep, punchy
+    fallbackVoice: 'onyx',
+    style: 'Speak as a movie-trailer and TV "previously on" announcer: deep, punchy and dramatic, with big emphasis on key words, short charged pauses between sentences, and rising intensity toward the end.',
+  },
 ];
 export const DEFAULT_VOICE_KEY = 'wizard';
+// "Previously on…" wants hype, not a fireside tale.
+export const RECAP_VOICE_KEY = 'announcer';
 
 // Probe an mp3's duration client-side.
 export function probeDuration(url) {
