@@ -25,7 +25,7 @@ import generateStorybookHandler from '../api/generate-storybook.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
-import { introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue } from '../src/components/Cinematics/cinematicPlan.js';
+import { introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, montageLayout, panelImages, RECAP_CLIFF_SILENCE } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3599,6 +3599,25 @@ section('Table cinematics');
   assert(timed.slides[0].duration > timed.slides[2].duration, 'longer lines stay on screen longer');
   assert(recapTimings(slides, 0).slides.every(s => s.duration >= 3.5), 'without narration every line gets time to be read');
   assert(narrationScript(slides).startsWith('Last time, the party broke out of Korak. At the Sky Docks'), 'the narrator reads the beats in order');
+
+  assert(parseRecapQuestion('{"beats":[],"question":"Will the elders trust a ghost"}') === 'Will the elders trust a ghost?' && parseRecapQuestion('{"beats":[]}') === '',
+    'the cliffhanger question is read from the answer, and gets its question mark');
+  assert(/"question"/.test(rp) && /TV trailer/.test(rp), 'the recap prompt asks for trailer pacing and a cliffhanger question');
+  const lines = ['Opening shot of the prison.', 'They run.', 'At the Sky Docks a ghost with a very wide grin claims to be family.', 'Pippin, it turns out, is three times great-grandson to a frog.', 'Now the airship rises toward the elders.'];
+  const layouts = lines.map((l, i) => montageLayout(i, lines.length, l));
+  assert(layouts.join() === 'full,full,split3,split2,full', `short lines punch full-screen, long ones get comic spreads, the first and last are full (got ${layouts})`);
+  const montage = lines.map((line, i) => ({ line, imageUrl: `https://x/${i}.png` }));
+  const pics = panelImages(montage, ['https://x/a.png', 'https://x/b.png', 'https://x/c.png', 'https://x/0.png']);
+  assert(pics[0].length === 1 && pics[2].length === 3 && pics[3].length === 2 && pics[2][0] === 'https://x/2.png' && pics[3][0] === 'https://x/3.png',
+    'each beat gets as many pictures as its layout has panels, its own first');
+  assert(!pics.flat().filter(u => !/\/\d\.png$/.test(u)).includes('https://x/0.png') && new Set([...pics[2].slice(1), ...pics[3].slice(1)]).size === 3,
+    'extras never repeat a beat’s own art and rotate so neighbouring spreads differ');
+  assert(panelImages(montage, []).every((p, i) => p[0] === montage[i].imageUrl), 'with no extra art the spreads borrow other beats’ pictures');
+  const withCliff = recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 2 });
+  assert(withCliff.cliff && Math.abs(withCliff.cliff.start - (RECAP_TITLE_SECONDS + 30)) < 0.01 && withCliff.cliff.questionAt === withCliff.cliff.start + RECAP_CLIFF_SILENCE
+    && withCliff.endStart > withCliff.cliff.questionAt + 2 && Math.abs(withCliff.total - (withCliff.endStart + RECAP_END_SECONDS)) < 0.01,
+    'the cliffhanger comes after the beats: silence, then the question, then the end card');
+  assert(recapTimings(slides, 30).cliff === null, 'no question, no cliffhanger');
 
   const now = 1_000_000;
   assert(isFreshCue({ id: 'a', kind: 'boss', sentAt: now - 5000 }, now) && !isFreshCue({ id: 'a', kind: 'boss', sentAt: now - 10 * 60 * 1000 }, now)

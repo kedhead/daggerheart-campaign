@@ -147,13 +147,14 @@ ${party ? `The party: ${party}.\n` : ''}
 ${material.join('\n\n')}
 
 Rules:
-- 5 to 7 beats, in story order, mostly from the LAST SESSION. Use the session before only for set-up.
-- Each beat is ONE or TWO short spoken sentences (under 30 words), present tense, punchy and dramatic, with a little humour where the table had fun.
+- 6 to 8 beats, in story order, mostly from the LAST SESSION. Use the session before only for set-up.
+- Write it like a TV trailer voice-over: present tense, punchy, dramatic, with humour where the table had fun. Vary the rhythm: mostly one sentence of 8 to 18 words, with a couple of very short punches ("Then the floor gave way.").
 - Use only what happened in the material above. Do not invent events, deaths or revelations.
-- The last beat ends on the cliffhanger or the open question the party faces now.
+- The last beat sets up the cliffhanger: where things stand right now.
 - For each beat give "focus": the name of the one character, NPC, creature or place it is most about (or "" if none).
+- Then write "question": the cliffhanger as one short dramatic question about what happens next (under 10 words), e.g. "Will the elders trust a ghost?"
 
-Answer with JSON only: {"beats": [{"line": "...", "focus": "..."}]}`;
+Answer with JSON only: {"beats": [{"line": "...", "focus": "..."}], "question": "..."}`;
 }
 
 /** The recap beats from the model's answer. */
@@ -167,6 +168,53 @@ export function parseRecapScript(text) {
     .map(b => ({ line: clean(typeof b === 'string' ? b : b?.line), focus: clean(b?.focus) }))
     .filter(b => b.line)
     .slice(0, 8);
+}
+
+/** The cliffhanger question from the model's answer, or ''. */
+export function parseRecapQuestion(text) {
+  const json = String(text || '').match(/\{[\s\S]*\}/);
+  if (!json) return '';
+  try {
+    const q = clean(JSON.parse(json[0]).question);
+    return q ? (/[?!.…]$/.test(q) ? q : `${q}?`) : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * The comic layout for each beat. Short, punchy lines get a full-bleed
+ * punch; longer ones a two- or three-panel spread so there is more to look
+ * at while the narrator talks. The first and last beats are always
+ * full-bleed: the opening shot and the cliffhanger.
+ */
+export function montageLayout(index, count, line) {
+  if (index === 0 || index === count - 1) return 'full';
+  const words = clean(line).split(' ').filter(Boolean).length;
+  if (words <= 7) return 'full';
+  return index % 2 === 1 ? 'split2' : 'split3';
+}
+
+/**
+ * The pictures each beat's panels show: its own art first, then others from
+ * the pool, rotating so neighbouring beats don't repeat each other's extras.
+ */
+export function panelImages(slides, pool = []) {
+  const primaries = new Set(slides.map(s => s.imageUrl).filter(Boolean));
+  const extras = [...new Set(pool.filter(u => u && !primaries.has(u)))];
+  const fallback = [...primaries];
+  let next = 0;
+  return slides.map((s, i) => {
+    const want = { full: 1, split2: 2, split3: 3 }[montageLayout(i, slides.length, s.line)];
+    const out = s.imageUrl ? [s.imageUrl] : [];
+    const source = extras.length ? extras : fallback.filter(u => u !== s.imageUrl);
+    for (let k = 0; out.length < want && source.length && k < source.length; k++) {
+      const u = source[(next + k) % source.length];
+      if (!out.includes(u)) out.push(u);
+    }
+    next += Math.max(0, out.length - 1);
+    return out;
+  });
 }
 
 /**
@@ -212,13 +260,16 @@ export function pickRecapArt(beats, { chapters = [], npcs = [], characters = [],
 
 export const RECAP_TITLE_SECONDS = 3.2;
 export const RECAP_END_SECONDS = 3.6;
+// The cliffhanger: the music cuts, a beat of black silence, then the question.
+export const RECAP_CLIFF_SILENCE = 0.9;
+export const RECAP_CLIFF_SECONDS = 3.6;
 
 /**
  * When each slide starts and how long it lasts. With narration the spoken
  * time is shared out by line length (people read long lines for longer);
  * without, each line gets a reading pace.
  */
-export function recapTimings(slides, narrationSeconds = 0) {
+export function recapTimings(slides, narrationSeconds = 0, { question = '', questionSeconds = 0 } = {}) {
   const lengths = slides.map(s => Math.max(12, clean(s.line).length));
   const totalChars = lengths.reduce((a, b) => a + b, 0) || 1;
   const spoken = narrationSeconds > 0 ? narrationSeconds : lengths.reduce((a, n) => a + Math.max(3.5, n / 15), 0);
@@ -229,7 +280,11 @@ export function recapTimings(slides, narrationSeconds = 0) {
     at += duration;
     return t;
   });
-  return { slides: out, total: at + RECAP_END_SECONDS, narrationStart: RECAP_TITLE_SECONDS };
+  const cliff = question
+    ? { start: at, questionAt: at + RECAP_CLIFF_SILENCE, duration: Math.max(RECAP_CLIFF_SECONDS, RECAP_CLIFF_SILENCE + questionSeconds + 1.4) }
+    : null;
+  const endStart = cliff ? cliff.start + cliff.duration : at;
+  return { slides: out, cliff, endStart, total: endStart + RECAP_END_SECONDS, narrationStart: RECAP_TITLE_SECONDS };
 }
 
 /** The full narration script: the beats read one after another. */

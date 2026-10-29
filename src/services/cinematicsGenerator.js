@@ -8,7 +8,7 @@ import { aiService } from './aiService';
 import { apiFetch } from './apiClient';
 import { persistAudio, persistVideo } from './audioStorage';
 import { animateStill } from './animateStill';
-import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript } from '../components/Cinematics/cinematicPlan';
+import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion } from '../components/Cinematics/cinematicPlan';
 import { NARRATOR_VOICES, DEFAULT_VOICE_KEY, probeDuration } from '../components/Storybook/narratorVoices';
 
 /** Which text model to use: the DM's own key if they have one, else the server's. */
@@ -29,7 +29,7 @@ export async function writeRecapScript({ campaign, sources, characters, apiKey, 
   const text = await aiService.generate(buildRecapPrompt({ campaignName: campaign?.name, sources, characters }), apiKey, provider);
   const beats = parseRecapScript(text);
   if (!beats.length) throw new Error('The AI did not come back with a recap. Try again.');
-  return beats;
+  return { beats, question: parseRecapQuestion(text) };
 }
 
 /** Read `text` aloud in a narrator voice and store the mp3. */

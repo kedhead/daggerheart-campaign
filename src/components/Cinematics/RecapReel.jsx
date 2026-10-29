@@ -1,26 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { recapTimings, RECAP_END_SECONDS } from './cinematicPlan';
+import { recapTimings, montageLayout, panelImages } from './cinematicPlan';
 import { playWhoosh, playRiser, playSlam } from './cinematicSfx';
 import './RecapReel.css';
 
-// Camera moves for the slides, cycled so neighbours never move the same way.
-const MOVES = ['rr-move-in-left', 'rr-move-out', 'rr-move-in-right', 'rr-move-up'];
+// Slow drifts for the pictures inside a panel, cycled so neighbours differ.
+const DRIFTS = ['rr-drift-a', 'rr-drift-b', 'rr-drift-c'];
 
 /**
- * "Previously on…": a title card, the recap's beats over the campaign's art
- * (camera moves, captions, narration, music), then a slam card for tonight.
+ * "Previously on…" as a comic-book cold open: a title card, then each beat
+ * as a montage of comic panels that slam in with ink-splash cuts, a caption
+ * box with the narrator's line, then the cliffhanger (the music cuts, a beat
+ * of silence, the question slams on) and the slam card for tonight.
  *
  * @param {object} props
- * @param {{title: string, endLabel: string, slides: Array<{line: string, imageUrl?: string, videoUrl?: string}>, narration?: {url: string, duration: number}, musicUrl?: string}} props.recap
+ * @param {{title: string, endLabel: string, question?: string, extras?: string[],
+ *   slides: Array<{line: string, imageUrl?: string, videoUrl?: string}>,
+ *   narration?: {url: string, duration: number, introUrl?: string, questionUrl?: string, questionDuration?: number},
+ *   musicUrl?: string}} props.recap
  * @param {() => void} [props.onDone]
  * @param {(blocked: boolean) => void} [props.onSoundBlocked] - the browser refused to play sound until a click
  * @param {object} [props.sfx] - a createSoundPlayer() player; without one the reel uses synthesised hits
  */
 export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const slides = useMemo(() => recap?.slides || [], [recap]);
-  const timing = useMemo(() => recapTimings(slides, recap?.narration?.duration || 0), [slides, recap]);
+  const question = recap?.question || '';
+  const timing = useMemo(
+    () => recapTimings(slides, recap?.narration?.duration || 0, { question, questionSeconds: recap?.narration?.questionDuration || 0 }),
+    [slides, recap, question]
+  );
+  const panels = useMemo(() => panelImages(slides, recap?.extras || []), [slides, recap]);
   const [t, setT] = useState(0);
   const narrationRef = useRef(null);
+  const introRef = useRef(null);
+  const questionRef = useRef(null);
   const musicRef = useRef(null);
   // Callbacks by ref, so a parent re-render never restarts the reel.
   const doneRef = useRef(onDone);
@@ -63,11 +75,21 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   }, [timing]);
 
   const index = timing.slides.findIndex(s => t >= s.start && t < s.start + s.duration);
-  const onEnd = t >= timing.total - RECAP_END_SECONDS;
+  const cliff = timing.cliff;
+  const inCliff = !!cliff && t >= cliff.start && t < timing.endStart;
+  const showQuestion = inCliff && t >= cliff.questionAt;
+  const onEnd = t >= timing.endStart;
 
-  // Sound cues on each change of picture.
-  const lastIndex = useRef(-2);
-  const cued = useRef({ open: false, riser: false, slam: false });
+  // The previous beat stays under the new one while the ink wipe reveals it.
+  const [beats, setBeats] = useState({ current: -1, previous: -1 });
+  useEffect(() => {
+    setBeats(b => (index === b.current ? b : { current: index, previous: b.current }));
+  }, [index]);
+
+  // Sound: a boom and "Previously on…" under the title card, a whoosh on
+  // every cut, silence for the cliffhanger, a hit on the question, then a
+  // riser into the slam of tonight's card.
+  const cued = useRef({ open: false, intro: false, question: false, riser: false, slam: false, last: -2 });
   useEffect(() => {
     const play = (cue, volume) => {
       if (sfx) { sfx.play(cue, volume); return; }
@@ -75,55 +97,76 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
       else if (cue === 'riser') playRiser(0.22, 1.6);
       else playSlam(0.85);
     };
-    // A boom under the title card, whooshes between pictures, then a riser
-    // into the slam of tonight's session card.
-    if (!cued.current.open && t >= 0.15) { cued.current.open = true; play('impact', 0.8); }
-    if (index !== lastIndex.current && index > 0) play('whoosh', 0.45);
-    lastIndex.current = index;
-    if (!cued.current.riser && t >= timing.total - RECAP_END_SECONDS - (sfx ? 2.8 : 1.6)) { cued.current.riser = true; play('riser', 0.6); }
-    if (!cued.current.slam && onEnd) { cued.current.slam = true; play('impact', 1); }
-  }, [index, t, onEnd, timing.total, sfx]);
+    const c = cued.current;
+    if (!c.open && t >= 0.15) { c.open = true; play('impact', 0.8); }
+    if (!c.intro && t >= 0.6 && introRef.current) { c.intro = true; introRef.current.play().catch(() => {}); }
+    if (index !== c.last && index >= 0) play(index === 0 ? 'slam' : 'whoosh', index === 0 ? 0.6 : 0.5);
+    c.last = index;
+    if (!c.question && showQuestion) {
+      c.question = true;
+      play('slam', 1);
+      questionRef.current?.play().catch(() => {});
+    }
+    if (!c.riser && t >= timing.endStart - (sfx ? 2.8 : 1.6)) { c.riser = true; play('riser', 0.6); }
+    if (!c.slam && onEnd) { c.slam = true; play('impact', 1); }
+  }, [index, t, onEnd, showQuestion, timing.endStart, sfx]);
 
-  // Duck the music under the narrator and fade it out at the end.
+  // Music: ducked under the narrator, cut dead for the cliffhanger.
   useEffect(() => {
     const music = musicRef.current;
     if (!music) return;
-    const speaking = recap?.narration && t >= timing.narrationStart && !onEnd;
-    const fade = Math.max(0, Math.min(1, (timing.total - t) / 2));
-    music.volume = (speaking ? 0.14 : 0.32) * fade;
-  }, [t, onEnd, timing, recap]);
+    if (inCliff || onEnd) { music.volume = 0; return; }
+    const speaking = recap?.narration && t >= timing.narrationStart;
+    music.volume = speaking ? 0.16 : 0.34;
+  }, [t, inCliff, onEnd, timing, recap]);
+
+  const renderBeat = (i, entering) => {
+    const s = slides[i];
+    if (!s) return null;
+    const layout = montageLayout(i, slides.length, s.line);
+    const at = timing.slides[i];
+    // Split panels slam in one after another across the first part of the beat.
+    const stagger = Math.min(0.9, (at?.duration || 4) / 4);
+    return (
+      <div key={`beat-${i}`} className={`rr-beat rr-${layout} ${entering ? 'is-entering' : ''}`}>
+        {panels[i].map((url, k) => (
+          <div key={k} className={`rr-panel rr-panel-${k}`} style={{ animationDelay: entering ? `${k * stagger}s` : '0s' }}>
+            {k === 0 && s.videoUrl ? (
+              <video src={s.videoUrl} muted loop playsInline autoPlay className="rr-media" />
+            ) : (
+              <img src={url} alt="" className={`rr-media ${DRIFTS[(i + k) % DRIFTS.length]}`} style={{ animationDuration: `${(at?.duration || 4) + 2}s` }} />
+            )}
+          </div>
+        ))}
+        {panels[i].length === 0 && <div className="rr-panel rr-panel-0 rr-media-empty" />}
+        <div className="rr-halftone" />
+        {entering && <div className="rr-cut-flash" />}
+      </div>
+    );
+  };
 
   return (
     <div className="recap-reel">
       {recap?.narration?.url && <audio ref={narrationRef} src={recap.narration.url} preload="auto" />}
+      {recap?.narration?.introUrl && <audio ref={introRef} src={recap.narration.introUrl} preload="auto" />}
+      {recap?.narration?.questionUrl && <audio ref={questionRef} src={recap.narration.questionUrl} preload="auto" />}
       {recap?.musicUrl && <audio ref={musicRef} src={recap.musicUrl} preload="auto" loop />}
 
-      {slides.map((s, i) => {
-        const at = timing.slides[i];
-        const visible = i === index || (onEnd && i === slides.length - 1);
-        return (
-          <div key={i} className={`rr-slide ${visible ? 'is-on' : ''}`}>
-            {s.videoUrl ? (
-              <video src={s.videoUrl} muted loop playsInline autoPlay className="rr-media" />
-            ) : s.imageUrl ? (
-              <img
-                src={s.imageUrl}
-                alt=""
-                className={`rr-media ${MOVES[i % MOVES.length]}`}
-                style={{ animationDuration: `${(at?.duration || 4) + 1.2}s`, animationPlayState: visible ? 'running' : 'paused' }}
-              />
-            ) : (
-              <div className="rr-media rr-media-empty" />
-            )}
-          </div>
-        );
-      })}
-      <div className="rr-vignette" />
-      <div className="rr-letterbox rr-letterbox-top" />
-      <div className="rr-letterbox rr-letterbox-bottom" />
+      {/* Load every picture up front, so no panel slams in half-loaded. */}
+      <div className="rr-preload" aria-hidden>
+        {[...new Set(panels.flat())].map(url => <img key={url} src={url} alt="" />)}
+      </div>
 
-      {index >= 0 && slides[index]?.line && !onEnd && (
-        <div key={index} className="rr-caption">{slides[index].line}</div>
+      {!inCliff && !onEnd && (
+        <>
+          {beats.previous >= 0 && beats.previous !== beats.current && renderBeat(beats.previous, false)}
+          {beats.current >= 0 && renderBeat(beats.current, true)}
+          <div className="rr-letterbox rr-letterbox-top" />
+          <div className="rr-letterbox rr-letterbox-bottom" />
+          {index >= 0 && slides[index]?.line && (
+            <div key={`cap-${index}`} className="rr-caption">{slides[index].line}</div>
+          )}
+        </>
       )}
 
       {t < timing.narrationStart && (
@@ -131,6 +174,12 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
           <div className="rr-title-kicker">Previously on</div>
           <div className="rr-title-name">{recap?.title}</div>
           <div className="rr-title-rule" />
+        </div>
+      )}
+
+      {inCliff && (
+        <div className="rr-cliff">
+          {showQuestion && <div className="rr-cliff-question">{question}</div>}
         </div>
       )}
 
