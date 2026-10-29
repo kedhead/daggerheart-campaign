@@ -1,0 +1,180 @@
+/* Borderlands-style intro. Sized in vw/vh so it reads the same on a laptop
+   preview and a 27" monitor across the room. Delays match BOSS_INTRO_BEATS. */
+
+.boss-intro {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.55);
+  animation: bi-out 0.8s 6.2s ease-in both;
+  font-family: 'Bangers', 'Impact', system-ui, sans-serif;
+}
+
+/* Shakes on the two slams (art at 0.42s, name at 0.9s). One animation, since
+   two on the same property would override each other. */
+.bi-shake {
+  position: absolute;
+  inset: 0;
+  animation: bi-shake 0.9s 0.42s linear both;
+}
+
+.bi-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: bi-flash 0.35s ease-out both;
+  z-index: 9;
+  pointer-events: none;
+}
+
+.bi-bars {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 9vh;
+  background: #000;
+  z-index: 8;
+}
+.bi-bars-top { top: 0; animation: bi-bar-top 0.35s 0.05s ease-out both; }
+.bi-bars-bottom { bottom: 0; animation: bi-bar-bottom 0.35s 0.05s ease-out both; }
+
+/* Comic halftone dots in the accent colour, behind everything. */
+.bi-halftone {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--accent) 55%, transparent) 1.4px, transparent 1.6px);
+  background-size: 14px 14px;
+  opacity: 0.35;
+  mask-image: linear-gradient(110deg, transparent 20%, #000 70%);
+  animation: bi-fade 0.4s 0.15s both;
+}
+
+/* The diagonal colour band the name sits on. */
+.bi-slash {
+  position: absolute;
+  left: -10vw;
+  top: 47vh;
+  width: 80vw;
+  height: 30vh;
+  background: var(--accent);
+  transform: skewY(-7deg) translateX(-110%);
+  box-shadow: 0 0 0 0.7vh #000, 1.6vw 1.6vh 0 #000;
+  animation: bi-slash-in 0.32s 0.12s cubic-bezier(.2,.9,.25,1.15) both;
+  z-index: 2;
+}
+.bi-slash-thin {
+  top: 41vh;
+  height: 2.2vh;
+  width: 70vw;
+  background: #fff;
+  animation-delay: 0.2s;
+  box-shadow: 0 0 0 0.5vh #000;
+}
+
+.bi-art {
+  position: absolute;
+  right: -2vw;
+  bottom: 0;
+  width: 58vw;
+  height: 100vh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 3;
+  animation: bi-art-in 0.42s 0.42s cubic-bezier(.15,.9,.3,1.25) both;
+}
+.bi-art img,
+.bi-art video {
+  max-width: 100%;
+  max-height: 96vh;
+  object-fit: contain;
+  /* A thick black comic outline around the art. */
+  filter: drop-shadow(0.5vh 0 0 #000) drop-shadow(-0.5vh 0 0 #000) drop-shadow(0 0.5vh 0 #000) drop-shadow(0 -0.5vh 0 #000) drop-shadow(1.4vw 1.4vh 0 color-mix(in srgb, var(--accent) 70%, #000));
+  clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%);
+}
+.bi-art-empty {
+  font-size: 40vh;
+  color: var(--accent);
+  -webkit-text-stroke: 0.6vh #000;
+}
+
+.bi-card {
+  position: absolute;
+  left: 5vw;
+  top: 36vh;
+  width: 58vw;
+  z-index: 5;
+  transform: rotate(-7deg);
+}
+
+.bi-tag {
+  display: inline-block;
+  margin-bottom: 1.2vh;
+  padding: 0.6vh 1.4vw;
+  background: #000;
+  color: var(--accent);
+  font-size: 3.4vh;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  animation: bi-pop 0.25s 0.75s both;
+}
+
+.bi-name {
+  font-size: clamp(48px, 13vh, 220px);
+  line-height: 0.9;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  -webkit-text-stroke: 0.55vh #000;
+  paint-order: stroke fill;
+  text-shadow: 0.9vh 0.9vh 0 #000;
+  word-break: break-word;
+  animation: bi-name-in 0.36s 0.9s cubic-bezier(.2,1.4,.35,1) both;
+}
+
+.bi-subtitle {
+  display: inline-block;
+  margin-top: 1.8vh;
+  padding: 0.8vh 1.6vw;
+  background: #fff;
+  color: #000;
+  font-size: clamp(20px, 4.8vh, 80px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0.7vh 0.7vh 0 #000;
+  animation: bi-sub-in 0.4s 1.45s cubic-bezier(.2,.9,.3,1.2) both;
+}
+
+@keyframes bi-flash { from { opacity: 1; } to { opacity: 0; } }
+@keyframes bi-fade { from { opacity: 0; } }
+@keyframes bi-bar-top { from { transform: translateY(-100%); } }
+@keyframes bi-bar-bottom { from { transform: translateY(100%); } }
+@keyframes bi-slash-in { to { transform: skewY(-7deg) translateX(0); } }
+@keyframes bi-art-in {
+  from { transform: translateX(45%) scale(1.35); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes bi-name-in {
+  from { transform: scale(2.8) rotate(4deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes bi-pop { from { transform: scale(0); } }
+@keyframes bi-sub-in { from { transform: translateX(-60vw); } }
+@keyframes bi-shake {
+  0%, 40%, 53%, 100% { transform: none; }
+  8% { transform: translate(-1.2vw, 0.8vh); }
+  16% { transform: translate(1vw, -1vh); }
+  24% { transform: translate(-0.6vw, 0.5vh); }
+  32% { transform: translate(0.4vw, -0.3vh); }
+  60% { transform: translate(1.4vw, -1vh); }
+  70% { transform: translate(-1.2vw, 1vh); }
+  80% { transform: translate(0.8vw, -0.6vh); }
+  90% { transform: translate(-0.4vw, 0.3vh); }
+}
+@keyframes bi-out {
+  to { transform: translateX(-12vw) skewX(8deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boss-intro, .boss-intro * { animation-duration: 0.01s !important; }
+}

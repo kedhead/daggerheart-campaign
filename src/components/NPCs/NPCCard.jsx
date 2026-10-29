@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus, Download, User } from 'lucide-react';
+import { ChevronDown, Edit3, Trash2, MapPin, Briefcase, Heart, Skull, Minus, Download, User, Clapperboard } from 'lucide-react';
+import IntroLauncher from '../Cinematics/IntroLauncher';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import InlineEdit from '../InlineEdit/InlineEdit';
@@ -21,6 +22,7 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
   const { success, error } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewingEntity, setViewingEntity] = useState(null);
+  const [introOpen, setIntroOpen] = useState(false);
   // isDM: the registry hides hidden entities from players only when told.
   const { getByName } = useEntityRegistry(campaign, entities, isDM);
 
@@ -173,6 +175,21 @@ export default function NPCCard({ npc, onEdit, onDelete, onUpdate, isDM, campaig
                   <Edit3 size={14} className="group-hover/btn:-translate-y-0.5 transition-transform" />
                   Re-Profile
                 </button>
+                <button
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 text-xs font-black uppercase tracking-[0.2em] text-lr-text-dim hover:text-white transition-all"
+                  onClick={(e) => { e.stopPropagation(); setIntroOpen(true); }}
+                  title="Borderlands-style intro on the battle map monitor"
+                >
+                  <Clapperboard size={14} />
+                  Intro
+                </button>
+                {introOpen && (
+                  // The dialog is portalled, but React still bubbles its clicks
+                  // up to this card, which would fold the card away.
+                  <span onClick={(e) => e.stopPropagation()}>
+                    <IntroLauncher isOpen onClose={() => setIntroOpen(false)} entity={npc} kind="npc" campaign={campaign} onSave={onUpdate} />
+                  </span>
+                )}
                 <button
                   className="flex items-center justify-center p-3 rounded-2xl bg-red-500/10 hover:bg-red-500 border border-red-500/20 text-red-500 hover:text-white transition-all shadow-lg shadow-red-500/0 hover:shadow-red-500/20"
                   onClick={(e) => { e.stopPropagation(); onDelete(); }}

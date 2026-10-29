@@ -25,6 +25,7 @@ import generateStorybookHandler from '../api/generate-storybook.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
+import { introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3545,6 +3546,54 @@ section('Generators know where the story is now');
     assert(/WHERE THE STORY IS NOW/.test(promptBuilder.build(type, { campaign: {}, campaignFrame: {}, currentStory: snap, requirements: {} })), `the ${type} prompt carries it too`);
   }
   assert(!/WHERE THE STORY IS NOW/.test(promptBuilder.build('npc', { campaign: {}, campaignFrame: {}, requirements: {} })), 'with no sessions yet, nothing is added');
+}
+
+section('Table cinematics');
+{
+  const boss = introFromEntity({ name: 'Matu Palu', tier: 3, role: 'solo', imageUrl: 'https://x/m.png', intro: { subtitle: 'Bad News In A Big Hat', videoUrl: 'https://x/m.mp4' } }, 'adversary');
+  assert(boss.tag === 'Tier 3 Solo' && boss.accent === '#f97316' && boss.videoUrl === 'https://x/m.mp4' && boss.subtitle === 'Bad News In A Big Hat',
+    'an adversary intro carries its tier and role, a tier colour, and its saved subtitle and clip');
+  const npc = introFromEntity({ name: 'Bubbles', occupation: 'Ribbet seraph ghost', relationship: 'ally', avatarUrl: 'https://x/b.png' }, 'npc');
+  assert(npc.imageUrl === 'https://x/b.png' && npc.tag === 'Ribbet seraph ghost' && npc.accent === '#22c55e', 'an NPC intro uses the portrait, occupation and relationship colour');
+  assert(/Borderlands/.test(buildIntroPrompt({ name: 'Bubbles', description: 'A goofy ghost frog' }, 'npc')) && /goofy ghost frog/.test(buildIntroPrompt({ name: 'Bubbles', description: 'A goofy ghost frog' }, 'npc')),
+    'the intro prompt asks for Borderlands-style subtitles about this character');
+  const subs = parseIntroSubtitles('Sure! {"subtitles": ["Three Times Great, Zero Times Serious.", "“Ghost Of Bad Ideas”", "Ribbet And Regret"]}');
+  assert(subs.length === 3 && subs[0] === 'Three Times Great, Zero Times Serious' && subs[1] === 'Ghost Of Bad Ideas', `subtitles are parsed and tidied (got ${JSON.stringify(subs)})`);
+  assert(parseIntroSubtitles('1. Frog Of Destiny\n2. Croak Tease').length === 2, 'a plain list answer still works');
+
+  const sessions = [
+    { id: 's2', date: '2026-02-01', status: 'completed', title: 'Breakout', summary: 'They escape Korak.' },
+    { id: 's1', date: '2026-01-01', status: 'completed', title: 'Cells', summary: 'Locked up.' },
+    { id: 's3', date: '2026-03-01', status: 'completed', title: 'Sky Docks', summary: 'They meet Bubbles at the Sky Docks.', highlights: ['Ribbit, but make it spooky'] },
+    { id: 's4', date: '2026-04-01', status: 'planned', title: 'Next' }
+  ];
+  assert(playedSessions(sessions).map(s => s.id).join() === 's1,s2,s3', 'played sessions are in date order, planned ones left out');
+  const chapters = [{ id: 'c3', sessionId: 's3', status: 'published', title: 'Wings', prose: 'The airship rose.', scenes: [{ id: 'a', imageUrl: 'https://x/sc1.png' }, { id: 'b', imageUrl: 'https://x/sc2.png' }], sceneVideos: { b: { url: 'https://x/sc2.mp4' } } }];
+  const src = recapSources({ session: sessions[2], sessions, chapters });
+  assert(src.sessions.map(s => s.id).join() === 's2,s3' && src.chapters.length === 1 && src.sessionNumber === 3, 'a recap draws on the session, the one before it and its chapter');
+  const rp = buildRecapPrompt({ campaignName: 'Mythis', sources: src, characters: [{ name: 'Pippin' }] });
+  assert(/LAST SESSION — Sky Docks/.test(rp) && /meet Bubbles/.test(rp) && /Ribbit, but make it spooky/.test(rp) && /airship rose/.test(rp) && /Pippin/.test(rp) && /Do not invent/.test(rp),
+    'the recap prompt has the last session, its quotes, the chapter ending and the party, and forbids inventing');
+  const beats = parseRecapScript('{"beats":[{"line":"Last time, the party broke out of [[Korak]].","focus":""},{"line":"At the Sky Docks they met a ghost.","focus":"Bubbles"},{"line":"Now the airship rises.","focus":""}]}');
+  assert(beats.length === 3 && beats[0].line === 'Last time, the party broke out of Korak.' && beats[1].focus === 'Bubbles', 'recap beats are parsed and wiki links read as text');
+  const art = pickRecapArt(beats, { chapters, npcs: [{ name: 'Bubbles', avatarUrl: 'https://x/b.png' }] });
+  assert(art[0].imageUrl === 'https://x/sc1.png' && art[1].imageUrl === 'https://x/b.png' && art[2].imageUrl === 'https://x/sc2.png' && art[2].videoUrl === 'https://x/sc2.mp4',
+    `beats about someone show their portrait; others walk the chapter's scene art, with its clips (got ${JSON.stringify(art)})`);
+  assert(pickRecapArt(beats, {}).every(a => a.imageUrl === ''), 'with no art at all the reel still has a slide per beat');
+
+  const slides = beats;
+  const timed = recapTimings(slides, 30);
+  const spoken = timed.slides.reduce((a, s) => a + s.duration, 0);
+  assert(Math.abs(spoken - 30) < 0.01 && timed.slides[0].start === RECAP_TITLE_SECONDS && Math.abs(timed.total - (30 + RECAP_TITLE_SECONDS + RECAP_END_SECONDS)) < 0.01,
+    'with narration, slides share the spoken time after the title card, then the end card');
+  assert(timed.slides[0].duration > timed.slides[2].duration, 'longer lines stay on screen longer');
+  assert(recapTimings(slides, 0).slides.every(s => s.duration >= 3.5), 'without narration every line gets time to be read');
+  assert(narrationScript(slides).startsWith('Last time, the party broke out of Korak. At the Sky Docks'), 'the narrator reads the beats in order');
+
+  const now = 1_000_000;
+  assert(isFreshCue({ id: 'a', kind: 'boss', sentAt: now - 5000 }, now) && !isFreshCue({ id: 'a', kind: 'boss', sentAt: now - 10 * 60 * 1000 }, now)
+    && !isFreshCue({ id: 'a', kind: 'boss', sentAt: now, stopped: true }, now) && !isFreshCue(null, now),
+    'the monitor plays a new cue, but not an old one when it is opened later, nor a stopped one');
 }
 
 section('Battle map weather');
