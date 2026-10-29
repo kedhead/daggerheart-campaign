@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react';
 import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
-import { playedSessions, recapSources, pickRecapArt, narrationScript, recapTimings } from './cinematicPlan';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapTimings } from './cinematicPlan';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
+import { ensureSoundSet } from './cinematicSounds';
+import { useOptionalCampaignData } from '../../contexts/CampaignDataContext';
 import { writeRecapScript, narrate, animateToClip, textProvider } from '../../services/cinematicsGenerator';
 import { NARRATOR_VOICES, DEFAULT_VOICE_KEY } from '../Storybook/narratorVoices';
 import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
@@ -22,13 +24,17 @@ const sessionLabel = (s, n) => `${n ? `Session ${n}` : 'Session'}${s?.title ? `:
  * a narrator reads it, and it plays on the battle map monitor. Saved on the
  * session, so replaying it next time costs nothing.
  */
-export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], updateSession, chapters = [], characters = [], npcs = [], adversaries = [], locations = [] }) {
+export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], updateSession, chapters: chaptersProp = [], characters = [], npcs = [], adversaries = [], locations = [] }) {
+  // Every chapter, drafts included: the Session Log is handed published ones
+  // only, and a draft still shows the session was played.
+  const campaignData = useOptionalCampaignData();
+  const chapters = campaignData?.storybookChapters?.length ? campaignData.storybookChapters : chaptersProp;
   const notify = useNotify();
   const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
-  const played = useMemo(() => playedSessions(sessions), [sessions]);
+  const played = useMemo(() => playedSessions(sessions, chapters), [sessions, chapters]);
   const [sessionId, setSessionId] = useState(() => played[played.length - 1]?.id || '');
   const session = played.find(s => s.id === sessionId) || null;
-  const number = played.findIndex(s => s.id === sessionId) + 1;
+  const number = session ? sessionNumberOf(session, played) : 0;
   const saved = session?.recap || null;
 
   const [busy, setBusy] = useState(null); // what is running, for the buttons
@@ -111,13 +117,23 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   };
   const seconds = Math.round(recapTimings(slides, reel.narration?.duration || 0).total);
 
+  // The reel with its trailer sounds (made once, the first time).
+  const withSounds = async () => {
+    try {
+      return { ...reel, sounds: await ensureSoundSet(campaignId, 'epic', label => setBusy(`sounds:${label}`)) };
+    } catch (err) {
+      notify.warning(`Cinematic sounds could not be made (${err.message}); playing with simple sounds.`);
+      return reel;
+    }
+  };
+
   const showPreview = () => {
     audioContext()?.resume?.().catch(() => {});
-    setPreview({ id: `preview-${Date.now()}`, kind: 'recap', data: reel });
+    run('preview', async () => setPreview({ id: `preview-${Date.now()}`, kind: 'recap', data: await withSounds() }));
   };
 
   const sendToMonitor = () => run('send', async () => {
-    await playOnMonitor(campaignId, 'recap', reel);
+    await playOnMonitor(campaignId, 'recap', await withSounds());
     notify.success('"Previously on…" is playing on the monitor.');
   });
 
@@ -141,7 +157,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                   <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim mb-1">Recap of</label>
                   <select value={sessionId} onChange={(e) => setSessionId(e.target.value)} className="w-full p-2.5 rounded-lg bg-black/20 border border-white/10 text-white">
                     {[...played].reverse().map(s => (
-                      <option key={s.id} value={s.id}>{sessionLabel(s, played.indexOf(s) + 1)}</option>
+                      <option key={s.id} value={s.id}>{sessionLabel(s, sessionNumberOf(s, played))}</option>
                     ))}
                   </select>
                 </div>
@@ -237,11 +253,11 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                   </div>
 
                   <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-                    <span className="text-xs text-lr-text-dim mr-auto">About {seconds} seconds</span>
+                    <span className="text-xs text-lr-text-dim mr-auto">{busy?.startsWith('sounds:') ? busy.slice(7) : `About ${seconds} seconds`}</span>
                     <button type="button" className="btn btn-ghost inline-flex items-center gap-2" onClick={() => openMonitorWindow(campaignId)}>
                       <ExternalLink size={16} /> Open monitor
                     </button>
-                    <button type="button" className="btn btn-secondary inline-flex items-center gap-2" onClick={showPreview}>
+                    <button type="button" className="btn btn-secondary inline-flex items-center gap-2" onClick={showPreview} disabled={!!busy}>
                       <Play size={16} /> Preview here
                     </button>
                     <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={sendToMonitor} disabled={!!busy || !campaignId}>

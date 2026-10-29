@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Volume2 } from 'lucide-react';
 import BossIntro from './BossIntro';
 import RecapReel from './RecapReel';
 import { audioContext } from './cinematicSfx';
+import { createSoundPlayer } from './soundPlayer';
 import './CinematicStage.css';
 
 /**
@@ -17,6 +18,16 @@ import './CinematicStage.css';
  */
 export default function CinematicStage({ cue, onClose }) {
   const [soundBlocked, setSoundBlocked] = useState(() => audioContext()?.state === 'suspended');
+  // The cinematic's sounds load before it starts, so the first hit lands on
+  // the first slam rather than a second late.
+  const sfx = useMemo(() => createSoundPlayer(cue?.data?.sounds), [cue]);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let live = true;
+    sfx.onBlocked = setSoundBlocked;
+    sfx.ready.then(() => { if (live) setReady(true); });
+    return () => { live = false; sfx.stop(); };
+  }, [sfx]);
 
   useEffect(() => {
     // Capture phase on window runs before the dialogs' own Escape handling,
@@ -29,14 +40,15 @@ export default function CinematicStage({ cue, onClose }) {
   const enableSound = useCallback(() => {
     audioContext()?.resume?.().catch(() => {});
     document.querySelectorAll('.cinematic-stage audio').forEach(a => { a.play().catch(() => {}); });
+    sfx.unlock();
     setSoundBlocked(false);
-  }, []);
+  }, [sfx]);
 
   if (!cue) return null;
   return createPortal(
     <div className="cinematic-stage" onClick={soundBlocked ? enableSound : undefined}>
-      {cue.kind === 'boss' && <BossIntro intro={cue.data} onDone={onClose} />}
-      {cue.kind === 'recap' && <RecapReel recap={cue.data} onDone={onClose} onSoundBlocked={setSoundBlocked} />}
+      {ready && cue.kind === 'boss' && <BossIntro intro={cue.data} onDone={onClose} sfx={sfx} />}
+      {ready && cue.kind === 'recap' && <RecapReel recap={cue.data} onDone={onClose} onSoundBlocked={setSoundBlocked} sfx={sfx} />}
 
       {soundBlocked && (
         <button type="button" className="cs-sound" onClick={enableSound}>

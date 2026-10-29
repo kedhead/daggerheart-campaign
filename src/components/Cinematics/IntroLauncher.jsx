@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Sparkles, Film, Loader2, Play, Monitor, Trash2, ExternalLink } from 'lucide-react';
+import { Sparkles, Film, Loader2, Play, Monitor, Trash2, ExternalLink, Volume2 } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
 import { introFromEntity } from './cinematicPlan';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
+import { SOUND_STYLES, ensureSoundSet } from './cinematicSounds';
 import { writeIntroSubtitles, animateToClip, textProvider } from '../../services/cinematicsGenerator';
 import { deleteStoredFile } from '../../services/audioStorage';
 import { useAPIKey } from '../../hooks/useAPIKey';
@@ -35,6 +36,9 @@ export default function IntroLauncher({ isOpen, onClose, entity, kind, campaign,
   const [animating, setAnimating] = useState(null);
   const [preview, setPreview] = useState(null);
   const [sending, setSending] = useState(false);
+  // Borderlands is the brief, so its gritty rock sting is the default.
+  const [soundStyle, setSoundStyle] = useState(SOUND_STYLES[saved.soundStyle] ? saved.soundStyle : 'rock');
+  const [soundStatus, setSoundStatus] = useState(null);
 
   const campaignId = campaign?.id;
   const portrait = kind === 'adversary' ? entity?.imageUrl : entity?.avatarUrl;
@@ -85,17 +89,35 @@ export default function IntroLauncher({ isOpen, onClose, entity, kind, campaign,
     await saveIntro({ videoUrl: '', videoStoragePath: '' });
   };
 
-  const showPreview = () => {
+  // The intro with its sound set, made the first time a style is used.
+  const withSounds = async () => {
+    try {
+      const sounds = await ensureSoundSet(campaignId, soundStyle, setSoundStatus);
+      return { ...intro, sounds };
+    } catch (err) {
+      notify.warning(`Cinematic sounds could not be made (${err.message}); playing with simple sounds.`);
+      return intro;
+    } finally {
+      setSoundStatus(null);
+    }
+  };
+
+  const showPreview = async () => {
     audioContext()?.resume?.().catch(() => {});
-    setPreview({ id: `preview-${Date.now()}`, kind: 'boss', data: intro });
+    setSending(true);
+    try {
+      setPreview({ id: `preview-${Date.now()}`, kind: 'boss', data: await withSounds() });
+    } finally {
+      setSending(false);
+    }
   };
 
   const sendToMonitor = async () => {
     if (!campaignId) return;
     setSending(true);
     try {
-      if (subtitle.trim() !== (saved.subtitle || '')) await saveIntro({});
-      await playOnMonitor(campaignId, 'boss', intro);
+      if (subtitle.trim() !== (saved.subtitle || '') || soundStyle !== saved.soundStyle) await saveIntro({ soundStyle });
+      await playOnMonitor(campaignId, 'boss', await withSounds());
       notify.success(`${entity.name}'s intro is playing on the monitor.`);
     } catch (err) {
       notify.error(`Could not reach the monitor: ${err.message}`);
@@ -176,11 +198,30 @@ export default function IntroLauncher({ isOpen, onClose, entity, kind, campaign,
             {animating && saved.videoUrl && <p className="text-xs text-lr-text-dim">{animating}</p>}
           </div>
 
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-bold text-white"><Volume2 size={16} /> Sound</div>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(SOUND_STYLES).map(([key, style]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSoundStyle(key)}
+                  className={`px-3 py-1.5 rounded-full text-xs border transition ${soundStyle === key ? 'border-[color:var(--primary)] text-white bg-white/10' : 'border-white/10 text-lr-text-muted hover:text-white'}`}
+                >
+                  {style.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-lr-text-dim">
+              {soundStatus || 'Trailer-style hits made with AI the first time you use a style, then saved for every intro.'}
+            </p>
+          </div>
+
           <div className="flex flex-wrap justify-end gap-2 pt-2">
             <button type="button" className="btn btn-ghost inline-flex items-center gap-2" onClick={() => openMonitorWindow(campaignId)}>
               <ExternalLink size={16} /> Open monitor
             </button>
-            <button type="button" className="btn btn-secondary inline-flex items-center gap-2" onClick={showPreview}>
+            <button type="button" className="btn btn-secondary inline-flex items-center gap-2" onClick={showPreview} disabled={sending}>
               <Play size={16} /> Preview here
             </button>
             <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={sendToMonitor} disabled={sending || !campaignId}>

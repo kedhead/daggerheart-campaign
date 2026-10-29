@@ -25,7 +25,7 @@ import generateStorybookHandler from '../api/generate-storybook.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
-import { introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue } from '../src/components/Cinematics/cinematicPlan.js';
+import { introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3568,6 +3568,16 @@ section('Table cinematics');
     { id: 's4', date: '2026-04-01', status: 'planned', title: 'Next' }
   ];
   assert(playedSessions(sessions).map(s => s.id).join() === 's1,s2,s3', 'played sessions are in date order, planned ones left out');
+  const logged = [
+    { id: 'p1', number: 1, status: 'planned', summary: 'Session zero: we made characters.' },
+    { id: 'p2', number: 2, status: 'planned', title: 'The escape', highlights: ['Run!'] },
+    { id: 'p3', number: 3, status: 'planned', title: 'Chapter only' },
+    { id: 'p4', number: 4, status: 'planned', title: 'Next week' },
+    { id: 'p5', number: 5, status: 'completed' }
+  ];
+  const playedIds = playedSessions(logged, [{ sessionId: 'p3', status: 'draft' }]).map(s => s.id).join();
+  assert(playedIds === 'p1,p2,p3,p5', `sessions left as "planned" still count once they have a summary, quotes or a chapter (got ${playedIds})`);
+  assert(sessionNumberOf(logged[2], playedSessions(logged, [{ sessionId: 'p3' }])) === 3, 'a recap uses the session’s own number');
   const chapters = [{ id: 'c3', sessionId: 's3', status: 'published', title: 'Wings', prose: 'The airship rose.', scenes: [{ id: 'a', imageUrl: 'https://x/sc1.png' }, { id: 'b', imageUrl: 'https://x/sc2.png' }], sceneVideos: { b: { url: 'https://x/sc2.mp4' } } }];
   const src = recapSources({ session: sessions[2], sessions, chapters });
   assert(src.sessions.map(s => s.id).join() === 's2,s3' && src.chapters.length === 1 && src.sessionNumber === 3, 'a recap draws on the session, the one before it and its chapter');
