@@ -46,6 +46,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const slides = saved?.slides || [];
   const endLabel = saved?.endLabel ?? `Session ${number + 1}`;
   const musicTrack = saved?.musicTrack ?? DEFAULT_TRACK;
+  const musicLevel = saved?.musicLevel ?? 0.6;
 
   // Every picture the DM can choose for a slide.
   const gallery = useMemo(() => {
@@ -138,7 +139,8 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     // More of the campaign's art for the comic panels.
     extras: gallery.map(g => g.url).slice(0, 40),
     narration: saved?.narration || null,
-    musicUrl: musicTrack ? getTrackUrl(musicTrack) : ''
+    musicUrl: musicTrack ? getTrackUrl(musicTrack) : '',
+    musicLevel
   };
   const seconds = Math.round(recapTimings(slides, reel.narration?.duration || 0, { question: reel.question, questionSeconds: reel.narration?.questionDuration || 0 }).total);
 
@@ -277,6 +279,22 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                           </optgroup>
                         ))}
                       </select>
+                      {musicTrack && (
+                        <label className="flex items-center gap-2 mt-2 text-[11px] text-lr-text-dim">
+                          Volume
+                          <input
+                            key={`${sessionId}-vol-${musicLevel}`}
+                            type="range"
+                            min="0"
+                            max="100"
+                            defaultValue={Math.round(musicLevel * 100)}
+                            // Saved when the slider is let go, not on every step.
+                            onPointerUp={(e) => save({ musicLevel: Number(e.currentTarget.value) / 100 })}
+                            onKeyUp={(e) => save({ musicLevel: Number(e.currentTarget.value) / 100 })}
+                            className="flex-1"
+                          />
+                        </label>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim mb-1">End card</label>
