@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { recapTimings, montageLayout, panelImages } from './cinematicPlan';
-import { playWhoosh, playRiser, playSlam } from './cinematicSfx';
+import { playWhoosh, playRiser, playSlam, audioContext } from './cinematicSfx';
 import './RecapReel.css';
 
 // Slow drifts for the pictures inside a panel, cycled so neighbours differ.
@@ -16,7 +16,7 @@ const DRIFTS = ['rr-drift-a', 'rr-drift-b', 'rr-drift-c'];
  * @param {{title: string, endLabel: string, question?: string, extras?: string[],
  *   slides: Array<{line: string, imageUrl?: string, videoUrl?: string}>,
  *   narration?: {url: string, duration: number, introUrl?: string, questionUrl?: string, questionDuration?: number},
- *   musicUrl?: string}} props.recap
+ *   musicUrl?: string, musicLevel?: number}} props.recap
  * @param {() => void} [props.onDone]
  * @param {(blocked: boolean) => void} [props.onSoundBlocked] - the browser refused to play sound until a click
  * @param {object} [props.sfx] - a createSoundPlayer() player; without one the reel uses synthesised hits
@@ -34,6 +34,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const introRef = useRef(null);
   const questionRef = useRef(null);
   const musicRef = useRef(null);
+  const musicGain = useRef(null); // Web Audio gain, on devices that ignore element volume
   // Callbacks by ref, so a parent re-render never restarts the reel.
   const doneRef = useRef(onDone);
   const blockedRef = useRef(onSoundBlocked);
@@ -68,7 +69,20 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     raf = requestAnimationFrame(tick);
     const music = musicRef.current;
     if (music) {
-      music.volume = 0.32;
+      // iPhone and iPad Safari ignore an audio element's volume, so the music
+      // played at full blast over the narrator. There, route it through a
+      // Web Audio gain instead (the music CDN allows cross-origin reads).
+      music.volume = 0.5;
+      const volumeLocked = music.volume !== 0.5;
+      const ctx = audioContext();
+      if (volumeLocked && ctx && !musicGain.current) {
+        try {
+          const gain = ctx.createGain();
+          ctx.createMediaElementSource(music).connect(gain).connect(ctx.destination);
+          musicGain.current = gain;
+          ctx.resume?.().catch(() => {});
+        } catch { /* stays on element volume */ }
+      }
       music.play().catch(() => blockedRef.current?.(true));
     }
     return () => cancelAnimationFrame(raf);
@@ -111,14 +125,19 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     if (!c.slam && onEnd) { c.slam = true; play('impact', 1); }
   }, [index, t, onEnd, showQuestion, timing.endStart, sfx]);
 
-  // Music: ducked under the narrator, cut dead for the cliffhanger.
+  // Music: well under the narrator, up a little over the title card, cut dead
+  // for the cliffhanger. Music tracks are mastered far louder than speech, so
+  // under the voice it drops to about a fifth of its title-card level.
+  const level = Math.max(0, Math.min(1, recap?.musicLevel ?? 0.6));
+  const speaking = !!recap?.narration && t >= timing.narrationStart;
+  const target = inCliff || onEnd ? 0 : level * (speaking ? 0.12 : 0.55);
   useEffect(() => {
     const music = musicRef.current;
     if (!music) return;
-    if (inCliff || onEnd) { music.volume = 0; return; }
-    const speaking = recap?.narration && t >= timing.narrationStart;
-    music.volume = speaking ? 0.16 : 0.34;
-  }, [t, inCliff, onEnd, timing, recap]);
+    const gain = musicGain.current;
+    if (gain) gain.gain.setTargetAtTime(target, gain.context.currentTime, 0.12);
+    else music.volume = target;
+  }, [target]);
 
   const renderBeat = (i, entering) => {
     const s = slides[i];
@@ -150,7 +169,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
       {recap?.narration?.url && <audio ref={narrationRef} src={recap.narration.url} preload="auto" />}
       {recap?.narration?.introUrl && <audio ref={introRef} src={recap.narration.introUrl} preload="auto" />}
       {recap?.narration?.questionUrl && <audio ref={questionRef} src={recap.narration.questionUrl} preload="auto" />}
-      {recap?.musicUrl && <audio ref={musicRef} src={recap.musicUrl} preload="auto" loop />}
+      {recap?.musicUrl && <audio ref={musicRef} src={recap.musicUrl} preload="auto" loop crossOrigin="anonymous" />}
 
       {/* Load every picture up front, so no panel slams in half-loaded. */}
       <div className="rr-preload" aria-hidden>
