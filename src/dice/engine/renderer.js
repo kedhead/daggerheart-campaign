@@ -10,7 +10,7 @@
 // top, so what you see is the canonical result.
 
 import * as THREE from 'three';
-import { dieShape } from './dice.js';
+import { dieShape, SUPPORTED_SIDES } from './dice.js';
 import { STEP, FRAME_STRIDE } from './seed.js';
 
 const CELL = 128; // texture pixels per face
@@ -256,6 +256,30 @@ export function createRenderer(container) {
     },
 
     get activeCount() { return [...throws.values()].filter(t => !t.done).length; },
+
+    /**
+     * Build every die type once and compile its shaders, then throw it away.
+     * The first throw of a new die type otherwise pays for geometry, texture
+     * and shader compilation in the middle of the animation — a stutter on
+     * the battle map monitor, which uses every die type over a session.
+     */
+    warm() {
+      const group = new THREE.Group();
+      const made = SUPPORTED_SIDES.map((sides) => {
+        const shape = dieShape(sides);
+        const { geometry, edges } = dieGeometry(sides);
+        const material = new THREE.MeshStandardMaterial({ map: dieTexture(sides, '#6366f1', shape.labels), roughness: 0.42, metalness: 0.08, flatShading: true });
+        const mesh = new THREE.Mesh(geometry, material);
+        const line = new THREE.LineBasicMaterial({ color: 0x333333, transparent: true, opacity: 0.7 });
+        mesh.add(new THREE.LineSegments(edges, line));
+        group.add(mesh);
+        return { material, line };
+      });
+      scene.add(group);
+      try { renderer.compile(scene, camera); } catch { /* best effort */ }
+      scene.remove(group);
+      made.forEach(({ material, line }) => { material.map?.dispose(); material.dispose(); line.dispose(); });
+    },
 
     /** Every throw on the table, where its playback is now — for simulate.js. */
     obstacles() {

@@ -228,6 +228,28 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     engineRef.current = null;
   }, []);
 
+  // The battle map monitor builds the engine while it sits idle. It is a
+  // desktop screen that rolls all night, so loading three.js, the physics
+  // worker and every die's shaders on the first roll only made that roll
+  // stall. (Phones keep the lazy start: an idle WebGL layer flickers on
+  // Android, and the tray stays display:none here until a roll arrives.)
+  useEffect(() => {
+    if (!animateRemote) return undefined;
+    let cancelled = false;
+    const start = () => {
+      if (cancelled) return;
+      ensureEngine().then(engine => { if (!cancelled) engine?.warm?.(); }).catch(() => {});
+    };
+    const idle = typeof window.requestIdleCallback === 'function'
+      ? window.requestIdleCallback(start, { timeout: 4000 })
+      : setTimeout(start, 1500);
+    return () => {
+      cancelled = true;
+      if (typeof window.cancelIdleCallback === 'function') window.cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
+  }, [animateRemote, ensureEngine]);
+
   // Blur is the single most expensive thing the compositor does, and during a
   // roll it is pure waste: every backdrop-filter layer in the app is re-blurred
   // each frame behind a 55%-black scrim that hides the result anyway. Dropping
