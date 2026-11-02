@@ -106,6 +106,15 @@ export async function createDiceEngine(container) {
       const { settled } = await started;
       await settled;
     },
+    /**
+     * Get ready before the first roll: compile every die's shaders and load
+     * the physics worker with a throwaway simulation. For shared screens that
+     * sit idle until someone rolls (the battle map monitor).
+     */
+    async warm() {
+      renderer.warm();
+      await simulator.run({ dice: [20, 12, 12], seed: 1, arena: { width: 20, depth: 12 }, lane: 0, lanes: 1, obstacles: [] }).catch(() => {});
+    },
     remove(id) { renderer.remove(id); },
     clear() { renderer.clear(); },
     resize() { renderer.resize(); },

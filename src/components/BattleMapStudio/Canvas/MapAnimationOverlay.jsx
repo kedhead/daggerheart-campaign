@@ -36,7 +36,10 @@ export default function MapAnimationOverlay({ effects = [], intensity = 1, enabl
     let frame = 0;
     let last = performance.now();
     const loop = (now) => {
-      engine.step(now - last, now);
+      // Hold the weather while dice are in the air (DiceTray marks the body):
+      // on a big monitor both full-screen layers redrawing every frame made
+      // the dice stutter. The weather picks up where it left off.
+      if (!document.body.classList.contains('dice-rolling')) engine.step(now - last, now);
       last = now;
       frame = requestAnimationFrame(loop);
     };

@@ -55,7 +55,7 @@ function summarize(roll) {
   );
 }
 
-export default function RollHistory({ campaignId, count = 50, variant = 'list', isDM = false, compact = false }) {
+export default function RollHistory({ campaignId, count = 50, variant = 'list', isDM = false, compact = false, large = false }) {
   const confirm = useConfirm();
   const { currentUser } = useAuth();
   const { rolls, loading } = useRollHistory(campaignId, count);
@@ -112,14 +112,14 @@ export default function RollHistory({ campaignId, count = 50, variant = 'list', 
 
   if (variant === 'sidebar') {
     return (
-      <div className={`roll-history-sidebar ${open ? 'open' : ''}`}>
+      <div className={`roll-history-sidebar ${open ? 'open' : ''} ${large ? 'is-large' : ''}`}>
         <button
           type="button"
           className="roll-history-toggle"
           onClick={() => setOpen(o => !o)}
           title={open ? 'Hide history' : 'Show history'}
         >
-          {open ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          {open ? <ChevronRight size={large ? 22 : 14} /> : <ChevronLeft size={large ? 22 : 14} />}
         </button>
         {inner}
       </div>

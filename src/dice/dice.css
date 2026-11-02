@@ -502,6 +502,37 @@
   display: flex; align-items: center; justify-content: center;
 }
 
+/* The battle map monitor's sidebar, read from across the room: sized with
+   the screen rather than in phone-sized pixels, and solid instead of blurred
+   (a backdrop blur over an animated map costs the dice frames). */
+.roll-history-sidebar.is-large {
+  width: clamp(300px, 21vw, 520px);
+  padding: clamp(14px, 1.1vw, 24px);
+  background: rgba(10, 10, 20, 0.95);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: 16px 0 0 16px;
+}
+.roll-history-sidebar.is-large .roll-history-toggle {
+  left: -44px;
+  width: 44px;
+  height: 88px;
+  border-radius: 12px 0 0 12px;
+  background: rgba(10, 10, 20, 0.95);
+}
+.roll-history-sidebar.is-large .rh-header { font-size: clamp(16px, 1.15vw, 24px); margin-bottom: 0.7rem; }
+.roll-history-sidebar.is-large .rh-list { max-height: 70vh; gap: 0.6rem; }
+.roll-history-sidebar.is-large .rh-item {
+  padding: 0.7rem 0.9rem;
+  border-left-width: 6px;
+  border-radius: 10px;
+  font-size: clamp(18px, 1.35vw, 28px);
+  background: rgba(255, 255, 255, 0.07);
+}
+.roll-history-sidebar.is-large .rh-roller { font-size: clamp(14px, 1vw, 20px); margin-bottom: 0.25rem; }
+.roll-history-sidebar.is-large .rh-empty { font-size: clamp(14px, 1vw, 20px); }
+.roll-history-sidebar.is-large .rh-clear-btn { padding: 0.4rem; }
+
 /* ── Remote-roll feed: compact attributed toasts (no 3D for others' rolls) ── */
 .dice-feed {
   position: fixed;
