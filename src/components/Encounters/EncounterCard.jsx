@@ -1,12 +1,32 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Edit2, Trash2, ExternalLink, Swords, Play, Users, Skull, Target } from 'lucide-react';
+import { ChevronDown, ChevronUp, Edit2, Trash2, ExternalLink, Swords, Play, Users, Skull, Target, MessageCircle, Compass, Puzzle, Sparkles, Loader2 } from 'lucide-react';
 import WikiText from '../WikiText/WikiText';
 import EntityViewer from '../EntityViewer/EntityViewer';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
 import { useDice, parseDamageNotation } from '../../dice';
+import SceneSpecView, { PuzzleSpecView } from './SceneSpecView';
+import { isNonCombat, buildSceneSpecPrompt, parseSceneSpec } from '../../utils/sceneSpec';
+import { aiService } from '../../services/aiService';
+import { textProvider } from '../../services/cinematicsGenerator';
+import { useAPIKey } from '../../hooks/useAPIKey';
+import { useOptionalCampaignData } from '../../contexts/CampaignDataContext';
+import { currentStorySnapshot } from '../../utils/currentStory';
 
-export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM, campaign, isEmbedded = false, entities, adversaries = [], environments = [] }) {
+// Icon, colours and label for the kind of scene, so a social or exploration
+// encounter no longer looks like a fight with a "MEDIUM" badge.
+const TYPE_STYLE = {
+  social: { Icon: MessageCircle, box: 'bg-sky-500/10 text-sky-400 border-sky-500/20', hover: 'group-hover:text-sky-400' },
+  exploration: { Icon: Compass, box: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', hover: 'group-hover:text-emerald-400' },
+  puzzle: { Icon: Puzzle, box: 'bg-amber-500/10 text-amber-400 border-amber-500/20', hover: 'group-hover:text-amber-400' },
+  combat: { Icon: Swords, box: 'bg-red-500/10 text-red-500 border-red-500/20', hover: 'group-hover:text-red-400' }
+};
+
+export default function EncounterCard({ encounter, onEdit, onDelete, onRun, onUpdate, isDM, campaign, isEmbedded = false, entities, adversaries = [], environments = [] }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const nonCombat = isNonCombat(encounter);
+  const kind = encounter.encounterType || (nonCombat ? 'social' : 'combat');
+  const typeStyle = TYPE_STYLE[kind] || TYPE_STYLE.combat;
+
   const [viewingEntity, setViewingEntity] = useState(null);
   const { getByName } = useEntityRegistry(campaign, entities);
   const { rollDamage } = useDice(campaign?.id);
@@ -45,14 +65,14 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
         className="p-4 flex gap-4 cursor-pointer hover:bg-white/5 transition-colors rounded-xl"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="p-3 bg-red-500/10 text-red-500 rounded-xl border border-red-500/20 h-fit">
-          <Swords size={24} />
+        <div className={`p-3 rounded-xl border h-fit ${typeStyle.box}`}>
+          <typeStyle.Icon size={24} />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-white group-hover:text-red-400 transition-colors">
+              <h3 className={`text-lg font-bold text-white transition-colors ${typeStyle.hover}`}>
                 {encounter.name}
               </h3>
 
@@ -68,6 +88,10 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
                       {encounter.partySize || 4} PCs
                     </span>
                   </>
+                ) : kind !== 'combat' ? (
+                  <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider border ${typeStyle.box}`}>
+                    {kind}
+                  </span>
                 ) : (
                   <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${difficultyColors.bg} ${difficultyColors.text}`}>
                     {encounter.difficulty || 'medium'}
@@ -102,6 +126,19 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
                 />
               </div>
             </div>
+          )}
+
+          {encounter.sceneSpec && <SceneSpecView spec={encounter.sceneSpec} />}
+
+          {encounter.puzzleSpec && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Puzzle</h4>
+              <PuzzleSpecView spec={encounter.puzzleSpec} />
+            </div>
+          )}
+
+          {isDM && nonCombat && onUpdate && !isEmbedded && (
+            <FleshOutScene encounter={encounter} campaign={campaign} onUpdate={onUpdate} />
           )}
 
           {encounter.enemies && (
@@ -297,6 +334,59 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, isDM
           entities={entities}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * Turn a generic non-combat encounter into a playable scene: goal, stakes,
+ * rolls with Difficulties and results, countdown, NPCs, twist. Its own
+ * component so the key lookup only runs for an open card, not all of them.
+ */
+function FleshOutScene({ encounter, campaign, onUpdate }) {
+  const [fleshing, setFleshing] = useState(false);
+  const [error, setError] = useState(null);
+  const { getEffectiveKey } = useAPIKey(campaign?.createdBy);
+  const campaignData = useOptionalCampaignData();
+
+  const fleshOut = async (e) => {
+    e?.stopPropagation?.();
+    setFleshing(true);
+    setError(null);
+    try {
+      const story = currentStorySnapshot({ sessions: campaignData?.sessions, chapters: campaignData?.storybookChapters, quests: campaignData?.quests });
+      const storyNow = [...story.sessions, ...story.chapters].map(x => x.text).slice(-2).join(' ');
+      const { apiKey, provider } = textProvider(getEffectiveKey);
+      const text = await aiService.generate(
+        buildSceneSpecPrompt(encounter, { campaignName: campaign?.name, storyNow, characters: campaignData?.characters }),
+        apiKey,
+        provider
+      );
+      const sceneSpec = parseSceneSpec(text);
+      if (!sceneSpec) throw new Error('The AI did not come back with a scene. Try again.');
+      await onUpdate(encounter.id, { sceneSpec });
+    } catch (err) {
+      setError(err.message || 'Could not flesh out this scene.');
+    } finally {
+      setFleshing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={fleshOut}
+        disabled={fleshing}
+        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-indigo-500/15 text-indigo-200 border border-indigo-500/25 hover:bg-indigo-500/25 disabled:opacity-50"
+      >
+        {fleshing ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+        {fleshing ? 'Building the scene…' : encounter.sceneSpec ? 'Rework this scene' : 'Flesh out this scene'}
+      </button>
+      {!encounter.sceneSpec && !fleshing && (
+        <p className="text-[11px] text-lr-text-dim">Adds goal and stakes, rolls with Difficulties and results, a countdown, who's here and a twist.</p>
+      )}
+      {error && <p className="text-xs text-red-300">{error}</p>}
     </div>
   );
 }

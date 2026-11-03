@@ -4,6 +4,8 @@
  * Handles both JSON and text responses with fallback parsing
  */
 
+import { normalizeSceneSpec } from '../utils/sceneSpec';
+
 export const responseParser = {
   /**
    * Parse NPC response
@@ -368,6 +370,8 @@ export const responseParser = {
           solution: String(enc.puzzleSpec.solution || ''),
           failureState: String(enc.puzzleSpec.failureState || '')
         } : null,
+        // The playable part of a social or exploration scene (utils/sceneSpec.js).
+        sceneSpec: enc.type === 'social' || enc.type === 'exploration' ? normalizeSceneSpec(enc.sceneSpec) : null,
         environment: String(enc.environment || ''),
         bpEstimate: Number(enc.bpEstimate) || 0
       })),

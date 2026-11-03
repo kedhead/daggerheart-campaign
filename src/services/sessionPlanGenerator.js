@@ -304,6 +304,7 @@ export async function buildPreviewFromPlan({
       partyLevel: plan.partyLevel,
       adversarySlots,
       puzzleSpec: enc.puzzleSpec,
+      sceneSpec: enc.sceneSpec || null,
       estimatedMinutes: enc.estimatedMinutes,
       bpEstimate: enc.bpEstimate,
       tactics: '',
@@ -491,6 +492,14 @@ function assembleSessionNotes(plan) {
         lines.push(`   - **Solution:** ${enc.puzzleSpec.solution}`);
         if (enc.puzzleSpec.failureState) lines.push(`   - **On failure:** ${enc.puzzleSpec.failureState}`);
       }
+      if (enc.sceneSpec) {
+        const sc = enc.sceneSpec;
+        if (sc.goal) lines.push(`   - **Goal:** ${sc.goal}`);
+        if (sc.stakes) lines.push(`   - **Stakes:** ${sc.stakes}`);
+        (sc.rolls || []).forEach(r => lines.push(`   - **${r.trait || 'Roll'}${r.difficulty ? ` (${r.difficulty})` : ''}:** ${r.action}`));
+        if (sc.countdown) lines.push(`   - **Countdown ${sc.countdown.start}:** ${sc.countdown.name}, ${sc.countdown.atZero}`);
+        if (sc.twist) lines.push(`   - **Twist:** ${sc.twist}`);
+      }
     });
     lines.push('');
   }
@@ -609,6 +618,7 @@ export async function commitPreview({ preview, handlers, onProgress = () => {} }
         // Extra GM-assistant metadata, harmless to other consumers
         encounterType: enc.type || 'combat',
         puzzleSpec: enc.puzzleSpec || null,
+        sceneSpec: enc.sceneSpec || null,
         estimatedMinutes: enc.estimatedMinutes || null,
         handoutUrl: enc.handoutUrl || '',
         gmSheet: enc.gmSheet || ''
