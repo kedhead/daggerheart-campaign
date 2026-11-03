@@ -132,7 +132,9 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, onUp
 
           {encounter.puzzleSpec && (
             <div className="space-y-2">
-              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">Puzzle</h4>
+              {/* Older plans put a social or exploration scene's ideas in these
+                  puzzle fields, so label them for what they are. */}
+              <h4 className="text-xs font-bold text-lr-text-dim uppercase tracking-wider">{kind === 'puzzle' ? 'Puzzle' : 'Scene plan'}</h4>
               <PuzzleSpecView spec={encounter.puzzleSpec} />
             </div>
           )}

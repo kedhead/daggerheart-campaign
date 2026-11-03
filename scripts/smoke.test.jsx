@@ -3656,6 +3656,9 @@ section('Non-combat encounters');
   const p = buildSceneSpecPrompt({ name: "Emmanita's Vampire Transformation Struggle", description: 'Emmanita experiences symptoms of her [[blood exchange]].', encounterType: 'social' }, { campaignName: 'C', characters: [{ name: 'Pippin' }] });
   assert(/Emmanita's Vampire Transformation Struggle/.test(p) && /blood exchange/.test(p) && !/\[\[/.test(p) && /Difficulties: 10 easy/.test(p) && /successWithFear/.test(p) && /Pippin/.test(p),
     'the flesh-out prompt carries the encounter, the party, Daggerheart Difficulties and the duality results');
+  const withIdeas = buildSceneSpecPrompt({ name: 'Struggle', encounterType: 'social', description: 'd', puzzleSpec: { premise: 'Her vampiric symptoms manifest', mechanism: '', solution: 'Herbal remedies known by Miregrove' } });
+  assert(/THE PLAN'S IDEAS/.test(withIdeas) && /Herbal remedies known by Miregrove/.test(withIdeas) && !/How it plays/.test(withIdeas),
+    'fleshing out builds on the ideas an older plan saved in the puzzle fields');
   assert(parseSceneSpec('Here you go: ' + JSON.stringify(raw)).goal === raw.goal && parseSceneSpec(JSON.stringify({ sceneSpec: raw })).rolls.length === 2 && parseSceneSpec('nope') === null,
     'the scene is read from the answer, wrapped or not');
   const html = renderToString(<SceneSpecView spec={spec} />);

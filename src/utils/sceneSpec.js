@@ -66,6 +66,17 @@ export function isNonCombat(encounter) {
   return !(encounter?.adversarySlots?.length) && !encounter?.enemies;
 }
 
+// Older session plans put a social or exploration scene's ideas in the
+// puzzle fields; carry them over rather than starting from the description.
+function planIdeas(encounter) {
+  const p = encounter?.puzzleSpec;
+  if (!p) return '';
+  const rows = [['Premise', p.premise], ['How it plays', p.mechanism], ['Intended way through', p.solution], ['On failure', p.failureState]]
+    .filter(([, v]) => clean(v))
+    .map(([k, v]) => `- ${k}: ${clean(v)}`);
+  return rows.length ? `THE PLAN'S IDEAS FOR IT (build on these):\n${rows.join('\n')}\n` : '';
+}
+
 /** The prompt for fleshing out an existing non-combat encounter. */
 export function buildSceneSpecPrompt(encounter, { campaignName = '', storyNow = '', characters = [] } = {}) {
   const party = (characters || []).filter(c => c?.name).slice(0, 8).map(c => c.name).join(', ');
@@ -73,7 +84,7 @@ export function buildSceneSpecPrompt(encounter, { campaignName = '', storyNow = 
 
 ENCOUNTER: ${clean(encounter?.name) || 'Untitled'}
 ${encounter?.encounterType ? `TYPE: ${encounter.encounterType}\n` : ''}DESCRIPTION: ${clean(encounter?.description) || '(none)'}
-${encounter?.environment ? `SETTING: ${clean(encounter.environment)}\n` : ''}${party ? `THE PARTY: ${party}\n` : ''}${storyNow ? `WHERE THE STORY IS NOW: ${clean(storyNow).slice(0, 800)}\n` : ''}
+${encounter?.environment ? `SETTING: ${clean(encounter.environment)}\n` : ''}${planIdeas(encounter)}${party ? `THE PARTY: ${party}\n` : ''}${storyNow ? `WHERE THE STORY IS NOW: ${clean(storyNow).slice(0, 800)}\n` : ''}
 Rules:
 ${SCENE_SPEC_RULES.replace(/- Social and exploration encounters MUST have a "sceneSpec" \(null for combat and puzzle\): /, '- Write ')}
 - Keep everything true to the description above; add detail, do not change what the scene is about.
