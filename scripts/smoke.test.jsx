@@ -26,6 +26,10 @@ import generateStorybookHandler from '../api/generate-storybook.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
+import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec } from '../src/utils/sceneSpec.js';
+import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
+import WikiText from '../src/components/WikiText/WikiText.jsx';
+import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
 import { introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, montageLayout, panelImages, RECAP_CLIFF_SILENCE } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
@@ -3626,6 +3630,59 @@ section('Table cinematics');
   assert(isFreshCue({ id: 'a', kind: 'boss', sentAt: now - 5000 }, now) && !isFreshCue({ id: 'a', kind: 'boss', sentAt: now - 10 * 60 * 1000 }, now)
     && !isFreshCue({ id: 'a', kind: 'boss', sentAt: now, stopped: true }, now) && !isFreshCue(null, now),
     'the monitor plays a new cue, but not an old one when it is opened later, nor a stopped one');
+}
+
+section('Non-combat encounters');
+{
+  const raw = {
+    goal: 'Keep Emmanita from feeding before dawn',
+    stakes: 'She turns on the party and the town learns what she is',
+    opening: 'Her hands shake as the blood-hunger rises.',
+    rolls: [
+      { action: 'Talk Emmanita down from the hunger', trait: 'Presence', difficulty: 13, success: 'She steadies', successWithFear: 'She steadies but bites a lip bloody', failure: 'The countdown ticks twice' },
+      { action: 'Recall the old cure from the vampire texts', trait: 'Knowledge', difficulty: '99', success: 'You know the ritual' },
+      { action: '', trait: 'Agility' }
+    ],
+    countdown: { name: 'The Hunger', start: 40, advancesWhen: 'Each failed roll', atZero: 'She attacks' },
+    npcs: [{ name: 'Emmanita', wants: 'to stay herself', leverage: 'her sister' }, { wants: 'nameless' }],
+    twist: 'A hunter knocks at the door',
+    rewards: 'Emmanita learns to control the hunger'
+  };
+  const spec = normalizeSceneSpec(raw);
+  assert(spec.rolls.length === 2 && spec.rolls[1].difficulty === 30 && spec.countdown.start === 12 && spec.npcs.length === 1,
+    'a scene spec is cleaned: empty rolls and nameless NPCs dropped, Difficulties and countdowns kept in range');
+  assert(normalizeSceneSpec({ twist: 'x' }) === null && normalizeSceneSpec(null) === null, 'a spec with nothing playable in it is none');
+  assert(isNonCombat({ encounterType: 'social' }) && isNonCombat({ name: 'Talk' }) && !isNonCombat({ encounterType: 'puzzle' })
+    && !isNonCombat({ adversarySlots: [{ adversaryId: 'a' }] }) && !isNonCombat({ encounterType: 'combat' }),
+    'social and exploration encounters, or ones with nobody to fight, count as non-combat');
+  const p = buildSceneSpecPrompt({ name: "Emmanita's Vampire Transformation Struggle", description: 'Emmanita experiences symptoms of her [[blood exchange]].', encounterType: 'social' }, { campaignName: 'C', characters: [{ name: 'Pippin' }] });
+  assert(/Emmanita's Vampire Transformation Struggle/.test(p) && /blood exchange/.test(p) && !/\[\[/.test(p) && /Difficulties: 10 easy/.test(p) && /successWithFear/.test(p) && /Pippin/.test(p),
+    'the flesh-out prompt carries the encounter, the party, Daggerheart Difficulties and the duality results');
+  const withIdeas = buildSceneSpecPrompt({ name: 'Struggle', encounterType: 'social', description: 'd', puzzleSpec: { premise: 'Her vampiric symptoms manifest', mechanism: '', solution: 'Herbal remedies known by Miregrove' } });
+  assert(/THE PLAN'S IDEAS/.test(withIdeas) && /Herbal remedies known by Miregrove/.test(withIdeas) && !/How it plays/.test(withIdeas),
+    'fleshing out builds on the ideas an older plan saved in the puzzle fields');
+  assert(parseSceneSpec('Here you go: ' + JSON.stringify(raw)).goal === raw.goal && parseSceneSpec(JSON.stringify({ sceneSpec: raw })).rolls.length === 2 && parseSceneSpec('nope') === null,
+    'the scene is read from the answer, wrapped or not');
+  const html = renderToString(<SceneSpecView spec={spec} />);
+  assert(/Keep Emmanita from feeding/.test(html) && /Difficulty (<!-- -->)?13/.test(html) && /With Fear:/.test(html) && /The Hunger/.test(html) && /A hunter knocks/.test(html),
+    'the card shows the goal, each roll with its Difficulty and results, the countdown and the twist');
+  const plan = responseParser._validateSessionPlan({ encounters: [
+    { name: 'Calm her', type: 'social', summary: 's', sceneSpec: raw },
+    { name: 'Fight', type: 'combat', summary: 's', sceneSpec: raw }
+  ] });
+  assert(plan.encounters[0].sceneSpec?.rolls.length === 2 && plan.encounters[1].sceneSpec === null, 'the session planner keeps scene specs on social and exploration encounters only');
+}
+
+section('Markdown in wiki text');
+{
+  const t = inlineMarkdown('## Encounters\n1. **Confrontation at the Castle** *(combat, ~60 min)* — the king, 5*3 = 15, a_b*c');
+  assert(t[0].type === 'heading' && t[0].content === 'Encounters' && t.some(x => x.type === 'bold' && x.content === 'Confrontation at the Castle')
+    && t.some(x => x.type === 'italic' && x.content === '(combat, ~60 min)') && t.at(-1).content.includes('5*3 = 15, a_b*c'),
+    `headings, bold and italics are found; stray asterisks in maths stay as text (got ${JSON.stringify(t.map(x => x.type))})`);
+  const html = renderToString(<WikiText text={'**[[Bubbles]]** waits. Plain *still* here.'} getEntity={() => null} />);
+  assert(/<strong class="wiki-bold"><span class="wiki-link wiki-link-broken"[^>]*>Bubbles<\/span><\/strong>/.test(html) && /<em>still<\/em>/.test(html) && !/\*\*/.test(html),
+    'a bold [[link]] renders as a bold link and no asterisks are left showing');
+  assert(renderToString(<WikiText text="no markdown here" />).includes('no markdown here'), 'plain text is unchanged');
 }
 
 section('Battle map weather');

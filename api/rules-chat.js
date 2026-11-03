@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
+import { SCENE_SPEC_SCHEMA, SCENE_SPEC_RULES } from './_lib/sceneSpecPrompt.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -178,6 +179,7 @@ OUTPUT FORMAT — return ONLY one fenced JSON code block, with no prose before o
         { "concept": "vivid one-sentence creature concept", "tier": 1|2|3|4, "role": "minion|horde|standard|bruiser|skulk|ranged|support|social|leader|solo|boss", "quantity": number, "reuseExistingName": "exact name from the campaign's Adversaries list when reusing an existing stat block, otherwise null" }
       ],
       "puzzleSpec": null | { "premise": "string", "mechanism": "what the players must do", "solution": "intended solution + a hint", "failureState": "what happens if they fail" },
+      "sceneSpec": null | ${SCENE_SPEC_SCHEMA.split('\n').join('\n      ')},
       "environment": "string (matches a campaign environment if available)",
       "bpEstimate": number
     }
@@ -199,6 +201,7 @@ DESIGN RULES:
 - Daggerheart Battle Points budget per encounter = (3 × partySize) + 2. Costs: 1 BP per group of minions equal to party size; social/support=1 each; horde/ranged/skulk/standard=2 each; leader=3; bruiser=4; solo=5; boss=8. Encounter-by-encounter the bpEstimate must respect this budget (a boss fight is expected to spend most or all of it).
 - Match adversary tier to the party's tier of play: level 1 → tier 1, levels 2–4 → tier 2, levels 5–7 → tier 3, levels 8–10 → tier 4. Never pick adversaries more than one tier away from the party's tier.
 - Honor the GM's requested counts and types (e.g., "2 puzzle encounters" → exactly 2 entries with type:"puzzle" and a non-null puzzleSpec).
+${SCENE_SPEC_RULES}
 - Estimate encounter minutes so the SUM of estimatedMinutes is close to estimatedDurationHours × 60.
 - gmNotes must be a single Markdown string. No code blocks inside it.
 - Ground every encounter / NPC / location in the campaign's themes. Reference named places, factions, and lore from the campaign context above.

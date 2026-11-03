@@ -4,6 +4,7 @@ import {
   ChevronDown, ChevronUp, Map, Hammer, Sparkles
 } from 'lucide-react';
 import { calculateBPBudget } from '../Encounters/BPCalculator';
+import SceneSpecView from '../Encounters/SceneSpecView';
 
 const TYPE_ICONS = {
   combat: Sword,
@@ -126,6 +127,7 @@ export default function SessionPlanCard({
                         </ul>
                       </div>
                     )}
+                    {enc.sceneSpec && <SceneSpecView spec={enc.sceneSpec} />}
                     {enc.puzzleSpec && (
                       <div className="space-y-1 text-lr-text-muted">
                         <div><span className="text-lr-text-dim">Premise:</span> {enc.puzzleSpec.premise}</div>

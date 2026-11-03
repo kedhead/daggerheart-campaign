@@ -448,6 +448,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
               onEdit={() => handleEdit(encounter)}
               onDelete={() => handleDelete(encounter.id)}
               onRun={encounter.adversarySlots?.length > 0 ? () => handleRunEncounter(encounter) : null}
+              onUpdate={isDM ? updateEncounter : null}
               isDM={isDM}
               campaign={campaign}
               adversaries={adversaries}
