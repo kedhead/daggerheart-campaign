@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
+import { isMature, matureOpenAI } from './_lib/contentRating.js';
 
 export const config = {
   maxDuration: 60
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
 
     console.log('Generating notes for transcript length:', transcript.length);
 
-    const completion = await openai.chat.completions.create({
+    const completion = await matureOpenAI(openai, isMature(req)).chat.completions.create({
       model: 'gpt-4o-mini',
       temperature: 0.3,
       messages: [

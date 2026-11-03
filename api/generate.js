@@ -4,6 +4,7 @@
  */
 
 import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
+import { isMature, MATURE_TEXT_GUIDANCE } from './_lib/contentRating.js';
 
 export default async function handler(req, res) {
   // Enable CORS
@@ -27,6 +28,8 @@ export default async function handler(req, res) {
 
   try {
     const { prompt, apiKey, provider, model } = req.body;
+    // A mature campaign gets frank violence and horror (api/_lib/contentRating.js).
+    const mature = isMature(req);
 
     if (!prompt || !provider) {
       return res.status(400).json({ error: 'Missing required fields: prompt, provider' });
@@ -78,6 +81,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           model: apiModel,
           max_tokens: 4096,
+          ...(mature ? { system: MATURE_TEXT_GUIDANCE } : {}),
           messages: [
             {
               role: 'user',
@@ -112,6 +116,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           model: apiModel,
           messages: [
+            ...(mature ? [{ role: 'system', content: MATURE_TEXT_GUIDANCE }] : []),
             {
               role: 'user',
               content: prompt

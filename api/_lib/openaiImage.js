@@ -35,13 +35,21 @@ export async function runImageChain(send, models = IMAGE_MODELS) {
   return { ok: result.ok, status: result.status, body: result.body, model: result.step.model };
 }
 
-/** A text-to-image request, down the chain. */
-export function generateOpenAIImage({ apiKey, prompt, size, quality, extra = {}, fetchImpl = fetch }) {
-  return runImageChain(model => fetchImpl('https://api.openai.com/v1/images/generations', {
+/**
+ * A text-to-image request, down the chain. A mature campaign asks for
+ * OpenAI's "low" moderation (still no sexual content or extreme gore); a
+ * model that doesn't take the option is asked again without it.
+ */
+export async function generateOpenAIImage({ apiKey, prompt, size, quality, extra = {}, mature = false, fetchImpl = fetch }) {
+  const run = (moderation) => runImageChain(model => fetchImpl('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, prompt, n: 1, size: openaiImageSize(size), quality, ...extra })
+    body: JSON.stringify({ model, prompt, n: 1, size: openaiImageSize(size), quality, ...extra, ...(moderation ? { moderation } : {}) })
   }));
+  if (!mature) return run(null);
+  const result = await run('low');
+  if (!result.ok && result.body?.error?.param === 'moderation') return run(null);
+  return result;
 }
 
 /** The image in a successful OpenAI response, as a URL the app can show. */

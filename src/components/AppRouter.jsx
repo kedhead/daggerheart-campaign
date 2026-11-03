@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { useCampaignData } from '../contexts/CampaignDataContext';
 import { setCampaignArtStyle } from '../services/artStyle';
+import { setContentIntensity } from '../services/contentRating';
 
 const DashboardView = lazy(() => import('./Dashboard/DashboardView'));
 const CharactersView = lazy(() => import('./Characters/CharactersView'));
@@ -160,6 +161,11 @@ export default function AppRouter({
   useEffect(() => {
     setCampaignArtStyle(campaign);
   }, [campaign?.id, campaign?.unifiedArtStyle, campaign?.storybookStyle, campaign?.storybookStyleCustom]);
+
+  // A mature campaign's rating rides along with every AI request.
+  useEffect(() => {
+    setContentIntensity(campaign);
+  }, [campaign?.id, campaign?.contentIntensity]);
 
   const publishedStorybookChapters = storybookChapters?.filter(c => c.status === 'published') || [];
 

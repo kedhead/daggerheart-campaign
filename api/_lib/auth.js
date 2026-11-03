@@ -77,4 +77,4 @@ export async function requireUser(req, res) {
 }
 
 /** The CORS header list every endpoint allows (it now includes Authorization). */
-export const ALLOWED_HEADERS = 'Content-Type, Authorization';
+export const ALLOWED_HEADERS = 'Content-Type, Authorization, X-Content-Intensity';

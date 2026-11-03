@@ -7,6 +7,8 @@
 // Firebase is imported lazily so modules that call the API stay importable in
 // the node smoke tests, which never load the Firebase app.
 
+import { contentHeaders } from './contentRating';
+
 export async function authHeaders() {
   try {
     const { auth } = await import('../config/firebase');
@@ -21,5 +23,7 @@ export async function apiFetch(path, init = {}) {
   const headers = new Headers(init.headers || {});
   const auth = await authHeaders();
   if (auth.Authorization && !headers.has('Authorization')) headers.set('Authorization', auth.Authorization);
+  // A mature campaign's rating rides along with every AI request (services/contentRating.js).
+  for (const [k, v] of Object.entries(contentHeaders())) if (!headers.has(k)) headers.set(k, v);
   return fetch(path, { ...init, headers });
 }
