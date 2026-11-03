@@ -12,6 +12,7 @@
 
 import OpenAI from 'openai';
 import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
+import { isMature, matureOpenAI } from './_lib/contentRating.js';
 import { dialogueGuidance, sampleLines, tableQuoteLines } from './_lib/dialogue.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from './_lib/bookRevision.js';
 
@@ -39,7 +40,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'No OpenAI API key available.' });
   }
 
-  const openai = new OpenAI({ apiKey: effectiveKey });
+  // A mature campaign's chapters, drafts and blurbs get the R-rated guidance.
+  const openai = matureOpenAI(new OpenAI({ apiKey: effectiveKey }), isMature(req));
 
   try {
     if (action === 'describe') return await describeImage(req, res, openai);

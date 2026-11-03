@@ -14,6 +14,7 @@ import { requireUser, bearerToken, ALLOWED_HEADERS } from './_lib/auth.js';
 import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, readMapRequest, mapStoragePath } from './_lib/battleMap.js';
 import { uploadToStorage, isAllowedAssetUrl } from './_lib/bookRender.js';
 import { ART_STYLE_PREAMBLES, applyArtStyle, applyMapArtStyle } from './_lib/artStyle.js';
+import { isMature, MATURE_IMAGE_GUIDANCE } from './_lib/contentRating.js';
 import { generateOpenAIImage, runImageChain, openaiImageSize, imageFromBody, imageErrorMessage } from './_lib/openaiImage.js';
 
 // Extend timeout - 300s on Pro plan, 60s on Hobby.
@@ -83,6 +84,8 @@ export default async function handler(req, res) {
       artStyleCustom,         // optional: the campaign's own style text when artStyle is 'custom'
       apiKey: rawClientKey   // optional client-provided key (used by portrait callers)
     } = req.body;
+    // A mature campaign's art may show violence frankly (api/_lib/contentRating.js).
+    const mature = isMature(req);
 
     // '__shared__' = client sentinel for "use the server's shared key"
     const clientApiKey = rawClientKey === '__shared__' ? null : rawClientKey;
@@ -178,7 +181,7 @@ export default async function handler(req, res) {
         || (styleKey && styleKey.length > 6 ? styleKey : null) // treat as custom preamble if long
         || presets.watercolor;
 
-      const fullPromptBase = `${preamble}. ${prompt}`;
+      const fullPromptBase = `${preamble}. ${prompt}${mature ? ` ${MATURE_IMAGE_GUIDANCE}` : ''}`;
       const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
       const imageSize = validSizes.includes(size) ? size : '1024x1024';
 
@@ -304,7 +307,7 @@ export default async function handler(req, res) {
                 });
               })
             // No references available (or all downloads failed) — use generations
-            : await generateOpenAIImage({ apiKey: openaiKey, prompt: fullPrompt, size: sizeForGpt, quality: IMAGE_QUALITY });
+            : await generateOpenAIImage({ apiKey: openaiKey, prompt: fullPrompt, size: sizeForGpt, quality: IMAGE_QUALITY, mature });
           if (!result.ok) {
             console.error('OpenAI storybook image error:', result.status, result.body);
             return res.status(result.status || 500).json({ error: truncateErr(imageErrorMessage(result)) });
@@ -388,7 +391,7 @@ export default async function handler(req, res) {
         });
       }
 
-      const sb = await generateOpenAIImage({ apiKey: effectiveKey, prompt: fullPrompt, size: imageSize, quality: IMAGE_QUALITY });
+      const sb = await generateOpenAIImage({ apiKey: effectiveKey, prompt: fullPrompt, size: imageSize, quality: IMAGE_QUALITY, mature });
       if (!sb.ok) return res.status(sb.status || 500).json({ error: imageErrorMessage(sb) });
       const sbImage = imageFromBody(sb.body);
       if (sbImage) return res.status(200).json({ imageUrl: sbImage, prompt: fullPrompt, model: sb.model });
@@ -405,7 +408,8 @@ export default async function handler(req, res) {
       }
       const portrait = await generateOpenAIImage({
         apiKey: effectiveKey,
-        prompt: applyArtStyle(prompt, { artStyle, artStyleCustom, gameSystem }),
+        prompt: applyArtStyle(mature ? `${prompt}. ${MATURE_IMAGE_GUIDANCE}` : prompt, { artStyle, artStyleCustom, gameSystem }),
+        mature,
         size,
         quality: IMAGE_QUALITY
       });
@@ -499,7 +503,9 @@ export default async function handler(req, res) {
     }
 
     const wantsTransparency = type === 'asset' && !!transparent;
+    if (mature) enhancedPrompt = `${enhancedPrompt} ${MATURE_IMAGE_GUIDANCE}`;
     const generated = await generateOpenAIImage({
+      mature,
       apiKey: openaiKey,
       prompt: enhancedPrompt,
       size,

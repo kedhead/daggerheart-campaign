@@ -23,6 +23,10 @@ import generateImageHandler, { setMapUploaderForTests } from '../api/generate-im
 import generateNarrationHandler, { voiceSettingsFrom } from '../api/generate-narration.js';
 import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, shouldTryNextModel, readMapRequest, mapStoragePath, MAP_MODELS } from '../api/_lib/battleMap.js';
 import generateStorybookHandler from '../api/generate-storybook.js';
+import generateTextHandler from '../api/generate.js';
+import { isMature, withMatureSystem, matureOpenAI, MATURE_TEXT_GUIDANCE } from '../api/_lib/contentRating.js';
+import { generateOpenAIImage } from '../api/_lib/openaiImage.js';
+import { setContentIntensity, contentHeaders } from '../src/services/contentRating.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
@@ -3952,6 +3956,48 @@ async function runImageApiTests() {
     assert(voiceSettingsFrom({ stability: 5, style: -1, speed: 3 }).stability === 1 && voiceSettingsFrom({ style: -1 }).style === 0 && voiceSettingsFrom({ speed: 3 }).speed === 1.2
       && voiceSettingsFrom(null).style === 0.35 && !('speed' in voiceSettingsFrom({})), 'voice settings are clamped, and the old narrators keep their delivery');
     if (realEleven === undefined) delete process.env.ELEVENLABS_API_KEY; else process.env.ELEVENLABS_API_KEY = realEleven;
+
+    // Mature campaigns: the rating rides on a header and reaches text and images.
+    assert(isMature({ headers: { 'x-content-intensity': 'mature' } }) && !isMature({ headers: {} }) && !isMature({ headers: { 'x-content-intensity': 'standard' } }),
+      'a request is mature only when its campaign says so');
+    assert(withMatureSystem('Base', true).startsWith('Base\n\nCONTENT RATING') && withMatureSystem('Base', false) === 'Base' && /No sexual content/.test(MATURE_TEXT_GUIDANCE),
+      'the mature guidance is added to a system prompt, and rules out sexual content');
+    const sent = [];
+    const fakeOpenAI = { chat: { completions: { create: async (args) => { sent.push(args); return {}; } } } };
+    await matureOpenAI(fakeOpenAI, true).chat.completions.create({ messages: [{ role: 'system', content: 'Write chapters.' }, { role: 'user', content: 'x' }] });
+    await matureOpenAI(fakeOpenAI, false).chat.completions.create({ messages: [{ role: 'system', content: 'Plain.' }] });
+    assert(/CONTENT RATING/.test(sent[0].messages[0].content) && sent[0].messages[0].content.startsWith('Write chapters.') && sent[1].messages[0].content === 'Plain.',
+      'storybook calls in a mature campaign carry the guidance; others are untouched');
+    setContentIntensity({ contentIntensity: 'mature' });
+    assert(contentHeaders()['X-Content-Intensity'] === 'mature', 'the open mature campaign adds its rating header to API calls');
+    setContentIntensity({});
+    assert(Object.keys(contentHeaders()).length === 0, 'and a standard campaign adds nothing');
+
+    const textBodies = [];
+    globalThis.fetch = async (url, init = {}) => {
+      textBodies.push(JSON.parse(init.body));
+      return { ok: true, status: 200, json: async () => ({ content: [{ text: 'ok' }] }), text: async () => '' };
+    };
+    process.env.ANTHROPIC_API_KEY = 'ak-test';
+    r = mkRes();
+    await generateTextHandler({ method: 'POST', headers: { 'x-content-intensity': 'mature' }, body: { prompt: 'Describe the fight', provider: 'anthropic' } }, r);
+    r = mkRes();
+    await generateTextHandler({ method: 'POST', headers: {}, body: { prompt: 'Describe the fight', provider: 'anthropic' } }, r);
+    assert(/CONTENT RATING/.test(textBodies[0].system || '') && !('system' in textBodies[1]), 'NPC, encounter and recap writing gets the guidance only in a mature campaign');
+    delete process.env.ANTHROPIC_API_KEY;
+
+    const imageCalls = [];
+    const imgFetch = async (url, init) => {
+      const body = JSON.parse(init.body);
+      imageCalls.push(body);
+      if (body.moderation) return { ok: false, status: 400, text: async () => JSON.stringify({ error: { param: 'moderation', message: 'Unknown parameter: moderation' } }) };
+      return { ok: true, status: 200, text: async () => JSON.stringify({ data: [{ b64_json: 'AA' }] }) };
+    };
+    const img = await generateOpenAIImage({ apiKey: 'k', prompt: 'p', size: '1024x1024', quality: 'medium', mature: true, fetchImpl: imgFetch });
+    assert(img.ok && imageCalls[0].moderation === 'low' && !('moderation' in imageCalls.at(-1)),
+      'mature art asks for low moderation, and a model that rejects the option is asked again without it');
+    const styledMature = await call({ prompt: 'Portrait of a vampire lord', type: 'portrait' });
+    assert(!/Mature dark-fantasy/.test(styledMature.requests[0]?.body?.prompt || ''), 'a standard campaign’s portraits get no mature wording');
 
     const noKey = await call({ prompt: 'a crypt', type: 'dungeon' }, { key: null });
     assert(noKey.res.statusCode === 500 && noKey.requests.length === 0 && /OPENAI_API_KEY/.test(noKey.res.payload?.error || ''),

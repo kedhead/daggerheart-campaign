@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { requireUser, ALLOWED_HEADERS } from './_lib/auth.js';
 import { SCENE_SPEC_SCHEMA, SCENE_SPEC_RULES } from './_lib/sceneSpecPrompt.js';
+import { isMature, withMatureSystem } from './_lib/contentRating.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -271,7 +272,7 @@ export default async function handler(req, res) {
       ? `=== YOUR CAMPAIGN ===\n${campaignContext}\n=== END CAMPAIGN ===\n\n`
       : '';
 
-    const systemPrompt = mode === 'gm-plan'
+    const basePrompt = mode === 'gm-plan'
       ? buildGMPlannerSystemPrompt(cfg, campaignSection, contextText)
       : mode === 'summarize'
       ? buildSummarizerSystemPrompt(cfg, campaignSection)
@@ -286,6 +287,8 @@ ${campaignSection}=== RELEVANT RULES REFERENCE ===
 ${contextText}
 === END RULES ===
 `;
+    // A mature campaign's session plans get the R-rated guidance.
+    const systemPrompt = withMatureSystem(basePrompt, isMature(req));
 
     // 3. Resolve API key / provider
     let effectiveProvider = provider;

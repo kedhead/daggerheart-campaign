@@ -620,6 +620,27 @@ export default function DashboardView({
             </div>
           )}
 
+          {/* Content rating for everything the AI writes and draws (api/_lib/contentRating.js). */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.2em] ml-1">AI content</label>
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={campaignForm.contentIntensity === 'mature'}
+                onChange={(e) => setCampaignForm({ ...campaignForm, contentIntensity: e.target.checked ? 'mature' : 'standard' })}
+                className="mt-0.5 w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
+              />
+              <span>
+                <span className="block text-xs font-bold text-lr-text-muted group-hover:text-white transition-colors">Mature themes (R-rated)</span>
+                <span className="block text-[11px] text-lr-text-dim font-medium italic">
+                  The AI writes and draws violence, blood, horror and cruelty frankly instead of toning it down: in chapters,
+                  recaps, NPCs, encounters, session plans and art. Never sexual content or nudity. Very graphic gore may still
+                  be refused by the image generators.
+                </span>
+              </span>
+            </label>
+          </div>
+
           <div className="flex gap-3 pt-6 border-t border-white/5">
             <button type="button" className="flex-1 py-4 rounded-2xl bg-white/5 hover:bg-white/10 text-lr-text-dim font-black text-xs uppercase tracking-widest transition-all" onClick={() => setIsEditingCampaign(false)}>
               Cancel
