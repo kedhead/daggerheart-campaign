@@ -55,3 +55,16 @@
   color: #a78bfa;
   text-decoration-color: #a78bfa;
 }
+
+/* Inline markdown from AI-written text (see inlineMarkdown.js). */
+.wiki-bold {
+  font-weight: 700;
+  color: var(--text, #fff);
+}
+.wiki-heading {
+  display: inline-block;
+  margin-top: 0.4em;
+  font-weight: 700;
+  font-size: 1.08em;
+  color: var(--text, #fff);
+}

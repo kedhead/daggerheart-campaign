@@ -28,6 +28,8 @@ import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '..
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
 import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec } from '../src/utils/sceneSpec.js';
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
+import WikiText from '../src/components/WikiText/WikiText.jsx';
+import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
 import { introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, montageLayout, panelImages, RECAP_CLIFF_SILENCE } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
@@ -3669,6 +3671,18 @@ section('Non-combat encounters');
     { name: 'Fight', type: 'combat', summary: 's', sceneSpec: raw }
   ] });
   assert(plan.encounters[0].sceneSpec?.rolls.length === 2 && plan.encounters[1].sceneSpec === null, 'the session planner keeps scene specs on social and exploration encounters only');
+}
+
+section('Markdown in wiki text');
+{
+  const t = inlineMarkdown('## Encounters\n1. **Confrontation at the Castle** *(combat, ~60 min)* — the king, 5*3 = 15, a_b*c');
+  assert(t[0].type === 'heading' && t[0].content === 'Encounters' && t.some(x => x.type === 'bold' && x.content === 'Confrontation at the Castle')
+    && t.some(x => x.type === 'italic' && x.content === '(combat, ~60 min)') && t.at(-1).content.includes('5*3 = 15, a_b*c'),
+    `headings, bold and italics are found; stray asterisks in maths stay as text (got ${JSON.stringify(t.map(x => x.type))})`);
+  const html = renderToString(<WikiText text={'**[[Bubbles]]** waits. Plain *still* here.'} getEntity={() => null} />);
+  assert(/<strong class="wiki-bold"><span class="wiki-link wiki-link-broken"[^>]*>Bubbles<\/span><\/strong>/.test(html) && /<em>still<\/em>/.test(html) && !/\*\*/.test(html),
+    'a bold [[link]] renders as a bold link and no asterisks are left showing');
+  assert(renderToString(<WikiText text="no markdown here" />).includes('no markdown here'), 'plain text is unchanged');
 }
 
 section('Battle map weather');
