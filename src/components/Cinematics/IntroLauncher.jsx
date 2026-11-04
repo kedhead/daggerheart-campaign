@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Sparkles, Film, Loader2, Play, Monitor, Trash2, ExternalLink, Volume2 } from 'lucide-react';
+import { Sparkles, Film, Loader2, Play, Monitor, Trash2, ExternalLink, Volume2, Crown } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
-import { introFromEntity } from './cinematicPlan';
+import { introFromEntity, buildPhaseMotionPrompt, phaseShiftFromBoss, phaseNumber } from './cinematicPlan';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
 import { SOUND_STYLES, ensureSoundSet } from './cinematicSounds';
@@ -39,6 +39,8 @@ export default function IntroLauncher({ isOpen, onClose, entity, kind, campaign,
   // Borderlands is the brief, so its gritty rock sting is the default.
   const [soundStyle, setSoundStyle] = useState(SOUND_STYLES[saved.soundStyle] ? saved.soundStyle : 'rock');
   const [soundStatus, setSoundStatus] = useState(null);
+  // A phase transition clip being made: { id, label }.
+  const [animatingPhase, setAnimatingPhase] = useState(null);
 
   const campaignId = campaign?.id;
   const portrait = kind === 'adversary' ? entity?.imageUrl : entity?.avatarUrl;
@@ -89,16 +91,61 @@ export default function IntroLauncher({ isOpen, onClose, entity, kind, campaign,
     await saveIntro({ videoUrl: '', videoStoragePath: '' });
   };
 
-  // The intro with its sound set, made the first time a style is used.
-  const withSounds = async () => {
+  // A cinematic with its sound set, made the first time a style is used.
+  const withSounds = async (data = intro) => {
     try {
       const sounds = await ensureSoundSet(campaignId, soundStyle, setSoundStatus);
-      return { ...intro, sounds };
+      return { ...data, sounds };
     } catch (err) {
       notify.warning(`Cinematic sounds could not be made (${err.message}); playing with simple sounds.`);
-      return intro;
+      return data;
     } finally {
       setSoundStatus(null);
+    }
+  };
+
+  // ── Boss phase transitions ──
+  const phases = kind === 'adversary' && Array.isArray(entity?.phases) ? entity.phases : [];
+  const sortedPhases = [...phases].sort((a, b) => (b.triggerPercent ?? 0) - (a.triggerPercent ?? 0));
+
+  const savePhase = (phaseId, fields) => onSave(entity.id, {
+    phases: phases.map(p => (p.id === phaseId ? { ...p, ...fields } : p))
+  });
+
+  const animatePhase = async (phase) => {
+    if (!portrait || !campaignId || animatingPhase) return;
+    setAnimatingPhase({ id: phase.id, label: 'Starting…' });
+    try {
+      const clip = await animateToClip({
+        campaignId,
+        imageUrl: portrait,
+        prompt: buildPhaseMotionPrompt(entity, phase),
+        fileName: `phase-${entity.id}-${phase.id}-${Date.now()}`,
+        onStatus: label => setAnimatingPhase({ id: phase.id, label })
+      });
+      if (phase.videoStoragePath) await deleteStoredFile(phase.videoStoragePath);
+      await savePhase(phase.id, { videoUrl: clip.url, videoStoragePath: clip.storagePath });
+      notify.success(`${phase.name || 'Phase'} transition animated. It plays on the monitor when the phase hits.`);
+    } catch (err) {
+      notify.error(err.message || 'Animation failed.');
+    } finally {
+      setAnimatingPhase(null);
+    }
+  };
+
+  const removePhaseClip = async (phase) => {
+    if (phase.videoStoragePath) await deleteStoredFile(phase.videoStoragePath);
+    await savePhase(phase.id, { videoUrl: '', videoStoragePath: '' });
+  };
+
+  const previewPhase = async (phase) => {
+    audioContext()?.resume?.().catch(() => {});
+    setSending(true);
+    try {
+      const data = await withSounds(phaseShiftFromBoss({ adversary: entity, phase, bossName: entity?.name }));
+      setPreview({ id: `preview-${Date.now()}`, kind: 'phase', data });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -197,6 +244,58 @@ export default function IntroLauncher({ isOpen, onClose, entity, kind, campaign,
             )}
             {animating && saved.videoUrl && <p className="text-xs text-lr-text-dim">{animating}</p>}
           </div>
+
+          {sortedPhases.length > 0 && (
+            <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-white"><Crown size={16} className="text-amber-400" /> Phase transitions</div>
+              <p className="text-xs text-lr-text-dim leading-relaxed">
+                When a phase hits and you confirm it, the monitor plays the transformation and slams the new phase&apos;s name on screen.
+                Animate a phase to give it its own clip (1–3 minutes, one video generation); without one, the portrait shudders with power instead.
+              </p>
+              {sortedPhases.map(phase => {
+                const busy = animatingPhase?.id === phase.id;
+                return (
+                  <div key={phase.id} className="flex items-center gap-3">
+                    <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden border border-white/10 bg-black/30 flex items-center justify-center">
+                      {phase.videoUrl ? (
+                        <video src={phase.videoUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
+                      ) : portrait ? (
+                        <img src={portrait} alt="" className="w-full h-full object-cover opacity-50" />
+                      ) : null}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-amber-200 truncate">
+                        Phase {phaseNumber(phases, phase.id)}: {phase.name || 'Unnamed'}
+                      </p>
+                      <p className="text-[11px] text-lr-text-dim truncate">
+                        {busy ? animatingPhase.label : `At ${phase.triggerPercent}% HP · ${phase.videoUrl ? 'clip ready' : 'no clip yet'}`}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm inline-flex items-center gap-1"
+                        onClick={() => animatePhase(phase)}
+                        disabled={!!animatingPhase || !!animating || !portrait}
+                        title={portrait ? 'Make a transformation clip from the portrait' : 'Generate a portrait first'}
+                      >
+                        {busy ? <Loader2 size={14} className="animate-spin" /> : <Film size={14} />}
+                        {phase.videoUrl ? 'Re-animate' : 'Animate'}
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm inline-flex items-center gap-1" onClick={() => previewPhase(phase)} disabled={sending} title="Preview here">
+                        <Play size={14} />
+                      </button>
+                      {phase.videoUrl && (
+                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => removePhaseClip(phase)} disabled={busy} title="Remove the clip" aria-label="Remove the clip">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-bold text-white"><Volume2 size={16} /> Sound</div>

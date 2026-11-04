@@ -1,15 +1,22 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Crown, Sparkles, Skull, Heart, Swords, Loader2 } from 'lucide-react';
+import { Crown, Sparkles, Skull, Heart, Swords, Loader2, Film } from 'lucide-react';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
 
-export default function PhaseTransitionModal({ bossName, phase, allAdversaries = [], onConfirm, onDismiss, isDM }) {
+export default function PhaseTransitionModal({ bossName, phase, allAdversaries = [], onConfirm, onDismiss, onPlay, hasClip = false, isDM }) {
   // No Escape: the phase change has to be acknowledged. But it must never trap
   // the fight: confirming shows its progress and any error, and the DM can
   // always skip the transition and carry on.
   const dialogRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // The monitor cinematic plays once, on confirm, unless the DM already played it.
+  const playedRef = useRef(false);
+  const play = () => {
+    playedRef.current = true;
+    // Never holds up the fight: the cinematic is a bonus.
+    Promise.resolve(onPlay?.()).catch(() => {});
+  };
   useDialogFocus(dialogRef, !!phase);
   if (!phase) return null;
 
@@ -141,7 +148,10 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
           {isDM && (
             <div className="px-6 pb-6 pt-2 border-t border-amber-500/20">
               <button
-                onClick={() => run(onConfirm, 'The transition could not be saved. Check your connection and try again.')}
+                onClick={() => run(async () => {
+                  if (onPlay && !playedRef.current) play();
+                  await onConfirm();
+                }, 'The transition could not be saved. Check your connection and try again.')}
                 disabled={busy}
                 className="w-full py-3 font-bold rounded-xl text-sm uppercase tracking-widest transition-all disabled:opacity-60 inline-flex items-center justify-center gap-2"
                 style={{
@@ -151,9 +161,21 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
                 }}
               >
                 {busy && <Loader2 size={16} className="animate-spin" />}
-                {busy ? 'Applying…' : 'Confirm Transition'}
+                {busy ? 'Applying…' : onPlay ? 'Confirm & Play Transition' : 'Confirm Transition'}
               </button>
               {error && <p className="mt-2 text-xs text-red-300 text-center">{error}</p>}
+              {onPlay && (
+                <button
+                  type="button"
+                  onClick={play}
+                  disabled={busy}
+                  className="w-full mt-2 py-2 text-xs text-amber-300 hover:text-amber-100 transition-colors inline-flex items-center justify-center gap-1.5"
+                  title="Confirming plays it too"
+                >
+                  <Film size={13} />
+                  {hasClip ? 'Play the transformation on the monitor' : 'Play the transition on the monitor'}
+                </button>
+              )}
               {onDismiss && (
                 <button
                   type="button"

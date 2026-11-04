@@ -38,7 +38,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, montageLayout, panelImages, RECAP_CLIFF_SILENCE } from '../src/components/Cinematics/cinematicPlan.js';
+import { phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, montageLayout, panelImages, RECAP_CLIFF_SILENCE } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3573,6 +3573,22 @@ section('Table cinematics');
   const subs = parseIntroSubtitles('Sure! {"subtitles": ["Three Times Great, Zero Times Serious.", "“Ghost Of Bad Ideas”", "Ribbet And Regret"]}');
   assert(subs.length === 3 && subs[0] === 'Three Times Great, Zero Times Serious' && subs[1] === 'Ghost Of Bad Ideas', `subtitles are parsed and tidied (got ${JSON.stringify(subs)})`);
   assert(parseIntroSubtitles('1. Frog Of Destiny\n2. Croak Tease').length === 2, 'a plain list answer still works');
+
+  // Boss phase transitions
+  const phases = [
+    { id: 'p2', name: 'Enraged', triggerPercent: 66, description: 'Its [[Crown of Ash]] ignites.', videoUrl: 'https://x/p2.mp4' },
+    { id: 'p3', name: 'Last Stand', triggerPercent: 25 }
+  ];
+  assert(phaseNumber(phases, 'p2') === 2 && phaseNumber([...phases].reverse(), 'p3') === 3, 'phases count from 2 in trigger order, as the phase editor shows them');
+  const motion = buildPhaseMotionPrompt({ name: 'Matu Palu' }, phases[0]);
+  assert(/Matu Palu becomes "Enraged"/.test(motion) && /Crown of Ash ignites/.test(motion) && !/\[\[/.test(motion) && motion.length <= 500,
+    'the transition clip prompt names the boss and the phase and carries its description, wiki links stripped');
+  const boss2 = { name: 'Matu Palu', tier: 4, imageUrl: 'https://x/m.png', phases };
+  const shift = phaseShiftFromBoss({ adversary: boss2, phase: { id: 'p2', name: 'Enraged', triggerPercent: 66 }, bossName: 'Matu Palu 1' });
+  assert(shift.tag === 'Phase 2' && shift.name === 'Enraged' && shift.bossName === 'Matu Palu 1' && shift.videoUrl === 'https://x/p2.mp4' && shift.imageUrl === 'https://x/m.png' && shift.accent === '#ef4444',
+    `a phase transition reads its clip from the adversary, so one made mid-fight still plays (got ${JSON.stringify(shift)})`);
+  const bare = phaseShiftFromBoss({ adversary: null, phase: { id: 'q', name: '', videoUrl: '' } });
+  assert(bare.name === 'Next Phase' && bare.videoUrl === '' && bare.tag === 'Phase 2', 'a phase with no adversary or name still plays something sensible');
 
   const sessions = [
     { id: 's2', date: '2026-02-01', status: 'completed', title: 'Breakout', summary: 'They escape Korak.' },
