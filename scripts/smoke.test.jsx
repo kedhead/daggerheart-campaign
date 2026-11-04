@@ -26,6 +26,7 @@ import generateStorybookHandler from '../api/generate-storybook.js';
 import generateTextHandler from '../api/generate.js';
 import { isMature, withMatureSystem, matureOpenAI, MATURE_TEXT_GUIDANCE } from '../api/_lib/contentRating.js';
 import { generateOpenAIImage } from '../api/_lib/openaiImage.js';
+import { videoCandidates, shouldTryNextVideoModel, videoUrlFromOutput, H3_VIDEO_MODEL } from '../api/_lib/videoChain.js';
 import { setContentIntensity, contentHeaders } from '../src/services/contentRating.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
@@ -4254,6 +4255,43 @@ async function runAuthTests() {
     } finally {
       globalThis.fetch = realFetch;
       if (realKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = realKey;
+    }
+  })
+  .then(async () => {
+    section('Video model chain');
+    const img = 'https://example.com/boss.png';
+    const chain = videoCandidates({ imageUrl: img, prompt: 'roar' });
+    assert(chain[0].path === H3_VIDEO_MODEL && chain[0].input.first_frame_image === img && chain[0].input.last_frame_image === img,
+      'H3 Highspeed is tried first, ending on its first frame so the looping clip has no seam');
+    assert(chain[1].path === H3_VIDEO_MODEL && !('last_frame_image' in chain[1].input) && !('duration' in chain[1].input),
+      'H3 is asked again with only the basic inputs if it turns down the extras');
+    assert(chain.slice(2).map(c => c.path).join(',') === 'wan-video/wan-2.2-i2v-fast,wan-video/wan-2.2-i2v-a14b,kwaivgi/kling-v2.1,minimax/video-01-live',
+      'the older models stay behind it as fallbacks');
+    assert(!('last_frame_image' in videoCandidates({ imageUrl: img, prompt: 'x', loop: false })[0].input), 'loop: false leaves the ending free');
+    assert(videoCandidates({ imageUrl: img, prompt: 'x', envModel: 'me/custom' })[0].path === 'me/custom', 'the env override still goes first');
+    assert(shouldTryNextVideoModel(404) && shouldTryNextVideoModel(422) && !shouldTryNextVideoModel(401) && !shouldTryNextVideoModel(402),
+      'a missing model or bad input moves on; auth and billing errors stop the chain');
+    assert(videoUrlFromOutput('u1') === 'u1' && videoUrlFromOutput(['u2']) === 'u2' && videoUrlFromOutput({ video: 'u3' }) === 'u3' && videoUrlFromOutput(null) === null,
+      'the clip URL is found whether the output is a string, a list or an object');
+
+    const calls = [];
+    const realFetch = globalThis.fetch;
+    const prevToken = process.env.REPLICATE_API_TOKEN;
+    process.env.REPLICATE_API_TOKEN = 'r8_test';
+    globalThis.fetch = async (url, init) => {
+      calls.push({ url: String(url), input: JSON.parse(init.body).input });
+      if (calls.length === 1) return { ok: false, status: 422, statusText: 'bad', text: async () => 'last_frame_image: unexpected' };
+      return { ok: true, status: 201, json: async () => ({ id: 'pred_abc123', status: 'starting' }) };
+    };
+    try {
+      let out = null;
+      const res = { setHeader() {}, status(c) { this.code = c; return this; }, json(b) { out = b; return this; }, end() { return this; } };
+      await generateImageHandler({ method: 'POST', headers: { authorization: 'Bearer t' }, body: { type: 'scene-video', imageUrl: img, prompt: 'roar' } }, res);
+      assert(out?.model === H3_VIDEO_MODEL && calls.length === 2 && !('last_frame_image' in calls[1].input),
+        `a turned-down H3 request is retried plain before moving to older models (got ${JSON.stringify(out)})`);
+    } finally {
+      globalThis.fetch = realFetch;
+      if (prevToken === undefined) delete process.env.REPLICATE_API_TOKEN; else process.env.REPLICATE_API_TOKEN = prevToken;
     }
   })
   .then(async () => {

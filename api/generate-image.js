@@ -15,6 +15,7 @@ import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, readMapRe
 import { uploadToStorage, isAllowedAssetUrl } from './_lib/bookRender.js';
 import { ART_STYLE_PREAMBLES, applyArtStyle, applyMapArtStyle } from './_lib/artStyle.js';
 import { isMature, MATURE_IMAGE_GUIDANCE } from './_lib/contentRating.js';
+import { videoCandidates, shouldTryNextVideoModel, videoUrlFromOutput } from './_lib/videoChain.js';
 import { generateOpenAIImage, runImageChain, openaiImageSize, imageFromBody, imageErrorMessage } from './_lib/openaiImage.js';
 
 // Extend timeout - 300s on Pro plan, 60s on Hobby.
@@ -116,7 +117,7 @@ export default async function handler(req, res) {
         }
         const prediction = await pollRes.json();
         const out = prediction.output;
-        const videoUrl = typeof out === 'string' ? out : (Array.isArray(out) ? out[0] : null);
+        const videoUrl = videoUrlFromOutput(out);
         return res.status(200).json({
           status: prediction.status,
           videoUrl: prediction.status === 'succeeded' ? videoUrl : null,
@@ -125,10 +126,9 @@ export default async function handler(req, res) {
       }
 
       // type === 'scene-video' — start the image→video prediction.
-      // Image-to-video models on Replicate differ in name and input shape, so
-      // try a chain of known-good official models (env override first) and use
-      // the first one that accepts the job. Auth/billing errors abort early;
-      // not-found/validation errors move on to the next candidate.
+      // The model chain (MiniMax H3 Highspeed first, older models behind it)
+      // lives in _lib/videoChain.js; the first model that accepts the job wins.
+      // Auth/billing errors abort early; not-found/validation errors move on.
       const { imageUrl } = req.body;
       if (!imageUrl || !/^https:\/\//i.test(imageUrl)) {
         return res.status(400).json({ error: 'Missing required field: imageUrl (https URL of the scene image)' });
@@ -136,15 +136,12 @@ export default async function handler(req, res) {
       const motionPrompt = (prompt && String(prompt).slice(0, 500))
         || 'Subtle cinematic motion: gentle camera drift, ambient movement, characters breathe and shift naturally. Preserve the composition and art style of the source image.';
 
-      const candidates = [
-        ...(process.env.REPLICATE_VIDEO_MODEL
-          ? [{ path: process.env.REPLICATE_VIDEO_MODEL, input: { image: imageUrl, prompt: motionPrompt } }]
-          : []),
-        { path: 'wan-video/wan-2.2-i2v-fast', input: { image: imageUrl, prompt: motionPrompt } },
-        { path: 'wan-video/wan-2.2-i2v-a14b', input: { image: imageUrl, prompt: motionPrompt } },
-        { path: 'kwaivgi/kling-v2.1', input: { start_image: imageUrl, prompt: motionPrompt, duration: 5 } },
-        { path: 'minimax/video-01-live', input: { first_frame_image: imageUrl, prompt: motionPrompt } },
-      ];
+      const candidates = videoCandidates({
+        imageUrl,
+        prompt: motionPrompt,
+        loop: req.body.loop !== false,
+        envModel: process.env.REPLICATE_VIDEO_MODEL || ''
+      });
 
       const attempts = [];
       for (const candidate of candidates) {
@@ -165,7 +162,7 @@ export default async function handler(req, res) {
         attempts.push(`${candidate.path} → ${createRes.status} ${truncateErr(errText)}`);
         console.error(`Replicate scene-video ${candidate.path} failed:`, createRes.status, errText.slice(0, 300));
         // Auth/billing problems will fail for every model — stop and report.
-        if (createRes.status === 401 || createRes.status === 402 || createRes.status === 403) break;
+        if (!shouldTryNextVideoModel(createRes.status)) break;
       }
       return res.status(502).json({ error: `Scene animation could not start. Tried: ${attempts.join(' | ')}` });
     }
