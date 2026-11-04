@@ -124,7 +124,8 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
   // "Risk It All" has its own resolution and must not generate Hope or Fear.
   const applyRollOutcome = useDualityAutomation({ character, campaign, updateCharacter });
   const rollAction = useCallback(async (opts = {}) => {
-    const doc = await roll({ ...opts, kind: 'action' });
+    // Action unless the caller says otherwise (a reaction must stay one).
+    const doc = await roll({ kind: 'action', ...opts });
     applyRollOutcome(doc);
     return doc;
   }, [roll, applyRollOutcome]);
