@@ -29,6 +29,8 @@ import ExportSheetButton from './ExportSheetButton';
 import { isSourceEnabled, HOPE_FEAR_SOURCE } from '../../data/sources';
 import './DaggerheartCharacterSheet.css';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import AlchemySatchel from './AlchemySatchel';
+import { isHomebrewOn } from '../../utils/homebrew';
 
 // Parse a damage string like "d8+3" or "2d6" into parts for rolling
 const parseDamageString = (dmgStr) => {
@@ -418,6 +420,7 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     updateCharacter(character.id, updates);
   };
 
+  const alchemyOn = isHomebrewOn(campaign, 'alchemy');
   const TABS = useMemo(() => {
     const tabs = [
       { key: 'core', label: 'Core' },
@@ -428,8 +431,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     if (isBeastbound && character.companion) {
       tabs.splice(2, 0, { key: 'companion', label: 'Companion' });
     }
+    // Homebrew: the Alchemy module adds a satchel of ingredients and concoctions.
+    if (alchemyOn) tabs.splice(tabs.length - 1, 0, { key: 'satchel', label: 'Satchel' });
     return tabs;
-  }, [isBeastbound, character.companion]);
+  }, [isBeastbound, character.companion, alchemyOn]);
 
   // ─── Quick Roll Helpers ───
   const flashRoll = (key) => {
@@ -1547,6 +1552,11 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
             {activeTab === 'companion' && renderCompanionTab()}
             {activeTab === 'equipment' && renderEquipmentTab()}
             {activeTab === 'backstory' && renderBackstoryTab()}
+            {activeTab === 'satchel' && alchemyOn && (
+              <div className="dh-tab-content">
+                <AlchemySatchel character={character} campaign={campaign} canEdit={canEdit} updateCharacter={updateCharacter} roll={roll} />
+              </div>
+            )}
           </div>
         </div>
       </div>

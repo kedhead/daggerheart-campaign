@@ -31,6 +31,8 @@ import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble,
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
 import { withoutUndefined } from '../src/utils/withoutUndefined.js';
+import { normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction, keepConcoction, takeDose, doseOutcome } from '../src/utils/alchemy.js';
+import { isHomebrewOn, HOMEBREW_MODULES } from '../src/utils/homebrew.js';
 import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec } from '../src/utils/sceneSpec.js';
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
@@ -3697,6 +3699,35 @@ section('Boss phase transitions');
   const clean = withoutUndefined({ participants: [{ id: 'b', features: [{ name: 'Roar', description: undefined }], damage: undefined }, undefined], at: ts });
   assert(JSON.stringify(clean.participants) === '[{"id":"b","features":[{"name":"Roar"}]}]' && clean.at === ts,
     'undefined values are dropped at any depth (Firestore rejects them), and server timestamps pass through untouched');
+}
+
+section('Homebrew: alchemy');
+{
+  assert(HOMEBREW_MODULES.some(m => m.key === 'alchemy') && isHomebrewOn({ homebrew: { alchemy: true } }, 'alchemy') && !isHomebrewOn({}, 'alchemy'),
+    'the alchemy module is off unless the campaign switches it on');
+  let s = addIngredient(normalizeSatchel(undefined), { name: 'Glowcap spores', qty: 2, notes: 'from the Korak caves' });
+  s = addIngredient(s, { name: 'glowcap spores', qty: 1 });
+  s = addIngredient(s, { name: 'Ghoul moss' });
+  s = addIngredient(s, { name: '   ' });
+  assert(s.ingredients.length === 2 && s.ingredients[0].qty === 3 && s.ingredients[0].notes === 'from the Korak caves', 'ingredients stack by name, and blank ones are ignored');
+  const [cap, moss] = s.ingredients;
+  assert(adjustIngredient(s, moss.id, -1).ingredients.length === 1, 'an ingredient at zero leaves the satchel');
+  const prompt = buildBrewPrompt([cap, moss], { name: 'Tarkin', class: 'Rogue', level: 3 });
+  assert(/Glowcap spores \(from the Korak caves\)/.test(prompt) && /Ghoul moss/.test(prompt) && /tier 2/.test(prompt) && /Tarkin/.test(prompt) && /"fearEffect"/.test(prompt),
+    'the brew prompt carries the ingredients, the character and their tier');
+  const brew = parseConcoction('Sure! {"name":"Grave Glow","description":"A green smoke.","hopeEffect":"Advantage on Instinct rolls this scene.","fearEffect":"Mark 2 Stress.","critEffect":"Advantage on all rolls this scene.","doses":9}', [cap, moss]);
+  assert(brew.name === 'Grave Glow' && brew.doses === 3 && brew.maxDoses === 3 && brew.ingredients.join() === 'Glowcap spores,Ghoul moss', 'a brew is read from the answer, doses capped at 3');
+  assert(parseConcoction('{"name":"x"}') === null && parseConcoction('nope') === null, 'a brew without both effects is no brew');
+  s = keepConcoction(s, brew, [cap.id, moss.id]);
+  assert(s.concoctions[0].name === 'Grave Glow' && s.ingredients.length === 1 && s.ingredients[0].qty === 2, 'keeping a brew uses one of each ingredient');
+  const id = s.concoctions[0].id;
+  const fear = takeDose(s, id, { outcome: 'fear', flags: {}, dice: [{ groupId: 'hope', value: 3 }, { groupId: 'fear', value: 9 }] });
+  assert(fear.outcome === 'fear' && fear.effect === 'Mark 2 Stress.' && fear.satchel.concoctions[0].doses === 2 && fear.satchel.log[0].fear === 9,
+    'a dose rolled with Fear brings the bad effect, uses a dose and is logged with the dice');
+  assert(doseOutcome({ outcome: 'hope', flags: { isDoubles: true } }) === 'crit' && takeDose(fear.satchel, id, { outcome: 'hope', flags: {} }).effect === 'Advantage on Instinct rolls this scene.',
+    'doubles are critical, and Hope brings the good effect');
+  const empty = { ...s, concoctions: [{ ...s.concoctions[0], doses: 0 }] };
+  assert(takeDose(empty, id, { outcome: 'hope' }).outcome === null, 'an empty vial cannot be taken');
 }
 
 section('Battle map weather');
