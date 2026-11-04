@@ -30,6 +30,7 @@ import { setContentIntensity, contentHeaders } from '../src/services/contentRati
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
+import { withoutUndefined } from '../src/utils/withoutUndefined.js';
 import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec } from '../src/utils/sceneSpec.js';
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
@@ -3687,6 +3688,15 @@ section('Markdown in wiki text');
   assert(/<strong class="wiki-bold"><span class="wiki-link wiki-link-broken"[^>]*>Bubbles<\/span><\/strong>/.test(html) && /<em>still<\/em>/.test(html) && !/\*\*/.test(html),
     'a bold [[link]] renders as a bold link and no asterisks are left showing');
   assert(renderToString(<WikiText text="no markdown here" />).includes('no markdown here'), 'plain text is unchanged');
+}
+
+section('Boss phase transitions');
+{
+  class Sentinel {}
+  const ts = new Sentinel();
+  const clean = withoutUndefined({ participants: [{ id: 'b', features: [{ name: 'Roar', description: undefined }], damage: undefined }, undefined], at: ts });
+  assert(JSON.stringify(clean.participants) === '[{"id":"b","features":[{"name":"Roar"}]}]' && clean.at === ts,
+    'undefined values are dropped at any depth (Firestore rejects them), and server timestamps pass through untouched');
 }
 
 section('Battle map weather');
