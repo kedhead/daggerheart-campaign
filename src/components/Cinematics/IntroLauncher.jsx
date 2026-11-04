@@ -13,7 +13,7 @@ import { useOptionalCampaignData } from '../../contexts/CampaignDataContext';
 import { currentStorySnapshot } from '../../utils/currentStory';
 import { useNotify } from '../../contexts/ToastContext';
 
-const MOTION_PROMPT = 'Character intro idle animation: the figure breathes, shifts its weight and glares at the viewer, cloth and hair moving slightly, magical particles drifting. Static camera, keep the exact art style and colours of the source image, no text.';
+const MOTION_PROMPT = 'Menacing character intro: the figure comes alive with full-body movement. It turns its head toward the viewer, rolls its shoulders, raises its weapon or claws and takes a threatening step forward, cloth, hair and armour swinging with the motion, magical particles swirling. A slow dramatic camera push-in. Keep the exact character design, art style and colours of the source image, no text.';
 
 /**
  * Set up and play a Borderlands-style intro for an NPC or adversary: pick a

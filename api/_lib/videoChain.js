@@ -6,16 +6,17 @@
 // (404 not found, 422 bad input) just moves the request on to the next one.
 //
 // MiniMax H3 Highspeed goes first: 768P, about $0.03 a second, and it takes a
-// last frame as well as a first. Every clip in the app plays on a loop (boss
-// intros, recap slides, Motion Comic scenes), so by default the clip is asked
-// to end on the same frame it starts on, which hides the seam. H3 is tried a
-// second time with only the basic inputs, in case it turns down the extras.
+// last frame as well as a first. Pinning the last frame to the first makes a
+// seamless loop, but H3 then plays it safe and barely moves (a boss whose
+// torches flicker and nothing else), so that is off unless a caller asks for
+// `loop: true`. H3 is tried a second time with only the basic inputs, in case
+// it turns down the extras.
 
 export const H3_VIDEO_MODEL = 'minimax/h3-highspeed';
 export const H3_CLIP_SECONDS = 6;
 
 /** The models to try, in order, each with the input it expects. */
-export function videoCandidates({ imageUrl, prompt, loop = true, envModel = '' }) {
+export function videoCandidates({ imageUrl, prompt, loop = false, envModel = '' }) {
   const h3 = { first_frame_image: imageUrl, prompt };
   return [
     ...(envModel ? [{ path: envModel, input: { image: imageUrl, prompt } }] : []),

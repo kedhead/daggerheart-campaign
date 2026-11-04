@@ -228,7 +228,7 @@ export default function CinematicPlayer({ chapter, campaignId, isDM, updateChapt
     setAnimating({ label: 'Starting…' });
     try {
       const motionPrompt = slide.text
-        ? `Subtle cinematic motion, preserve the art style of the source image. ${slide.text}`.slice(0, 480)
+        ? `Cinematic motion: the characters move and act out the moment, with a gentle camera drift. Preserve the art style of the source image. ${slide.text}`.slice(0, 480)
         : undefined;
       const blob = await animateStill({ imageUrl: slide.imageUrl, prompt: motionPrompt, onStatus: label => setAnimating({ label }) });
       const saved = await persistVideo(campaignId, blob, `scene-${chapter.id}-${slide.sceneKey}`);
