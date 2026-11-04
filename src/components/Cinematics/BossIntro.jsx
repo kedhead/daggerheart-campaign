@@ -47,9 +47,9 @@ export default function BossIntro({ intro, onDone, sfx }) {
 
         <div className="bi-art">
           {intro?.videoUrl ? (
-            <video src={intro.videoUrl} autoPlay muted loop playsInline />
+            <div className="bi-art-frame"><video src={intro.videoUrl} autoPlay muted loop playsInline /></div>
           ) : intro?.imageUrl ? (
-            <img src={intro.imageUrl} alt="" />
+            <div className="bi-art-frame"><img src={intro.imageUrl} alt="" /></div>
           ) : (
             <div className="bi-art-empty">?</div>
           )}
