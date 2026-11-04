@@ -22,6 +22,9 @@ const TRAIT_ORDER = ['agility', 'strength', 'finesse', 'instinct', 'presence', '
 
 export default function StatsTab({ character, rollBonus, setRollBonus, roll, campaignId, items }) {
   const [rollingKey, setRollingKey] = useState(null);
+  // Reaction rolls (dodging, resisting, noticing) use the trait but earn
+  // neither Hope nor Fear. Like advantage, it applies to the next roll only.
+  const [reaction, setReaction] = useState(false);
 
   // Includes passive trait bonuses (Bone-Touched's +1 Agility).
   const traits = effectiveTraits(character);
@@ -47,12 +50,15 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
     const mod = traits[traitName] ?? 0;
     const bonus = rollBonus;
     if (rollBonus) setRollBonus(null);
+    const isReaction = reaction;
+    if (reaction) setReaction(false);
     setRollingKey(traitName);
     await roll({
-      label: traitName.charAt(0).toUpperCase() + traitName.slice(1),
+      label: `${traitName.charAt(0).toUpperCase() + traitName.slice(1)}${isReaction ? ' Reaction' : ''}`,
       modifier: mod,
       advantage: bonus === 'advantage',
       disadvantage: bonus === 'hindrance',
+      kind: isReaction ? 'reaction' : 'action',
     });
     setRollingKey(null);
   };
@@ -69,6 +75,28 @@ export default function StatsTab({ character, rollBonus, setRollBonus, roll, cam
             const active = rollBonus === o.key;
             return (
               <button key={String(o.key)} onClick={() => setRollBonus(o.key)} className="lrp-bonus-seg"
+                style={{
+                  background: active ? o.color : 'transparent',
+                  color: active ? '#0d0a1f' : 'rgba(255,255,255,0.55)',
+                }}>
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Action or reaction roll */}
+      <div>
+        <div className="lrp-section-label">Roll type</div>
+        <div className="lrp-bonus-toggle">
+          {[
+            { key: false, label: 'Action', hint: 'Earns Hope or Fear', color: '#eab308' },
+            { key: true, label: 'Reaction', hint: 'No Hope or Fear', color: '#60a5fa' },
+          ].map(o => {
+            const active = reaction === o.key;
+            return (
+              <button key={o.label} onClick={() => setReaction(o.key)} className="lrp-bonus-seg" aria-pressed={active} title={o.hint}
                 style={{
                   background: active ? o.color : 'transparent',
                   color: active ? '#0d0a1f' : 'rgba(255,255,255,0.55)',

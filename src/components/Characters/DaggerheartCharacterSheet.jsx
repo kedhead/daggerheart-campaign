@@ -90,6 +90,14 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
   //   'advantage' → add 1d6 to the total (Daggerheart help)
   //   'hindrance' → subtract 1d6 from the total (hinder)
   const [rollBonus, setRollBonus] = useState(null);
+  // The next trait or experience roll is a reaction (dodging, resisting,
+  // noticing): it uses the trait as normal but earns neither Hope nor Fear.
+  const [reactionNext, setReactionNext] = useState(false);
+  const takeRollKind = () => {
+    if (!reactionNext) return 'action';
+    setReactionNext(false);
+    return 'reaction';
+  };
   const rollResultTimer = useRef(null);
 
   const { roll, rollDamage } = useDice(campaign?.id);
@@ -164,8 +172,10 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     campaign,
     updateCharacter: canEdit ? updateCharacter : null,
   });
+  // Action unless the caller says otherwise: a reaction asked for here used
+  // to be overwritten into an action and earn Hope or Fear.
   const rollAction = async (opts = {}) => {
-    const result = await roll({ ...opts, kind: 'action' });
+    const result = await roll({ kind: 'action', ...opts });
     applyRollOutcome(result);
     return result;
   };
@@ -447,21 +457,23 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
 
   const handleAttributeRoll = async (traitName) => {
     const baseMod = rollTraits[traitName] ?? 0;
-    const baseLabel = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} Check`;
+    const kind = takeRollKind();
+    const baseLabel = `${traitName.charAt(0).toUpperCase() + traitName.slice(1)} ${kind === 'reaction' ? 'Reaction' : 'Check'}`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`attr-${traitName}`);
-    const result = await rollAction({ label, modifier: mod });
+    const result = await rollAction({ label, modifier: mod, kind });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
   const handleExperienceRoll = async (expName, expBonus, traitName) => {
     const traitMod = rollTraits[traitName] ?? 0;
     const baseMod = traitMod + expBonus;
-    const baseLabel = `${expName} (${TRAIT_ABBREV[traitName]})`;
+    const kind = takeRollKind();
+    const baseLabel = `${expName} (${TRAIT_ABBREV[traitName]})${kind === 'reaction' ? ' Reaction' : ''}`;
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`exp-${expName}`);
     setExpPickerActive(null);
-    const result = await rollAction({ label, modifier: mod });
+    const result = await rollAction({ label, modifier: mod, kind });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
@@ -473,14 +485,6 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
     const { label, modifier: mod } = applyRollBonus(baseLabel, baseMod);
     flashRoll(`atk-${weapon.id}`);
     const result = await rollAction({ label, modifier: mod });
-    if (result) showRollResult(label, 'daggerheart', result);
-  };
-
-  const handleReactionRoll = async () => {
-    const label = 'Reaction Roll';
-    flashRoll('reaction');
-    // A reaction roll: generates neither Hope nor Fear, even on a critical.
-    const result = await roll({ label, modifier: 0, kind: 'reaction' });
     if (result) showRollResult(label, 'daggerheart', result);
   };
 
@@ -700,11 +704,13 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
       {campaign?.id && (
         <div className="dh-quickroll-bar">
           <button
-            className={`dh-quickroll-btn dh-quickroll-reaction ${rollingKey === 'reaction' ? 'dh-roll-flash' : ''}`}
-            onClick={handleReactionRoll}
-            title="Reaction roll (2d12 Hope/Fear, no modifier)"
+            type="button"
+            className={`dh-quickroll-btn dh-quickroll-reaction ${reactionNext ? 'active' : ''}`}
+            onClick={() => setReactionNext(r => !r)}
+            aria-pressed={reactionNext}
+            title="Make the next trait or experience roll a reaction roll: it uses the trait, but earns neither Hope nor Fear"
           >
-            <Dices size={12} /> Reaction Roll
+            <Dices size={12} /> {reactionNext ? 'Next roll: Reaction' : 'Reaction'}
           </button>
           <div className="dh-quickroll-toggle">
             <span className="dh-quickroll-toggle-label">Next roll:</span>
