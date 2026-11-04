@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { withoutUndefined } from '../utils/withoutUndefined';
+
 
 /**
  * Hook for managing live encounter state
@@ -19,24 +21,42 @@ export function useActiveEncounter(campaignId) {
 
     const docRef = doc(db, `campaigns/${campaignId}/activeEncounter`, 'current');
 
-    const unsubscribe = onSnapshot(
-      docRef,
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          setActiveEncounter({ id: docSnapshot.id, ...docSnapshot.data() });
-        } else {
-          setActiveEncounter(null);
+    // A listener that errors is finished for good, so a dropped connection used
+    // to blank the encounter and leave it frozen until a reload. Keep the last
+    // state on screen and listen again after a short wait instead.
+    let unsubscribe = () => {};
+    let retry = null;
+    let stopped = false;
+    const listen = (attempt = 0) => {
+      unsubscribe = onSnapshot(
+        docRef,
+        (docSnapshot) => {
+          attempt = 0;
+          if (docSnapshot.exists()) {
+            setActiveEncounter({ id: docSnapshot.id, ...docSnapshot.data() });
+          } else {
+            setActiveEncounter(null);
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.warn('Active encounter subscription error:', error.code);
+          setLoading(false);
+          if (stopped || error.code === 'permission-denied') {
+            setActiveEncounter(null);
+            return;
+          }
+          retry = setTimeout(() => listen(attempt + 1), Math.min(15000, 1000 * 2 ** attempt));
         }
-        setLoading(false);
-      },
-      (error) => {
-        console.warn('Active encounter subscription error:', error.code);
-        setActiveEncounter(null);
-        setLoading(false);
-      }
-    );
+      );
+    };
+    listen();
 
-    return unsubscribe;
+    return () => {
+      stopped = true;
+      clearTimeout(retry);
+      unsubscribe();
+    };
   }, [campaignId]);
 
   /**
@@ -198,7 +218,7 @@ export function useActiveEncounter(campaignId) {
       p.id === participantId ? { ...p, ...updates } : p
     );
 
-    const encounterUpdates = { participants: newParticipants, updatedAt: serverTimestamp() };
+    const encounterUpdates = { participants: withoutUndefined(newParticipants), updatedAt: serverTimestamp() };
     if (phaseToTrigger) {
       encounterUpdates.pendingPhaseTransition = { participantId, phase: phaseToTrigger };
     }
@@ -400,11 +420,23 @@ export function useActiveEncounter(campaignId) {
 
     const docRef = doc(db, `campaigns/${campaignId}/activeEncounter`, 'current');
     await setDoc(docRef, {
-      participants: newParticipants,
+      // Firestore rejects undefined anywhere in a write; one stray field in a
+      // feature or summon used to make the whole transition fail.
+      participants: withoutUndefined(newParticipants),
       pendingPhaseTransition: null,
       updatedAt: serverTimestamp()
     }, { merge: true });
   }, [campaignId, activeEncounter]);
+
+  /**
+   * Dismiss a pending phase transition without applying it, so a transition
+   * that can't be applied never leaves the fight stuck behind its dialog.
+   */
+  const dismissPhaseTransition = useCallback(async () => {
+    if (!campaignId) return;
+    const docRef = doc(db, `campaigns/${campaignId}/activeEncounter`, 'current');
+    await setDoc(docRef, { pendingPhaseTransition: null, updatedAt: serverTimestamp() }, { merge: true });
+  }, [campaignId]);
 
   /**
    * End the encounter
@@ -432,7 +464,8 @@ export function useActiveEncounter(campaignId) {
     pauseEncounter,
     resumeEncounter,
     endEncounter,
-    confirmPhaseTransition
+    confirmPhaseTransition,
+    dismissPhaseTransition
   };
 }
 

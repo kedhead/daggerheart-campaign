@@ -1,12 +1,31 @@
-import { useRef } from 'react';
-import { Crown, Sparkles, Skull, Heart, Swords } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Crown, Sparkles, Skull, Heart, Swords, Loader2 } from 'lucide-react';
 import { useDialogFocus } from '../../hooks/useDialogFocus';
 
-export default function PhaseTransitionModal({ bossName, phase, allAdversaries = [], onConfirm, isDM }) {
-  // No Escape: the phase change has to be acknowledged.
+export default function PhaseTransitionModal({ bossName, phase, allAdversaries = [], onConfirm, onDismiss, isDM }) {
+  // No Escape: the phase change has to be acknowledged. But it must never trap
+  // the fight: confirming shows its progress and any error, and the DM can
+  // always skip the transition and carry on.
   const dialogRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
   useDialogFocus(dialogRef, !!phase);
   if (!phase) return null;
+
+  const run = async (fn, failure) => {
+    if (busy || !fn) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+    } catch (err) {
+      console.error('Phase transition failed:', err);
+      setError(`${failure} ${err?.message ? `(${err.message})` : ''}`.trim());
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const summons = (phase.summons || [])
     .map(s => ({ ...s, adversary: allAdversaries.find(a => a.id === s.adversaryId) }))
@@ -15,8 +34,10 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
   const hasAttackChange = phase.attackName || phase.attackDamage;
   const hasNewFeatures = phase.newFeatures && phase.newFeatures.length > 0;
 
-  return (
-    <div className="lr-dialog-layer fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
+  // Portalled above everything, the dice tray included: a damage roll still on
+  // screen used to cover this dialog, and with it the only way forward.
+  return createPortal(
+    <div className="lr-dialog-layer fixed inset-0 z-[9600] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
       {/* Outer glow ring */}
       <div className="relative w-full max-w-lg" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="phase-transition-title">
         <div className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-amber-500/40 to-red-600/30 animate-pulse pointer-events-none blur-sm" />
@@ -120,20 +141,34 @@ export default function PhaseTransitionModal({ bossName, phase, allAdversaries =
           {isDM && (
             <div className="px-6 pb-6 pt-2 border-t border-amber-500/20">
               <button
-                onClick={onConfirm}
-                className="w-full py-3 font-bold rounded-xl text-sm uppercase tracking-widest transition-all"
+                onClick={() => run(onConfirm, 'The transition could not be saved. Check your connection and try again.')}
+                disabled={busy}
+                className="w-full py-3 font-bold rounded-xl text-sm uppercase tracking-widest transition-all disabled:opacity-60 inline-flex items-center justify-center gap-2"
                 style={{
                   background: 'linear-gradient(135deg, #d97706, #b45309)',
                   color: '#fff',
                   boxShadow: '0 0 20px rgba(245,158,11,0.3)',
                 }}
               >
-                Confirm Transition
+                {busy && <Loader2 size={16} className="animate-spin" />}
+                {busy ? 'Applying…' : 'Confirm Transition'}
               </button>
+              {error && <p className="mt-2 text-xs text-red-300 text-center">{error}</p>}
+              {onDismiss && (
+                <button
+                  type="button"
+                  onClick={() => run(onDismiss, 'Could not skip the transition.')}
+                  disabled={busy}
+                  className="w-full mt-2 py-2 text-xs text-lr-text-dim hover:text-white transition-colors"
+                >
+                  Skip this transition and continue the fight
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

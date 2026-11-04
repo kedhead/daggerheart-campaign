@@ -33,7 +33,8 @@ export default function LiveEncounterTracker({
     pauseEncounter,
     resumeEncounter,
     endEncounter,
-    confirmPhaseTransition
+    confirmPhaseTransition,
+    dismissPhaseTransition
   } = useActiveEncounter(campaignId);
 
   const { rollDamage } = useDice(campaignId);
@@ -322,6 +323,7 @@ export default function LiveEncounterTracker({
             pendingPhaseTransition.phase,
             adversaries
           )}
+          onDismiss={dismissPhaseTransition}
           isDM={isDM}
         />
       )}
