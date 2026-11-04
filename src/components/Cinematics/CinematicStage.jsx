@@ -3,12 +3,13 @@ import { createPortal } from 'react-dom';
 import { X, Volume2 } from 'lucide-react';
 import BossIntro from './BossIntro';
 import RecapReel from './RecapReel';
+import PhaseShift from './PhaseShift';
 import { audioContext } from './cinematicSfx';
 import { createSoundPlayer } from './soundPlayer';
 import './CinematicStage.css';
 
 /**
- * Full-screen stage for one cinematic: { kind: 'boss' | 'recap', data }.
+ * Full-screen stage for one cinematic: { kind: 'boss' | 'phase' | 'recap', data }.
  * Used by the battle map monitor and by the DM's own preview.
  *
  * Browsers only play sound after someone has clicked the page. If the
@@ -48,6 +49,7 @@ export default function CinematicStage({ cue, onClose }) {
   return createPortal(
     <div className="cinematic-stage" onClick={soundBlocked ? enableSound : undefined}>
       {ready && cue.kind === 'boss' && <BossIntro intro={cue.data} onDone={onClose} sfx={sfx} />}
+      {ready && cue.kind === 'phase' && <PhaseShift shift={cue.data} onDone={onClose} sfx={sfx} />}
       {ready && cue.kind === 'recap' && <RecapReel recap={cue.data} onDone={onClose} onSoundBlocked={setSoundBlocked} sfx={sfx} />}
 
       {soundBlocked && (

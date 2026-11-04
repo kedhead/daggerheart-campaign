@@ -89,7 +89,7 @@ export default function BossPhaseEditor({ phases, onChange, campaignAdversaries 
           <Crown size={14} className="text-amber-400" />
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">Boss Phases</p>
-            <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Define what happens when the boss crosses HP thresholds</p>
+            <p className="text-[11px] text-[var(--text-muted)] mt-0.5">Define what happens when the boss crosses HP thresholds. Each phase plays a transition on the monitor; give it its own transformation clip from the adversary&apos;s boss intro (clapperboard button on its card).</p>
           </div>
         </div>
         <button

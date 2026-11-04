@@ -54,6 +54,52 @@ export function introFromEntity(entity, kind) {
   };
 }
 
+// ── Boss phase transitions ───────────────────────────────────────────────────
+
+// How long each part of a phase transition lasts on the monitor.
+export const PHASE_STILL_SECONDS = 2.4;      // a portrait with no clip shakes this long before the name lands
+export const PHASE_VIDEO_MAX_SECONDS = 12;   // a clip that never reports its end is cut here
+export const PHASE_HOLD_SECONDS = 3.4;       // the new phase's name stays up this long
+
+/** A phase's number as the phase editor shows it: the first phase is the boss as it starts, so these count from 2. */
+export function phaseNumber(phases = [], phaseId) {
+  const sorted = [...(phases || [])].filter(Boolean).sort((a, b) => (b.triggerPercent ?? 0) - (a.triggerPercent ?? 0));
+  const i = sorted.findIndex(p => p.id === phaseId);
+  return (i < 0 ? 0 : i) + 2;
+}
+
+/** How the boss should move in its phase transition clip. */
+export function buildPhaseMotionPrompt(entity, phase) {
+  const name = clip(entity?.name, 60) || 'The boss';
+  const into = clip(phase?.name, 60);
+  const what = clip(phase?.description, 260);
+  return [
+    `Boss phase transformation: ${name}${into ? ` becomes "${into}"` : ' powers up'}.`,
+    what,
+    'Dramatic full-body transformation with real movement: the figure roars and surges with new power, its form changing, energy, fire or shadow and debris erupting around it, while the camera pushes in.',
+    'Keep the exact character design, art style and colours of the source image, no text.'
+  ].filter(Boolean).join(' ').slice(0, 500);
+}
+
+/**
+ * Everything the monitor needs for a phase transition. The clip is read from
+ * the adversary's own copy of the phase, so one made after the fight started
+ * still plays.
+ */
+export function phaseShiftFromBoss({ adversary, phase, bossName = '' }) {
+  const phases = adversary?.phases?.length ? adversary.phases : [phase];
+  const live = (adversary?.phases || []).find(p => p.id === phase?.id) || phase || {};
+  return {
+    name: clip(live.name || phase?.name, 60) || 'Next Phase',
+    bossName: clip(bossName || adversary?.name, 60),
+    tag: `Phase ${phaseNumber(phases, phase?.id)}`,
+    line: clip(live.description || phase?.description, 140),
+    imageUrl: adversary?.imageUrl || '',
+    videoUrl: live.videoUrl || phase?.videoUrl || '',
+    accent: introAccent(adversary, 'adversary')
+  };
+}
+
 /** The prompt for Borderlands-style intro taglines. */
 export function buildIntroPrompt(entity, kind, { campaignName = '', storyNow = '' } = {}) {
   const facts = [

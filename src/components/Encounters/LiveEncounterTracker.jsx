@@ -9,6 +9,10 @@ import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import FearControl from '../PlayerDisplay/FearControl';
 import PartyStatusPanel from '../GMScreen/panels/PartyStatusPanel';
+import { playOnMonitor } from '../Cinematics/cinematicChannel';
+import { ensureSoundSet } from '../Cinematics/cinematicSounds';
+import { phaseShiftFromBoss } from '../Cinematics/cinematicPlan';
+import { useNotify } from '../../contexts/ToastContext';
 
 export default function LiveEncounterTracker({
   campaignId,
@@ -47,6 +51,7 @@ export default function LiveEncounterTracker({
     fearCount, showFear, incrementFear, decrementFear, resetFear, toggleFear, addFear,
   } = usePlayerDisplay(campaignId);
 
+  const notify = useNotify();
   const [expandedParticipant, setExpandedParticipant] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
@@ -89,6 +94,29 @@ export default function LiveEncounterTracker({
     partySize,
     pendingPhaseTransition
   } = activeEncounter;
+
+  // A boss's phase transition, as the monitor plays it. The clip is read from
+  // the adversary, so one made after the fight started still plays.
+  const phaseShiftFor = (pending) => {
+    const participant = participants.find(p => p.id === pending?.participantId);
+    const adversary = adversaries.find(a => a.id === participant?.sourceId);
+    return { adversary, data: phaseShiftFromBoss({ adversary, phase: pending?.phase, bossName: participant?.name }) };
+  };
+  const phaseClip = (pending) => phaseShiftFor(pending).data.videoUrl;
+
+  const playPhaseCinematic = async (pending) => {
+    if (!campaignId || !pending) return;
+    const { adversary, data } = phaseShiftFor(pending);
+    let sounds = null;
+    try {
+      sounds = await ensureSoundSet(campaignId, adversary?.intro?.soundStyle || 'rock');
+    } catch { /* the stage falls back to its synthesised hits */ }
+    try {
+      await playOnMonitor(campaignId, 'phase', sounds ? { ...data, sounds } : data);
+    } catch (err) {
+      notify.warning(`The phase transition could not reach the monitor (${err.message}).`);
+    }
+  };
 
   // Separate active and defeated participants
   const activeParticipants = participants.filter(p => !p.isDefeated);
@@ -324,6 +352,8 @@ export default function LiveEncounterTracker({
             adversaries
           )}
           onDismiss={dismissPhaseTransition}
+          onPlay={() => playPhaseCinematic(pendingPhaseTransition)}
+          hasClip={!!phaseClip(pendingPhaseTransition)}
           isDM={isDM}
         />
       )}
