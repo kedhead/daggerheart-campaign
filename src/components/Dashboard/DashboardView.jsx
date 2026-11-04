@@ -8,6 +8,7 @@ import RelationshipGraph from '../RelationshipGraph/RelationshipGraph';
 import { getGameSystem } from '../../data/systems/index.js';
 import { previouslyOn, recentPlayedSessions, stripWikiLinks } from '../../utils/campaignMemory';
 import './DashboardView.css';
+import { HOMEBREW_MODULES } from '../../utils/homebrew';
 
 const ICON_MAP = {
   sword: '⚔️',
@@ -619,6 +620,25 @@ export default function DashboardView({
               </label>
             </div>
           )}
+
+          {/* Homebrew modules: optional rules, off unless the DM switches them on. */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-lr-text-dim uppercase tracking-[0.2em] ml-1">Homebrew modules</label>
+            {HOMEBREW_MODULES.map(mod => (
+              <label key={mod.key} className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={campaignForm.homebrew?.[mod.key] === true}
+                  onChange={(e) => setCampaignForm({ ...campaignForm, homebrew: { ...(campaignForm.homebrew || {}), [mod.key]: e.target.checked } })}
+                  className="mt-0.5 w-5 h-5 rounded-lg bg-black/40 border-white/10 text-indigo-500 focus:ring-offset-0 focus:ring-0 cursor-pointer"
+                />
+                <span>
+                  <span className="block text-xs font-bold text-lr-text-muted group-hover:text-white transition-colors">{mod.label}</span>
+                  <span className="block text-[11px] text-lr-text-dim font-medium italic">{mod.description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
 
           {/* Content rating for everything the AI writes and draws (api/_lib/contentRating.js). */}
           <div className="space-y-2">

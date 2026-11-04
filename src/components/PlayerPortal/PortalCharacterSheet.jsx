@@ -23,6 +23,8 @@ import TakeDamageModal from '../Characters/TakeDamageModal';
 import { applyDamage } from '../../utils/playerDamage';
 import LevelUpWizard from '../Characters/LevelUpWizard';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import AlchemySatchel from '../Characters/AlchemySatchel';
+import { isHomebrewOn } from '../../utils/homebrew';
 
 const TABS = [
   { key: 'actions',   label: 'Actions'   },
@@ -400,7 +402,7 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
           {/* ── Tab bar (sticky below vitals) ── */}
           <div style={{ marginTop: 16 }}>
             <div className="lrp-tab-bar">
-              {TABS.map(t => {
+              {(isHomebrewOn(campaign, 'alchemy') ? [...TABS, { key: 'satchel', label: 'Satchel' }] : TABS).map(t => {
                 const active = activeTab === t.key;
                 return (
                   <button key={t.key} onClick={() => setActiveTab(t.key)} className="lrp-tab-btn"
@@ -422,6 +424,10 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
             {activeTab === 'stats'     && <StatsTab     {...tabProps} />}
             {activeTab === 'inventory' && <InventoryTab {...tabProps} />}
             {activeTab === 'features'  && <FeaturesTab  {...tabProps} />}
+            {activeTab === 'satchel'   && isHomebrewOn(campaign, 'alchemy') && (
+              // A dose resolves itself, so it takes the untagged roller: no Hope or Fear.
+              <AlchemySatchel character={character} campaign={campaign} canEdit={!!updateCharacter} updateCharacter={updateCharacter} roll={roll} />
+            )}
           </div>
 
         </div>
