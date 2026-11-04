@@ -4261,13 +4261,14 @@ async function runAuthTests() {
     section('Video model chain');
     const img = 'https://example.com/boss.png';
     const chain = videoCandidates({ imageUrl: img, prompt: 'roar' });
-    assert(chain[0].path === H3_VIDEO_MODEL && chain[0].input.first_frame_image === img && chain[0].input.last_frame_image === img,
-      'H3 Highspeed is tried first, ending on its first frame so the looping clip has no seam');
+    assert(chain[0].path === H3_VIDEO_MODEL && chain[0].input.first_frame_image === img && !('last_frame_image' in chain[0].input),
+      'H3 Highspeed is tried first with its ending left free, so the character really moves');
+    assert(videoCandidates({ imageUrl: img, prompt: 'x', loop: true })[0].input.last_frame_image === img,
+      'loop: true pins the last frame to the first for a seamless loop');
     assert(chain[1].path === H3_VIDEO_MODEL && !('last_frame_image' in chain[1].input) && !('duration' in chain[1].input),
       'H3 is asked again with only the basic inputs if it turns down the extras');
     assert(chain.slice(2).map(c => c.path).join(',') === 'wan-video/wan-2.2-i2v-fast,wan-video/wan-2.2-i2v-a14b,kwaivgi/kling-v2.1,minimax/video-01-live',
       'the older models stay behind it as fallbacks');
-    assert(!('last_frame_image' in videoCandidates({ imageUrl: img, prompt: 'x', loop: false })[0].input), 'loop: false leaves the ending free');
     assert(videoCandidates({ imageUrl: img, prompt: 'x', envModel: 'me/custom' })[0].path === 'me/custom', 'the env override still goes first');
     assert(shouldTryNextVideoModel(404) && shouldTryNextVideoModel(422) && !shouldTryNextVideoModel(401) && !shouldTryNextVideoModel(402),
       'a missing model or bad input moves on; auth and billing errors stop the chain');
@@ -4287,7 +4288,7 @@ async function runAuthTests() {
       let out = null;
       const res = { setHeader() {}, status(c) { this.code = c; return this; }, json(b) { out = b; return this; }, end() { return this; } };
       await generateImageHandler({ method: 'POST', headers: { authorization: 'Bearer t' }, body: { type: 'scene-video', imageUrl: img, prompt: 'roar' } }, res);
-      assert(out?.model === H3_VIDEO_MODEL && calls.length === 2 && !('last_frame_image' in calls[1].input),
+      assert(out?.model === H3_VIDEO_MODEL && calls.length === 2 && !('duration' in calls[1].input),
         `a turned-down H3 request is retried plain before moving to older models (got ${JSON.stringify(out)})`);
     } finally {
       globalThis.fetch = realFetch;

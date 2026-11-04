@@ -124,7 +124,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     const clip = await animateToClip({
       campaignId,
       imageUrl: slide.imageUrl,
-      prompt: `Slow cinematic camera push-in with subtle motion in the scene, keep the exact art style, no text. ${slide.line}`.slice(0, 480),
+      prompt: `Slow cinematic camera push-in while the characters move and act out the moment, keep the exact art style, no text. ${slide.line}`.slice(0, 480),
       fileName: `recap-${session.id}-${i}-${Date.now()}`,
       onStatus: label => setBusy(`animate-${i}:${label}`)
     });

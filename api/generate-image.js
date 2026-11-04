@@ -139,7 +139,7 @@ export default async function handler(req, res) {
       const candidates = videoCandidates({
         imageUrl,
         prompt: motionPrompt,
-        loop: req.body.loop !== false,
+        loop: req.body.loop === true,
         envModel: process.env.REPLICATE_VIDEO_MODEL || ''
       });
 
