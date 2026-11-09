@@ -15,6 +15,7 @@ import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, readMapRe
 import { uploadToStorage, isAllowedAssetUrl } from './_lib/bookRender.js';
 import { ART_STYLE_PREAMBLES, applyArtStyle, applyMapArtStyle } from './_lib/artStyle.js';
 import { isMature, MATURE_IMAGE_GUIDANCE } from './_lib/contentRating.js';
+import { runNanoBanana, looksLikeHtml, replicateErrorReason } from './_lib/replicateImage.js';
 import { videoCandidates, shouldTryNextVideoModel, videoUrlFromOutput } from './_lib/videoChain.js';
 import { generateOpenAIImage, runImageChain, openaiImageSize, imageFromBody, imageErrorMessage } from './_lib/openaiImage.js';
 
@@ -44,6 +45,8 @@ const IMAGE_QUALITY = 'medium';
 function truncateErr(input) {
   if (!input) return '';
   let str = typeof input === 'string' ? input : (() => { try { return JSON.stringify(input); } catch { return String(input); } })();
+  // An HTML error page (an outage) is told in a sentence, not as its source.
+  if (looksLikeHtml(str)) return replicateErrorReason('5xx', str);
   // If it's a JSON envelope, extract the most useful message field
   try {
     const parsed = JSON.parse(str);
@@ -211,56 +214,32 @@ export default async function handler(req, res) {
           ? 'google/nano-banana-2'
           : 'google/nano-banana';
         console.log(`Using Replicate ${replicatePath} for storybook image, refs: ${refs.length}`);
-        try {
-          const createRes = await fetch(`https://api.replicate.com/v1/models/${replicatePath}/predictions`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${replicateKey}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'wait'
-            },
-            body: JSON.stringify({
-              input: {
-                prompt: fullPrompt,
-                // Only include image_input when there are actual references —
-                // sending an empty array causes a Replicate validation error.
-                ...(refs.length > 0 && { image_input: refs }),
-                aspect_ratio: imageSize === '1792x1024' ? '16:9'
-                  : imageSize === '1024x1792' ? '9:16'
-                  : '1:1',
-                output_format: 'png'
-              }
-            })
-          });
-          if (!createRes.ok) {
-            const errText = await createRes.text().catch(() => createRes.statusText);
-            console.error(`Replicate ${replicatePath} error:`, errText);
-            return res.status(createRes.status || 500).json({
-              error: `Replicate ${replicatePath} error: ${truncateErr(errText)}`
-            });
+        // The other version is the fallback when Replicate has a hiccup: it
+        // also takes the portraits as references.
+        const models = replicatePath === 'google/nano-banana-2'
+          ? ['google/nano-banana-2', 'google/nano-banana']
+          : ['google/nano-banana', 'google/nano-banana-2'];
+        const result = await runNanoBanana({
+          apiKey: replicateKey,
+          models,
+          input: {
+            prompt: fullPrompt,
+            // Only include image_input when there are actual references —
+            // sending an empty array causes a Replicate validation error.
+            ...(refs.length > 0 && { image_input: refs }),
+            aspect_ratio: imageSize === '1792x1024' ? '16:9'
+              : imageSize === '1024x1792' ? '9:16'
+              : '1:1',
+            output_format: 'png'
           }
-          let prediction = await createRes.json();
-          if (prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-            const pollUrl = prediction.urls?.get || `https://api.replicate.com/v1/predictions/${prediction.id}`;
-            const deadline = Date.now() + 55000;
-            while (Date.now() < deadline && prediction.status !== 'succeeded' && prediction.status !== 'failed') {
-              await new Promise(r => setTimeout(r, 2000));
-              const pollRes = await fetch(pollUrl, { headers: { 'Authorization': `Bearer ${replicateKey}` } });
-              if (pollRes.ok) prediction = await pollRes.json();
-            }
-          }
-          if (prediction.status === 'succeeded' && prediction.output) {
-            const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-            if (url) return res.status(200).json({ imageUrl: url, prompt: fullPrompt, model: imageModel });
-            return res.status(500).json({ error: `${imageModel} returned no output URL.` });
-          }
-          return res.status(500).json({
-            error: `${imageModel} prediction ${prediction.status}: ${truncateErr(prediction.error || 'unknown reason')}`
-          });
-        } catch (err) {
-          console.error(`${imageModel} error:`, err);
-          return res.status(500).json({ error: `${imageModel} request failed: ${err.message}` });
+        });
+        if (result.ok) {
+          const model = result.model === 'google/nano-banana-2' ? 'nano-banana-2' : 'nano-banana';
+          if (model !== imageModel) console.log(`Storybook image fell back to ${result.model}`);
+          return res.status(200).json({ imageUrl: result.url, prompt: fullPrompt, model });
         }
+        console.error(`Replicate ${result.model} storybook image failed:`, result.status, result.error);
+        return res.status(result.status || 500).json({ error: `Replicate ${result.model} error: ${result.error}` });
       }
 
       // --- OpenAI GPT Image (reference-capable; any gpt-image-* pick runs the model chain) ---
