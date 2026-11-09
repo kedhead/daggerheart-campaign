@@ -26,6 +26,7 @@ import generateStorybookHandler from '../api/generate-storybook.js';
 import generateTextHandler from '../api/generate.js';
 import { isMature, withMatureSystem, matureOpenAI, MATURE_TEXT_GUIDANCE } from '../api/_lib/contentRating.js';
 import { generateOpenAIImage } from '../api/_lib/openaiImage.js';
+import { runNanoBanana, replicateErrorReason, isTransientReplicateError } from '../api/_lib/replicateImage.js';
 import { videoCandidates, shouldTryNextVideoModel, videoUrlFromOutput, H3_VIDEO_MODEL } from '../api/_lib/videoChain.js';
 import { setContentIntensity, contentHeaders } from '../src/services/contentRating.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
@@ -4272,6 +4273,58 @@ async function runAuthTests() {
       globalThis.fetch = realFetch;
       if (realKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = realKey;
     }
+  })
+  .then(async () => {
+    section('Storybook images on nano-banana');
+    const html = '<!DOCTYPE html> <!--[if lt IE 7]> <html class="no-js ie6 oldie" lang="en-US"> <![endif]--><head><title>replicate.com | 502: Bad gateway</title></head>';
+    const reason = replicateErrorReason(502, html);
+    assert(/Replicate is having trouble right now \(HTTP 502: replicate\.com \| 502: Bad gateway\)/.test(reason) && !/DOCTYPE|<html/.test(reason),
+      `an HTML error page is told in a sentence, not as its source (got ${reason})`);
+    assert(isTransientReplicateError(502, '') && isTransientReplicateError(429, '') && isTransientReplicateError(400, html) && !isTransientReplicateError(422, '{"detail":"bad input"}'),
+      'outages, rate limits and HTML pages are retried; bad input is not');
+
+    const page = (status, body) => ({ ok: status < 300, status, text: async () => body, json: async () => JSON.parse(body) });
+    const calls = [];
+    let result = await runNanoBanana({
+      apiKey: 'r8', models: ['google/nano-banana-2', 'google/nano-banana'], input: { prompt: 'frog' }, wait: async () => {},
+      fetchImpl: async (url) => {
+        calls.push(url);
+        if (url.includes('nano-banana-2')) return page(502, html);
+        return page(201, JSON.stringify({ id: 'abc', status: 'succeeded', output: 'https://x/frog.png' }));
+      }
+    });
+    assert(result.ok && result.url === 'https://x/frog.png' && result.model === 'google/nano-banana' && calls.length === 3,
+      `an outage on v2 is retried once, then v1 makes the image (got ${JSON.stringify(result)}, ${calls.length} calls)`);
+
+    calls.length = 0;
+    result = await runNanoBanana({
+      apiKey: 'r8', models: ['google/nano-banana-2', 'google/nano-banana'], input: { prompt: 'frog' }, wait: async () => {},
+      fetchImpl: async (url) => { calls.push(url); return page(422, '{"detail":"Input validation failed: prompt is required"}'); }
+    });
+    assert(!result.ok && calls.length === 1 && /prompt is required/.test(result.error), 'bad input stops at once with its reason');
+
+    calls.length = 0;
+    result = await runNanoBanana({
+      apiKey: 'r8', models: ['google/nano-banana-2', 'google/nano-banana'], input: { prompt: 'x' }, wait: async () => {},
+      fetchImpl: async (url) => { calls.push(url); return page(201, JSON.stringify({ id: 'q', status: 'failed', error: 'Flagged as sensitive (E005)' })); }
+    });
+    assert(!result.ok && calls.length === 1 && /sensitive/.test(result.error), 'a safety refusal is not retried on another model');
+
+    calls.length = 0;
+    result = await runNanoBanana({
+      apiKey: 'r8', models: ['google/nano-banana-2', 'google/nano-banana'], input: { prompt: 'x' }, wait: async () => {},
+      fetchImpl: async (url) => { calls.push(url); return page(503, html); }
+    });
+    assert(!result.ok && calls.length === 4 && /having trouble/.test(result.error) && !/DOCTYPE/.test(result.error),
+      'when Replicate is down for both, the DM gets one readable sentence');
+
+    let t = 0;
+    calls.length = 0;
+    result = await runNanoBanana({
+      apiKey: 'r8', models: ['google/nano-banana-2'], input: { prompt: 'x' }, budgetMs: 52000, now: () => t, wait: async (ms) => { t += ms; },
+      fetchImpl: async (url) => { calls.push(url); t += 1000; return page(201, JSON.stringify({ id: 'slow', status: 'processing', urls: { get: 'https://api.replicate.com/v1/predictions/slow' } })); }
+    });
+    assert(!result.ok && result.status === 504 && t <= 52000, `a slow image stops polling inside the function's time (stopped at ${t}ms)`);
   })
   .then(async () => {
     section('Video model chain');
