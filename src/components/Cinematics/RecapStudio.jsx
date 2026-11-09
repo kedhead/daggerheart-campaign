@@ -166,9 +166,6 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     endLabel,
     slides,
     question: saved?.question || '',
-    // More of the campaign's art for the comic panels.
-    // This session's scenes and portraits, never last week's pictures.
-    extras: [...galleryGroups.session, ...galleryGroups.portraits].map(g => g.url).slice(0, 40),
     narration: saved?.narration || null,
     musicUrl: musicTrack ? getTrackUrl(musicTrack) : '',
     musicLevel

@@ -50,23 +50,6 @@
 
 .rr-full .rr-panel-0 { inset: 0; }
 
-/* Two panels split on a slanted gutter. */
-.rr-split2 .rr-panel-0 { left: 0; top: 0; bottom: 0; width: 58%; clip-path: polygon(0 0, 100% 0, 79.3% 100%, 0 100%); }
-.rr-split2 .rr-panel-1 { left: 48%; top: 0; bottom: 0; width: 52%; clip-path: polygon(23% 0, 100% 0, 100% 100%, 0 100%); }
-.rr-split2.is-entering .rr-panel-1 { animation-name: rr-slide-in; }
-
-/* A big panel and two stacked beside it. */
-.rr-split3 .rr-panel-0 { left: 0; top: 0; bottom: 0; width: 56%; clip-path: polygon(0 0, 100% 0, 89.3% 100%, 0 100%); }
-.rr-split3 .rr-panel-1 { left: 54.9%; top: 0; width: 45.1%; height: 53%; clip-path: polygon(6.9% 0, 100% 0, 100% 88.7%, 0 100%); }
-.rr-split3 .rr-panel-2 { left: 52%; top: 50%; width: 48%; height: 50%; clip-path: polygon(5.4% 12%, 100% 0, 100% 100%, 0 100%); }
-.rr-split3.is-entering .rr-panel-1,
-.rr-split3.is-entering .rr-panel-2 { animation-name: rr-slide-in; }
-
-@keyframes rr-slide-in {
-  from { transform: translateX(30%) scale(1.15); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
-
 .rr-media {
   position: absolute;
   inset: -5%;

@@ -229,38 +229,12 @@ export function parseRecapQuestion(text) {
 }
 
 /**
- * The comic layout for each beat. Short, punchy lines get a full-bleed
- * punch; longer ones a two- or three-panel spread so there is more to look
- * at while the narrator talks. The first and last beats are always
- * full-bleed: the opening shot and the cliffhanger.
+ * The picture each beat shows: the one chosen for it in the studio, and
+ * nothing else. (The reel used to fill extra comic panels beside it with
+ * other campaign art, which put pictures on screen nobody had picked.)
  */
-export function montageLayout(index, count, line) {
-  if (index === 0 || index === count - 1) return 'full';
-  const words = clean(line).split(' ').filter(Boolean).length;
-  if (words <= 7) return 'full';
-  return index % 2 === 1 ? 'split2' : 'split3';
-}
-
-/**
- * The pictures each beat's panels show: its own art first, then others from
- * the pool, rotating so neighbouring beats don't repeat each other's extras.
- */
-export function panelImages(slides, pool = []) {
-  const primaries = new Set(slides.map(s => s.imageUrl).filter(Boolean));
-  const extras = [...new Set(pool.filter(u => u && !primaries.has(u)))];
-  const fallback = [...primaries];
-  let next = 0;
-  return slides.map((s, i) => {
-    const want = { full: 1, split2: 2, split3: 3 }[montageLayout(i, slides.length, s.line)];
-    const out = s.imageUrl ? [s.imageUrl] : [];
-    const source = extras.length ? extras : fallback.filter(u => u !== s.imageUrl);
-    for (let k = 0; out.length < want && source.length && k < source.length; k++) {
-      const u = source[(next + k) % source.length];
-      if (!out.includes(u)) out.push(u);
-    }
-    next += Math.max(0, out.length - 1);
-    return out;
-  });
+export function panelImages(slides) {
+  return slides.map(s => (s.imageUrl ? [s.imageUrl] : []));
 }
 
 /**

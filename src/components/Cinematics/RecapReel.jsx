@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { recapTimings, montageLayout, panelImages } from './cinematicPlan';
+import { recapTimings, panelImages } from './cinematicPlan';
 import { playWhoosh, playRiser, playSlam, audioContext } from './cinematicSfx';
 import './RecapReel.css';
 
@@ -8,12 +8,12 @@ const DRIFTS = ['rr-drift-a', 'rr-drift-b', 'rr-drift-c'];
 
 /**
  * "Previously on…" as a comic-book cold open: a title card, then each beat
- * as a montage of comic panels that slam in with ink-splash cuts, a caption
+ * as a full-screen comic panel that slams in with an ink-splash cut, a caption
  * box with the narrator's line, then the cliffhanger (the music cuts, a beat
  * of silence, the question slams on) and the slam card for tonight.
  *
  * @param {object} props
- * @param {{title: string, endLabel: string, question?: string, extras?: string[],
+ * @param {{title: string, endLabel: string, question?: string,
  *   slides: Array<{line: string, imageUrl?: string, videoUrl?: string}>,
  *   narration?: {url: string, duration: number, introUrl?: string, questionUrl?: string, questionDuration?: number},
  *   musicUrl?: string, musicLevel?: number}} props.recap
@@ -28,7 +28,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     () => recapTimings(slides, recap?.narration?.duration || 0, { question, questionSeconds: recap?.narration?.questionDuration || 0 }),
     [slides, recap, question]
   );
-  const panels = useMemo(() => panelImages(slides, recap?.extras || []), [slides, recap]);
+  const panels = useMemo(() => panelImages(slides), [slides]);
   const [t, setT] = useState(0);
   const narrationRef = useRef(null);
   const introRef = useRef(null);
@@ -142,14 +142,11 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const renderBeat = (i, entering) => {
     const s = slides[i];
     if (!s) return null;
-    const layout = montageLayout(i, slides.length, s.line);
     const at = timing.slides[i];
-    // Split panels slam in one after another across the first part of the beat.
-    const stagger = Math.min(0.9, (at?.duration || 4) / 4);
     return (
-      <div key={`beat-${i}`} className={`rr-beat rr-${layout} ${entering ? 'is-entering' : ''}`}>
+      <div key={`beat-${i}`} className={`rr-beat rr-full ${entering ? 'is-entering' : ''}`}>
         {panels[i].map((url, k) => (
-          <div key={k} className={`rr-panel rr-panel-${k}`} style={{ animationDelay: entering ? `${k * stagger}s` : '0s' }}>
+          <div key={k} className={`rr-panel rr-panel-${k}`}>
             {k === 0 && s.videoUrl ? (
               <video src={s.videoUrl} muted loop playsInline autoPlay className="rr-media" />
             ) : (
