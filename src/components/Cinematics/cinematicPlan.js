@@ -264,6 +264,55 @@ export function panelImages(slides, pool = []) {
 }
 
 /**
+ * The chapters whose art a session's recap uses: that session's own, never an
+ * older one's. (The script reads the session before it too, for context, but
+ * its pictures belong to last week's recap.)
+ */
+export function recapArtChapters(session, chapters = []) {
+  if (!session?.id) return [];
+  const own = (chapters || []).filter(c => c?.sessionId === session.id);
+  const published = own.filter(c => c.status === 'published');
+  return published.length ? published : own;
+}
+
+/** The art a recap may show, this session's first; older chapters only when asked for. */
+export function recapGallery({ session, chapters = [], npcs = [], characters = [], adversaries = [] }) {
+  const seen = new Set();
+  const groups = { session: [], portraits: [], older: [] };
+  const add = (group, url, label) => { if (url && !seen.has(url)) { seen.add(url); groups[group].push({ url, label }); } };
+  const own = new Set(recapArtChapters(session, chapters).map(c => c.id));
+  (chapters || []).filter(c => own.has(c.id)).forEach(c => (c.scenes || []).forEach(sc => add('session', sc.imageUrl, c.title)));
+  [...(npcs || []), ...(characters || [])].forEach(e => add('portraits', e?.avatarUrl, e?.name));
+  (adversaries || []).forEach(a => add('portraits', a?.imageUrl, a?.name));
+  (chapters || []).filter(c => !own.has(c.id)).forEach(c => (c.scenes || []).forEach(sc => add('older', sc.imageUrl, c.title)));
+  return groups;
+}
+
+/** Who a recap line is about, for a new shot's reference portraits: ids of the characters, NPCs and adversaries it names. */
+export function featuredInLine(line, { characters = [], npcs = [], adversaries = [] } = {}) {
+  const text = ` ${clean(line).toLowerCase()} `;
+  const named = (name) => {
+    const full = String(name || '').toLowerCase().trim();
+    if (full.length < 3) return false;
+    if (text.includes(full)) return true;
+    // "Pippin" for "Pippin Underbough"; skip short or common first words.
+    const first = full.split(/\s+/)[0];
+    return first.length >= 4 && !['the', 'lord', 'lady', 'sir', 'captain', 'master'].includes(first)
+      && new RegExp(`[^a-z]${first.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^a-z]`).test(text);
+  };
+  return [...(characters || []), ...(npcs || []), ...(adversaries || [])]
+    .filter(e => e?.id && named(e.name))
+    .map(e => e.id)
+    .slice(0, 4);
+}
+
+/** The prompt for a fresh recap shot. */
+export function recapShotPrompt(description) {
+  const what = clip(description, 400);
+  return `A single dramatic cinematic illustration of this moment from the story: ${what} Wide shot, strong composition and lighting, the characters clearly acting it out. No text, captions or speech bubbles.`;
+}
+
+/**
  * The art each beat shows. A beat about a named NPC, character or adversary
  * gets their portrait; otherwise the chapter's scene art, in order, so the
  * reel walks through the story's own illustrations. Never empty-handed while

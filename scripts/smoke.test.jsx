@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, montageLayout, panelImages, RECAP_CLIFF_SILENCE } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, montageLayout, panelImages, RECAP_CLIFF_SILENCE } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3574,6 +3574,32 @@ section('Table cinematics');
   const subs = parseIntroSubtitles('Sure! {"subtitles": ["Three Times Great, Zero Times Serious.", "“Ghost Of Bad Ideas”", "Ribbet And Regret"]}');
   assert(subs.length === 3 && subs[0] === 'Three Times Great, Zero Times Serious' && subs[1] === 'Ghost Of Bad Ideas', `subtitles are parsed and tidied (got ${JSON.stringify(subs)})`);
   assert(parseIntroSubtitles('1. Frog Of Destiny\n2. Croak Tease').length === 2, 'a plain list answer still works');
+
+  // Recap art stays with its own session
+  {
+    const s5 = { id: 's5' }, s4 = { id: 's4' };
+    const chs = [
+      { id: 'c4', sessionId: 's4', status: 'published', title: 'Old', scenes: [{ imageUrl: 'https://x/old1.png' }, { imageUrl: 'https://x/old2.png' }] },
+      { id: 'c5d', sessionId: 's5', status: 'draft', title: 'New draft', scenes: [{ imageUrl: 'https://x/draft.png' }] },
+      { id: 'c5', sessionId: 's5', status: 'published', title: 'New', scenes: [{ imageUrl: 'https://x/new1.png' }] }
+    ];
+    assert(recapArtChapters(s5, chs).map(c => c.id).join() === 'c5' && recapArtChapters(s4, chs).map(c => c.id).join() === 'c4',
+      "a recap's art comes from its own session's chapter (the published one when there is one)");
+    assert(recapArtChapters({ id: 's6' }, chs).length === 0, 'a session with no chapter yet borrows no other session\'s art');
+    const art = pickRecapArt([{ line: 'a' }, { line: 'b' }, { line: 'c' }], { chapters: recapArtChapters(s5, chs), characters: [{ name: 'Pippin', avatarUrl: 'https://x/pip.png' }] });
+    assert(art.every(a => a.imageUrl === 'https://x/new1.png'), `every slide uses this session's scene (got ${art.map(a => a.imageUrl).join()})`);
+    const fallback = pickRecapArt([{ line: 'a' }], { chapters: recapArtChapters({ id: 's6' }, chs), characters: [{ name: 'Pippin', avatarUrl: 'https://x/pip.png' }] });
+    assert(fallback[0].imageUrl === 'https://x/pip.png', 'with no chapter art, portraits stand in rather than old scenes');
+    const g = recapGallery({ session: s5, chapters: chs, characters: [{ name: 'Pippin', avatarUrl: 'https://x/pip.png' }] });
+    assert(g.session.map(x => x.url).join() === 'https://x/new1.png' && g.portraits[0].url === 'https://x/pip.png'
+      && g.older.map(x => x.url).join() === 'https://x/old1.png,https://x/old2.png,https://x/draft.png',
+      'the picker shows this session first, then portraits, with older sessions kept apart for when the DM wants one');
+    const roster = { characters: [{ id: 'p', name: 'Pippin Underbough' }, { id: 'e', name: 'Emmanita' }], npcs: [{ id: 'b', name: 'Bubbles' }, { id: 'l', name: 'Lord Vex' }] };
+    const ids = featuredInLine('Pippin collapses as Bubbles and [[Emmanita]] watch.', roster);
+    assert(ids.join() === 'p,e,b', `a new shot's references are whoever the line names, first names included (got ${ids.join()})`);
+    assert(featuredInLine('The lord of the manor sneers.', roster).length === 0, 'a common word like "lord" alone does not pull in a portrait');
+    assert(/Pippin collapses/.test(recapShotPrompt('Pippin collapses.')) && /No text/.test(recapShotPrompt('x')), 'the shot prompt carries the moment and asks for no text');
+  }
 
   // Boss phase transitions
   const phases = [
