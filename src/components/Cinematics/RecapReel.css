@@ -9,21 +9,64 @@
 }
 
 /* ── The montage ──────────────────────────────────────────────────────────
-   Each beat is a comic spread: one full-bleed panel, or two or three tilted
-   panels on white "paper" gutters. A new beat wipes in over the last one in
-   an ink splash, with a one-frame white flash on the cut. */
+   Each beat is one comic panel. Wide art fills the screen. Square or tall art
+   would lose its top and bottom that way, so it is shown whole in a tilted
+   frame over a blurred copy of itself, with the caption beside it. A new beat
+   wipes in over the last one (the wipes take turns), with speed lines and a
+   one-frame white flash on the cut. */
 
 .rr-beat {
   position: absolute;
   inset: 0;
-  background: #f4f1e8; /* the paper the gutters show */
+  background: #000;
   overflow: hidden;
 }
-.rr-full { background: #000; }
-.rr-beat.is-entering { animation: rr-ink-wipe 0.5s cubic-bezier(.6,.05,.3,1) both; }
-@keyframes rr-ink-wipe {
+.rr-beat.is-entering { animation: rr-wipe-ink 0.5s cubic-bezier(.6,.05,.3,1) both; }
+.rr-wipe-slash.is-entering { animation-name: rr-wipe-slash; }
+.rr-wipe-shutter.is-entering { animation-name: rr-wipe-shutter; animation-duration: 0.4s; }
+.rr-wipe-ink-b.is-entering { animation-name: rr-wipe-ink-b; }
+@keyframes rr-wipe-ink {
   from { clip-path: circle(0% at 12% 88%); }
   to { clip-path: circle(150% at 12% 88%); }
+}
+@keyframes rr-wipe-ink-b {
+  from { clip-path: circle(0% at 88% 14%); }
+  to { clip-path: circle(150% at 88% 14%); }
+}
+@keyframes rr-wipe-slash {
+  from { clip-path: polygon(-30% 0, -30% 0, -60% 100%, -60% 100%); }
+  to { clip-path: polygon(-30% 0, 160% 0, 130% 100%, -60% 100%); }
+}
+@keyframes rr-wipe-shutter {
+  from { clip-path: inset(50% 0 50% 0); }
+  to { clip-path: inset(0); }
+}
+
+/* Comic speed lines bursting out from the middle on every cut. */
+.rr-speed {
+  position: absolute;
+  inset: -25%;
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, transparent 0deg 3.4deg, rgba(255, 255, 255, 0.6) 3.4deg 4.2deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 30%, #000 70%);
+  mask-image: radial-gradient(circle, transparent 30%, #000 70%);
+  animation: rr-speed 0.6s ease-out both;
+}
+@keyframes rr-speed { from { opacity: 0.9; transform: scale(0.85); } to { opacity: 0; transform: scale(1.3); } }
+
+.rr-fade-out {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  animation: rr-fade-in 0.9s ease-in both;
+}
+
+.rr-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.6) 100%);
 }
 
 .rr-cut-flash {
@@ -48,44 +91,54 @@
   to { transform: none; opacity: 1; }
 }
 
-.rr-full .rr-panel-0 { inset: 0; }
-
-/* Two panels split on a slanted gutter. */
-.rr-split2 .rr-panel-0 { left: 0; top: 0; bottom: 0; width: 58%; clip-path: polygon(0 0, 100% 0, 79.3% 100%, 0 100%); }
-.rr-split2 .rr-panel-1 { left: 48%; top: 0; bottom: 0; width: 52%; clip-path: polygon(23% 0, 100% 0, 100% 100%, 0 100%); }
-.rr-split2.is-entering .rr-panel-1 { animation-name: rr-slide-in; }
-
-/* A big panel and two stacked beside it. */
-.rr-split3 .rr-panel-0 { left: 0; top: 0; bottom: 0; width: 56%; clip-path: polygon(0 0, 100% 0, 89.3% 100%, 0 100%); }
-.rr-split3 .rr-panel-1 { left: 54.9%; top: 0; width: 45.1%; height: 53%; clip-path: polygon(6.9% 0, 100% 0, 100% 88.7%, 0 100%); }
-.rr-split3 .rr-panel-2 { left: 52%; top: 50%; width: 48%; height: 50%; clip-path: polygon(5.4% 12%, 100% 0, 100% 100%, 0 100%); }
-.rr-split3.is-entering .rr-panel-1,
-.rr-split3.is-entering .rr-panel-2 { animation-name: rr-slide-in; }
-
-@keyframes rr-slide-in {
-  from { transform: translateX(30%) scale(1.15); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
+.rr-full .rr-panel { inset: 0; }
 
 .rr-media {
   position: absolute;
-  inset: -5%;
-  width: 110%;
-  height: 110%;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  object-position: 50% 30%; /* faces sit in the upper part of most art */
   animation-timing-function: linear;
   animation-fill-mode: both;
 }
+
+/* Square or tall art: the whole picture, framed like a panel pinned to the page. */
+.rr-backdrop {
+  position: absolute;
+  inset: -10%;
+  width: 120%;
+  height: 120%;
+  object-fit: cover;
+  filter: blur(2.6vh) brightness(0.45) saturate(1.35);
+  animation: rr-backdrop var(--beat) linear both;
+}
+@keyframes rr-backdrop { from { transform: scale(1) translateX(-2%); } to { transform: scale(1.12) translateX(2%); } }
+.rr-framed .rr-panel {
+  top: 50%;
+  width: min(52vw, calc(76vh * var(--ratio)));
+  aspect-ratio: var(--ratio);
+  translate: 0 -50%;
+  border: 0.8vh solid #f4f1e8;
+  outline: 0.45vh solid #000;
+  box-shadow: 1.6vh 1.6vh 0 rgba(0, 0, 0, 0.85), 0 0 6vh rgba(0, 0, 0, 0.6);
+}
+.rr-side-left .rr-panel { left: 6vw; rotate: -1.6deg; }
+.rr-side-right .rr-panel { right: 6vw; rotate: 1.6deg; }
+.rr-framed .rr-media { inset: 0; width: 100%; height: 100%; object-position: center; }
+.rr-push { animation-name: rr-push; }
+@keyframes rr-push { from { transform: scale(1); } to { transform: scale(1.06); } }
 .rr-media-empty {
-  inset: 0;
   background: radial-gradient(ellipse at center, #1e1b4b, #000 70%);
 }
 .rr-drift-a { animation-name: rr-drift-a; }
 .rr-drift-b { animation-name: rr-drift-b; }
 .rr-drift-c { animation-name: rr-drift-c; }
-@keyframes rr-drift-a { from { transform: scale(1.02) translate(-1.5%, 0); } to { transform: scale(1.12) translate(1.5%, 1%); } }
-@keyframes rr-drift-b { from { transform: scale(1.14); } to { transform: scale(1.02); } }
-@keyframes rr-drift-c { from { transform: scale(1.08) translate(0, 2%); } to { transform: scale(1.08) translate(0, -2%); } }
+/* Gentle, so the edges of the picture stay on screen. */
+@keyframes rr-drift-a { from { transform: scale(1.02) translate(-0.8%, 0); } to { transform: scale(1.08) translate(0.8%, 0.5%); } }
+@keyframes rr-drift-b { from { transform: scale(1.09); } to { transform: scale(1); } }
+@keyframes rr-drift-c { from { transform: scale(1.05) translate(0, 1.5%); } to { transform: scale(1.05) translate(0, -1.5%); } }
 
 /* Comic dot texture over the art. */
 .rr-halftone {
@@ -133,10 +186,36 @@
   font-weight: 700;
   font-size: clamp(18px, 3.4vh, 56px);
   line-height: 1.25;
-  transform: rotate(-1.2deg);
+  rotate: -1.2deg;
   animation: rr-caption-in 0.35s 0.15s cubic-bezier(.2,1.3,.35,1) both;
 }
-@keyframes rr-caption-in { from { opacity: 0; transform: rotate(-1.2deg) translateX(-8vw) scale(0.9); } }
+@keyframes rr-caption-in { from { opacity: 0; transform: translateX(-8vw) scale(0.9); } }
+
+/* Beside a framed panel: bigger, and centred in the room the panel leaves. */
+.rr-cap-beside {
+  top: 50%;
+  bottom: auto;
+  max-width: none;
+  translate: 0 -50%;
+  font-size: clamp(20px, 6vh, 100px);
+  line-height: 1.15;
+}
+.rr-cap-right { left: calc(10vw + min(52vw, 76vh * var(--ratio))); right: 5vw; rotate: 1.2deg; }
+.rr-cap-left { right: calc(10vw + min(52vw, 76vh * var(--ratio))); left: 5vw; }
+
+/* The words land one at a time, more or less as the narrator says them. */
+.rr-word {
+  display: inline-block;
+  margin-right: 0.28em;
+  animation: rr-word 0.22s cubic-bezier(.2,1.5,.4,1) both;
+}
+@keyframes rr-word { from { opacity: 0; transform: translateY(0.35em) scale(1.35); } }
+
+/* A tall screen (a phone held upright): the panel on top, the caption under it. */
+@media (max-aspect-ratio: 1/1) {
+  .rr-framed .rr-panel { left: 50%; right: auto; top: 42%; width: min(86vw, calc(56vh * var(--ratio))); translate: -50% -50%; }
+  .rr-cap-beside { left: 5vw; right: 5vw; top: auto; bottom: 9vh; translate: none; font-size: clamp(16px, 3vh, 40px); }
+}
 
 /* ── The cliffhanger: black, silence, then the question slams on. ───────── */
 .rr-cliff {
@@ -181,8 +260,9 @@
   text-align: center;
   padding: 0 6vw;
 }
-.rr-title { animation: rr-title-out 3.2s ease both; }
-@keyframes rr-title-out { 0% { opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+/* Stays until "Previously on…" has been said, then fades as the first beat lands. */
+.rr-title { animation: rr-fade-in 0.5s backwards; transition: opacity 0.4s; }
+.rr-title.is-leaving { opacity: 0; }
 
 .rr-title-kicker,
 .rr-end-kicker {
