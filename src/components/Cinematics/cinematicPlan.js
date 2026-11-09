@@ -327,6 +327,16 @@ export function pickRecapArt(beats, { chapters = [], npcs = [], characters = [],
   });
 }
 
+/**
+ * Whether a picture is close enough to the screen's shape to fill it. Art
+ * shaped unlike the screen (square or tall art on a wide monitor) would lose
+ * heads and feet stretched over it, so the reel frames that as a comic panel.
+ * Both arguments are width / height.
+ */
+export function recapArtFills(ratio, screen = 16 / 9) {
+  return ratio >= screen * 0.8 && ratio <= screen * 1.3;
+}
+
 export const RECAP_TITLE_SECONDS = 3.2;
 export const RECAP_END_SECONDS = 3.6;
 // The cliffhanger: the music cuts, a beat of black silence, then the question.
