@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon } from 'lucide-react';
+import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, Wand2, RefreshCw } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapTimings } from './cinematicPlan';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapTimings, recapArtChapters, recapGallery, featuredInLine, recapShotPrompt } from './cinematicPlan';
+import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
 import { ensureSoundSet } from './cinematicSounds';
@@ -41,6 +42,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const [voiceKey, setVoiceKey] = useState(saved?.narration?.voiceKey || RECAP_VOICE_KEY);
   const [picking, setPicking] = useState(null); // slide index whose picture is being chosen
   const [preview, setPreview] = useState(null);
+  const [shooting, setShooting] = useState(null); // { index, text }: a new shot being described
 
   const campaignId = campaign?.id;
   const slides = saved?.slides || [];
@@ -48,16 +50,14 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const musicTrack = saved?.musicTrack ?? DEFAULT_TRACK;
   const musicLevel = saved?.musicLevel ?? 0.6;
 
-  // Every picture the DM can choose for a slide.
-  const gallery = useMemo(() => {
-    const seen = new Set();
-    const out = [];
-    const add = (url, label) => { if (url && !seen.has(url)) { seen.add(url); out.push({ url, label }); } };
-    (chapters || []).forEach(c => (c.scenes || []).forEach(s => add(s.imageUrl, c.title)));
-    [...npcs, ...characters].forEach(e => add(e.avatarUrl, e.name));
-    adversaries.forEach(a => add(a.imageUrl, a.name));
-    return out;
-  }, [chapters, npcs, characters, adversaries]);
+  // The pictures a slide can use: this session's scenes first, then
+  // portraits, and older sessions' scenes only when the DM picks one.
+  const artChapters = useMemo(() => recapArtChapters(session, chapters), [session, chapters]);
+  const galleryGroups = useMemo(
+    () => recapGallery({ session, chapters, npcs, characters, adversaries }),
+    [session, chapters, npcs, characters, adversaries]
+  );
+  const artOptions = { chapters: artChapters, npcs, characters, adversaries, locations };
 
   const save = (fields) => updateSession(session.id, { recap: { ...(saved || {}), ...fields } });
 
@@ -72,7 +72,9 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
       throw new Error('This session has no summary yet. Add one in the Session Log first.');
     }
     const { beats, question } = await writeRecapScript({ campaign, sources, characters, ...textProvider(getEffectiveKey) });
-    const art = pickRecapArt(beats, { chapters: sources.chapters.length ? sources.chapters : chapters, npcs, characters, adversaries, locations });
+    // Pictures from this session only: the script reads the session before
+    // it too, but its art belongs to last week's recap.
+    const art = pickRecapArt(beats, artOptions);
     await save({
       slides: beats.map((b, i) => ({ line: b.line, imageUrl: art[i]?.imageUrl || '', videoUrl: art[i]?.videoUrl || '' })),
       question,
@@ -98,6 +100,34 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     save({ slides: slides.map((s, j) => (j === i ? { ...s, imageUrl: url, videoUrl: '' } : s)) });
     setPicking(null);
   };
+
+  // Recaps written before the art was limited to their own session.
+  const repickArt = () => run('repick', async () => {
+    const art = pickRecapArt(slides.map(s => ({ line: s.line, focus: '' })), artOptions);
+    await save({ slides: slides.map((s, i) => ({ ...s, imageUrl: art[i]?.imageUrl || s.imageUrl, videoUrl: art[i]?.videoUrl || '' })) });
+  });
+
+  // A fresh picture for one slide, drawn in the campaign's storybook style with
+  // the portraits of whoever the line names as references.
+  const newShot = (i, text) => run(`shot-${i}`, async () => {
+    const description = (text || slides[i]?.line || '').trim();
+    if (!description) throw new Error('Describe the shot first.');
+    const chapter = artChapters[0] || null;
+    const scene = await regenerateScene({
+      scene: { id: `recap_${session.id}_${i}_${Date.now()}`, prompt: recapShotPrompt(description), featuredEntityIds: featuredInLine(description, { characters, npcs, adversaries }) },
+      chapter,
+      entities: { characters, npcs, adversaries },
+      campaignId,
+      apiKey: getEffectiveKey?.('openai')?.key || null,
+      gameSystem: campaign?.gameSystem || 'daggerheart',
+      styleKey: chapter?.styleKey || campaign?.storybookStyle || DEFAULT_STYLE_KEY,
+      styleCustom: chapter?.styleCustom || campaign?.storybookStyleCustom || '',
+      imageModel: 'nano-banana-2'
+    });
+    await save({ slides: slides.map((s, j) => (j === i ? { ...s, imageUrl: scene.imageUrl, videoUrl: '' } : s)) });
+    setShooting(null);
+    notify.success('New shot ready.');
+  });
 
   // Three reads: "Previously on…" over the title card, the beats, and the
   // cliffhanger question after the silence.
@@ -137,7 +167,8 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     slides,
     question: saved?.question || '',
     // More of the campaign's art for the comic panels.
-    extras: gallery.map(g => g.url).slice(0, 40),
+    // This session's scenes and portraits, never last week's pictures.
+    extras: [...galleryGroups.session, ...galleryGroups.portraits].map(g => g.url).slice(0, 40),
     narration: saved?.narration || null,
     musicUrl: musicTrack ? getTrackUrl(musicTrack) : '',
     musicLevel
@@ -165,6 +196,12 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   });
 
   const busyAnimating = (i) => busy && busy.startsWith(`animate-${i}`);
+
+  const thumbs = (items) => items.map(g => (
+    <button key={g.url} type="button" title={g.label} onClick={() => setPicture(picking, g.url)} className="w-20 h-12 shrink-0 rounded overflow-hidden border border-white/10 hover:border-white/50">
+      <img src={g.url} alt="" className="w-full h-full object-cover" />
+    </button>
+  ));
 
   return (
     <>
@@ -196,6 +233,19 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
 
               {slides.length > 0 && (
                 <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[11px] text-lr-text-dim">Tap a picture to change it. Art comes from this session; older sessions are there if you pick them.</p>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm inline-flex items-center gap-1"
+                      onClick={repickArt}
+                      disabled={!!busy}
+                      title="Swap every picture for this session's art, keeping the words"
+                    >
+                      {busy === 'repick' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                      Use this session&apos;s art
+                    </button>
+                  </div>
                   <div className="space-y-2">
                     {slides.map((s, i) => (
                       // Keyed by the text too, so a rewrite replaces the uncontrolled fields.
@@ -217,23 +267,67 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                             rows={2}
                             className="w-full p-2 rounded bg-black/20 border border-white/10 text-white text-sm resize-y"
                           />
-                          <button
-                            type="button"
-                            className="text-[11px] text-lr-text-dim hover:text-white inline-flex items-center gap-1 disabled:opacity-40"
-                            onClick={() => animateSlide(i)}
-                            disabled={!!busy || !s.imageUrl}
-                          >
-                            {busyAnimating(i) ? <Loader2 size={12} className="animate-spin" /> : <Film size={12} />}
-                            {busyAnimating(i) ? (busy.split(':')[1] || 'Animating…') : s.videoUrl ? 'Re-animate (AI video)' : 'Animate (AI video, optional)'}
-                          </button>
-                          {picking === i && (
-                            <div className="flex gap-1.5 overflow-x-auto pb-1">
-                              {gallery.map(g => (
-                                <button key={g.url} type="button" title={g.label} onClick={() => setPicture(i, g.url)} className="w-20 h-12 shrink-0 rounded overflow-hidden border border-white/10 hover:border-white/50">
-                                  <img src={g.url} alt="" className="w-full h-full object-cover" />
+                          <div className="flex flex-wrap gap-x-3 gap-y-1">
+                            <button
+                              type="button"
+                              className="text-[11px] text-lr-text-dim hover:text-white inline-flex items-center gap-1 disabled:opacity-40"
+                              onClick={() => setShooting(shooting?.index === i ? null : { index: i, text: s.line })}
+                              disabled={!!busy}
+                            >
+                              {busy === `shot-${i}` ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
+                              {busy === `shot-${i}` ? 'Drawing… (~30s)' : 'New shot (AI image)'}
+                            </button>
+                            <button
+                              type="button"
+                              className="text-[11px] text-lr-text-dim hover:text-white inline-flex items-center gap-1 disabled:opacity-40"
+                              onClick={() => animateSlide(i)}
+                              disabled={!!busy || !s.imageUrl}
+                            >
+                              {busyAnimating(i) ? <Loader2 size={12} className="animate-spin" /> : <Film size={12} />}
+                              {busyAnimating(i) ? (busy.split(':')[1] || 'Animating…') : s.videoUrl ? 'Re-animate (AI video)' : 'Animate (AI video, optional)'}
+                            </button>
+                          </div>
+                          {shooting?.index === i && (
+                            <div className="space-y-1.5 p-2 rounded border border-white/10 bg-black/30">
+                              <label className="block text-[11px] text-lr-text-dim">Describe the shot (characters named here are drawn from their portraits)</label>
+                              <textarea
+                                value={shooting.text}
+                                onChange={(e) => setShooting({ index: i, text: e.target.value })}
+                                rows={2}
+                                className="w-full p-2 rounded bg-black/20 border border-white/10 text-white text-sm resize-y"
+                              />
+                              <div className="flex gap-2 justify-end">
+                                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShooting(null)} disabled={busy === `shot-${i}`}>Cancel</button>
+                                <button type="button" className="btn btn-primary btn-sm inline-flex items-center gap-1" onClick={() => newShot(i, shooting.text)} disabled={!!busy}>
+                                  {busy === `shot-${i}` ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                                  Draw it
                                 </button>
-                              ))}
-                              {gallery.length === 0 && <span className="text-xs text-lr-text-dim">No art yet: generate chapter scenes or portraits first.</span>}
+                              </div>
+                            </div>
+                          )}
+                          {picking === i && (
+                            <div className="space-y-1.5">
+                              {galleryGroups.session.length > 0 && (
+                                <>
+                                  <p className="text-[10px] uppercase tracking-widest text-lr-text-dim">This session</p>
+                                  <div className="flex gap-1.5 overflow-x-auto pb-1">{thumbs(galleryGroups.session)}</div>
+                                </>
+                              )}
+                              {galleryGroups.portraits.length > 0 && (
+                                <>
+                                  <p className="text-[10px] uppercase tracking-widest text-lr-text-dim">Portraits</p>
+                                  <div className="flex gap-1.5 overflow-x-auto pb-1">{thumbs(galleryGroups.portraits)}</div>
+                                </>
+                              )}
+                              {galleryGroups.older.length > 0 && (
+                                <>
+                                  <p className="text-[10px] uppercase tracking-widest text-lr-text-dim">Older sessions</p>
+                                  <div className="flex gap-1.5 overflow-x-auto pb-1">{thumbs(galleryGroups.older)}</div>
+                                </>
+                              )}
+                              {!galleryGroups.session.length && !galleryGroups.portraits.length && !galleryGroups.older.length && (
+                                <span className="text-xs text-lr-text-dim">No art yet: use New shot, or generate chapter scenes or portraits first.</span>
+                              )}
                             </div>
                           )}
                         </div>
