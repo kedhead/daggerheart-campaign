@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, Wand2, RefreshCw } from 'lucide-react';
+import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, Wand2, RefreshCw, Clapperboard } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapTimings, recapArtChapters, recapGallery, featuredInLine, recapShotPrompt } from './cinematicPlan';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, recapCast, recapArtChapters, recapGallery, featuredInLine, recapShotPrompt } from './cinematicPlan';
 import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
@@ -16,6 +16,10 @@ import { useNotify } from '../../contexts/ToastContext';
 
 const DEFAULT_TRACK = 'LegendsofMagic';
 const MUSIC_THEMES = ['mystical', 'exploration', 'tension', 'battle', 'victory', 'mystery'];
+
+// One animated shot: about six seconds on the first video model, at roughly three cents a second.
+const CLIP_COST = 0.18;
+const SHOT_MOTION = 'Slow cinematic camera push-in while the characters move and act out the moment, keep the exact art style, no text.';
 
 const sessionLabel = (s, n) => `${n ? `Session ${n}` : 'Session'}${s?.title ? `: ${s.title}` : ''}`;
 
@@ -49,6 +53,10 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const endLabel = saved?.endLabel ?? `Session ${number + 1}`;
   const musicTrack = saved?.musicTrack ?? DEFAULT_TRACK;
   const musicLevel = saved?.musicLevel ?? 0.6;
+  // Film is the look unless this recap was set to the comic one.
+  const style = saved?.style === 'comic' ? 'comic' : 'film';
+  const cast = useMemo(() => recapCast(characters), [characters]);
+  const castRoll = (saved?.castRoll ?? true) && cast.length > 0;
 
   // The pictures a slide can use: this session's scenes first, then
   // portraits, and older sessions' scenes only when the DM picks one.
@@ -154,15 +162,43 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     const clip = await animateToClip({
       campaignId,
       imageUrl: slide.imageUrl,
-      prompt: `Slow cinematic camera push-in while the characters move and act out the moment, keep the exact art style, no text. ${slide.line}`.slice(0, 480),
+      prompt: `${SHOT_MOTION} ${slide.line}`.slice(0, 480),
       fileName: `recap-${session.id}-${i}-${Date.now()}`,
       onStatus: label => setBusy(`animate-${i}:${label}`)
     });
     await save({ slides: slides.map((s, j) => (j === i ? { ...s, videoUrl: clip.url } : s)) });
   });
 
+  // Every still shot, one after another. Each is saved as it lands, so a
+  // failure part-way keeps the clips already made.
+  const still = slides.map((s, i) => (s.imageUrl && !s.videoUrl ? i : -1)).filter(i => i >= 0);
+  const animateAll = () => run('animate-all', async () => {
+    let next = slides;
+    const failed = [];
+    for (let n = 0; n < still.length; n++) {
+      const i = still[n];
+      try {
+        const clip = await animateToClip({
+          campaignId,
+          imageUrl: next[i].imageUrl,
+          prompt: `${SHOT_MOTION} ${next[i].line}`.slice(0, 480),
+          fileName: `recap-${session.id}-${i}-${Date.now()}`,
+          onStatus: label => setBusy(`animate-all:Shot ${n + 1} of ${still.length}, ${label}`)
+        });
+        next = next.map((s, j) => (j === i ? { ...s, videoUrl: clip.url } : s));
+        await save({ slides: next });
+      } catch (err) {
+        failed.push(`shot ${i + 1} (${err.message || 'failed'})`);
+      }
+    }
+    if (failed.length) notify.warning(`Animated ${still.length - failed.length} of ${still.length}. Not animated: ${failed.join('; ')}.`);
+    else notify.success(`All ${still.length} shots animated.`);
+  });
+
   const reel = {
     title: campaign?.name || 'Our Story',
+    style,
+    cast: castRoll ? cast : [],
     endLabel,
     slides,
     question: saved?.question || '',
@@ -170,7 +206,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     musicUrl: musicTrack ? getTrackUrl(musicTrack) : '',
     musicLevel
   };
-  const seconds = Math.round(recapTimings(slides, reel.narration?.duration || 0, { question: reel.question, questionSeconds: reel.narration?.questionDuration || 0 }).total);
+  const seconds = Math.round(recapPlan(reel).total);
 
   // The reel with its trailer sounds (made once, the first time).
   const withSounds = async () => {
@@ -232,6 +268,20 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[11px] text-lr-text-dim">Tap a picture to change it. Art comes from this session; older sessions are there if you pick them.</p>
+                    {still.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm inline-flex items-center gap-1"
+                        onClick={animateAll}
+                        disabled={!!busy}
+                        title={`Turns every still shot into a moving clip, one after another (about a minute each). Costs about $${CLIP_COST.toFixed(2)} a shot.`}
+                      >
+                        {busy?.startsWith('animate-all') ? <Loader2 size={14} className="animate-spin" /> : <Clapperboard size={14} />}
+                        {busy?.startsWith('animate-all')
+                          ? (busy.slice('animate-all:'.length) || 'Animating…')
+                          : `Animate all ${still.length} shots (about $${(still.length * CLIP_COST).toFixed(2)})`}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn btn-ghost btn-sm inline-flex items-center gap-1"
@@ -344,6 +394,27 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                       className="w-full p-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm"
                     />
                     <p className="text-[11px] mt-1 text-lr-text-dim">The music cuts, a beat of silence, then this slams on screen. Leave empty to skip it.</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim mb-1">Look</label>
+                      <select value={style} onChange={(e) => save({ style: e.target.value })} className="p-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm">
+                        <option value="film">Film trailer</option>
+                        <option value="comic">Comic book</option>
+                      </select>
+                    </div>
+                    <label className={`flex items-center gap-2 text-sm pb-2 ${cast.length ? 'text-white' : 'text-lr-text-dim'}`}>
+                      <input type="checkbox" checked={castRoll} disabled={!cast.length} onChange={(e) => save({ castRoll: e.target.checked })} />
+                      {cast.length
+                        ? `Cast roll: "Starring…" ${cast.map(c => c.name).join(', ')}`
+                        : 'Cast roll (needs player characters with portraits)'}
+                    </label>
+                    <p className="basis-full text-[11px] text-lr-text-dim">
+                      {style === 'film'
+                        ? 'Widescreen with film grain, dissolves and subtitles; short lines become big text cards, and every shot flashes by again before the cliffhanger.'
+                        : 'Comic panels with ink wipes, speed lines and caption boxes.'}
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

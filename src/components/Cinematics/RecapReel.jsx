@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { recapTimings, panelImages, recapArtFills } from './cinematicPlan';
+import { recapPlan, panelImages, recapArtFills, recapCardLine } from './cinematicPlan';
 import { playWhoosh, playRiser, playSlam, audioContext } from './cinematicSfx';
 import './RecapReel.css';
 
@@ -17,8 +17,15 @@ const MAX_TITLE_HOLD = 6;
  * beside it), the narrator's line landing word by word, then the cliffhanger (the music cuts, a beat
  * of silence, the question slams on) and the slam card for tonight.
  *
+ * With `style: 'film'` the same reel plays as a movie trailer instead:
+ * widescreen bars, film grain and a colour grade, dissolves between shots,
+ * the line as a subtitle (a short line as a big text card), and every shot
+ * again in a quick-cut montage before the cliffhanger. A `cast` list adds a
+ * "Starring…" card for each player character after the title.
+ *
  * @param {object} props
- * @param {{title: string, endLabel: string, question?: string,
+ * @param {{title: string, endLabel: string, question?: string, style?: 'film'|'comic',
+ *   cast?: Array<{name: string, playerName?: string, imageUrl: string}>,
  *   slides: Array<{line: string, imageUrl?: string, videoUrl?: string}>,
  *   narration?: {url: string, duration: number, introUrl?: string, questionUrl?: string, questionDuration?: number},
  *   musicUrl?: string, musicLevel?: number}} props.recap
@@ -29,10 +36,9 @@ const MAX_TITLE_HOLD = 6;
 export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const slides = useMemo(() => recap?.slides || [], [recap]);
   const question = recap?.question || '';
-  const timing = useMemo(
-    () => recapTimings(slides, recap?.narration?.duration || 0, { question, questionSeconds: recap?.narration?.questionDuration || 0 }),
-    [slides, recap, question]
-  );
+  const film = recap?.style === 'film';
+  const cast = useMemo(() => recap?.cast || [], [recap]);
+  const timing = useMemo(() => recapPlan(recap), [recap]);
   const panels = useMemo(() => panelImages(slides), [slides]);
   const [t, setT] = useState(0);
   const [ratios, setRatios] = useState({}); // picture url → width / height, once loaded
@@ -62,7 +68,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
       // card, and the narrator used to start talking over it. Wait for it.
       const intro = introRef.current;
       if (!narrationStarted && intro && !intro.paused && !intro.ended
-        && rawWall - held >= timing.narrationStart - 0.7 && held < MAX_TITLE_HOLD) held += rawWall - lastWall;
+        && rawWall - held >= timing.titleEnd - 0.7 && held < MAX_TITLE_HOLD) held += rawWall - lastWall;
       lastWall = rawWall;
       const wall = rawWall - held;
       const narr = narrationRef.current;
@@ -108,6 +114,14 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const inCliff = !!cliff && t >= cliff.start && t < timing.endStart;
   const showQuestion = inCliff && t >= cliff.questionAt;
   const onEnd = t >= timing.endStart;
+  // The "Starring…" cards, between the title and the first beat.
+  const castAt = timing.cast && t >= timing.cast.start && t < timing.narrationStart
+    ? Math.min(timing.cast.count - 1, Math.floor((t - timing.cast.start) / timing.cast.each)) : -1;
+  // The quick-cut montage, between the last beat and the cliffhanger.
+  const quick = timing.montage;
+  const cutAt = quick && t >= quick.start && t < quick.start + quick.duration
+    ? quick.cuts.findIndex(c => t - quick.start < c.start + c.duration) : -1;
+  const shots = useMemo(() => slides.filter(s => s.imageUrl).map(s => s.imageUrl), [slides]);
 
   // The previous beat stays under the new one while the ink wipe reveals it.
   const [beats, setBeats] = useState({ current: -1, previous: -1 });
@@ -118,7 +132,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   // Sound: a boom and "Previously on…" under the title card, a whoosh on
   // every cut, silence for the cliffhanger, a hit on the question, then a
   // riser into the slam of tonight's card.
-  const cued = useRef({ open: false, intro: false, question: false, riser: false, slam: false, last: -2 });
+  const cued = useRef({ open: false, intro: false, question: false, riser: false, slam: false, last: -2, cast: -1, cut: -1 });
   useEffect(() => {
     const play = (cue, volume) => {
       if (sfx) { sfx.play(cue, volume); return; }
@@ -131,6 +145,10 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     if (!c.intro && t >= 0.6 && introRef.current) { c.intro = true; introRef.current.play().catch(() => {}); }
     if (index !== c.last && index >= 0) play(index === 0 ? 'slam' : 'whoosh', index === 0 ? 0.6 : 0.5);
     c.last = index;
+    if (castAt !== c.cast && castAt >= 0) play('whoosh', 0.4);
+    c.cast = castAt;
+    if (cutAt !== c.cut && cutAt >= 0) play(cutAt === 0 ? 'impact' : 'whoosh', cutAt === 0 ? 0.7 : 0.3);
+    c.cut = cutAt;
     if (!c.question && showQuestion) {
       c.question = true;
       play('slam', 1);
@@ -138,14 +156,15 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     }
     if (!c.riser && t >= timing.endStart - (sfx ? 2.8 : 1.6)) { c.riser = true; play('riser', 0.6); }
     if (!c.slam && onEnd) { c.slam = true; play('impact', 1); }
-  }, [index, t, onEnd, showQuestion, timing.endStart, sfx]);
+  }, [index, castAt, cutAt, t, onEnd, showQuestion, timing.endStart, sfx]);
 
   // Music: well under the narrator, up a little over the title card, cut dead
   // for the cliffhanger. Music tracks are mastered far louder than speech, so
   // under the voice it drops to about a fifth of its title-card level.
   const level = Math.max(0, Math.min(1, recap?.musicLevel ?? 0.6));
-  const speaking = !!recap?.narration && t >= timing.narrationStart;
-  const target = inCliff || onEnd ? 0 : level * (speaking ? 0.12 : 0.55);
+  const speaking = !!recap?.narration && t >= timing.narrationStart && cutAt < 0;
+  // The montage has no narrator over it, so the music swells for it.
+  const target = inCliff || onEnd ? 0 : level * (cutAt >= 0 ? 0.85 : speaking ? 0.12 : 0.55);
   useEffect(() => {
     const music = musicRef.current;
     if (!music) return;
@@ -167,9 +186,12 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     const url = panels[i][0];
     const seconds = timing.slides[i]?.duration || 4;
     const ratio = framedAt(i);
-    const look = ratio ? `rr-framed rr-side-${i % 2 ? 'right' : 'left'}` : 'rr-full';
+    // Film: art that would be cropped sits whole and centred, its edges
+    // melting into the blurred copy behind it; no frame, no tilt.
+    const look = !ratio ? 'rr-full' : film ? 'rr-fit' : `rr-framed rr-side-${i % 2 ? 'right' : 'left'}`;
+    const dim = film && recapCardLine(s.line) ? 'rr-dim' : '';
     return (
-      <div key={`beat-${i}`} className={`rr-beat ${look} rr-wipe-${WIPES[i % WIPES.length]} ${entering ? 'is-entering' : ''}`}
+      <div key={`beat-${i}`} className={`rr-beat ${look} ${dim} rr-wipe-${film ? 'dissolve' : WIPES[i % WIPES.length]} ${entering ? 'is-entering' : ''}`}
         style={{ '--ratio': ratio || 1, '--beat': `${seconds}s` }}>
         {!!ratio && <img src={url} alt="" className="rr-backdrop" />}
         {url || s.videoUrl ? (
@@ -189,11 +211,11 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
         ) : (
           <div className="rr-panel rr-media-empty" />
         )}
-        <div className="rr-halftone" />
-        {entering && <div className="rr-speed" />}
-        {entering && <div className="rr-cut-flash" />}
-        {/* The last beat sinks to black, into the cliffhanger's silence. */}
-        {entering && i === slides.length - 1 && <div className="rr-fade-out" style={{ animationDelay: `${Math.max(0, seconds - 0.9)}s` }} />}
+        {!film && <div className="rr-halftone" />}
+        {!film && entering && <div className="rr-speed" />}
+        {!film && entering && <div className="rr-cut-flash" />}
+        {/* The last beat sinks to black, into the cliffhanger's silence (a montage cuts in hard instead). */}
+        {entering && i === slides.length - 1 && !quick && <div className="rr-fade-out" style={{ animationDelay: `${Math.max(0, seconds - 0.9)}s` }} />}
       </div>
     );
   };
@@ -202,6 +224,11 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     const words = String(slides[i]?.line || '').split(/\s+/).filter(Boolean);
     if (!words.length) return null;
     const seconds = timing.slides[i]?.duration || 4;
+    if (film) {
+      // A short punch of a line is a trailer text card; the rest are subtitles.
+      const card = recapCardLine(slides[i].line);
+      return <div key={`cap-${i}`} className={card ? 'rr-card' : 'rr-sub'} style={{ '--beat': `${seconds}s` }}>{slides[i].line}</div>;
+    }
     const ratio = framedAt(i);
     // Words land roughly as the narrator says them, done well before the cut.
     const step = Math.max(0.05, Math.min(0.3, (seconds * 0.7 - 0.3) / words.length));
@@ -216,7 +243,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   };
 
   return (
-    <div className="recap-reel">
+    <div className={`recap-reel ${film ? 'rr-film' : ''}`}>
       {recap?.narration?.url && <audio ref={narrationRef} src={recap.narration.url} preload="auto" />}
       {recap?.narration?.introUrl && <audio ref={introRef} src={recap.narration.introUrl} preload="auto" />}
       {recap?.narration?.questionUrl && <audio ref={questionRef} src={recap.narration.questionUrl} preload="auto" />}
@@ -230,9 +257,10 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
             if (w && h) setRatios(r => (r[url] ? r : { ...r, [url]: w / h }));
           }} />
         ))}
+        {cast.map(c => <img key={`cast-${c.imageUrl}`} src={c.imageUrl} alt="" />)}
       </div>
 
-      {!inCliff && !onEnd && (
+      {!inCliff && !onEnd && cutAt < 0 && (
         <>
           {beats.previous >= 0 && beats.previous !== beats.current && renderBeat(beats.previous, false)}
           {beats.current >= 0 && renderBeat(beats.current, true)}
@@ -243,8 +271,27 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
         </>
       )}
 
-      {t < timing.narrationStart && (
-        <div className={`rr-title ${t > timing.narrationStart - 0.45 ? 'is-leaving' : ''}`}>
+      {castAt >= 0 && cast[castAt] && (
+        <div key={`cast-${castAt}`} className={`rr-cast ${castAt % 2 ? 'rr-cast-flip' : ''}`} style={{ '--beat': `${timing.cast.each}s` }}>
+          <img src={cast[castAt].imageUrl} alt="" className="rr-cast-portrait" />
+          <div className="rr-cast-text">
+            <div className="rr-cast-kicker">{castAt === 0 ? 'Starring' : 'And'}</div>
+            <div className="rr-cast-name">{cast[castAt].name}</div>
+            {cast[castAt].playerName && <div className="rr-cast-player">played by {cast[castAt].playerName}</div>}
+          </div>
+        </div>
+      )}
+
+      {cutAt >= 0 && (
+        <div className="rr-montage">
+          <img key={`cut-${cutAt}`} src={shots[quick.cuts[cutAt].shot]} alt="" className="rr-mcut" style={{ animationDuration: `${quick.cuts[cutAt].duration}s` }} />
+          <div className="rr-letterbox rr-letterbox-top" />
+          <div className="rr-letterbox rr-letterbox-bottom" />
+        </div>
+      )}
+
+      {t < timing.titleEnd && (
+        <div className={`rr-title ${t > timing.titleEnd - 0.45 ? 'is-leaving' : ''}`}>
           <div className="rr-title-kicker">Previously on</div>
           <div className="rr-title-name">{recap?.title}</div>
           <div className="rr-title-rule" />
@@ -263,6 +310,9 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
           <div className="rr-end-label">{recap?.endLabel || 'The story continues'}</div>
         </div>
       )}
+
+      {film && <div className="rr-grade" />}
+      {film && <div className="rr-grain" />}
     </div>
   );
 }

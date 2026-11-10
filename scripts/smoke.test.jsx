@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapCardLine, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3666,6 +3666,25 @@ section('Table cinematics');
     'each beat shows only the picture chosen for it: no portraits or other beats’ art beside it, and none at all for a beat without one');
   assert(recapArtFills(16 / 9) && recapArtFills(3 / 2) && !recapArtFills(1) && !recapArtFills(2 / 3) && !recapArtFills(3) && recapArtFills(2 / 3, 9 / 16),
     'wide art fills a wide monitor; square, tall or banner-shaped art is framed whole, not cropped (and tall art fills a tall screen)');
+  // Film recaps: a cast roll after the title, text cards for short lines, a quick-cut montage before the cliffhanger.
+  assert(recapCardLine('Then the floor gave way.') && recapCardLine('One prison.') && !recapCardLine('At the Sky Docks a ghost claimed to be family.') && !recapCardLine(''),
+    'a short punch of a line becomes a trailer text card; a longer one stays a subtitle');
+  const stars = recapCast([{ name: 'Pippin', playerName: 'Sam', avatarUrl: 'https://x/p.png' }, { name: 'No Portrait' }, { name: 'Korra', avatarUrl: 'https://x/k.png' }]);
+  assert(stars.length === 2 && stars[0].name === 'Pippin' && stars[0].playerName === 'Sam' && stars[0].imageUrl === 'https://x/p.png' && stars[1].playerName === '',
+    'the cast roll stars the player characters that have a portrait');
+  const cuts = montageCuts(4);
+  assert(cuts.length === 8 && cuts.map(c => c.shot).join('') === '01230123' && cuts.every((c, i) => i === 0 || (c.duration < cuts[i - 1].duration && Math.abs(c.start - (cuts[i - 1].start + cuts[i - 1].duration)) < 1e-9)),
+    'the montage runs through every shot (twice, for a short reel), each cut shorter than the last');
+  assert(montageCuts(2).length === 0 && montageCuts(0).length === 0 && montageCuts(14).length === 10, 'no montage without three pictures, and never more than ten cuts');
+  const filmReel = { style: 'film', cast: stars, question: 'Will they?', narration: { duration: 20, questionDuration: 2 }, slides: montage };
+  const filmPlan = recapPlan(filmReel);
+  const comicPlan = recapPlan({ ...filmReel, style: 'comic', cast: [] });
+  assert(filmPlan.titleEnd === RECAP_TITLE_SECONDS && filmPlan.cast.count === 2 && Math.abs(filmPlan.narrationStart - (RECAP_TITLE_SECONDS + 2 * RECAP_CAST_SECONDS)) < 1e-9 && filmPlan.slides[0].start === filmPlan.narrationStart,
+    'the narrator waits for the cast roll');
+  assert(filmPlan.montage && Math.abs(filmPlan.montage.start - (filmPlan.narrationStart + 20)) < 0.01 && Math.abs(filmPlan.cliff.start - (filmPlan.montage.start + filmPlan.montage.duration)) < 1e-9,
+    'the montage sits between the last beat and the cliffhanger');
+  assert(!comicPlan.montage && !comicPlan.cast && comicPlan.narrationStart === RECAP_TITLE_SECONDS && Math.abs(comicPlan.total - recapTimings(montage, 20, { question: 'Will they?', questionSeconds: 2 }).total) < 1e-9,
+    'a comic recap with no cast roll keeps its old timeline');
   const withCliff = recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 2 });
   assert(withCliff.cliff && Math.abs(withCliff.cliff.start - (RECAP_TITLE_SECONDS + 30)) < 0.01 && withCliff.cliff.questionAt === withCliff.cliff.start + RECAP_CLIFF_SILENCE
     && withCliff.endStart > withCliff.cliff.questionAt + 2 && Math.abs(withCliff.total - (withCliff.endStart + RECAP_END_SECONDS)) < 0.01,
