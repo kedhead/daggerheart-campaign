@@ -343,27 +343,93 @@ export const RECAP_END_SECONDS = 3.6;
 export const RECAP_CLIFF_SILENCE = 0.9;
 export const RECAP_CLIFF_SECONDS = 3.6;
 
+// The cast roll: how long each "Starring…" card holds.
+export const RECAP_CAST_SECONDS = 1.6;
+export const RECAP_CAST_MAX = 6;
+
+/** The "Starring…" cards: player characters with a portrait. */
+export function recapCast(characters = []) {
+  return (characters || [])
+    .filter(c => c?.name && c.avatarUrl)
+    .slice(0, RECAP_CAST_MAX)
+    .map(c => ({ name: clean(c.name), playerName: clean(c.playerName), imageUrl: c.avatarUrl }));
+}
+
+/**
+ * Whether a line is short enough to stand alone as a trailer text card
+ * ("One prison." / "Then the floor gave way.") in place of a subtitle.
+ */
+export function recapCardLine(line) {
+  const words = clean(line).split(' ').filter(Boolean).length;
+  return words > 0 && words <= 5;
+}
+
+/**
+ * The quick-cut montage that ends a film recap: every shot again, each cut
+ * shorter than the last. Needs at least three pictures; a short reel goes
+ * round twice. Returns [{ shot, start, duration }], start from the montage's own zero.
+ */
+export function montageCuts(shots) {
+  if (!(shots >= 3)) return [];
+  const count = Math.min(10, shots >= 6 ? shots : shots * 2);
+  let at = 0;
+  return Array.from({ length: count }, (_, k) => {
+    const duration = 0.44 - 0.26 * (k / (count - 1));
+    const cut = { shot: k % shots, start: at, duration };
+    at += duration;
+    return cut;
+  });
+}
+
 /**
  * When each slide starts and how long it lasts. With narration the spoken
  * time is shared out by line length (people read long lines for longer);
- * without, each line gets a reading pace.
+ * without, each line gets a reading pace. `cast` is how many "Starring…"
+ * cards play between the title and the first beat, `montage` how many
+ * pictures the closing quick-cut montage has to work with (0 for none).
  */
-export function recapTimings(slides, narrationSeconds = 0, { question = '', questionSeconds = 0 } = {}) {
+export function recapTimings(slides, narrationSeconds = 0, { question = '', questionSeconds = 0, cast = 0, montage = 0 } = {}) {
   const lengths = slides.map(s => Math.max(12, clean(s.line).length));
   const totalChars = lengths.reduce((a, b) => a + b, 0) || 1;
   const spoken = narrationSeconds > 0 ? narrationSeconds : lengths.reduce((a, n) => a + Math.max(3.5, n / 15), 0);
-  let at = RECAP_TITLE_SECONDS;
+  const titleEnd = RECAP_TITLE_SECONDS;
+  const castCount = Math.min(RECAP_CAST_MAX, Math.max(0, cast));
+  const narrationStart = titleEnd + castCount * RECAP_CAST_SECONDS;
+  let at = narrationStart;
   const out = slides.map((s, i) => {
     const duration = narrationSeconds > 0 ? (spoken * lengths[i]) / totalChars : Math.max(3.5, lengths[i] / 15);
     const t = { start: at, duration };
     at += duration;
     return t;
   });
+  const cuts = montageCuts(montage);
+  const quick = cuts.length ? { start: at, duration: cuts[cuts.length - 1].start + cuts[cuts.length - 1].duration, cuts } : null;
+  if (quick) at += quick.duration;
   const cliff = question
     ? { start: at, questionAt: at + RECAP_CLIFF_SILENCE, duration: Math.max(RECAP_CLIFF_SECONDS, RECAP_CLIFF_SILENCE + questionSeconds + 1.4) }
     : null;
   const endStart = cliff ? cliff.start + cliff.duration : at;
-  return { slides: out, cliff, endStart, total: endStart + RECAP_END_SECONDS, narrationStart: RECAP_TITLE_SECONDS };
+  return {
+    slides: out,
+    cast: castCount ? { start: titleEnd, each: RECAP_CAST_SECONDS, count: castCount } : null,
+    montage: quick,
+    cliff,
+    endStart,
+    total: endStart + RECAP_END_SECONDS,
+    titleEnd,
+    narrationStart
+  };
+}
+
+/** The whole timeline of a recap as it is sent to the monitor: film recaps end on the montage, and a cast list adds its cards. */
+export function recapPlan(recap) {
+  const slides = recap?.slides || [];
+  return recapTimings(slides, recap?.narration?.duration || 0, {
+    question: recap?.question || '',
+    questionSeconds: recap?.narration?.questionDuration || 0,
+    cast: recap?.cast?.length || 0,
+    montage: recap?.style === 'film' ? slides.filter(sl => sl.imageUrl).length : 0
+  });
 }
 
 /**
