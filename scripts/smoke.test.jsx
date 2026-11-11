@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapCardLine, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3669,7 +3669,10 @@ section('Table cinematics');
   // Film recaps: a cast roll after the title, text cards for short lines, a quick-cut montage before the cliffhanger.
   assert(recapCardLine('Then the floor gave way.') && recapCardLine('One prison.') && !recapCardLine('At the Sky Docks a ghost claimed to be family.') && !recapCardLine(''),
     'a short punch of a line becomes a trailer text card; a longer one stays a subtitle');
-  const stars = recapCast([{ name: 'Pippin', playerName: 'Sam', avatarUrl: 'https://x/p.png' }, { name: 'No Portrait' }, { name: 'Korra', avatarUrl: 'https://x/k.png' }]);
+  const stars = recapCast([{ id: 'pip', name: 'Pippin', playerName: 'Sam', avatarUrl: 'https://x/p.png' }, { id: 'np', name: 'No Portrait' }, { id: 'kor', name: 'Korra', avatarUrl: 'https://x/k.png' }]);
+  assert(recapStarring(stars, ['pip']).map(c => c.name).join() === 'Korra' && recapStarring(stars, []).length === 2 && recapStarring(stars, ['pip', 'kor']).length === 0
+    && recapStarring(Array.from({ length: 9 }, (_, i) => ({ id: `c${i}` })), ['c0']).map(c => c.id).join() === 'c1,c2,c3,c4,c5,c6',
+    'a player who is away is left out of the cast roll, and the next one in line takes the freed place');
   assert(stars.length === 2 && stars[0].name === 'Pippin' && stars[0].playerName === 'Sam' && stars[0].imageUrl === 'https://x/p.png' && stars[1].playerName === '',
     'the cast roll stars the player characters that have a portrait');
   const cuts = montageCuts(4);

@@ -347,12 +347,17 @@ export const RECAP_CLIFF_SECONDS = 3.6;
 export const RECAP_CAST_SECONDS = 1.6;
 export const RECAP_CAST_MAX = 6;
 
-/** The "Starring…" cards: player characters with a portrait. */
+/** Everyone who can have a "Starring…" card: player characters with a portrait. */
 export function recapCast(characters = []) {
   return (characters || [])
     .filter(c => c?.name && c.avatarUrl)
-    .slice(0, RECAP_CAST_MAX)
-    .map(c => ({ name: clean(c.name), playerName: clean(c.playerName), imageUrl: c.avatarUrl }));
+    .map(c => ({ id: c.id, name: clean(c.name), playerName: clean(c.playerName), imageUrl: c.avatarUrl }));
+}
+
+/** Tonight's cards: the cast without the players who are away (by character id), up to the most the roll shows. */
+export function recapStarring(cast = [], away = []) {
+  const out = new Set(away || []);
+  return (cast || []).filter(c => !out.has(c.id)).slice(0, RECAP_CAST_MAX);
 }
 
 /**

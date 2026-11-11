@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, Wand2, RefreshCw, Clapperboard } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, recapCast, recapArtChapters, recapGallery, featuredInLine, recapShotPrompt } from './cinematicPlan';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, recapCast, recapStarring, recapArtChapters, recapGallery, featuredInLine, recapShotPrompt } from './cinematicPlan';
 import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
@@ -56,7 +56,14 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   // Film is the look unless this recap was set to the comic one.
   const style = saved?.style === 'comic' ? 'comic' : 'film';
   const cast = useMemo(() => recapCast(characters), [characters]);
-  const castRoll = (saved?.castRoll ?? true) && cast.length > 0;
+  // Players who are away tonight sit the roll out; it is remembered per recap.
+  const castAway = saved?.castAway || [];
+  const starring = recapStarring(cast, castAway);
+  const castRoll = (saved?.castRoll ?? true) && starring.length > 0;
+  const toggleStar = (id) => save({
+    castAway: castAway.includes(id) ? castAway.filter(x => x !== id) : [...castAway, id],
+    castRoll: true
+  });
 
   // The pictures a slide can use: this session's scenes first, then
   // portraits, and older sessions' scenes only when the DM picks one.
@@ -198,7 +205,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const reel = {
     title: campaign?.name || 'Our Story',
     style,
-    cast: castRoll ? cast : [],
+    cast: castRoll ? starring : [],
     endLabel,
     slides,
     question: saved?.question || '',
@@ -404,12 +411,31 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                         <option value="comic">Comic book</option>
                       </select>
                     </div>
-                    <label className={`flex items-center gap-2 text-sm pb-2 ${cast.length ? 'text-white' : 'text-lr-text-dim'}`}>
-                      <input type="checkbox" checked={castRoll} disabled={!cast.length} onChange={(e) => save({ castRoll: e.target.checked })} />
-                      {cast.length
-                        ? `Cast roll: "Starring…" ${cast.map(c => c.name).join(', ')}`
-                        : 'Cast roll (needs player characters with portraits)'}
-                    </label>
+                    <div className="flex flex-wrap items-center gap-2 pb-1.5">
+                      <label className={`flex items-center gap-2 text-sm ${cast.length ? 'text-white' : 'text-lr-text-dim'}`}>
+                        <input type="checkbox" checked={castRoll} disabled={!starring.length} onChange={(e) => save({ castRoll: e.target.checked })} />
+                        {cast.length ? 'Cast roll, starring:' : 'Cast roll (needs player characters with portraits)'}
+                      </label>
+                      {/* Tap a character to leave them out when their player is away. */}
+                      {cast.map(c => {
+                        const here = !castAway.includes(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            aria-pressed={here}
+                            title={here ? `Leave ${c.name} out tonight` : `Put ${c.name} back in`}
+                            onClick={() => toggleStar(c.id)}
+                            className={`inline-flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-full border text-xs transition ${here
+                              ? 'border-lr-accent bg-lr-accent-soft text-white'
+                              : 'border-white/10 bg-black/20 text-lr-text-dim line-through opacity-60'}`}
+                          >
+                            <img src={c.imageUrl} alt="" className={`w-5 h-5 rounded-full object-cover ${here ? '' : 'grayscale'}`} />
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
                     <p className="basis-full text-[11px] text-lr-text-dim">
                       {style === 'film'
                         ? 'Widescreen with film grain, dissolves and subtitles; short lines become big text cards, and every shot flashes by again before the cliffhanger.'
