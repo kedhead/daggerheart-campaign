@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { recapPlan, panelImages, recapArtFills, recapCardLine, recapMusicFactor } from './cinematicPlan';
+import { recapPlan, panelImages, recapArtFills, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_INTRO_VOICE_AT, RECAP_QUESTION_VOICE_DELAY } from './cinematicPlan';
 import { playWhoosh, playRiser, playSlam, audioContext, loadMusicBuffer } from './cinematicSfx';
 import './RecapReel.css';
 
@@ -28,7 +28,7 @@ const MAX_TITLE_HOLD = 6;
  *   cast?: Array<{name: string, playerName?: string, imageUrl: string}>,
  *   slides: Array<{line: string, imageUrl?: string, videoUrl?: string}>,
  *   narration?: {url: string, duration: number, introUrl?: string, questionUrl?: string, questionDuration?: number},
- *   musicUrl?: string, musicLevel?: number}} props.recap
+ *   musicUrl?: string, musicLevel?: number, sfxLevel?: number}} props.recap
  * @param {() => void} [props.onDone]
  * @param {(blocked: boolean) => void} [props.onSoundBlocked] - the browser refused to play sound until a click
  * @param {object} [props.sfx] - a createSoundPlayer() player; without one the reel uses synthesised hits
@@ -178,31 +178,41 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   // Sound: a boom and "Previously on…" under the title card, a whoosh on
   // every cut, silence for the cliffhanger, a hit on the question, then a
   // riser into the slam of tonight's card.
-  const cued = useRef({ open: false, intro: false, question: false, riser: false, slam: false, last: -2, cast: -1, cut: -1 });
+  //
+  // The effects are loud trailer hits several seconds long, and they used to
+  // land right on top of the voice: the boom over "Previously on…", a whoosh
+  // on every cut under the narrator, the slam over the spoken question. Now
+  // each voice line waits for its hit, and effects under a voice play quiet.
+  const cued = useRef({ open: false, intro: false, question: false, questionVoice: false, riser: false, slam: false, last: -2, cast: -1, cut: -1 });
+  const effects = Math.max(0, Math.min(1, recap?.sfxLevel ?? 1));
+  const narrated = !!recap?.narration?.url;
+  const questionVoiced = !!recap?.narration?.questionUrl;
   useEffect(() => {
-    const play = (cue, volume) => {
+    const play = (cue, moment, voiced = false) => {
+      const volume = recapCueVolume(moment, voiced) * effects;
+      if (volume <= 0) return;
       if (sfx) { sfx.play(cue, volume); return; }
-      if (cue === 'whoosh') playWhoosh(0.25, 0.5);
-      else if (cue === 'riser') playRiser(0.22, 1.6);
-      else playSlam(0.85);
+      if (cue === 'whoosh') playWhoosh(0.5 * volume, 0.5);
+      else if (cue === 'riser') playRiser(0.37 * volume, 1.6);
+      else playSlam(0.85 * volume);
     };
     const c = cued.current;
-    if (!c.open && t >= 0.15) { c.open = true; play('impact', 0.8); }
-    if (!c.intro && t >= 0.6 && introRef.current) { c.intro = true; introRef.current.play().catch(() => {}); }
-    if (index !== c.last && index >= 0) play(index === 0 ? 'slam' : 'whoosh', index === 0 ? 0.6 : 0.5);
+    if (!c.open && t >= 0.15) { c.open = true; play('impact', 'open'); }
+    if (!c.intro && t >= RECAP_INTRO_VOICE_AT && introRef.current) { c.intro = true; introRef.current.play().catch(() => {}); }
+    if (index !== c.last && index >= 0) play(index === 0 ? 'slam' : 'whoosh', index === 0 ? 'firstBeat' : 'cut', narrated);
     c.last = index;
-    if (castAt !== c.cast && castAt >= 0) play('whoosh', 0.4);
+    if (castAt !== c.cast && castAt >= 0) play('whoosh', 'cast');
     c.cast = castAt;
-    if (cutAt !== c.cut && cutAt >= 0) play(cutAt === 0 ? 'impact' : 'whoosh', cutAt === 0 ? 0.7 : 0.3);
+    if (cutAt !== c.cut && cutAt >= 0) play(cutAt === 0 ? 'impact' : 'whoosh', cutAt === 0 ? 'montageStart' : 'montageCut');
     c.cut = cutAt;
-    if (!c.question && showQuestion) {
-      c.question = true;
-      play('slam', 1);
+    if (!c.question && showQuestion) { c.question = true; play('slam', 'question'); }
+    if (!c.questionVoice && showQuestion && t >= cliff.questionAt + RECAP_QUESTION_VOICE_DELAY) {
+      c.questionVoice = true;
       questionRef.current?.play().catch(() => {});
     }
-    if (!c.riser && t >= timing.endStart - (sfx ? 2.8 : 1.6)) { c.riser = true; play('riser', 0.6); }
-    if (!c.slam && onEnd) { c.slam = true; play('impact', 1); }
-  }, [index, castAt, cutAt, t, onEnd, showQuestion, timing.endStart, sfx]);
+    if (!c.riser && t >= timing.endStart - (sfx ? 2.8 : 1.6)) { c.riser = true; play('riser', 'riser', questionVoiced); }
+    if (!c.slam && onEnd) { c.slam = true; play('impact', 'end'); }
+  }, [index, castAt, cutAt, t, onEnd, showQuestion, cliff, timing.endStart, sfx, effects, narrated, questionVoiced]);
 
   // Music: well under the narrator, up a little over the title card, cut dead
   // for the cliffhanger. Music tracks are mastered far louder than speech, so
@@ -211,7 +221,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const speaking = !!recap?.narration && t >= timing.narrationStart && cutAt < 0;
   // "Previously on…" is a voice line too: the music opens the reel, then
   // drops under it for the rest of the title card.
-  const introSpeaking = !!recap?.narration?.introUrl && t >= 0.45 && t < timing.titleEnd;
+  const introSpeaking = !!recap?.narration?.introUrl && t >= RECAP_INTRO_VOICE_AT - 0.3 && t < timing.titleEnd;
   // The montage has no narrator over it, so the music swells for it.
   const target = inCliff || onEnd ? 0 : level * recapMusicFactor({ speaking: speaking || introSpeaking, montage: cutAt >= 0 });
   musicLevelRef.current = target;

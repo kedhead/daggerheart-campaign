@@ -411,7 +411,7 @@ export function recapTimings(slides, narrationSeconds = 0, { question = '', ques
   const quick = cuts.length ? { start: at, duration: cuts[cuts.length - 1].start + cuts[cuts.length - 1].duration, cuts } : null;
   if (quick) at += quick.duration;
   const cliff = question
-    ? { start: at, questionAt: at + RECAP_CLIFF_SILENCE, duration: Math.max(RECAP_CLIFF_SECONDS, RECAP_CLIFF_SILENCE + questionSeconds + 1.4) }
+    ? { start: at, questionAt: at + RECAP_CLIFF_SILENCE, duration: Math.max(RECAP_CLIFF_SECONDS, RECAP_CLIFF_SILENCE + RECAP_QUESTION_VOICE_DELAY + questionSeconds + 1.4) }
     : null;
   const endStart = cliff ? cliff.start + cliff.duration : at;
   return {
@@ -424,6 +424,31 @@ export function recapTimings(slides, narrationSeconds = 0, { question = '', ques
     titleEnd,
     narrationStart
   };
+}
+
+// The voice lines wait for the hit before them to ring out: "Previously on…"
+// after the opening boom, the cliffhanger question after its slam.
+export const RECAP_INTRO_VOICE_AT = 1.3;
+export const RECAP_QUESTION_VOICE_DELAY = 0.7;
+
+/**
+ * How loud each trailer sound effect plays (0 to 1). The effects are long,
+ * loud trailer hits, so any that lands while a voice is speaking (`voiced`)
+ * plays far quieter; the ones in the clear keep their punch.
+ */
+export function recapCueVolume(moment, voiced = false) {
+  const levels = {
+    open: [0.6, 0.6], // the boom on the title card, before "Previously on…"
+    firstBeat: [0.6, 0.22], // the slam as the first beat lands
+    cut: [0.5, 0.14], // the whoosh on every later cut
+    cast: [0.35, 0.35],
+    montageStart: [0.7, 0.7],
+    montageCut: [0.3, 0.3],
+    question: [0.8, 0.8], // the slam the question lands on; its voice follows
+    riser: [0.6, 0.28], // rises under the end of the spoken question
+    end: [1, 1]
+  }[moment];
+  return levels ? levels[voiced ? 1 : 0] : 0;
 }
 
 /**

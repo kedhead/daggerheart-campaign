@@ -26,7 +26,7 @@ const SHOT_MOTION = 'Slow cinematic camera push-in while the characters move and
  * moment after the last move. (It used to save only on "pointer up", which a
  * phone or tablet does not always send for a slider, so the setting was lost.)
  */
-function VolumeSlider({ level, onCommit }) {
+function VolumeSlider({ label = 'Volume', level, onCommit }) {
   const [value, setValue] = useState(Math.round(level * 100));
   const timer = useRef(null);
   const commit = useRef(onCommit);
@@ -39,7 +39,7 @@ function VolumeSlider({ level, onCommit }) {
   };
   return (
     <label className="flex items-center gap-2 mt-2 text-[11px] text-lr-text-dim">
-      Volume
+      <span className="w-12 shrink-0">{label}</span>
       <input type="range" min="0" max="100" step="5" value={value} onChange={(e) => change(Number(e.target.value))} className="flex-1" />
       <span className="w-9 text-right tabular-nums">{value}%</span>
     </label>
@@ -78,6 +78,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const endLabel = saved?.endLabel ?? `Session ${number + 1}`;
   const musicTrack = saved?.musicTrack ?? DEFAULT_TRACK;
   const musicLevel = saved?.musicLevel ?? 0.6;
+  const sfxLevel = saved?.sfxLevel ?? 1;
   // Film is the look unless this recap was set to the comic one.
   const style = saved?.style === 'comic' ? 'comic' : 'film';
   const cast = useMemo(() => recapCast(characters), [characters]);
@@ -236,7 +237,8 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     question: saved?.question || '',
     narration: saved?.narration || null,
     musicUrl: musicTrack ? getTrackUrl(musicTrack) : '',
-    musicLevel
+    musicLevel,
+    sfxLevel
   };
   const seconds = Math.round(recapPlan(reel).total);
 
@@ -493,8 +495,10 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                         ))}
                       </select>
                       {musicTrack && (
-                        <VolumeSlider key={sessionId} level={musicLevel} onCommit={(musicLevel) => save({ musicLevel })} />
+                        <VolumeSlider key={sessionId} label="Music" level={musicLevel} onCommit={(musicLevel) => save({ musicLevel })} />
                       )}
+                      <VolumeSlider key={`${sessionId}-sfx`} label="Effects" level={sfxLevel} onCommit={(sfxLevel) => save({ sfxLevel })} />
+                      <p className="text-[11px] mt-1 text-lr-text-dim">Effects are the booms, whooshes and slams. Both drop under the narrator on their own.</p>
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim mb-1">End card</label>

@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3690,6 +3690,11 @@ section('Table cinematics');
     'a comic recap with no cast roll keeps its old timeline');
   assert(recapMusicFactor({ speaking: true }) < recapMusicFactor() / 4 && recapMusicFactor({ montage: true }) > recapMusicFactor() && recapMusicFactor({ speaking: true, montage: true }) === recapMusicFactor({ montage: true }),
     'the music sits well under any voice and swells for the montage');
+  assert(recapCueVolume('cut', true) < recapCueVolume('cut') / 3 && recapCueVolume('firstBeat', true) < recapCueVolume('firstBeat') / 2 && recapCueVolume('riser', true) < recapCueVolume('riser')
+    && recapCueVolume('end', true) === 1 && recapCueVolume('nonsense') === 0,
+    'sound effects that land under a voice play far quieter; the ones in the clear keep their punch');
+  assert(recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 4 }).cliff.duration >= RECAP_CLIFF_SILENCE + RECAP_QUESTION_VOICE_DELAY + 4 + 1.4 - 1e-9,
+    'the cliffhanger leaves room for the question to be spoken after its slam');
   const withCliff = recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 2 });
   assert(withCliff.cliff && Math.abs(withCliff.cliff.start - (RECAP_TITLE_SECONDS + 30)) < 0.01 && withCliff.cliff.questionAt === withCliff.cliff.start + RECAP_CLIFF_SILENCE
     && withCliff.endStart > withCliff.cliff.questionAt + 2 && Math.abs(withCliff.total - (withCliff.endStart + RECAP_END_SECONDS)) < 0.01,
