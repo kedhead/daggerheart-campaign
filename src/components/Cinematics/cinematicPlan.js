@@ -426,6 +426,16 @@ export function recapTimings(slides, narrationSeconds = 0, { question = '', ques
   };
 }
 
+/**
+ * How loud the music plays, as a share of the level the DM set. Tracks are
+ * mastered far louder than speech, so under any voice (the narrator, or the
+ * "Previously on…" line over the title) it drops right back.
+ */
+export function recapMusicFactor({ speaking = false, montage = false } = {}) {
+  if (montage) return 0.85;
+  return speaking ? 0.12 : 0.55;
+}
+
 /** The whole timeline of a recap as it is sent to the monitor: film recaps end on the montage, and a cast list adds its cards. */
 export function recapPlan(recap) {
   const slides = recap?.slides || [];

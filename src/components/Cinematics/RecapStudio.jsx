@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, Wand2, RefreshCw, Clapperboard } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
@@ -20,6 +20,31 @@ const MUSIC_THEMES = ['mystical', 'exploration', 'tension', 'battle', 'victory',
 // One animated shot: about six seconds on the first video model, at roughly three cents a second.
 const CLIP_COST = 0.18;
 const SHOT_MOTION = 'Slow cinematic camera push-in while the characters move and act out the moment, keep the exact art style, no text.';
+
+/**
+ * The music volume. It keeps its own value while it is dragged and saves a
+ * moment after the last move. (It used to save only on "pointer up", which a
+ * phone or tablet does not always send for a slider, so the setting was lost.)
+ */
+function VolumeSlider({ level, onCommit }) {
+  const [value, setValue] = useState(Math.round(level * 100));
+  const timer = useRef(null);
+  const commit = useRef(onCommit);
+  commit.current = onCommit;
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const change = (next) => {
+    setValue(next);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => commit.current(next / 100), 350);
+  };
+  return (
+    <label className="flex items-center gap-2 mt-2 text-[11px] text-lr-text-dim">
+      Volume
+      <input type="range" min="0" max="100" step="5" value={value} onChange={(e) => change(Number(e.target.value))} className="flex-1" />
+      <span className="w-9 text-right tabular-nums">{value}%</span>
+    </label>
+  );
+}
 
 const sessionLabel = (s, n) => `${n ? `Session ${n}` : 'Session'}${s?.title ? `: ${s.title}` : ''}`;
 
@@ -468,20 +493,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                         ))}
                       </select>
                       {musicTrack && (
-                        <label className="flex items-center gap-2 mt-2 text-[11px] text-lr-text-dim">
-                          Volume
-                          <input
-                            key={`${sessionId}-vol-${musicLevel}`}
-                            type="range"
-                            min="0"
-                            max="100"
-                            defaultValue={Math.round(musicLevel * 100)}
-                            // Saved when the slider is let go, not on every step.
-                            onPointerUp={(e) => save({ musicLevel: Number(e.currentTarget.value) / 100 })}
-                            onKeyUp={(e) => save({ musicLevel: Number(e.currentTarget.value) / 100 })}
-                            className="flex-1"
-                          />
-                        </label>
+                        <VolumeSlider key={sessionId} level={musicLevel} onCommit={(musicLevel) => save({ musicLevel })} />
                       )}
                     </div>
                     <div>
