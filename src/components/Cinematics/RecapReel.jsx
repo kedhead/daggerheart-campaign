@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { recapPlan, panelImages, recapArtFills, recapCardLine } from './cinematicPlan';
+import { recapPlan, panelImages, recapArtFills, recapCardLine, recapMusicFactor } from './cinematicPlan';
 import { playWhoosh, playRiser, playSlam, audioContext } from './cinematicSfx';
 import './RecapReel.css';
 
@@ -163,8 +163,11 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   // under the voice it drops to about a fifth of its title-card level.
   const level = Math.max(0, Math.min(1, recap?.musicLevel ?? 0.6));
   const speaking = !!recap?.narration && t >= timing.narrationStart && cutAt < 0;
+  // "Previously on…" is a voice line too: the music opens the reel, then
+  // drops under it for the rest of the title card.
+  const introSpeaking = !!recap?.narration?.introUrl && t >= 0.45 && t < timing.titleEnd;
   // The montage has no narrator over it, so the music swells for it.
-  const target = inCliff || onEnd ? 0 : level * (cutAt >= 0 ? 0.85 : speaking ? 0.12 : 0.55);
+  const target = inCliff || onEnd ? 0 : level * recapMusicFactor({ speaking: speaking || introSpeaking, montage: cutAt >= 0 });
   useEffect(() => {
     const music = musicRef.current;
     if (!music) return;
