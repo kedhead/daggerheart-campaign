@@ -13,6 +13,43 @@ export function audioContext() {
   return shared;
 }
 
+// Decoded music, by URL, so replaying a recap does not download it again.
+const musicBuffers = new Map();
+// The first few minutes of a track is all a recap needs.
+const MUSIC_BYTES = 3_000_000;
+
+function decode(ctx, bytes) {
+  // Older Safari only takes the callback form.
+  return new Promise((resolve, reject) => {
+    const done = ctx.decodeAudioData(bytes, resolve, reject);
+    if (done?.then) done.then(resolve, reject);
+  });
+}
+
+/**
+ * A music track as decoded sound, ready to play through a volume control the
+ * device cannot ignore. (An audio element's own volume is ignored on iPhones
+ * and iPads and on some TV browsers, which play it at full blast.)
+ * Rejects if the track cannot be fetched or decoded in time.
+ */
+export function loadMusicBuffer(ctx, url, { timeoutMs = 12000, fetchImpl = fetch } = {}) {
+  if (musicBuffers.has(url)) return musicBuffers.get(url);
+  const abort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = setTimeout(() => abort?.abort(), timeoutMs);
+  const get = async (headers) => {
+    const res = await fetchImpl(url, { headers, signal: abort?.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return decode(ctx, await res.arrayBuffer());
+  };
+  const loading = get({ Range: `bytes=0-${MUSIC_BYTES - 1}` })
+    // A host that refuses the range, or a cut that will not decode: take the whole file.
+    .catch(() => get(undefined))
+    .finally(() => clearTimeout(timer));
+  musicBuffers.set(url, loading);
+  loading.catch(() => musicBuffers.delete(url));
+  return loading;
+}
+
 function noiseBuffer(ctx, seconds) {
   const buf = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * seconds)), ctx.sampleRate);
   const data = buf.getChannelData(0);
