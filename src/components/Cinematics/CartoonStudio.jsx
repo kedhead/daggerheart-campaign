@@ -1,5 +1,5 @@
 import { Clapperboard, Film, ImageIcon, Loader2, MessageSquare, PenLine, Trash2, Wand2 } from 'lucide-react';
-import { cartoonNeeds, cartoonNarration, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, voiceForSpeaker } from './cinematicPlan';
+import { cartoonNeeds, cartoonNarration, cartoonShotText, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, voiceForSpeaker } from './cinematicPlan';
 import { writeStoryboard, narrate, animateToClip, textProvider } from '../../services/cinematicsGenerator';
 import { CHARACTER_VOICES, RECAP_VOICE_KEY } from '../Storybook/narratorVoices';
 
@@ -59,12 +59,11 @@ export default function CartoonStudio({
   const draw = (shot) => drawScene({
     id: `recap_${session.id}_${shot.id}_${stamp()}`,
     prompt: cartoonShotPrompt(shot),
-    about: `${shot.description} ${(shot.featuring || []).join(' ')}`
+    about: cartoonShotText(shot)
   });
-  const who = (shot) => `${shot.description} ${(shot.featuring || []).join(' ')}`;
   // The video model is told what moves, by role, not by a name it might know from elsewhere.
   const animate = (shot, imageUrl, onStatus) => animateToClip({
-    campaignId, imageUrl, prompt: plainNames(cartoonMotionPrompt(shot), who(shot)), fileName: `recap-${session.id}-${shot.id}-${stamp()}`, onStatus
+    campaignId, imageUrl, prompt: plainNames(cartoonMotionPrompt(shot), cartoonShotText(shot)), fileName: `recap-${session.id}-${shot.id}-${stamp()}`, onStatus
   });
 
   // Voices, then drawings, then clips. Each result is saved as it lands, so a

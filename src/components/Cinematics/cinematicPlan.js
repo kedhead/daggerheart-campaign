@@ -283,7 +283,7 @@ export function featuredInLine(line, { characters = [], npcs = [], adversaries =
 /** The prompt for a fresh recap shot. */
 export function recapShotPrompt(description) {
   const what = clip(description, 400);
-  return `A single dramatic cinematic illustration of this moment from the story: ${what} Wide shot, strong composition and lighting, the characters clearly acting it out. No text, captions or speech bubbles.`;
+  return `A single dramatic cinematic illustration of this moment from the story: ${what} Wide shot, strong composition and lighting, with anyone it mentions clearly acting it out. No text, captions or speech bubbles.`;
 }
 
 /**
@@ -580,10 +580,19 @@ export function parseStoryboard(text, beats = [], stamp = '', known = []) {
   return out;
 }
 
+/**
+ * The text that says who is in a shot: what it shows and how it is framed.
+ * Not its "featuring" list: the storyboard tends to list the whole party on
+ * a shot of an empty ruin, and drawing from that put them in the picture.
+ */
+export function cartoonShotText(shot) {
+  return `${clean(shot?.description)} ${clean(shot?.camera)}`.trim();
+}
+
 /** What to draw for a shot. */
 export function cartoonShotPrompt(shot) {
   const what = clip(shot?.description, 400);
-  return `A single frame from an animated film: ${shot?.camera ? `${clip(shot.camera, 90)}. ` : ''}${what} Widescreen 16:9 composition, cinematic lighting, the characters caught mid-action. No text, captions or speech bubbles.`;
+  return `A single frame from an animated film: ${shot?.camera ? `${clip(shot.camera, 90)}. ` : ''}${what} Widescreen 16:9 composition, cinematic lighting, the moment caught mid-motion. No text, captions or speech bubbles.`;
 }
 
 /** How a shot's still should move. */
@@ -749,7 +758,8 @@ export function withoutNames(text, cast = []) {
 export function groundShotPrompt(prompt, cast = []) {
   const base = withoutNames(prompt, cast).trim();
   if (!cast.length) {
-    return `${base} No named characters appear: show only what the description says, and add no people it does not mention.`;
+    // A shot of a place stays a shot of a place: an image model fills an empty scene with adventurers unless told not to.
+    return `${base} Nobody from the story is in this shot. Show only what the description says: if it mentions no person or creature, the scene is empty of people and creatures.`;
   }
   const who = cast.map(c => {
     const seen = c.ref ? `drawn exactly as in reference image ${c.ref}` : '';
