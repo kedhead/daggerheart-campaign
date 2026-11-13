@@ -3777,9 +3777,12 @@ section('Table cinematics');
   // Scenery: a shot with nobody named and no word for a person or creature is a place, and is drawn as one.
   const ruinText = cartoonShotText(ruin);
   assert(shotIsScenery(ruinText, []) && shotIsScenery('Ancient stone tombs loom in shadow, carved with arcane sigils. Wide establishing shot, slow pan across weathered crypts', [])
-    && !shotIsScenery('A hooded figure waits by the tombs.', []) && !shotIsScenery('Soldiers pour through the gate.', []) && !shotIsScenery('Torchlight on a hand gripping a ledge.', [])
+    && !shotIsScenery('A hooded figure waits by the tombs.', []) && !shotIsScenery('Soldiers pour through the gate.', [])
     && !shotIsScenery('They run for the docks.', []) && !shotIsScenery(ruinText, [{ id: 'pip' }]),
-    'a shot is scenery only when it names nobody and mentions no person, creature or body part');
+    'a shot is scenery when it names nobody and does not plainly mention people or creatures');
+  assert(shotIsScenery('The tombs of forgotten kings, carved faces watching from the walls, bodies long turned to dust.', [])
+    && shotIsScenery('Soldiers pour through the gate.', [], true) && !shotIsScenery(ruinText, [], false) && !shotIsScenery(ruinText, [{ id: 'pip' }], true),
+    'kings and carved faces in a tomb are scenery; the DM can tick or untick it, but a shot that names a character is never scenery');
   const sceneryPrompt = groundShotPrompt(cartoonShotPrompt(ruin), [], { scenery: true });
   assert(/shot of the place itself, deserted/.test(sceneryPrompt) && /No people, no characters, no creatures/.test(sceneryPrompt) && !/Nobody from the story/.test(sceneryPrompt)
     && /Nobody from the story/.test(groundShotPrompt('Soldiers pour through the gate.', [], { scenery: false })),

@@ -159,11 +159,11 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const castOf = (text) => shotCast(text, { characters, npcs, adversaries }, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '' });
   const plainNames = (text, about = text) => withoutNames(text, castOf(about));
 
-  const drawScene = async ({ id, prompt, about }) => {
+  const drawScene = async ({ id, prompt, about, scenery: choice }) => {
     const chapter = artChapters[0] || null;
     const cast = castOf(about);
     // A shot that names nobody and mentions no person or creature is a place: it is drawn empty.
-    const scenery = shotIsScenery(about, cast);
+    const scenery = shotIsScenery(about, cast, choice);
     const scene = await regenerateScene({
       scene: { id, prompt: groundShotPrompt(prompt, cast, { scenery }), featuredEntityIds: cast.map(c => c.id), scenery },
       chapter,
@@ -512,6 +512,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                       npcs={npcs}
                       drawScene={drawScene}
                       plainNames={plainNames}
+                      castOf={castOf}
                       adversaries={adversaries}
                       voiceKey={voiceKey}
                       getEffectiveKey={getEffectiveKey}

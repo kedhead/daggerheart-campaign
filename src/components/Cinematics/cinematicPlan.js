@@ -751,15 +751,20 @@ export function withoutNames(text, cast = []) {
   return out.replace(/(^|[.!?]\s+)the /g, '$1The ');
 }
 
-// Words that mean a shot has someone or something alive in it, named or not.
-const BEING_WORDS = /\b(?:he|she|they|them|his|her|their|who|someone|somebody|anyone|everyone|people|person|persons|man|men|woman|women|boy|girl|child|children|figure|figures|silhouettes?|crowds?|party|heroe?s?|adventurers?|companions?|friends?|allies|ally|strangers?|travell?ers?|villagers?|townsfolk|guards?|soldiers?|knights?|warriors?|army|armies|troops?|bandits?|thieves|thief|rogues?|robbers?|merchants?|sailors?|crew|priests?|cultists?|wizards?|mages?|witch(?:es)?|kings?|queens?|princes?|princess(?:es)?|lords?|ladies|lady|elders?|prisoners?|captives?|ghosts?|spirits?|spect(?:er|re)s?|wraiths?|undead|skeletons?|zombies?|corpses?|bod(?:y|ies)|creatures?|monsters?|beasts?|dragons?|demons?|giants?|goblins?|orcs?|wolves|wolf|horses?|riders?|birds?|ravens?|crows?|rats?|hands?|faces?|eyes?|fingers?|fists?|footsteps?|voices?)\b/i;
+// Words that plainly put living beings in a shot, named or not. Kept narrow on
+// purpose: "the tombs of forgotten kings" and "carved faces" are scenery.
+const BEING_WORDS = /\b(?:he|she|they|someone|somebody|people|person|persons|man|men|woman|women|child|children|figures?|silhouettes?|crowds?|party|heroes|adventurers?|villagers?|townsfolk|guards?|soldiers?|knights?|warriors?|army|armies|troops?|bandits?|thieves|cultists?|sailors?|crew|prisoners?|creatures?|monsters?|beasts?|dragons?|demons?|goblins?|wolves|wolf|horses?|riders?)\b/i;
 
 /**
- * Whether a shot is scenery: a place, with nobody from the campaign named in
- * it and no word for a person or creature in its text.
+ * Whether a shot is scenery: a place, drawn with nobody in it. A shot that
+ * names someone from the campaign never is. Otherwise the DM's own choice
+ * (`choice`: true or false) decides; without one, a shot is scenery unless
+ * its text plainly mentions people or creatures.
  */
-export function shotIsScenery(text, cast = []) {
-  return !cast.length && !BEING_WORDS.test(clean(text));
+export function shotIsScenery(text, cast = [], choice = undefined) {
+  if (cast.length) return false;
+  if (choice === true || choice === false) return choice;
+  return !BEING_WORDS.test(clean(text));
 }
 
 /**

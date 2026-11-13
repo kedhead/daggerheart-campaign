@@ -1,5 +1,5 @@
 import { Clapperboard, Film, ImageIcon, Loader2, MessageSquare, PenLine, Trash2, Wand2 } from 'lucide-react';
-import { cartoonNeeds, cartoonNarration, cartoonShotText, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, voiceForSpeaker } from './cinematicPlan';
+import { cartoonNeeds, cartoonNarration, cartoonShotText, shotIsScenery, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, voiceForSpeaker } from './cinematicPlan';
 import { writeStoryboard, narrate, animateToClip, textProvider } from '../../services/cinematicsGenerator';
 import { CHARACTER_VOICES, RECAP_VOICE_KEY } from '../Storybook/narratorVoices';
 
@@ -33,10 +33,11 @@ async function pool(items, job) {
  * @param {(label: string, fn: () => Promise) => Promise} props.run - runs a job with the studio's busy state and error toast
  * @param {(args: {id: string, prompt: string, about: string}) => Promise<string>} props.drawScene - draws a picture, returns its URL
  * @param {(text: string, about?: string) => string} [props.plainNames] - swaps character names in a prompt for plain labels
+ * @param {(text: string) => Array<{id: string, name: string}>} [props.castOf] - the campaign's people named in a shot's text
  */
 export default function CartoonStudio({
   recap, save, run, busy, setBusy, notify, campaign, session, sessions, chapters,
-  characters, npcs, adversaries = [], drawScene, plainNames = (t) => t, voiceKey, getEffectiveKey
+  characters, npcs, adversaries = [], drawScene, plainNames = (t) => t, castOf = () => [], voiceKey, getEffectiveKey
 }) {
   const campaignId = campaign?.id;
   const slides = recap.slides || [];
@@ -59,7 +60,8 @@ export default function CartoonStudio({
   const draw = (shot) => drawScene({
     id: `recap_${session.id}_${shot.id}_${stamp()}`,
     prompt: cartoonShotPrompt(shot),
-    about: cartoonShotText(shot)
+    about: cartoonShotText(shot),
+    scenery: shot.scenery
   });
   // The video model is told what moves, by role, not by a name it might know from elsewhere.
   const animate = (shot, imageUrl, onStatus) => animateToClip({
@@ -240,6 +242,22 @@ export default function CartoonStudio({
                       className="w-full p-1.5 rounded bg-black/20 border border-white/10 text-white text-xs resize-y"
                     />
                   )}
+                  {/* Who the picture will show, so nobody turns up unannounced. */}
+                  {(() => {
+                    const cast = castOf(cartoonShotText(shot));
+                    if (cast.length) {
+                      return <p className="text-[11px] text-lr-text-dim">In this shot: <span className="text-white">{cast.map(c => c.name).join(', ')}</span>, and nobody else.</p>;
+                    }
+                    const scenery = shotIsScenery(cartoonShotText(shot), cast, shot.scenery);
+                    return (
+                      <label className="flex items-center gap-1.5 text-[11px] text-lr-text-dim">
+                        <input type="checkbox" checked={scenery} disabled={!!busy} onChange={(e) => update(shot.id, { scenery: e.target.checked })} />
+                        {scenery
+                          ? 'Scenery only: drawn with no people or creatures. To put someone in, name them in the description.'
+                          : 'May show unnamed people or creatures the description mentions. Tick for scenery only.'}
+                      </label>
+                    );
+                  })()}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     {shot.camera && shot.kind !== 'line' && <span className="text-[11px] text-lr-text-dim italic">{shot.camera}</span>}
                     {shot.kind === 'line' && <span className="text-[11px] text-lr-text-dim">{shot.audioUrl ? `Spoken (${Math.round(shot.duration || 0)}s)` : 'Not recorded yet'}</span>}
