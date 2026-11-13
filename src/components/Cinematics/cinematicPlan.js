@@ -751,12 +751,27 @@ export function withoutNames(text, cast = []) {
   return out.replace(/(^|[.!?]\s+)the /g, '$1The ');
 }
 
+// Words that mean a shot has someone or something alive in it, named or not.
+const BEING_WORDS = /\b(?:he|she|they|them|his|her|their|who|someone|somebody|anyone|everyone|people|person|persons|man|men|woman|women|boy|girl|child|children|figure|figures|silhouettes?|crowds?|party|heroe?s?|adventurers?|companions?|friends?|allies|ally|strangers?|travell?ers?|villagers?|townsfolk|guards?|soldiers?|knights?|warriors?|army|armies|troops?|bandits?|thieves|thief|rogues?|robbers?|merchants?|sailors?|crew|priests?|cultists?|wizards?|mages?|witch(?:es)?|kings?|queens?|princes?|princess(?:es)?|lords?|ladies|lady|elders?|prisoners?|captives?|ghosts?|spirits?|spect(?:er|re)s?|wraiths?|undead|skeletons?|zombies?|corpses?|bod(?:y|ies)|creatures?|monsters?|beasts?|dragons?|demons?|giants?|goblins?|orcs?|wolves|wolf|horses?|riders?|birds?|ravens?|crows?|rats?|hands?|faces?|eyes?|fingers?|fists?|footsteps?|voices?)\b/i;
+
+/**
+ * Whether a shot is scenery: a place, with nobody from the campaign named in
+ * it and no word for a person or creature in its text.
+ */
+export function shotIsScenery(text, cast = []) {
+  return !cast.length && !BEING_WORDS.test(clean(text));
+}
+
 /**
  * A picture prompt the image model cannot misread: names swapped for labels,
- * then who each label is, and that nobody else is in the shot.
+ * then who each label is, and that nobody else is in the shot. With
+ * `scenery`, the shot is a place and the prompt says it is empty.
  */
-export function groundShotPrompt(prompt, cast = []) {
+export function groundShotPrompt(prompt, cast = [], { scenery = false } = {}) {
   const base = withoutNames(prompt, cast).trim();
+  if (scenery && !cast.length) {
+    return `${base} This is a shot of the place itself, deserted: architecture, landscape, light and weather only. No people, no characters, no creatures, no figures of any size anywhere in the frame.`;
+  }
   if (!cast.length) {
     // A shot of a place stays a shot of a place: an image model fills an empty scene with adventurers unless told not to.
     return `${base} Nobody from the story is in this shot. Show only what the description says: if it mentions no person or creature, the scene is empty of people and creatures.`;

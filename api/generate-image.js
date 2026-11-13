@@ -13,7 +13,7 @@
 import { requireUser, bearerToken, ALLOWED_HEADERS } from './_lib/auth.js';
 import { buildMapPrompt, buildRefinePrompt, modelChain, runModelChain, readMapRequest, mapStoragePath } from './_lib/battleMap.js';
 import { uploadToStorage, isAllowedAssetUrl } from './_lib/bookRender.js';
-import { ART_STYLE_PREAMBLES, applyArtStyle, applyMapArtStyle } from './_lib/artStyle.js';
+import { ART_STYLE_PREAMBLES, applyArtStyle, applyMapArtStyle, SCENERY_DIRECTIVE, sceneryStyle } from './_lib/artStyle.js';
 import { isMature, MATURE_IMAGE_GUIDANCE } from './_lib/contentRating.js';
 import { runNanoBanana, looksLikeHtml, replicateErrorReason } from './_lib/replicateImage.js';
 import { videoCandidates, shouldTryNextVideoModel, videoUrlFromOutput } from './_lib/videoChain.js';
@@ -84,6 +84,7 @@ export default async function handler(req, res) {
       gameSystem,             // optional: for storybook-* types ('starwarsd6' swaps style)
       imageModel,             // optional: 'nano-banana' | 'gpt-image-2' (or legacy 'gpt-image-1') | 'flux-pro' | '' (OpenAI fallback)
       referenceImages,        // optional: array of image URLs to use as likeness reference
+      scenery = false,        // optional: storybook-scene only: a place with nobody in it
       artStyle,               // optional: the campaign's art style key, applied to every image type
       artStyleCustom,         // optional: the campaign's own style text when artStyle is 'custom'
       apiKey: rawClientKey   // optional client-provided key (used by portrait callers)
@@ -177,16 +178,19 @@ export default async function handler(req, res) {
     // --- Storybook mode: illustrated style images ---
     if (type === 'storybook-scene' || type === 'storybook-portrait') {
       const presets = gameSystem === 'starwarsd6' ? ART_STYLE_PREAMBLES.scifi : ART_STYLE_PREAMBLES.fantasy;
-      const preamble = (styleKey && styleKey !== 'custom' && presets[styleKey])
+      const stylePreamble = (styleKey && styleKey !== 'custom' && presets[styleKey])
         || (styleKey && styleKey.length > 6 ? styleKey : null) // treat as custom preamble if long
         || presets.watercolor;
+      // A place with nobody in it: say so first, and do not let the style ask for figures.
+      const emptyScene = scenery === true && type === 'storybook-scene';
+      const preamble = emptyScene ? sceneryStyle(stylePreamble) : stylePreamble;
 
-      const fullPromptBase = `${preamble}. ${prompt}${mature ? ` ${MATURE_IMAGE_GUIDANCE}` : ''}`;
+      const fullPromptBase = `${emptyScene ? SCENERY_DIRECTIVE : ''}${preamble}. ${prompt}${mature ? ` ${MATURE_IMAGE_GUIDANCE}` : ''}`;
       const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
       const imageSize = validSizes.includes(size) ? size : '1024x1024';
 
       const replicateKey = process.env.REPLICATE_API_TOKEN;
-      const refs = Array.isArray(referenceImages) ? referenceImages.filter(Boolean) : [];
+      const refs = emptyScene ? [] : (Array.isArray(referenceImages) ? referenceImages.filter(Boolean) : []);
 
       // When we have reference images we prepend a strong likeness directive
       // BEFORE the style preamble so the model treats the references as the

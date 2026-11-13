@@ -53,9 +53,12 @@ export function stripAppendedClauses(prompt) {
  * @param {boolean} opts.hasReferenceImages   - whether portraits are attached to THIS call
  * @param {string[]} [opts.featuredDescriptions] - written descriptions, used when there are no references
  * @param {Array<{ name: string, look: string }>} [opts.currentStates] - featured characters who look different now
+ * @param {boolean} [opts.scenery] - a place with nobody in it: no clause that speaks of "the characters" is added
  */
-export function composeScenePrompt({ prompt, hasReferenceImages, featuredDescriptions = [], currentStates = [] }) {
+export function composeScenePrompt({ prompt, hasReferenceImages, featuredDescriptions = [], currentStates = [], scenery = false }) {
   const base = stripAppendedClauses(prompt);
+  // "Depict only the characters described above" tells the model there are characters.
+  if (scenery) return base;
   const featured = hasReferenceImages
     ? REFERENCE_CLAUSE
     : featuredDescriptions.length

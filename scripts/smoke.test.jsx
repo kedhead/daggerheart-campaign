@@ -29,7 +29,7 @@ import { generateOpenAIImage } from '../api/_lib/openaiImage.js';
 import { runNanoBanana, replicateErrorReason, isTransientReplicateError } from '../api/_lib/replicateImage.js';
 import { videoCandidates, shouldTryNextVideoModel, videoUrlFromOutput, H3_VIDEO_MODEL } from '../api/_lib/videoChain.js';
 import { setContentIntensity, contentHeaders } from '../src/services/contentRating.js';
-import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle } from '../api/_lib/artStyle.js';
+import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle, SCENERY_DIRECTIVE, sceneryStyle, ART_STYLE_PREAMBLES } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
 import { withoutUndefined } from '../src/utils/withoutUndefined.js';
@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, shotCast, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, shotCast, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3774,6 +3774,23 @@ section('Table cinematics');
   assert(shotCast(cartoonShotText(ruin), roster, looks).length === 0 && !/characters/.test(cartoonShotPrompt(ruin)) && !/characters/.test(recapShotPrompt('The empty docks at dawn.'))
     && shotCast(cartoonShotText({ description: 'A hand grips a ledge.', camera: "Close-up on Pippin's hand" }), roster, looks)[0]?.id === 'pip',
     'a shot of an empty place is drawn empty, whoever the storyboard listed on it; someone named only in the framing is still in the shot');
+  // Scenery: a shot with nobody named and no word for a person or creature is a place, and is drawn as one.
+  const ruinText = cartoonShotText(ruin);
+  assert(shotIsScenery(ruinText, []) && shotIsScenery('Ancient stone tombs loom in shadow, carved with arcane sigils. Wide establishing shot, slow pan across weathered crypts', [])
+    && !shotIsScenery('A hooded figure waits by the tombs.', []) && !shotIsScenery('Soldiers pour through the gate.', []) && !shotIsScenery('Torchlight on a hand gripping a ledge.', [])
+    && !shotIsScenery('They run for the docks.', []) && !shotIsScenery(ruinText, [{ id: 'pip' }]),
+    'a shot is scenery only when it names nobody and mentions no person, creature or body part');
+  const sceneryPrompt = groundShotPrompt(cartoonShotPrompt(ruin), [], { scenery: true });
+  assert(/shot of the place itself, deserted/.test(sceneryPrompt) && /No people, no characters, no creatures/.test(sceneryPrompt) && !/Nobody from the story/.test(sceneryPrompt)
+    && /Nobody from the story/.test(groundShotPrompt('Soldiers pour through the gate.', [], { scenery: false })),
+    'a scenery shot is worded as an empty place; a shot of unnamed people is not');
+  assert(composeScenePrompt({ prompt: sceneryPrompt, hasReferenceImages: false, scenery: true }) === sceneryPrompt && !composeScenePrompt({ prompt: sceneryPrompt, hasReferenceImages: false, scenery: true }).includes('characters described above')
+    && composeScenePrompt({ prompt: 'Soldiers at the gate.', hasReferenceImages: false }).includes(NO_EXTRAS_CLAUSE),
+    'scenery gets no clause that speaks of "the characters"; every other picture keeps it');
+  assert(!/character|figures/i.test(sceneryStyle(ART_STYLE_PREAMBLES.fantasy['fantasy-anime'])) && /bold black ink outlines/.test(sceneryStyle(ART_STYLE_PREAMBLES.fantasy['fantasy-anime']))
+    && !/figures/.test(sceneryStyle(ART_STYLE_PREAMBLES.fantasy.illuminated)) && sceneryStyle(ART_STYLE_PREAMBLES.fantasy.watercolor) === ART_STYLE_PREAMBLES.fantasy.watercolor
+    && /no people/i.test(SCENERY_DIRECTIVE) && Object.values(ART_STYLE_PREAMBLES.fantasy).every(st => !/character poses|stylised figures/i.test(sceneryStyle(st))),
+    'for scenery the art style keeps its look but loses its words about characters and figures');
   const withCliff = recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 2 });
   assert(withCliff.cliff && Math.abs(withCliff.cliff.start - (RECAP_TITLE_SECONDS + 30)) < 0.01 && withCliff.cliff.questionAt === withCliff.cliff.start + RECAP_CLIFF_SILENCE
     && withCliff.endStart > withCliff.cliff.questionAt + 2 && Math.abs(withCliff.total - (withCliff.endStart + RECAP_END_SECONDS)) < 0.01,

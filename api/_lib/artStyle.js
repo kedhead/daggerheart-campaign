@@ -44,6 +44,25 @@ export const MAP_ART_STYLES = {
 
 export const ART_STYLE_KEYS = Object.keys(ART_STYLE_PREAMBLES.fantasy);
 
+// A picture of a place with nobody in it. Image models populate any scene
+// they can, and a style that asks for "expressive stylised character poses"
+// all but orders them to: a shot of empty ruins came back with two
+// adventurers fighting in it. For scenery the style loses its words about
+// figures and the prompt opens by saying the place is empty.
+export const SCENERY_DIRECTIVE = 'ENVIRONMENT ONLY: a deserted, unpopulated place. There are no people, characters, creatures or figures anywhere in the picture, not even small or distant ones. ';
+const FIGURE_WORDS = [
+  /,?\s*expressive stylised character poses/gi,
+  /,?\s*stylised figures/gi,
+  /,?\s*(?:expressive|dynamic|heroic)?\s*character (?:poses|designs?|art)/gi
+];
+
+/** A style preamble with its words about characters taken out, for a picture of a place. */
+export function sceneryStyle(preamble) {
+  let out = String(preamble || '');
+  FIGURE_WORDS.forEach(re => { out = out.replace(re, ''); });
+  return out.replace(/\s{2,}/g, ' ').replace(/^\s*,\s*/, '').trim();
+}
+
 const clip = (s, n) => {
   const t = String(s || '').replace(/\s+/g, ' ').trim();
   return t.length <= n ? t : `${t.slice(0, n - 1)}…`;
