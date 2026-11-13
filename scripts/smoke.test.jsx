@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, shotCast, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3808,6 +3808,24 @@ section('Table cinematics');
   assert(shotCast(cartoonShotText(ruin), roster, looks).length === 0 && !/characters/.test(cartoonShotPrompt(ruin)) && !/characters/.test(recapShotPrompt('The empty docks at dawn.'))
     && shotCast(cartoonShotText({ description: 'A hand grips a ledge.', camera: "Close-up on Pippin's hand" }), roster, looks)[0]?.id === 'pip',
     'a shot of an empty place is drawn empty, whoever the storyboard listed on it; someone named only in the framing is still in the shot');
+  // Two people who share a first name, and the DM's own choice of who is in a shot.
+  const frogs = {
+    characters: [{ id: 'pj', name: 'Pippin Puddle-Jumper', characterClass: 'Rogue', avatarUrl: 'https://x/pj.png' }],
+    npcs: [{ id: 'bub', name: 'Bubbles', occupation: 'Seraph', avatarUrl: 'https://x/bub.png' }],
+    adversaries: [{ id: 'zom', name: 'Bubbles the Undead Zombie Ribbet Seraph', imageUrl: 'https://x/zom.png' }]
+  };
+  const bubblesShot = "Pippin's desperate call summons Bubbles from the darkness, flamboyant and free.";
+  assert(shotCast(bubblesShot, frogs).map(c => c.id).join() === 'pj,bub' && shotCast('Bubbles the Undead Zombie Ribbet Seraph rises.', frogs).map(c => c.id).join() === 'zom',
+    `a shared first name means the one whose whole name it is; the other has to be named in full (got ${shotCast(bubblesShot, frogs).map(c => c.id)})`);
+  const picked = shotCast(bubblesShot, frogs, { ids: ['zom'] });
+  assert(picked.map(c => c.id).join() === 'zom' && picked[0].ref === 1 && shotCast(bubblesShot, frogs, { ids: [] }).length === 0 && shotCast(bubblesShot, frogs, { ids: ['gone', 'bub'] }).map(c => c.id).join() === 'bub',
+    'the DM\'s own choice replaces what the text says: one person, nobody, or whoever of the chosen still exists');
+  const gone = shotAbsent(bubblesShot, frogs, picked);
+  assert(gone.map(c => c.id).join() === 'pj,bub', 'the people a shot names who were taken out of it are known');
+  const pickedPrompt = groundShotPrompt(`A frame: ${bubblesShot}`, picked, { absent: gone });
+  assert(!/Pippin|Bubbles/.test(pickedPrompt) && /Someone unseen's desperate call summons someone unseen/i.test(pickedPrompt) && /Exactly one character appears/.test(pickedPrompt) && /reference image 1/.test(pickedPrompt),
+    `someone taken out of a shot is not left in its prompt by name (got ${pickedPrompt.slice(0, 120)})`);
+  assert(/the rogue's desperate call summons the seraph/i.test(withoutNames(bubblesShot, shotCast(bubblesShot, frogs))), 'with nobody taken out, the names become their own labels as before');
   // Scenery: a shot with nobody named and no word for a person or creature is a place, and is drawn as one.
   const ruinText = cartoonShotText(ruin);
   assert(shotIsScenery(ruinText, []) && shotIsScenery('Ancient stone tombs loom in shadow, carved with arcane sigils. Wide establishing shot, slow pan across weathered crypts', [])

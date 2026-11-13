@@ -765,14 +765,40 @@ const nameRe = (form) => new RegExp(`(?<![A-Za-z])${escapeRe(form)}(?![A-Za-z])`
  * carries no outside meaning, how they look, and whether there is a portrait
  * to send as a reference (`ref` is its place among the reference images).
  * `ancestryLook(ancestry)` gives a visual phrase for a game ancestry.
+ *
+ * A first name counts only when one person answers to it: with "Bubbles" and
+ * "Bubbles the Undead Seraph" both in the campaign, the word "Bubbles" means
+ * the one whose whole name it is, and the other has to be named in full.
+ *
+ * `ids`, when given, is the DM's own choice of who is in the shot and
+ * replaces what the text says (an empty list means nobody).
  */
-export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '' } = {}) {
+export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '', ids = null } = {}) {
   const line = clean(text);
-  const found = [
+  const everyone = [
     ...(characters || []).map(e => ({ e, type: 'character' })),
     ...(npcs || []).map(e => ({ e, type: 'npc' })),
     ...(adversaries || []).map(e => ({ e, type: 'adversary' }))
-  ].filter(({ e }) => e?.id && nameForms(e.name).some(f => nameRe(f).test(line))).slice(0, 4);
+  ].filter(({ e }) => e?.id && e.name);
+  // How many people each name or first name could mean.
+  const claims = new Map();
+  everyone.forEach(({ e }) => new Set(nameForms(e.name).map(f => f.toLowerCase())).forEach(f => claims.set(f, (claims.get(f) || 0) + 1)));
+  // Whole names first, longest first, each struck from the line once found:
+  // "Bubbles the Undead Seraph rises" names that one, and not plain "Bubbles" as well.
+  const hit = new Set();
+  let rest = line;
+  [...everyone].sort((x, y) => clean(y.e.name).length - clean(x.e.name).length).forEach(({ e }) => {
+    const [full] = nameForms(e.name);
+    if (full && nameRe(full).test(rest)) { hit.add(e.id); rest = rest.replace(nameRe(full), ' '); }
+  });
+  everyone.forEach(({ e }) => {
+    const first = nameForms(e.name)[1];
+    if (first && claims.get(first.toLowerCase()) === 1 && nameRe(first).test(rest)) hit.add(e.id);
+  });
+  const found = (Array.isArray(ids)
+    ? ids.map(id => everyone.find(x => x.e.id === id)).filter(Boolean)
+    : everyone.filter(({ e }) => hit.has(e.id))
+  ).slice(0, 4);
 
   const counts = {};
   let refs = 0;
@@ -789,9 +815,27 @@ export function shotCast(text, { characters = [], npcs = [], adversaries = [] } 
   });
 }
 
-/** `text` with each cast member's name swapped for their label. */
-export function withoutNames(text, cast = []) {
+/**
+ * The campaign's people a shot's text names who are not in its cast: the ones
+ * the DM took out of the shot.
+ */
+export function shotAbsent(text, rosters = {}, cast = []) {
+  const inShot = new Set(cast.map(c => c.id));
+  return shotCast(text, rosters).filter(c => !inShot.has(c.id));
+}
+
+/**
+ * `text` with each cast member's name swapped for their label. `absent` are
+ * people the text names who are not in the shot (the DM took them out): a
+ * bare name left in a prompt gets drawn anyway, so theirs becomes "someone unseen".
+ */
+export function withoutNames(text, cast = [], absent = []) {
   let out = String(text || '');
+  // The people in the shot go first, so a name they share with someone absent stays theirs.
+  if (absent.length) {
+    const everyone = [...cast, ...absent.map(a => ({ forms: a.forms, label: 'someone unseen' }))];
+    return withoutNames(out, everyone);
+  }
   // Names become numbered marks first and labels last, so a label is never
   // itself mistaken for a name ("the skeleton knight" for "Skeleton").
   const mark = (i) => `\u0001${i}\u0001`;
@@ -826,8 +870,8 @@ export function shotIsScenery(text, cast = [], choice = undefined) {
  * then who each label is, and that nobody else is in the shot. With
  * `scenery`, the shot is a place and the prompt says it is empty.
  */
-export function groundShotPrompt(prompt, cast = [], { scenery = false } = {}) {
-  const base = withoutNames(prompt, cast).trim();
+export function groundShotPrompt(prompt, cast = [], { scenery = false, absent = [] } = {}) {
+  const base = withoutNames(prompt, cast, absent).trim();
   if (scenery && !cast.length) {
     return `${base} This is a shot of the place itself, deserted: architecture, landscape, light and weather only. No people, no characters, no creatures, no figures of any size anywhere in the frame.`;
   }

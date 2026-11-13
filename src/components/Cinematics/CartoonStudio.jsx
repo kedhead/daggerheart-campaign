@@ -1,4 +1,4 @@
-import { Clapperboard, Film, ImageIcon, Loader2, MessageSquare, PenLine, Trash2, Wand2 } from 'lucide-react';
+import { Clapperboard, Film, ImageIcon, Loader2, MessageSquare, PenLine, Trash2, Wand2, X } from 'lucide-react';
 import { cartoonNeeds, cartoonNarration, cartoonShotText, shotIsScenery, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, voiceForSpeaker } from './cinematicPlan';
 import { writeStoryboard, narrate, animateToClip, textProvider } from '../../services/cinematicsGenerator';
 import { CHARACTER_VOICES, RECAP_VOICE_KEY } from '../Storybook/narratorVoices';
@@ -33,7 +33,7 @@ async function pool(items, job) {
  * @param {(label: string, fn: () => Promise) => Promise} props.run - runs a job with the studio's busy state and error toast
  * @param {(args: {id: string, prompt: string, about: string}) => Promise<string>} props.drawScene - draws a picture, returns its URL
  * @param {(text: string, about?: string) => string} [props.plainNames] - swaps character names in a prompt for plain labels
- * @param {(text: string) => Array<{id: string, name: string}>} [props.castOf] - the campaign's people named in a shot's text
+ * @param {(text: string, ids?: string[]|null) => Array<{id: string, name: string}>} [props.castOf] - who is in a shot: the people its text names, or the DM's own choice (`ids`)
  */
 export default function CartoonStudio({
   recap, save, run, busy, setBusy, notify, campaign, session, sessions, chapters,
@@ -61,11 +61,12 @@ export default function CartoonStudio({
     id: `recap_${session.id}_${shot.id}_${stamp()}`,
     prompt: cartoonShotPrompt(shot),
     about: cartoonShotText(shot),
-    scenery: shot.scenery
+    scenery: shot.scenery,
+    cast: Array.isArray(shot.cast) ? shot.cast : null
   });
   // The video model is told what moves, by role, not by a name it might know from elsewhere.
   const animate = (shot, imageUrl, onStatus) => animateToClip({
-    campaignId, imageUrl, prompt: plainNames(cartoonMotionPrompt(shot), cartoonShotText(shot)), fileName: `recap-${session.id}-${shot.id}-${stamp()}`, onStatus
+    campaignId, imageUrl, prompt: plainNames(cartoonMotionPrompt(shot), cartoonShotText(shot), Array.isArray(shot.cast) ? shot.cast : null), fileName: `recap-${session.id}-${shot.id}-${stamp()}`, onStatus
   });
 
   // Voices, then drawings, then clips. Each result is saved as it lands, so a
@@ -250,18 +251,64 @@ export default function CartoonStudio({
                   )}
                   {/* Who the picture will show, so nobody turns up unannounced. */}
                   {(() => {
-                    const cast = castOf(cartoonShotText(shot));
-                    if (cast.length) {
-                      return <p className="text-[11px] text-lr-text-dim">In this shot: <span className="text-white">{cast.map(c => c.name).join(', ')}</span>, and nobody else.</p>;
-                    }
-                    const scenery = shotIsScenery(cartoonShotText(shot), cast, shot.scenery);
+                    // The DM's own choice when they have changed it, otherwise whoever the text names.
+                    const chosen = Array.isArray(shot.cast) ? shot.cast : null;
+                    const inShot = castOf(cartoonShotText(shot), chosen);
+                    const ids = inShot.map(c => c.id);
+                    const setCast = (next) => update(shot.id, { cast: next });
+                    const pick = (list) => (list || []).filter(e => e?.id && e.name && !ids.includes(e.id));
+                    const here = cast ? pick([...cast.characters, ...cast.npcs, ...cast.adversaries]) : [];
+                    const hereIds = new Set(here.map(e => e.id));
+                    const elsewhere = pick([...(characters || []), ...(npcs || []), ...adversaries]).filter(e => !hereIds.has(e.id));
+                    const scenery = shotIsScenery(cartoonShotText(shot), inShot, shot.scenery);
                     return (
-                      <label className="flex items-center gap-1.5 text-[11px] text-lr-text-dim">
-                        <input type="checkbox" checked={scenery} disabled={!!busy} onChange={(e) => update(shot.id, { scenery: e.target.checked })} />
-                        {scenery
-                          ? 'Scenery only: drawn with no people or creatures. To put someone in, name them in the description.'
-                          : 'May show unnamed people or creatures the description mentions. Tick for scenery only.'}
-                      </label>
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-lr-text-dim">
+                          <span>In this shot:</span>
+                          {inShot.map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              disabled={!!busy}
+                              title={`Take ${c.name} out of this shot`}
+                              onClick={() => setCast(ids.filter(id => id !== c.id))}
+                              className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full border border-lr-accent bg-lr-accent-soft text-white disabled:opacity-50"
+                            >
+                              {c.name} <X size={11} />
+                            </button>
+                          ))}
+                          {!inShot.length && <span className="text-white">nobody</span>}
+                          {/* Up to four: that is how many portraits the picture can be drawn from. */}
+                          {inShot.length < 4 && (here.length > 0 || elsewhere.length > 0) && (
+                            <select
+                              value=""
+                              disabled={!!busy}
+                              aria-label="Add someone to this shot"
+                              onChange={(e) => { if (e.target.value) setCast([...ids, e.target.value]); }}
+                              className="p-1 rounded bg-black/20 border border-white/10 text-white text-[11px]"
+                            >
+                              <option value="">+ Add someone</option>
+                              {here.length > 0 && <optgroup label="In this session">{here.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</optgroup>}
+                              {elsewhere.length > 0 && <optgroup label="Everyone else">{elsewhere.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</optgroup>}
+                            </select>
+                          )}
+                          {chosen && (
+                            <button type="button" className="underline hover:text-white disabled:opacity-50" disabled={!!busy} title="Go back to whoever the description names" onClick={() => setCast(null)}>
+                              reset
+                            </button>
+                          )}
+                        </div>
+                        {inShot.length > 0 ? (
+                          <p className="text-[11px] text-lr-text-dim">Only they are drawn. {shot.imageUrl ? 'Press Redraw to apply a change.' : ''}</p>
+                        ) : (
+                          <label className="flex items-center gap-1.5 text-[11px] text-lr-text-dim">
+                            <input type="checkbox" checked={scenery} disabled={!!busy} onChange={(e) => update(shot.id, { scenery: e.target.checked })} />
+                            {scenery
+                              ? 'Scenery only: drawn with no people or creatures.'
+                              : 'May show unnamed people or creatures the description mentions. Tick for scenery only.'}
+                          </label>
+                        )}
+                      </div>
                     );
                   })()}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

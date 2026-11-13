@@ -3,7 +3,7 @@ import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, W
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
 import CartoonStudio from './CartoonStudio';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, recapSessionCast, shotCast, shotIsScenery, groundShotPrompt, withoutNames } from './cinematicPlan';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, recapSessionCast, shotCast, shotAbsent, shotIsScenery, groundShotPrompt, withoutNames } from './cinematicPlan';
 import { ANCESTRY_VISUAL_HINTS } from '../../services/portraitGenerator';
 import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
@@ -164,16 +164,23 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   // the portraits of whoever the line names as references.
   // The campaign's people named in a shot, described so the image model
   // draws them and not a famous namesake.
-  const castOf = (text) => shotCast(text, { characters, npcs, adversaries }, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '' });
-  const plainNames = (text, about = text) => withoutNames(text, castOf(about));
+  // `ids` is the DM's own choice for a shot, when they have changed who is in it.
+  const everyone = { characters, npcs, adversaries };
+  const castOf = (text, ids = null) => shotCast(text, everyone, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '', ids });
+  const namesOut = (text, about, ids) => {
+    const cast = castOf(about, ids);
+    return withoutNames(text, cast, shotAbsent(`${about} ${text}`, everyone, cast));
+  };
+  const plainNames = (text, about = text, ids = null) => namesOut(text, about, ids);
 
-  const drawScene = async ({ id, prompt, about, scenery: choice }) => {
+  const drawScene = async ({ id, prompt, about, scenery: choice, cast: ids = null }) => {
     const chapter = artChapters[0] || null;
-    const cast = castOf(about);
+    const cast = castOf(about, ids);
+    const absent = shotAbsent(`${about} ${prompt}`, everyone, cast);
     // A shot that names nobody and mentions no person or creature is a place: it is drawn empty.
     const scenery = shotIsScenery(about, cast, choice);
     const scene = await regenerateScene({
-      scene: { id, prompt: groundShotPrompt(prompt, cast, { scenery }), featuredEntityIds: cast.map(c => c.id), scenery },
+      scene: { id, prompt: groundShotPrompt(prompt, cast, { scenery, absent }), featuredEntityIds: cast.map(c => c.id), scenery },
       chapter,
       entities: { characters, npcs, adversaries },
       campaignId,
