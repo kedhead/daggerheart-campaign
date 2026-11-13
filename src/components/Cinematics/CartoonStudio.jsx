@@ -37,7 +37,7 @@ async function pool(items, job) {
  */
 export default function CartoonStudio({
   recap, save, run, busy, setBusy, notify, campaign, session, sessions, chapters,
-  characters, npcs, adversaries = [], drawScene, plainNames = (t) => t, castOf = () => [], voiceKey, getEffectiveKey
+  characters, npcs, adversaries = [], cast = null, drawScene, plainNames = (t) => t, castOf = () => [], voiceKey, getEffectiveKey
 }) {
   const campaignId = campaign?.id;
   const slides = recap.slides || [];
@@ -50,7 +50,7 @@ export default function CartoonStudio({
 
   const storyboard = () => run('storyboard', async () => {
     const made = await writeStoryboard({
-      campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), characters, npcs, adversaries, ...textProvider(getEffectiveKey)
+      campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), cast, characters, npcs, adversaries, ...textProvider(getEffectiveKey)
     });
     await save({ cartoon: { shots: made.map(s => (s.kind === 'line' ? { ...s, voiceKey: voiceForSpeaker(s.speaker, voiceKeys) } : s)), voice: cartoon?.voice || null } });
   });
@@ -164,6 +164,12 @@ export default function CartoonStudio({
         <p className="flex-1 min-w-[220px] text-[11px] text-lr-text-dim leading-relaxed">
           The script above is storyboarded into short shots, each drawn and animated for this recap. The narrator is recorded beat by beat,
           so the picture changes on his words, and a character or two speaks a line. The film and comic looks keep their own pictures.
+          {cast && (
+            <span className="block mt-1">
+              In this session: <span className="text-white">{[...cast.characters, ...cast.npcs, ...cast.adversaries].map(e => e.name).join(', ') || 'nobody named'}</span>.
+              {' '}The storyboard may use only them. Someone missing? Name them in the script above, then re-storyboard.
+            </span>
+          )}
         </p>
         <button type="button" className="btn btn-secondary btn-sm inline-flex items-center gap-1" onClick={storyboard} disabled={!!busy}
           title={shots.length ? 'Writes a new shot list from the script. The shots below, and their art, are replaced.' : 'Writes the shot list from the script (text only, no art yet)'}>

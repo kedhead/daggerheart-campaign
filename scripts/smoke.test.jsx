@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, shotCast, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, shotCast, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3697,11 +3697,45 @@ section('Table cinematics');
     'the cliffhanger leaves room for the question to be spoken after its slam');
   // The animated cartoon: a storyboard of shots per beat, narration recorded beat by beat, characters who speak.
   const cBeats = [{ line: 'One party broke out of the prison of Korak.' }, { line: 'Then the floor gave way.' }, { line: 'At the Sky Docks a ghost with a very wide grin claimed to be family.' }];
-  const sbPrompt = buildStoryboardPrompt({ campaignName: 'Sundering', beats: cBeats, sources: { sessions: [{ summary: 'They escaped, and met Old Greel.', highlights: ['That ghost has my nose.'] }] }, characters: [{ name: 'Pippin Underbough', ancestry: 'Ribbet', characterClass: 'Rogue', appearanceDescription: 'a wiry green frog in a patched hood' }], npcs: [{ name: 'Old Greel', occupation: 'ghost' }, { name: 'Baron Vex', occupation: 'tyrant' }] });
+  const sbPrompt = buildStoryboardPrompt({ campaignName: 'Sundering', beats: cBeats, sources: { sessions: [{ summary: 'They escaped, and met Old Greel.', highlights: ['That ghost has my nose.'] }] }, characters: [{ name: 'Pippin Underbough', ancestry: 'Ribbet', characterClass: 'Rogue', appearanceDescription: 'a wiry green frog in a patched hood' }], npcs: [{ name: 'Old Greel', occupation: 'ghost' }] });
   assert(/1\. One party broke out/.test(sbPrompt) && /3\. At the Sky Docks/.test(sbPrompt) && /Pippin/.test(sbPrompt) && /Old Greel/.test(sbPrompt) && /That ghost has my nose/.test(sbPrompt) && /"lines"/.test(sbPrompt),
     'the storyboard prompt carries the numbered script, the cast and what was said at the table');
-  assert(/Pippin Underbough \(Ribbet, Rogue, a wiry green frog in a patched hood\)/.test(sbPrompt) && /Old Greel \(ghost\)/.test(sbPrompt) && !/Baron Vex/.test(sbPrompt) && /Never add a character/.test(sbPrompt) && /famous character/.test(sbPrompt),
-    'the storyboard is told who each character is, is given only the people this story mentions, and is told to add nobody');
+  assert(/Pippin Underbough \(Ribbet, Rogue, a wiry green frog in a patched hood\)/.test(sbPrompt) && /Old Greel \(ghost\)/.test(sbPrompt) && /Nobody else exists/.test(sbPrompt) && /Never add a character/.test(sbPrompt) && /famous character/.test(sbPrompt),
+    'the storyboard is told who each character is, that nobody else exists, and to add nobody');
+  // The session's cast: who the storyboard may draw from.
+  const world = {
+    characters: [{ id: 'pip', name: 'Pippin Underbough' }, { id: 'kor', name: 'Korra' }, { id: 'bram', name: 'Bram Stonefist', deceased: true }, { id: 'ila', name: 'Ila', deceased: true }],
+    npcs: [{ id: 'gre', name: 'Old Greel' }, { id: 'vex', name: 'Baron Vex' }],
+    adversaries: [{ id: 'kni', name: 'Skeleton Knight' }]
+  };
+  const lastNight = { id: 's9', summary: 'Pippin and Korra crossed on the ferry of Old Greel. They remembered Bram at his grave.' };
+  const castIds = (c) => [...c.characters, ...c.npcs, ...c.adversaries].map(e => e.id).join();
+  assert(castIds(recapSessionCast({ session: lastNight, ...world })) === 'pip,kor,gre',
+    `the cast is who the session notes name; a fallen character is not added just for being mentioned, and people from other sessions are left out (got ${castIds(recapSessionCast({ session: lastNight, ...world }))})`);
+  assert(castIds(recapSessionCast({ session: lastNight, lines: [{ line: 'At the grave of Bram Stonefist, the Skeleton Knight rose.' }], ...world })) === 'pip,kor,bram,gre,kni',
+    'someone the recap script itself names is in the cast, a fallen character included');
+  assert(castIds(recapSessionCast({ session: { summary: 'The party fought on.' }, chapter: { castStates: { vex: '' } }, ...world })) === 'pip,kor,vex',
+    'the chapter\'s own cast counts, and notes that name no party member bring in the living party, never the fallen');
+  const sbSources = { sessions: [{ summary: 'OLD NEWS: the siege of Harrow.' }, { summary: 'They escaped, and met Old Greel.', dmNotes: 'The ferry cost a memory.', highlights: ['That ghost has my nose.'] }] };
+  const sbCast = buildStoryboardPrompt({ campaignName: 'Sundering', beats: cBeats, sources: sbSources, characters: [world.characters[0], world.characters[2]], npcs: [world.npcs[0]] });
+  assert(/WHAT HAPPENED LAST SESSION[^]*They escaped, and met Old Greel[^]*The ferry cost a memory/.test(sbCast) && /EARLIER, for background only \(never show these events\):\nOLD NEWS/.test(sbCast)
+    && /Bram Stonefist \(FALLEN: dead\)/.test(sbCast) && /Someone marked FALLEN is dead/.test(sbCast) && /Each shot illustrates its own beat and nothing else/.test(sbCast) && /"from"/.test(sbCast) && !/party as a group/.test(sbCast),
+    'the storyboard gets the last session in full, the one before as background only, the fallen marked as dead, and is held to one beat per shot');
+  const guard = { rosters: world, cast: recapSessionCast({ session: lastNight, lines: cBeats, ...world }) };
+  const offStory = parseStoryboard(JSON.stringify({ shots: [
+    { beat: 1, description: 'Pippin and Bram Stonefist kick the cell door down.', camera: 'low angle', featuring: ['Pippin', 'Bram Stonefist'] },
+    { beat: 2, description: 'Korra drops through the floor.', camera: 'wide', featuring: ['Korra'] },
+    { beat: 3, description: 'Baron Vex watches Old Greel from the pier.', camera: 'close-up on Baron Vex', featuring: ['Old Greel'] }],
+    lines: [{ afterBeat: 1, speaker: 'Bram', line: 'For the mountain!' }, { afterBeat: 2, speaker: 'Korra', line: 'Not again.' }] }), cBeats, 'g-', ['Pippin Underbough', 'Korra', 'Bram Stonefist', 'Old Greel', 'Baron Vex'], guard);
+  assert(offStory[0].description === cBeats[0].line && offStory[0].camera === 'low angle' && offStory[1].description === 'Korra drops through the floor.'
+    && offStory.find(x => x.beat === 2 && x.kind === 'action').description === cBeats[2].line && offStory.find(x => x.beat === 2 && x.kind === 'action').camera === '',
+    'a shot with a fallen character, or with someone who was not in the session, shows the narrator\'s own words instead; a shot that keeps to the cast is left alone');
+  assert(offStory.filter(x => x.kind === 'line').map(x => x.speaker).join() === 'Korra', 'the dead do not get a spoken line');
+  const ferryBeats = [{ line: 'Old Greel poles his ferry into the fog.' }, { line: 'On the far shore, something waits.' }];
+  const npcShots = parseStoryboard('{"shots":[{"beat":1,"description":"Old Greel leans on his pole, grinning.","camera":"wide","featuring":["Old Greel"]},{"beat":2,"description":"Old Greel points at the shore.","camera":"close-up","featuring":["Old Greel"]}]}',
+    ferryBeats, 'h-', [], { rosters: world, cast: { characters: world.characters.slice(0, 2), npcs: [world.npcs[0]], adversaries: [] } });
+  assert(npcShots[0].description === 'Old Greel leans on his pole, grinning.' && npcShots[1].description === ferryBeats[1].line,
+    'someone outside the party is in a shot only when that beat\'s own line names them');
   const strangers = parseStoryboard('{"shots":[{"beat":1,"description":"Pippin and Gandalf run.","camera":"wide","featuring":["Pippin","Gandalf","Old Greel"]}],"lines":[{"afterBeat":1,"speaker":"Gandalf","line":"Fly, you fools."},{"afterBeat":2,"speaker":"pippin","line":"Run!"}]}', cBeats, 'k-', ['Pippin Underbough', 'Old Greel']);
   assert(strangers[0].featuring.join() === 'Pippin,Old Greel' && strangers.filter(s => s.kind === 'line').map(s => s.speaker).join() === 'pippin',
     'a stranger the model put in a shot is dropped from its cast, and a stranger gets no spoken line');

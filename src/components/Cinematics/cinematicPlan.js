@@ -3,6 +3,7 @@
 // so the smoke tests cover them without a browser or a network.
 
 import { stripWikiLinks } from '../../utils/campaignMemory';
+import { mentionedEntityIds, sessionNotesText } from '../../utils/storybookCast';
 
 const clean = (text) => stripWikiLinks(String(text || '')).replace(/\s+/g, ' ').trim();
 const clip = (text, n) => {
@@ -498,43 +499,73 @@ export const CARTOON_BEAT_TAIL = 0.35;
 export const CARTOON_LINE_LEAD = 0.25;
 export const CARTOON_LINE_PAD = 0.7;
 
-/** The prompt that turns a recap script into a shot list. */
-export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [] }) {
-  const quotes0 = (sources?.sessions || []).flatMap(s => s?.highlights || []);
-  const told = [...beats.map(b => clean(b.line ?? b)), ...(sources?.sessions || []).map(s => clean(s?.summary || s?.notes)), ...quotes0.map(clean)].join(' ');
-  const inStory = (e) => nameForms(e?.name).some(f => nameRe(f).test(told));
-  const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
-  const party = (characters || []).filter(c => c?.name).slice(0, 8)
-    .map(c => sheet(c, [clean(c.ancestry), clean(c.characterClass || c.class), clip(c.appearanceDescription, 90)].filter(Boolean).join(', ')));
-  // Only people the script or the session actually mentions: a list of everyone in the world invites the model to add them.
-  const others = (npcs || []).filter(n => n?.name && inStory(n)).slice(0, 12)
-    .map(n => sheet(n, [clean(n.ancestry), clean(n.occupation), clip(n.description, 70)].filter(Boolean).join(', ')));
-  const quotes = (sources?.sessions || []).flatMap(s => s?.highlights || []).slice(0, 8).map(h => `"${clip(h, 160)}"`);
-  const story = (sources?.sessions || []).map(s => clip(s?.summary || s?.notes, 1800)).filter(Boolean).join('\n\n');
+/**
+ * Who was in the session a recap is about: the cast the storyboard may draw
+ * from. The story chapter's own cast, anyone the session's notes name, and
+ * anyone the recap script itself names (the DM has read those lines, so a
+ * fallen character named there is there on purpose). A fallen character is
+ * never added on the strength of the notes alone. If that leaves no living
+ * party member, the whole living party stands in.
+ */
+export function recapSessionCast({ session, chapter, lines = [], characters = [], npcs = [], adversaries = [] } = {}) {
+  const everyone = [...(characters || []), ...(npcs || []), ...(adversaries || [])].filter(e => e?.id);
+  const ids = new Set(Object.keys(chapter?.castStates || {}));
+  mentionedEntityIds({ characters, npcs, adversaries }, sessionNotesText(session)).forEach(id => ids.add(id));
+  const script = lines.map(l => clean(l?.line ?? l)).join(' ');
+  everyone.forEach(e => { if (nameForms(e.name).some(f => nameRe(f).test(script))) ids.add(e.id); });
+  const living = (characters || []).filter(c => c?.id && !c.deceased);
+  if (!living.some(c => ids.has(c.id))) living.forEach(c => ids.add(c.id));
+  const keep = (list) => (list || []).filter(e => e?.id && ids.has(e.id));
+  return { characters: keep(characters), npcs: keep(npcs), adversaries: keep(adversaries) };
+}
 
-  return `You are storyboarding an animated "Previously on…" recap${campaignName ? ` for the tabletop RPG campaign "${campaignName}"` : ''}. A narrator reads the script below, one beat at a time, while short animated shots play. Turn it into a shot list.
+/**
+ * The prompt that turns a recap script into a shot list. `characters`, `npcs`
+ * and `adversaries` are the session's cast (recapSessionCast), not the whole
+ * campaign: a writer shown everyone uses everyone.
+ */
+export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [], adversaries = [] }) {
+  const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
+  const fallen = (e) => (e.deceased ? 'FALLEN: dead' : '');
+  const party = (characters || []).filter(c => c?.name).slice(0, 8)
+    .map(c => sheet(c, [fallen(c), clean(c.ancestry), clean(c.characterClass || c.class), clip(c.appearanceDescription, 90)].filter(Boolean).join(', ')));
+  const others = [
+    ...(npcs || []).filter(n => n?.name).slice(0, 12).map(n => sheet(n, [fallen(n), clean(n.ancestry), clean(n.occupation), clip(n.description, 70)].filter(Boolean).join(', '))),
+    ...(adversaries || []).filter(x => x?.name).slice(0, 8).map(x => sheet(x, [clean(x.role), clip(x.description, 70)].filter(Boolean).join(', ')))
+  ];
+  const sessions = sources?.sessions || [];
+  const last = sessions[sessions.length - 1];
+  const before = sessions.length > 1 ? sessions[sessions.length - 2] : null;
+  const quotes = (last?.highlights || []).slice(0, 8).map(h => `"${clip(h, 160)}"`);
+  const happened = clip(sessionNotesText(last) || last?.notes, 3200);
+
+  return `You are storyboarding an animated "Previously on…" recap${campaignName ? ` for the tabletop RPG campaign "${campaignName}"` : ''}. A narrator reads the script below, one beat at a time, while short animated shots play. Turn it into a shot list. Your job is to illustrate the script faithfully, not to add to the story.
 
 THE SCRIPT (one beat per line):
 ${beats.map((b, i) => `${i + 1}. ${clean(b.line ?? b)}`).join('\n')}
 
-${party.length ? `The party (the players' own characters): ${party.join('; ')}.\n` : ''}${others.length ? `Other people in this story: ${others.join('; ')}.\n` : ''}${story ? `\nWHAT HAPPENED (for detail only):\n${story}\n` : ''}${quotes.length ? `\nThings actually said at the table: ${quotes.join(' ')}\n` : ''}
+WHO WAS THERE LAST SESSION
+${party.length ? `The party (the players' own characters): ${party.join('; ')}.\n` : ''}${others.length ? `Others: ${others.join('; ')}.\n` : ''}Nobody else exists for this storyboard.
+${happened ? `\nWHAT HAPPENED LAST SESSION (the recap is about this; use it for the detail of each beat):\n${happened}\n` : ''}${before ? `\nEARLIER, for background only (never show these events):\n${clip(before.summary || before.notes, 500)}\n` : ''}${quotes.length ? `\nThings actually said at the table: ${quotes.join(' ')}\n` : ''}
 Rules for "shots":
 - One shot for a short beat, two for a beat of more than about 12 words. At most ${CARTOON_MAX_SHOTS} shots in all.
+- Each shot illustrates its own beat and nothing else: the event that beat's words describe, as it happened last session. Never show an event from another beat, from earlier sessions, or one that did not happen. Never invent a fight, a death, a meeting or a place.
+- "from": the exact words of the beat that this shot illustrates.
 - "description": what we SEE, in one sentence of up to 28 words: who, doing what, where. Name the characters. Show the action the beat describes, mid-motion. No text, captions or speech bubbles in the picture.
 - "camera": the framing and move in a few words, varied from shot to shot: "wide establishing shot, slow push in", "close-up on her face", "low angle, tracking alongside", "over-the-shoulder".
+- Who may be in a shot: a party member from the list above, and anyone else only if that beat's own line names them. Never add a character. If a beat names nobody and is about a place or a thing, show that place or thing with no people.
+- Someone marked FALLEN is dead. They appear only in a beat whose own line names them.
 - Make it flow like one cartoon: when a shot continues in the same place as the one before, say so ("the same dock, moments later…"), and keep each character's look and the time of day consistent.
 - "featuring": the names of the characters in the shot, spelled exactly as above.
-- Use only what the script and the events above say happened.
-- Never add a character. Only people the beat itself is about may be in its shots, and only people listed above may be named. If a beat names nobody, show the place or the thing it describes, with no people, or the party as a group.
 - These are original characters. Describe them only as they are described above: never borrow the look of a famous character who happens to share a name.
 
 Rules for "lines" (characters who speak, between the narrator's beats):
-- Up to ${CARTOON_MAX_LINES} short lines, each under 14 words, each spoken by one named character right after the beat it belongs to.
+- Up to ${CARTOON_MAX_LINES} short lines, each under 14 words, each spoken by one living character from the lists above, right after the beat it belongs to.
 - Prefer something actually said at the table. Otherwise write a short in-character reaction to what just happened in that beat: a reaction, never a new fact.
 - If nothing fits, give an empty list.
 
 Answer with JSON only:
-{"shots": [{"beat": 1, "description": "...", "camera": "...", "featuring": ["..."]}], "lines": [{"afterBeat": 3, "speaker": "...", "line": "..."}]}`;
+{"shots": [{"beat": 1, "from": "...", "description": "...", "camera": "...", "featuring": ["..."]}], "lines": [{"afterBeat": 3, "speaker": "...", "line": "..."}]}`;
 }
 
 /**
@@ -544,8 +575,14 @@ Answer with JSON only:
  * `stamp` keeps the ids apart from an earlier storyboard's. With `known`
  * (the campaign's own names), anyone else the model put in a shot is dropped
  * from its cast, and a line spoken by a stranger is dropped altogether.
+ *
+ * `guard` ({ rosters, cast }) holds the model to the session: a shot that
+ * names someone from the campaign who should not be in it (anyone outside
+ * the session's cast, or a fallen character or non-party member its own beat
+ * does not name) is replaced by the beat's own words, and a line from someone
+ * who was not there, or is dead, is dropped.
  */
-export function parseStoryboard(text, beats = [], stamp = '', known = []) {
+export function parseStoryboard(text, beats = [], stamp = '', known = [], guard = null) {
   let data = {};
   try { data = JSON.parse(String(text || '').match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch { data = {}; }
   const beatAt = (n) => {
@@ -563,16 +600,33 @@ export function parseStoryboard(text, beats = [], stamp = '', known = []) {
     .filter(l => l.beat >= 0 && l.speaker && l.line && isKnown(l.speaker))
     .slice(0, CARTOON_MAX_LINES);
 
+  // Who the session allows in a beat's shots.
+  const flat = (r) => [...(r?.characters || []).map(e => ({ e, pc: true })), ...(r?.npcs || []).map(e => ({ e })), ...(r?.adversaries || []).map(e => ({ e }))].filter(x => x.e?.id);
+  const everyone = guard ? flat(guard.rosters) : [];
+  const castIds = new Set(guard ? flat(guard.cast).map(x => x.e.id) : []);
+  const namedIn = (e, where) => nameForms(e.name).some(f => nameRe(f).test(where));
+  const beatLine = (i) => clean(beats[i]?.line ?? beats[i]);
+  const mayAppear = ({ e, pc }, i) => castIds.has(e.id) && ((pc && !e.deceased) || namedIn(e, beatLine(i)));
+  const intruders = (where, i) => everyone.filter(x => namedIn(x.e, where) && !mayAppear(x, i));
+  const speaker = (name) => everyone.find(x => namedIn(x.e, ` ${name} `));
+
   const out = [];
   let room = CARTOON_MAX_SHOTS;
   beats.forEach((b, i) => {
     // Leave one shot for every beat still to come.
     const most = Math.max(1, Math.min(2, room - (beats.length - i - 1)));
-    const own = action.filter(s => s.beat === i).slice(0, most);
+    const own = action.filter(s => s.beat === i).slice(0, most)
+      // Someone who should not be here: show what the narrator says, not what the model made up.
+      .map(s => (guard && intruders(`${s.description} ${s.camera}`, i).length ? { beat: i, description: clip(b.line ?? b, 320), camera: s.camera && !intruders(s.camera, i).length ? s.camera : '', featuring: [] } : s));
     const list = own.length ? own : [{ beat: i, description: clip(b.line ?? b, 320), camera: '', featuring: [] }];
     list.forEach(s => out.push({ id: `${stamp}a${out.length}`, kind: 'action', ...s }));
     room -= list.length;
-    lines.filter(l => l.beat === i).forEach(l => out.push({
+    lines.filter(l => l.beat === i).filter(l => {
+      if (!guard) return true;
+      const who = speaker(l.speaker);
+      // A speaker has to have been there, and alive.
+      return !!who && castIds.has(who.e.id) && !who.e.deceased;
+    }).forEach(l => out.push({
       id: `${stamp}l${out.length}`, kind: 'line', beat: i, speaker: l.speaker, line: l.line, featuring: [l.speaker],
       description: `Close-up of ${l.speaker}, mid-sentence, mouth open, speaking with feeling to someone just off screen.`, camera: 'close-up'
     }));
