@@ -3,7 +3,7 @@ import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, W
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
 import CartoonStudio from './CartoonStudio';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, shotCast, groundShotPrompt, withoutNames } from './cinematicPlan';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, shotCast, shotIsScenery, groundShotPrompt, withoutNames } from './cinematicPlan';
 import { ANCESTRY_VISUAL_HINTS } from '../../services/portraitGenerator';
 import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
@@ -162,8 +162,10 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const drawScene = async ({ id, prompt, about }) => {
     const chapter = artChapters[0] || null;
     const cast = castOf(about);
+    // A shot that names nobody and mentions no person or creature is a place: it is drawn empty.
+    const scenery = shotIsScenery(about, cast);
     const scene = await regenerateScene({
-      scene: { id, prompt: groundShotPrompt(prompt, cast), featuredEntityIds: cast.map(c => c.id) },
+      scene: { id, prompt: groundShotPrompt(prompt, cast, { scenery }), featuredEntityIds: cast.map(c => c.id), scenery },
       chapter,
       entities: { characters, npcs, adversaries },
       campaignId,

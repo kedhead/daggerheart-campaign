@@ -134,12 +134,13 @@ const REFERENCE_CAPABLE_MODELS = new Set([
 ]);
 const usesReferenceImages = (imageModel) => REFERENCE_CAPABLE_MODELS.has(imageModel);
 
-async function generateStylizedImage({ prompt, type, styleKey, gameSystem, apiKey, imageModel, referenceImages, size = '1024x1024' }) {
+async function generateStylizedImage({ prompt, type, styleKey, gameSystem, apiKey, imageModel, referenceImages, size = '1024x1024', scenery = false }) {
   const res = await apiFetch('/api/generate-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       prompt, type, styleKey, gameSystem, size,
+      scenery: scenery || undefined,
       apiKey: apiKey || undefined,
       imageModel: imageModel || undefined,
       referenceImages: referenceImages && referenceImages.length ? referenceImages : undefined
@@ -330,6 +331,8 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
   // Collect reference portrait URLs for models that accept them. We cap at 4
   // references so nano-banana/gpt-image-1 stay fast.
   const canUseRefImages = usesReferenceImages(imageModel);
+  // A scene marked as scenery is a place with nobody in it (recap shots that name no one).
+  const scenery = scene.scenery === true && !(scene.featuredEntityIds || []).length;
   const referenceImages = canUseRefImages
     ? (scene.featuredEntityIds || [])
         .map(id => entityPortraits?.[id])
@@ -341,6 +344,7 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
   const fullPrompt = composeScenePrompt({
     prompt: scene.prompt,
     hasReferenceImages: !!(canUseRefImages && referenceImages?.length),
+    scenery,
     featuredDescriptions: featuredParts,
     currentStates: (scene.featuredEntityIds || [])
       .filter(id => entityLooks[id])
@@ -356,6 +360,7 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
     apiKey,
     imageModel,
     referenceImages,
+    scenery,
     size: '1792x1024'
   });
 
