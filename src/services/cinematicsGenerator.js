@@ -33,10 +33,11 @@ export async function writeRecapScript({ campaign, sources, characters, apiKey, 
 }
 
 /** The shot list for the animated recap: the script's beats storyboarded into short shots and a spoken line or two. */
-export async function writeStoryboard({ campaign, beats, sources, characters, npcs, apiKey, provider }) {
+export async function writeStoryboard({ campaign, beats, sources, characters, npcs, adversaries = [], apiKey, provider }) {
   const text = await aiService.generate(buildStoryboardPrompt({ campaignName: campaign?.name, beats, sources, characters, npcs }), apiKey, provider);
-  const shots = parseStoryboard(text, beats, `${Date.now().toString(36)}-`);
-  if (!shots.some(s => s.featuring?.length || s.camera)) throw new Error('The AI did not come back with a storyboard. Try again.');
+  const known = [...(characters || []), ...(npcs || []), ...adversaries].map(e => e?.name).filter(Boolean);
+  const shots = parseStoryboard(text, beats, `${Date.now().toString(36)}-`, known);
+  if (!shots.some(s => s.camera)) throw new Error('The AI did not come back with a storyboard. Try again.');
   return shots;
 }
 

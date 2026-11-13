@@ -500,8 +500,15 @@ export const CARTOON_LINE_PAD = 0.7;
 
 /** The prompt that turns a recap script into a shot list. */
 export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [] }) {
-  const party = (characters || []).filter(c => c?.name).slice(0, 8).map(c => clean(c.name));
-  const others = (npcs || []).filter(n => n?.name).slice(0, 30).map(n => clean(n.name));
+  const quotes0 = (sources?.sessions || []).flatMap(s => s?.highlights || []);
+  const told = [...beats.map(b => clean(b.line ?? b)), ...(sources?.sessions || []).map(s => clean(s?.summary || s?.notes)), ...quotes0.map(clean)].join(' ');
+  const inStory = (e) => nameForms(e?.name).some(f => nameRe(f).test(told));
+  const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
+  const party = (characters || []).filter(c => c?.name).slice(0, 8)
+    .map(c => sheet(c, [clean(c.ancestry), clean(c.characterClass || c.class), clip(c.appearanceDescription, 90)].filter(Boolean).join(', ')));
+  // Only people the script or the session actually mentions: a list of everyone in the world invites the model to add them.
+  const others = (npcs || []).filter(n => n?.name && inStory(n)).slice(0, 12)
+    .map(n => sheet(n, [clean(n.ancestry), clean(n.occupation), clip(n.description, 70)].filter(Boolean).join(', ')));
   const quotes = (sources?.sessions || []).flatMap(s => s?.highlights || []).slice(0, 8).map(h => `"${clip(h, 160)}"`);
   const story = (sources?.sessions || []).map(s => clip(s?.summary || s?.notes, 1800)).filter(Boolean).join('\n\n');
 
@@ -510,7 +517,7 @@ export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, 
 THE SCRIPT (one beat per line):
 ${beats.map((b, i) => `${i + 1}. ${clean(b.line ?? b)}`).join('\n')}
 
-${party.length ? `The party: ${party.join(', ')}.\n` : ''}${others.length ? `Other people in this world: ${others.join(', ')}.\n` : ''}${story ? `\nWHAT HAPPENED (for detail only):\n${story}\n` : ''}${quotes.length ? `\nThings actually said at the table: ${quotes.join(' ')}\n` : ''}
+${party.length ? `The party (the players' own characters): ${party.join('; ')}.\n` : ''}${others.length ? `Other people in this story: ${others.join('; ')}.\n` : ''}${story ? `\nWHAT HAPPENED (for detail only):\n${story}\n` : ''}${quotes.length ? `\nThings actually said at the table: ${quotes.join(' ')}\n` : ''}
 Rules for "shots":
 - One shot for a short beat, two for a beat of more than about 12 words. At most ${CARTOON_MAX_SHOTS} shots in all.
 - "description": what we SEE, in one sentence of up to 28 words: who, doing what, where. Name the characters. Show the action the beat describes, mid-motion. No text, captions or speech bubbles in the picture.
@@ -518,6 +525,8 @@ Rules for "shots":
 - Make it flow like one cartoon: when a shot continues in the same place as the one before, say so ("the same dock, moments later…"), and keep each character's look and the time of day consistent.
 - "featuring": the names of the characters in the shot, spelled exactly as above.
 - Use only what the script and the events above say happened.
+- Never add a character. Only people the beat itself is about may be in its shots, and only people listed above may be named. If a beat names nobody, show the place or the thing it describes, with no people, or the party as a group.
+- These are original characters. Describe them only as they are described above: never borrow the look of a famous character who happens to share a name.
 
 Rules for "lines" (characters who speak, between the narrator's beats):
 - Up to ${CARTOON_MAX_LINES} short lines, each under 14 words, each spoken by one named character right after the beat it belongs to.
@@ -532,22 +541,26 @@ Answer with JSON only:
  * The shot list from the model's answer, in playing order: each beat's action
  * shots, then any line spoken after it. Every beat gets at least one shot
  * (its own narration line stands in when the model skipped it).
- * `stamp` keeps the ids apart from an earlier storyboard's.
+ * `stamp` keeps the ids apart from an earlier storyboard's. With `known`
+ * (the campaign's own names), anyone else the model put in a shot is dropped
+ * from its cast, and a line spoken by a stranger is dropped altogether.
  */
-export function parseStoryboard(text, beats = [], stamp = '') {
+export function parseStoryboard(text, beats = [], stamp = '', known = []) {
   let data = {};
   try { data = JSON.parse(String(text || '').match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch { data = {}; }
   const beatAt = (n) => {
     const i = Math.round(Number(n)) - 1;
     return i >= 0 && i < beats.length ? i : -1;
   };
-  const names = (list) => (Array.isArray(list) ? list.map(clean).filter(Boolean).slice(0, 4) : []);
+  const forms = known.flatMap(nameForms).map(f => f.toLowerCase());
+  const isKnown = (name) => !forms.length || forms.includes(clean(name).toLowerCase()) || nameForms(name).some(f => forms.includes(f.toLowerCase()));
+  const names = (list) => (Array.isArray(list) ? list.map(clean).filter(n => n && isKnown(n)).slice(0, 4) : []);
   const action = (Array.isArray(data.shots) ? data.shots : [])
     .map(s => ({ beat: beatAt(s?.beat), description: clip(s?.description, 320), camera: clip(s?.camera, 90), featuring: names(s?.featuring) }))
     .filter(s => s.beat >= 0 && s.description);
   const lines = (Array.isArray(data.lines) ? data.lines : [])
     .map(l => ({ beat: beatAt(l?.afterBeat), speaker: clean(l?.speaker), line: clip(l?.line, 140) }))
-    .filter(l => l.beat >= 0 && l.speaker && l.line)
+    .filter(l => l.beat >= 0 && l.speaker && l.line && isKnown(l.speaker))
     .slice(0, CARTOON_MAX_LINES);
 
   const out = [];
@@ -661,4 +674,87 @@ export function cartoonPlan(recap) {
   if (cliff && questionSeconds && voice.questionUrl) voices.push({ url: voice.questionUrl, start: cliff.questionAt + RECAP_QUESTION_VOICE_DELAY });
   const endStart = cliff ? cliff.start + cliff.duration : at;
   return { shots, voices, captions, cliff, endStart, total: endStart + RECAP_END_SECONDS, titleEnd: RECAP_TITLE_SECONDS };
+}
+
+// ── Who is in a shot ───────────────────────────────────────────────────────
+//
+// A character's name means nothing to an image model, or worse, means someone
+// famous: "Pippin" came back as the hobbit from The Lord of the Rings, not the
+// campaign's rogue. So before a shot is drawn, every campaign character named
+// in it is swapped for a plain label ("the rogue") and described from their
+// sheet, tied to their reference portrait, and the model is told that those
+// people and nobody else are in the picture.
+
+const NAME_TITLES = ['the', 'lord', 'lady', 'sir', 'captain', 'master'];
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The ways a name is written in a line: in full, and by first name when that is distinctive. */
+function nameForms(name) {
+  const full = clean(name);
+  if (full.length < 3) return [];
+  const first = full.split(' ')[0];
+  return first !== full && first.length >= 4 && !NAME_TITLES.includes(first.toLowerCase()) ? [full, first] : [full];
+}
+const nameRe = (form) => new RegExp(`(?<![A-Za-z])${escapeRe(form)}(?![A-Za-z])`, 'gi');
+
+/**
+ * The campaign's people named in `text`, at most four, each with a label that
+ * carries no outside meaning, how they look, and whether there is a portrait
+ * to send as a reference (`ref` is its place among the reference images).
+ * `ancestryLook(ancestry)` gives a visual phrase for a game ancestry.
+ */
+export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '' } = {}) {
+  const line = clean(text);
+  const found = [
+    ...(characters || []).map(e => ({ e, type: 'character' })),
+    ...(npcs || []).map(e => ({ e, type: 'npc' })),
+    ...(adversaries || []).map(e => ({ e, type: 'adversary' }))
+  ].filter(({ e }) => e?.id && nameForms(e.name).some(f => nameRe(f).test(line))).slice(0, 4);
+
+  const counts = {};
+  let refs = 0;
+  return found.map(({ e, type }) => {
+    const job = clean(type === 'character' ? e.characterClass || e.class : type === 'npc' ? e.occupation : '');
+    const base = (job || (type === 'adversary' ? clean(e.name) : type === 'character' ? 'adventurer' : 'local')).toLowerCase();
+    counts[base] = (counts[base] || 0) + 1;
+    const label = counts[base] === 1 ? `the ${base}` : `the ${['', '', 'second', 'third', 'fourth'][counts[base]]} ${base}`;
+    const species = ancestryLook(e.ancestry) || clean(e.ancestry);
+    const detail = clip(type === 'character' ? e.appearanceDescription : e.description, 200).replace(/[.\s]+$/, '');
+    const look = [species, type === 'character' ? clean(e.subclass) : type === 'adversary' ? clean(e.role) : '', detail].filter(Boolean).join(', ');
+    const portrait = type === 'adversary' ? e.imageUrl : e.avatarUrl;
+    return { id: e.id, type, name: clean(e.name), forms: nameForms(e.name), label, look, ref: portrait ? ++refs : 0 };
+  });
+}
+
+/** `text` with each cast member's name swapped for their label. */
+export function withoutNames(text, cast = []) {
+  let out = String(text || '');
+  // Names become numbered marks first and labels last, so a label is never
+  // itself mistaken for a name ("the skeleton knight" for "Skeleton").
+  const mark = (i) => `\u0001${i}\u0001`;
+  // A "the" before the name goes with it: the label brings its own.
+  const swap = (form, i) => { out = out.replace(new RegExp(`(?:(?<![A-Za-z])the\\s+)?${nameRe(form).source}`, 'gi'), mark(i)); };
+  // Full names before first names, so "Pippin Underbough" is not left as "the rogue Underbough".
+  cast.forEach((c, i) => swap(c.forms[0], i));
+  cast.forEach((c, i) => c.forms.slice(1).forEach(f => swap(f, i)));
+  cast.forEach((c, i) => { out = out.split(mark(i)).join(c.label); });
+  // A sentence still starts with a capital.
+  return out.replace(/(^|[.!?]\s+)the /g, '$1The ');
+}
+
+/**
+ * A picture prompt the image model cannot misread: names swapped for labels,
+ * then who each label is, and that nobody else is in the shot.
+ */
+export function groundShotPrompt(prompt, cast = []) {
+  const base = withoutNames(prompt, cast).trim();
+  if (!cast.length) {
+    return `${base} No named characters appear: show only what the description says, and add no people it does not mention.`;
+  }
+  const who = cast.map(c => {
+    const seen = c.ref ? `drawn exactly as in reference image ${c.ref}` : '';
+    return c.look ? `${c.label} is ${c.look}${seen ? ` (${seen})` : ''}` : seen ? `${c.label} is ${seen}` : `${c.label} is one person, drawn the same way throughout`;
+  }).join('; ');
+  const count = cast.length === 1 ? 'Exactly one character appears' : `Exactly these ${cast.length} characters appear`;
+  return `${base} Who is in the shot: ${who}. ${count}, and nobody else. They are original characters from this story: do not draw any famous or existing character.`;
 }
