@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, shotCast, withoutNames, groundShotPrompt, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, shotCast, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3768,8 +3768,12 @@ section('Table cinematics');
   assert(shotCast('The pippins are ripe and Korral is far.', roster, looks).length === 0 && shotCast('PIPPIN runs.', roster, looks)[0].id === 'pip' && shotCast('The party runs.', { characters: [{ id: 'x', name: 'The Party' }] }).length === 1,
     'a name is matched as a whole word, in any case, and never by a bare title like "the"');
   const unnamed = groundShotPrompt('A frame: the empty docks at dawn.', []);
-  assert(/add no people it does not mention/.test(unnamed) && /Exactly one character appears/.test(groundShotPrompt('Korra waits.', shotCast('Korra waits.', roster))),
+  assert(/Nobody from the story is in this shot/.test(unnamed) && /empty of people and creatures/.test(unnamed) && /Exactly one character appears/.test(groundShotPrompt('Korra waits.', shotCast('Korra waits.', roster))),
     'a shot that names nobody is told to add nobody');
+  const ruin = { kind: 'action', description: 'Ancient stone ruins loom in shadow, carved with glowing runes.', camera: 'Wide establishing shot, slow push in', featuring: ['Pippin Underbough', 'Korra'] };
+  assert(shotCast(cartoonShotText(ruin), roster, looks).length === 0 && !/characters/.test(cartoonShotPrompt(ruin)) && !/characters/.test(recapShotPrompt('The empty docks at dawn.'))
+    && shotCast(cartoonShotText({ description: 'A hand grips a ledge.', camera: "Close-up on Pippin's hand" }), roster, looks)[0]?.id === 'pip',
+    'a shot of an empty place is drawn empty, whoever the storyboard listed on it; someone named only in the framing is still in the shot');
   const withCliff = recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 2 });
   assert(withCliff.cliff && Math.abs(withCliff.cliff.start - (RECAP_TITLE_SECONDS + 30)) < 0.01 && withCliff.cliff.questionAt === withCliff.cliff.start + RECAP_CLIFF_SILENCE
     && withCliff.endStart > withCliff.cliff.questionAt + 2 && Math.abs(withCliff.total - (withCliff.endStart + RECAP_END_SECONDS)) < 0.01,
