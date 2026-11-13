@@ -482,3 +482,183 @@ export function narrationScript(slides, { trailer = false } = {}) {
   if (!trailer) return lines.join(' ');
   return lines.map(l => l.replace(/[.!]+$/, '') + (/[?]$/.test(l) ? '' : '…')).join(' ');
 }
+
+// ── The animated cartoon recap ─────────────────────────────────────────────
+//
+// A third way to play a recap, kept beside the film and comic looks: the
+// script is storyboarded into short shots (one or two per beat), each drawn
+// and animated for the recap, the narrator is recorded one beat at a time so
+// every cut lands on his words, and a character or two speaks a line in
+// their own voice. It lives in recap.cartoon and never touches the slides.
+
+export const CARTOON_MAX_SHOTS = 16;
+export const CARTOON_MAX_LINES = 2;
+// A breath after each narrated beat, and around a spoken line.
+export const CARTOON_BEAT_TAIL = 0.35;
+export const CARTOON_LINE_LEAD = 0.25;
+export const CARTOON_LINE_PAD = 0.7;
+
+/** The prompt that turns a recap script into a shot list. */
+export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [] }) {
+  const party = (characters || []).filter(c => c?.name).slice(0, 8).map(c => clean(c.name));
+  const others = (npcs || []).filter(n => n?.name).slice(0, 30).map(n => clean(n.name));
+  const quotes = (sources?.sessions || []).flatMap(s => s?.highlights || []).slice(0, 8).map(h => `"${clip(h, 160)}"`);
+  const story = (sources?.sessions || []).map(s => clip(s?.summary || s?.notes, 1800)).filter(Boolean).join('\n\n');
+
+  return `You are storyboarding an animated "Previously on…" recap${campaignName ? ` for the tabletop RPG campaign "${campaignName}"` : ''}. A narrator reads the script below, one beat at a time, while short animated shots play. Turn it into a shot list.
+
+THE SCRIPT (one beat per line):
+${beats.map((b, i) => `${i + 1}. ${clean(b.line ?? b)}`).join('\n')}
+
+${party.length ? `The party: ${party.join(', ')}.\n` : ''}${others.length ? `Other people in this world: ${others.join(', ')}.\n` : ''}${story ? `\nWHAT HAPPENED (for detail only):\n${story}\n` : ''}${quotes.length ? `\nThings actually said at the table: ${quotes.join(' ')}\n` : ''}
+Rules for "shots":
+- One shot for a short beat, two for a beat of more than about 12 words. At most ${CARTOON_MAX_SHOTS} shots in all.
+- "description": what we SEE, in one sentence of up to 28 words: who, doing what, where. Name the characters. Show the action the beat describes, mid-motion. No text, captions or speech bubbles in the picture.
+- "camera": the framing and move in a few words, varied from shot to shot: "wide establishing shot, slow push in", "close-up on her face", "low angle, tracking alongside", "over-the-shoulder".
+- Make it flow like one cartoon: when a shot continues in the same place as the one before, say so ("the same dock, moments later…"), and keep each character's look and the time of day consistent.
+- "featuring": the names of the characters in the shot, spelled exactly as above.
+- Use only what the script and the events above say happened.
+
+Rules for "lines" (characters who speak, between the narrator's beats):
+- Up to ${CARTOON_MAX_LINES} short lines, each under 14 words, each spoken by one named character right after the beat it belongs to.
+- Prefer something actually said at the table. Otherwise write a short in-character reaction to what just happened in that beat: a reaction, never a new fact.
+- If nothing fits, give an empty list.
+
+Answer with JSON only:
+{"shots": [{"beat": 1, "description": "...", "camera": "...", "featuring": ["..."]}], "lines": [{"afterBeat": 3, "speaker": "...", "line": "..."}]}`;
+}
+
+/**
+ * The shot list from the model's answer, in playing order: each beat's action
+ * shots, then any line spoken after it. Every beat gets at least one shot
+ * (its own narration line stands in when the model skipped it).
+ * `stamp` keeps the ids apart from an earlier storyboard's.
+ */
+export function parseStoryboard(text, beats = [], stamp = '') {
+  let data = {};
+  try { data = JSON.parse(String(text || '').match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch { data = {}; }
+  const beatAt = (n) => {
+    const i = Math.round(Number(n)) - 1;
+    return i >= 0 && i < beats.length ? i : -1;
+  };
+  const names = (list) => (Array.isArray(list) ? list.map(clean).filter(Boolean).slice(0, 4) : []);
+  const action = (Array.isArray(data.shots) ? data.shots : [])
+    .map(s => ({ beat: beatAt(s?.beat), description: clip(s?.description, 320), camera: clip(s?.camera, 90), featuring: names(s?.featuring) }))
+    .filter(s => s.beat >= 0 && s.description);
+  const lines = (Array.isArray(data.lines) ? data.lines : [])
+    .map(l => ({ beat: beatAt(l?.afterBeat), speaker: clean(l?.speaker), line: clip(l?.line, 140) }))
+    .filter(l => l.beat >= 0 && l.speaker && l.line)
+    .slice(0, CARTOON_MAX_LINES);
+
+  const out = [];
+  let room = CARTOON_MAX_SHOTS;
+  beats.forEach((b, i) => {
+    // Leave one shot for every beat still to come.
+    const most = Math.max(1, Math.min(2, room - (beats.length - i - 1)));
+    const own = action.filter(s => s.beat === i).slice(0, most);
+    const list = own.length ? own : [{ beat: i, description: clip(b.line ?? b, 320), camera: '', featuring: [] }];
+    list.forEach(s => out.push({ id: `${stamp}a${out.length}`, kind: 'action', ...s }));
+    room -= list.length;
+    lines.filter(l => l.beat === i).forEach(l => out.push({
+      id: `${stamp}l${out.length}`, kind: 'line', beat: i, speaker: l.speaker, line: l.line, featuring: [l.speaker],
+      description: `Close-up of ${l.speaker}, mid-sentence, mouth open, speaking with feeling to someone just off screen.`, camera: 'close-up'
+    }));
+  });
+  return out;
+}
+
+/** What to draw for a shot. */
+export function cartoonShotPrompt(shot) {
+  const what = clip(shot?.description, 400);
+  return `A single frame from an animated film: ${shot?.camera ? `${clip(shot.camera, 90)}. ` : ''}${what} Widescreen 16:9 composition, cinematic lighting, the characters caught mid-action. No text, captions or speech bubbles.`;
+}
+
+/** How a shot's still should move. */
+export function cartoonMotionPrompt(shot) {
+  if (shot?.kind === 'line') {
+    return `${clean(shot.speaker)} talks to someone just off screen: lips moving as they speak, head and eyes alive with expression, a small gesture. Hold the close-up. Keep the exact art style, no text.`;
+  }
+  return `${shot?.camera ? `${clip(shot.camera, 90)}. ` : ''}${clip(shot?.description, 300)} Fluid cartoon animation: the characters move and act it out, the camera moves as described. Keep the exact art style, no text.`.slice(0, 480);
+}
+
+/** A voice for a speaker, the same one every time for the same name. */
+export function voiceForSpeaker(name, voiceKeys = []) {
+  if (!voiceKeys.length) return '';
+  let hash = 0;
+  for (const ch of clean(name).toLowerCase()) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return voiceKeys[hash % voiceKeys.length];
+}
+
+/** Whether a beat's recorded narration still matches its words. */
+const beatVoice = (recap, i, voice = recap?.cartoon?.voice) => {
+  const take = voice?.beats?.[i];
+  return take?.url && clean(take.line) === clean(recap?.slides?.[i]?.line) ? take : null;
+};
+
+/**
+ * The narrator's takes that can still be used: none of them once the studio's
+ * narrator (`recap.voiceKey`, when given) is no longer the one who read them.
+ */
+export function cartoonNarration(recap) {
+  const voice = recap?.cartoon?.voice || {};
+  return recap?.voiceKey && voice.voiceKey && voice.voiceKey !== recap.voiceKey ? {} : voice;
+}
+
+/** What "Shoot it" still has to make: narration takes, spoken lines, drawings and clips. */
+export function cartoonNeeds(recap) {
+  const shots = recap?.cartoon?.shots || [];
+  const voice = cartoonNarration(recap);
+  const beats = (recap?.slides || []).filter((s, i) => !beatVoice(recap, i, voice)).length;
+  const question = recap?.question && clean(voice.question) !== clean(recap.question) ? 1 : 0;
+  return {
+    voice: beats + (voice.introUrl ? 0 : 1) + question + shots.filter(s => s.kind === 'line' && !s.audioUrl).length,
+    draw: shots.filter(s => !s.imageUrl).length,
+    animate: shots.filter(s => !s.videoUrl).length
+  };
+}
+
+/**
+ * The cartoon's timeline. Each beat lasts exactly as long as its own
+ * narration take (so the picture changes when the narrator moves on), shared
+ * between that beat's shots; a spoken line then plays over its own shot.
+ * Returns { shots: [...shot, start, duration], voices: [{url, start}],
+ * captions: [{beat, line, start, duration}], cliff, endStart, total, titleEnd }.
+ */
+export function cartoonPlan(recap) {
+  const slides = recap?.slides || [];
+  const all = recap?.cartoon?.shots || [];
+  const voice = recap?.cartoon?.voice || {};
+  const shots = [];
+  const voices = [];
+  const captions = [];
+  let at = RECAP_TITLE_SECONDS;
+
+  slides.forEach((slide, i) => {
+    const take = beatVoice(recap, i);
+    const seconds = (take ? take.duration : Math.max(3.5, clean(slide.line).length / 15)) + CARTOON_BEAT_TAIL;
+    const own = all.filter(s => s.beat === i && s.kind !== 'line');
+    // A beat with no shot of its own shows the picture chosen for it in the studio.
+    const list = own.length ? own : [{ id: `slide-${i}`, kind: 'action', beat: i, imageUrl: slide.imageUrl || '', videoUrl: slide.videoUrl || '' }];
+    if (take) voices.push({ url: take.url, start: at });
+    captions.push({ beat: i, line: clean(slide.line), start: at, duration: seconds });
+    list.forEach((s, k) => shots.push({ ...s, start: at + (k * seconds) / list.length, duration: seconds / list.length }));
+    at += seconds;
+
+    all.filter(s => s.beat === i && s.kind === 'line').forEach(s => {
+      const said = s.audioUrl ? s.duration || 2 : Math.max(2, clean(s.line).split(' ').length / 2.6);
+      const duration = CARTOON_LINE_LEAD + said + CARTOON_LINE_PAD;
+      if (s.audioUrl) voices.push({ url: s.audioUrl, start: at + CARTOON_LINE_LEAD });
+      shots.push({ ...s, start: at, duration });
+      at += duration;
+    });
+  });
+
+  const question = clean(recap?.question);
+  const questionSeconds = question && clean(voice.question) === question ? voice.questionDuration || 0 : 0;
+  const cliff = question
+    ? { start: at, questionAt: at + RECAP_CLIFF_SILENCE, duration: Math.max(RECAP_CLIFF_SECONDS, RECAP_CLIFF_SILENCE + RECAP_QUESTION_VOICE_DELAY + questionSeconds + 1.4) }
+    : null;
+  if (cliff && questionSeconds && voice.questionUrl) voices.push({ url: voice.questionUrl, start: cliff.questionAt + RECAP_QUESTION_VOICE_DELAY });
+  const endStart = cliff ? cliff.start + cliff.duration : at;
+  return { shots, voices, captions, cliff, endStart, total: endStart + RECAP_END_SECONDS, titleEnd: RECAP_TITLE_SECONDS };
+}

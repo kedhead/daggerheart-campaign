@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { recapPlan, panelImages, recapArtFills, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_INTRO_VOICE_AT, RECAP_QUESTION_VOICE_DELAY } from './cinematicPlan';
-import { playWhoosh, playRiser, playSlam, audioContext, loadMusicBuffer } from './cinematicSfx';
+import { playWhoosh, playRiser, playSlam } from './cinematicSfx';
+import useReelMusic from './useReelMusic';
 import './RecapReel.css';
 
 // Slow drifts for full-screen pictures, and the wipes that bring a beat in,
@@ -45,12 +46,6 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const narrationRef = useRef(null);
   const introRef = useRef(null);
   const questionRef = useRef(null);
-  const musicRef = useRef(null);
-  const musicGain = useRef(null); // the music's volume control
-  const musicLevelRef = useRef(0); // what that volume should be right now
-  // How the music is played: as decoded sound through a gain ('buffer'), or,
-  // if that cannot be done, by an audio element ('element').
-  const [musicMode, setMusicMode] = useState('loading');
   // Callbacks by ref, so a parent re-render never restarts the reel.
   const doneRef = useRef(onDone);
   const blockedRef = useRef(onSoundBlocked);
@@ -95,65 +90,6 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     return () => cancelAnimationFrame(raf);
   }, [timing]);
 
-  // The music. An audio element's volume is only a request: iPhones, iPads
-  // and some TV browsers ignore it and play at full blast, so the narrator
-  // was drowned whatever the slider said. The track is decoded and played
-  // through a Web Audio gain instead, which every device obeys.
-  const musicUrl = recap?.musicUrl || '';
-  useEffect(() => {
-    if (!musicUrl) return undefined;
-    const ctx = audioContext();
-    if (!ctx) { setMusicMode('element'); return undefined; }
-    // On iPhone, let this sound play with the silent switch on, as the narrator does.
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* not supported */ }
-    let live = true;
-    let source = null;
-    const began = performance.now();
-    const gain = ctx.createGain();
-    gain.gain.value = musicLevelRef.current;
-    gain.connect(ctx.destination);
-    loadMusicBuffer(ctx, musicUrl).then(buffer => {
-      if (!live) return;
-      source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.loop = true;
-      source.connect(gain);
-      gain.gain.value = musicLevelRef.current;
-      musicGain.current = gain;
-      // Join the track where it would be had it started with the reel.
-      source.start(0, ((performance.now() - began) / 1000) % buffer.duration);
-      ctx.resume?.().catch(() => {});
-      if (ctx.state === 'suspended') blockedRef.current?.(true);
-      setMusicMode('buffer');
-    }).catch(() => { if (live) setMusicMode('element'); });
-    return () => {
-      live = false;
-      try { source?.stop(); } catch { /* never started */ }
-      gain.disconnect();
-      musicGain.current = null;
-    };
-  }, [musicUrl]);
-
-  // The fallback, when the track could not be decoded: an audio element,
-  // through a gain where the device ignores the element's own volume.
-  useEffect(() => {
-    const music = musicRef.current;
-    if (musicMode !== 'element' || !music) return;
-    music.volume = 0.5;
-    const volumeLocked = music.volume !== 0.5;
-    const ctx = audioContext();
-    if (volumeLocked && ctx && !musicGain.current) {
-      try {
-        const gain = ctx.createGain();
-        gain.gain.value = musicLevelRef.current;
-        ctx.createMediaElementSource(music).connect(gain).connect(ctx.destination);
-        musicGain.current = gain;
-        ctx.resume?.().catch(() => {});
-      } catch { /* stays on element volume */ }
-    }
-    music.volume = musicLevelRef.current;
-    music.play().catch(() => blockedRef.current?.(true));
-  }, [musicMode]);
 
   const index = timing.slides.findIndex(s => t >= s.start && t < s.start + s.duration);
   const cliff = timing.cliff;
@@ -224,12 +160,8 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const introSpeaking = !!recap?.narration?.introUrl && t >= RECAP_INTRO_VOICE_AT - 0.3 && t < timing.titleEnd;
   // The montage has no narrator over it, so the music swells for it.
   const target = inCliff || onEnd ? 0 : level * recapMusicFactor({ speaking: speaking || introSpeaking, montage: cutAt >= 0 });
-  musicLevelRef.current = target;
-  useEffect(() => {
-    const gain = musicGain.current;
-    if (gain) gain.gain.setTargetAtTime(target, gain.context.currentTime, 0.12);
-    else if (musicRef.current) musicRef.current.volume = target;
-  }, [target, musicMode]);
+
+  const musicFallback = useReelMusic(recap?.musicUrl || '', target, blockedRef);
 
   // Wide art fills the screen; square or tall art is shown whole in a frame.
   const framedAt = (i) => {
@@ -305,7 +237,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
       {recap?.narration?.url && <audio ref={narrationRef} src={recap.narration.url} preload="auto" />}
       {recap?.narration?.introUrl && <audio ref={introRef} src={recap.narration.introUrl} preload="auto" />}
       {recap?.narration?.questionUrl && <audio ref={questionRef} src={recap.narration.questionUrl} preload="auto" />}
-      {musicUrl && musicMode === 'element' && <audio ref={musicRef} src={musicUrl} preload="auto" loop crossOrigin="anonymous" />}
+      {musicFallback}
 
       {/* Load every picture up front, so no panel slams in half-loaded. */}
       <div className="rr-preload" aria-hidden>
