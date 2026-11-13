@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, Wand2, RefreshCw, Clapperboard } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, recapCast, recapStarring, recapArtChapters, recapGallery, featuredInLine, recapShotPrompt } from './cinematicPlan';
+import CartoonStudio from './CartoonStudio';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, featuredInLine, recapShotPrompt } from './cinematicPlan';
 import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
@@ -68,7 +69,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const saved = session?.recap || null;
 
   const [busy, setBusy] = useState(null); // what is running, for the buttons
-  const [voiceKey, setVoiceKey] = useState(saved?.narration?.voiceKey || RECAP_VOICE_KEY);
+  const [voiceKey, setVoiceKey] = useState(saved?.narration?.voiceKey || saved?.cartoon?.voice?.voiceKey || RECAP_VOICE_KEY);
   const [picking, setPicking] = useState(null); // slide index whose picture is being chosen
   const [preview, setPreview] = useState(null);
   const [shooting, setShooting] = useState(null); // { index, text }: a new shot being described
@@ -80,7 +81,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const musicLevel = saved?.musicLevel ?? 0.6;
   const sfxLevel = saved?.sfxLevel ?? 1;
   // Film is the look unless this recap was set to the comic one.
-  const style = saved?.style === 'comic' ? 'comic' : 'film';
+  const style = ['comic', 'cartoon'].includes(saved?.style) ? saved.style : 'film';
   const cast = useMemo(() => recapCast(characters), [characters]);
   // Players who are away tonight sit the roll out; it is remembered per recap.
   const castAway = saved?.castAway || [];
@@ -120,6 +121,8 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
       slides: beats.map((b, i) => ({ line: b.line, imageUrl: art[i]?.imageUrl || '', videoUrl: art[i]?.videoUrl || '' })),
       question,
       narration: null,
+      // The storyboard was made for the old beats.
+      cartoon: null,
       endLabel,
       musicTrack
     });
@@ -150,12 +153,10 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
 
   // A fresh picture for one slide, drawn in the campaign's storybook style with
   // the portraits of whoever the line names as references.
-  const newShot = (i, text) => run(`shot-${i}`, async () => {
-    const description = (text || slides[i]?.line || '').trim();
-    if (!description) throw new Error('Describe the shot first.');
+  const drawScene = async ({ id, prompt, about }) => {
     const chapter = artChapters[0] || null;
     const scene = await regenerateScene({
-      scene: { id: `recap_${session.id}_${i}_${Date.now()}`, prompt: recapShotPrompt(description), featuredEntityIds: featuredInLine(description, { characters, npcs, adversaries }) },
+      scene: { id, prompt, featuredEntityIds: featuredInLine(about, { characters, npcs, adversaries }) },
       chapter,
       entities: { characters, npcs, adversaries },
       campaignId,
@@ -165,7 +166,15 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
       styleCustom: chapter?.styleCustom || campaign?.storybookStyleCustom || '',
       imageModel: 'nano-banana-2'
     });
-    await save({ slides: slides.map((s, j) => (j === i ? { ...s, imageUrl: scene.imageUrl, videoUrl: '' } : s)) });
+    if (!scene?.imageUrl) throw new Error('The picture did not come back.');
+    return scene.imageUrl;
+  };
+
+  const newShot = (i, text) => run(`shot-${i}`, async () => {
+    const description = (text || slides[i]?.line || '').trim();
+    if (!description) throw new Error('Describe the shot first.');
+    const imageUrl = await drawScene({ id: `recap_${session.id}_${i}_${Date.now()}`, prompt: recapShotPrompt(description), about: description });
+    await save({ slides: slides.map((s, j) => (j === i ? { ...s, imageUrl, videoUrl: '' } : s)) });
     setShooting(null);
     notify.success('New shot ready.');
   });
@@ -238,9 +247,13 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     narration: saved?.narration || null,
     musicUrl: musicTrack ? getTrackUrl(musicTrack) : '',
     musicLevel,
-    sfxLevel
+    sfxLevel,
+    ...(style === 'cartoon' ? { cartoon: saved?.cartoon || null } : {})
   };
-  const seconds = Math.round(recapPlan(reel).total);
+  const cartoonShots = saved?.cartoon?.shots?.length || 0;
+  // The cartoon has nothing to play until it has a storyboard.
+  const unplayable = style === 'cartoon' && !cartoonShots;
+  const seconds = Math.round((style === 'cartoon' ? cartoonPlan(reel) : recapPlan(reel)).total);
 
   // The reel with its trailer sounds (made once, the first time).
   const withSounds = async () => {
@@ -436,9 +449,11 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                       <select value={style} onChange={(e) => save({ style: e.target.value })} className="p-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm">
                         <option value="film">Film trailer</option>
                         <option value="comic">Comic book</option>
+                        <option value="cartoon">Animated cartoon</option>
                       </select>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 pb-1.5">
+                    {/* The cast roll belongs to the film and comic looks. */}
+                    <div className={`flex flex-wrap items-center gap-2 pb-1.5 ${style === 'cartoon' ? 'hidden' : ''}`}>
                       <label className={`flex items-center gap-2 text-sm ${cast.length ? 'text-white' : 'text-lr-text-dim'}`}>
                         <input type="checkbox" checked={castRoll} disabled={!starring.length} onChange={(e) => save({ castRoll: e.target.checked })} />
                         {cast.length ? 'Cast roll, starring:' : 'Cast roll (needs player characters with portraits)'}
@@ -466,9 +481,31 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                     <p className="basis-full text-[11px] text-lr-text-dim">
                       {style === 'film'
                         ? 'Widescreen with film grain, dissolves and subtitles; short lines become big text cards, and every shot flashes by again before the cliffhanger.'
-                        : 'Comic panels with ink wipes, speed lines and caption boxes.'}
+                        : style === 'comic'
+                          ? 'Comic panels with ink wipes, speed lines and caption boxes.'
+                          : 'A storyboard of short animated shots made for this recap, cut to the narrator, with characters who speak. Has its own shots and voices below; switch looks any time and the others are still there.'}
                     </p>
                   </div>
+
+                  {style === 'cartoon' && (
+                    <CartoonStudio
+                      recap={{ slides, question: saved?.question || '', cartoon: saved?.cartoon || null, voiceKey }}
+                      save={save}
+                      run={run}
+                      busy={busy}
+                      setBusy={setBusy}
+                      notify={notify}
+                      campaign={campaign}
+                      session={session}
+                      sessions={sessions}
+                      chapters={chapters}
+                      characters={characters}
+                      npcs={npcs}
+                      drawScene={drawScene}
+                      voiceKey={voiceKey}
+                      getEffectiveKey={getEffectiveKey}
+                    />
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
@@ -477,12 +514,18 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                         <select value={voiceKey} onChange={(e) => setVoiceKey(e.target.value)} className="flex-1 min-w-0 p-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm">
                           {NARRATOR_VOICES.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
                         </select>
-                        <button type="button" className="btn btn-secondary btn-sm inline-flex items-center gap-1" onClick={readAloud} disabled={!!busy}>
-                          {busy === 'narrate' ? <Loader2 size={14} className="animate-spin" /> : <Mic size={14} />}
-                          {saved?.narration ? 'Re-read' : 'Narrate'}
-                        </button>
+                        {style !== 'cartoon' && (
+                          <button type="button" className="btn btn-secondary btn-sm inline-flex items-center gap-1" onClick={readAloud} disabled={!!busy}>
+                            {busy === 'narrate' ? <Loader2 size={14} className="animate-spin" /> : <Mic size={14} />}
+                            {saved?.narration ? 'Re-read' : 'Narrate'}
+                          </button>
+                        )}
                       </div>
-                      <p className="text-[11px] mt-1 text-lr-text-dim">{saved?.narration ? `Narrated (${Math.round(saved.narration.duration)}s).` : 'Not narrated yet: it plays with captions only.'}</p>
+                      <p className="text-[11px] mt-1 text-lr-text-dim">
+                        {style === 'cartoon'
+                          ? '"Shoot it" records the cartoon in this voice, one take per beat. Pick another voice and shoot again to re-record.'
+                          : saved?.narration ? `Narrated (${Math.round(saved.narration.duration)}s).` : 'Not narrated yet: it plays with captions only.'}
+                      </p>
                     </div>
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-widest text-lr-text-dim mb-1">Music</label>
@@ -518,10 +561,10 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                     <button type="button" className="btn btn-ghost inline-flex items-center gap-2" onClick={() => openMonitorWindow(campaignId)}>
                       <ExternalLink size={16} /> Open monitor
                     </button>
-                    <button type="button" className="btn btn-secondary inline-flex items-center gap-2" onClick={showPreview} disabled={!!busy}>
+                    <button type="button" className="btn btn-secondary inline-flex items-center gap-2" onClick={showPreview} disabled={!!busy || unplayable} title={unplayable ? 'Storyboard the cartoon first' : undefined}>
                       <Play size={16} /> Preview here
                     </button>
-                    <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={sendToMonitor} disabled={!!busy || !campaignId}>
+                    <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={sendToMonitor} disabled={!!busy || !campaignId || unplayable}>
                       {busy === 'send' ? <Loader2 size={16} className="animate-spin" /> : <Monitor size={16} />}
                       Play on monitor
                     </button>

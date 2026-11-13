@@ -496,6 +496,50 @@
   85% { transform: translate(-3%, 5%); }
 }
 
+/* ── Cartoon look: the storyboard played shot after shot (CartoonReel). ─── */
+.rr-cartoon.rr-film .rr-letterbox { height: 5vh; }
+.rr-cartoon.rr-film .rr-beat.is-entering { animation: rr-dissolve 0.4s ease both; }
+.rr-cartoon.rr-film .rr-media { filter: none; }
+.rr-cartoon .rr-fit .rr-panel { width: min(100vw, calc(90vh * var(--ratio))); }
+.rr-cartoon .rr-sub { bottom: 7.5vh; }
+
+/* A character speaking: their name on a tab, the line in a speech box. */
+.rr-say {
+  position: absolute;
+  left: 50%;
+  bottom: 9vh;
+  max-width: 76vw;
+  translate: -50% 0;
+  padding: 1.6vh 2.4vw 1.8vh;
+  background: #fffdf5;
+  color: #14110f;
+  border: 0.45vh solid #000;
+  border-radius: 2.4vh;
+  box-shadow: 0.7vh 0.7vh 0 rgba(0, 0, 0, 0.85);
+  font-family: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: clamp(20px, 5vh, 84px);
+  line-height: 1.2;
+  text-align: center;
+  animation: rr-say-in 0.3s cubic-bezier(.2,1.4,.4,1) both;
+}
+@keyframes rr-say-in { from { opacity: 0; transform: translateY(2vh) scale(0.9); } }
+.rr-say-who {
+  position: absolute;
+  left: 2vw;
+  top: 0;
+  translate: 0 -62%;
+  padding: 0.3vh 1.2vw;
+  background: #d4af37;
+  color: #14110f;
+  border: 0.35vh solid #000;
+  border-radius: 1vh;
+  font-size: clamp(12px, 2.4vh, 40px);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .recap-reel *, .recap-reel *::before { animation-duration: 0.01s !important; }
   .rr-grain { animation: none !important; }

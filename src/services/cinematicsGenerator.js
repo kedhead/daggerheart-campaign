@@ -8,8 +8,8 @@ import { aiService } from './aiService';
 import { apiFetch } from './apiClient';
 import { persistAudio, persistVideo } from './audioStorage';
 import { animateStill } from './animateStill';
-import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion } from '../components/Cinematics/cinematicPlan';
-import { NARRATOR_VOICES, DEFAULT_VOICE_KEY, probeDuration } from '../components/Storybook/narratorVoices';
+import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard } from '../components/Cinematics/cinematicPlan';
+import { NARRATOR_VOICES, CHARACTER_VOICES, DEFAULT_VOICE_KEY, probeDuration } from '../components/Storybook/narratorVoices';
 
 /** Which text model to use: the DM's own key if they have one, else the server's. */
 export function textProvider(getEffectiveKey) {
@@ -32,9 +32,17 @@ export async function writeRecapScript({ campaign, sources, characters, apiKey, 
   return { beats, question: parseRecapQuestion(text) };
 }
 
-/** Read `text` aloud in a narrator voice and store the mp3. */
+/** The shot list for the animated recap: the script's beats storyboarded into short shots and a spoken line or two. */
+export async function writeStoryboard({ campaign, beats, sources, characters, npcs, apiKey, provider }) {
+  const text = await aiService.generate(buildStoryboardPrompt({ campaignName: campaign?.name, beats, sources, characters, npcs }), apiKey, provider);
+  const shots = parseStoryboard(text, beats, `${Date.now().toString(36)}-`);
+  if (!shots.some(s => s.featuring?.length || s.camera)) throw new Error('The AI did not come back with a storyboard. Try again.');
+  return shots;
+}
+
+/** Read `text` aloud in a narrator's or a character's voice and store the mp3. */
 export async function narrate({ campaignId, text, voiceKey = DEFAULT_VOICE_KEY, fileName }) {
-  const voice = NARRATOR_VOICES.find(v => v.key === voiceKey) || NARRATOR_VOICES[0];
+  const voice = [...NARRATOR_VOICES, ...CHARACTER_VOICES].find(v => v.key === voiceKey) || NARRATOR_VOICES[0];
   const resp = await apiFetch('/api/generate-narration', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, Volume2 } from 'lucide-react';
 import BossIntro from './BossIntro';
 import RecapReel from './RecapReel';
+import CartoonReel from './CartoonReel';
 import PhaseShift from './PhaseShift';
 import { audioContext } from './cinematicSfx';
 import { createSoundPlayer } from './soundPlayer';
@@ -50,7 +51,8 @@ export default function CinematicStage({ cue, onClose }) {
     <div className="cinematic-stage" onClick={soundBlocked ? enableSound : undefined}>
       {ready && cue.kind === 'boss' && <BossIntro intro={cue.data} onDone={onClose} sfx={sfx} />}
       {ready && cue.kind === 'phase' && <PhaseShift shift={cue.data} onDone={onClose} sfx={sfx} />}
-      {ready && cue.kind === 'recap' && <RecapReel recap={cue.data} onDone={onClose} onSoundBlocked={setSoundBlocked} sfx={sfx} />}
+      {ready && cue.kind === 'recap' && cue.data?.style !== 'cartoon' && <RecapReel recap={cue.data} onDone={onClose} onSoundBlocked={setSoundBlocked} sfx={sfx} />}
+      {ready && cue.kind === 'recap' && cue.data?.style === 'cartoon' && <CartoonReel recap={cue.data} onDone={onClose} onSoundBlocked={setSoundBlocked} sfx={sfx} />}
 
       {soundBlocked && (
         <button type="button" className="cs-sound" onClick={enableSound}>

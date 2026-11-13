@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3695,6 +3695,51 @@ section('Table cinematics');
     'sound effects that land under a voice play far quieter; the ones in the clear keep their punch');
   assert(recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 4 }).cliff.duration >= RECAP_CLIFF_SILENCE + RECAP_QUESTION_VOICE_DELAY + 4 + 1.4 - 1e-9,
     'the cliffhanger leaves room for the question to be spoken after its slam');
+  // The animated cartoon: a storyboard of shots per beat, narration recorded beat by beat, characters who speak.
+  const cBeats = [{ line: 'One party broke out of the prison of Korak.' }, { line: 'Then the floor gave way.' }, { line: 'At the Sky Docks a ghost with a very wide grin claimed to be family.' }];
+  const sbPrompt = buildStoryboardPrompt({ campaignName: 'Sundering', beats: cBeats, sources: { sessions: [{ summary: 'They escaped.', highlights: ['That ghost has my nose.'] }] }, characters: [{ name: 'Pippin' }], npcs: [{ name: 'Old Greel' }] });
+  assert(/1\. One party broke out/.test(sbPrompt) && /3\. At the Sky Docks/.test(sbPrompt) && /Pippin/.test(sbPrompt) && /Old Greel/.test(sbPrompt) && /That ghost has my nose/.test(sbPrompt) && /"lines"/.test(sbPrompt),
+    'the storyboard prompt carries the numbered script, the cast and what was said at the table');
+  const board = parseStoryboard(`Here you go: {"shots":[
+    {"beat":1,"description":"Pippin kicks the cell door off its hinges.","camera":"low angle","featuring":["Pippin"]},
+    {"beat":1,"description":"The party sprints down a torchlit corridor.","camera":"tracking shot","featuring":["Pippin","Korra"]},
+    {"beat":1,"description":"A third shot the beat has no room for.","camera":"wide","featuring":[]},
+    {"beat":3,"description":"A grinning ghost floats over the docks.","camera":"wide establishing shot","featuring":["Old Greel"]},
+    {"beat":9,"description":"A shot for a beat that does not exist.","camera":"wide","featuring":[]}],
+    "lines":[{"afterBeat":3,"speaker":"Pippin","line":"That ghost has my nose."},{"afterBeat":7,"speaker":"Nobody","line":"Lost."}]}`, cBeats, 'x-');
+  assert(board.map(s => `${s.beat}${s.kind[0]}`).join() === '0a,0a,1a,2a,2l' && board[2].description === cBeats[1].line && new Set(board.map(s => s.id)).size === board.length && board.every(s => s.id.startsWith('x-')),
+    `a beat gets at most two shots, a beat the model skipped shows its own line, and out-of-range shots and lines are dropped (got ${board.map(s => `${s.beat}${s.kind[0]}`)})`);
+  assert(board[4].speaker === 'Pippin' && board[4].line === 'That ghost has my nose.' && /Close-up of Pippin/.test(board[4].description) && board[4].featuring.join() === 'Pippin',
+    'a spoken line becomes a close-up shot of its speaker, right after its beat');
+  assert(parseStoryboard('not json', cBeats).length === 3 && parseStoryboard('{"shots":[]}', Array.from({ length: 20 }, (_, i) => ({ line: `Beat ${i}` }))).length === 20
+    && parseStoryboard(JSON.stringify({ shots: Array.from({ length: 30 }, (_, i) => ({ beat: (i % 10) + 1, description: `Shot ${i}` })) }), Array.from({ length: 10 }, (_, i) => ({ line: `Beat ${i}` }))).length === CARTOON_MAX_SHOTS,
+    'an unreadable answer still gives one shot per beat, and the shot list never passes its limit while every beat keeps a shot');
+  assert(/low angle/.test(cartoonShotPrompt(board[0])) && /kicks the cell door/.test(cartoonShotPrompt(board[0])) && /No text/.test(cartoonShotPrompt(board[0]))
+    && /lips moving/.test(cartoonMotionPrompt(board[4])) && /kicks the cell door/.test(cartoonMotionPrompt(board[0])) && cartoonMotionPrompt(board[0]).length <= 480,
+    'a shot is drawn from its framing and action, and a speaking shot is animated talking');
+  assert(voiceForSpeaker('Pippin', ['a', 'b', 'c']) === voiceForSpeaker(' pippin ', ['a', 'b', 'c']) && ['a', 'b', 'c'].includes(voiceForSpeaker('Korra', ['a', 'b', 'c'])) && voiceForSpeaker('x', []) === '',
+    'a speaker keeps the same voice every time');
+  const cRecap = { slides: cBeats.map(b => ({ ...b, imageUrl: 'https://x/slide.png' })), question: 'Will they?', cartoon: { shots: board.filter(s => s.beat !== 1), voice: null } };
+  assert(JSON.stringify(cartoonNeeds(cRecap)) === JSON.stringify({ voice: 3 + 1 + 1 + 1, draw: 4, animate: 4 }), `an unshot cartoon needs every voice, drawing and clip (got ${JSON.stringify(cartoonNeeds(cRecap))})`);
+  const shotRecap = { ...cRecap, cartoon: {
+    shots: cRecap.cartoon.shots.map(s => ({ ...s, imageUrl: `https://x/${s.id}.png`, videoUrl: `https://x/${s.id}.mp4`, ...(s.kind === 'line' ? { audioUrl: 'https://x/line.mp3', duration: 2 } : {}) })),
+    voice: { voiceKey: 'announcer', introUrl: 'https://x/intro.mp3', question: 'Will they?', questionUrl: 'https://x/q.mp3', questionDuration: 1.5,
+      beats: [{ url: 'https://x/b0.mp3', duration: 4, line: cBeats[0].line }, { url: 'https://x/b1.mp3', duration: 2, line: cBeats[1].line }, { url: 'https://x/b2.mp3', duration: 5, line: 'An older wording of beat three.' }] } } };
+  assert(JSON.stringify(cartoonNeeds(shotRecap)) === JSON.stringify({ voice: 1, draw: 0, animate: 0 }) && cartoonNeeds({ ...shotRecap, voiceKey: 'wizard' }).voice === 5 && cartoonNeeds({ ...shotRecap, voiceKey: 'announcer' }).voice === 1,
+    'only the beat whose words changed is read again; a new narrator reads everything again');
+  const cPlan = cartoonPlan(shotRecap);
+  const [p0, p1, pSlide, p2, pLine] = cPlan.shots;
+  assert(cPlan.shots.length === 5 && p0.start === RECAP_TITLE_SECONDS && Math.abs(p0.duration - (4 + CARTOON_BEAT_TAIL) / 2) < 1e-9 && Math.abs(p1.start - (p0.start + p0.duration)) < 1e-9
+    && Math.abs(pSlide.start - (RECAP_TITLE_SECONDS + 4 + CARTOON_BEAT_TAIL)) < 1e-9 && Math.abs(pSlide.duration - (2 + CARTOON_BEAT_TAIL)) < 1e-9,
+    'each beat lasts exactly as long as its narration take, shared between its shots');
+  assert(pSlide.id === 'slide-1' && pSlide.imageUrl === 'https://x/slide.png', 'a beat with no shot of its own shows the picture chosen for it in the studio');
+  assert(pLine.kind === 'line' && Math.abs(pLine.start - (p2.start + p2.duration)) < 1e-9 && pLine.duration > 2 && cPlan.voices.some(v => v.url === 'https://x/line.mp3' && v.start > pLine.start && v.start < pLine.start + 1),
+    'a spoken line plays over its own shot, after the beat it follows');
+  assert(cPlan.voices.map(v => v.url).join() === 'https://x/b0.mp3,https://x/b1.mp3,https://x/line.mp3,https://x/q.mp3' && cPlan.voices[0].start === p0.start && cPlan.voices[1].start === pSlide.start
+    && cPlan.cliff && cPlan.voices[3].start > cPlan.cliff.questionAt && cPlan.total > cPlan.endStart,
+    'each take starts with its beat, a take whose words changed is left out (that beat plays on reading time), and the question is spoken after its slam');
+  assert(cartoonPlan({ slides: cBeats, cartoon: null }).shots.length === 3 && cartoonPlan({ slides: cBeats, cartoon: null }).voices.length === 0 && !cartoonPlan({ slides: cBeats }).cliff,
+    'with no storyboard at all the timeline still walks the beats');
   const withCliff = recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 2 });
   assert(withCliff.cliff && Math.abs(withCliff.cliff.start - (RECAP_TITLE_SECONDS + 30)) < 0.01 && withCliff.cliff.questionAt === withCliff.cliff.start + RECAP_CLIFF_SILENCE
     && withCliff.endStart > withCliff.cliff.questionAt + 2 && Math.abs(withCliff.total - (withCliff.endStart + RECAP_END_SECONDS)) < 0.01,
