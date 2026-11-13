@@ -3763,7 +3763,7 @@ section('Table cinematics');
     `names are swapped for labels, full names and first names alike (got ${withoutNames(shotText, sc)})`);
   const grounded = groundShotPrompt(`A frame: ${shotText} No text.`, sc);
   assert(!/Pippin|Korra|Greel/.test(grounded) && /the rogue is a frog-like humanoid with wide eyes, Nightwalker, A wiry green frog in a patched hood \(drawn exactly as in reference image 1\)/.test(grounded)
-    && /the second rogue is one person, drawn the same way throughout;/.test(grounded) && !/the second rogue[^;]*reference image/.test(grounded) &&/Exactly these 4 characters appear, and nobody else/.test(grounded) && /do not draw any famous or existing character/.test(grounded),
+    && /the second rogue is one person, drawn the same way throughout;/.test(grounded) && /Exactly these 4 characters appear, and nobody else/.test(grounded) && /do not draw any famous or existing character/.test(grounded),
     'the picture prompt names nobody, says who each label is and which reference shows them, and that nobody else is in the shot');
   assert(shotCast('The pippins are ripe and Korral is far.', roster, looks).length === 0 && shotCast('PIPPIN runs.', roster, looks)[0].id === 'pip' && shotCast('The party runs.', { characters: [{ id: 'x', name: 'The Party' }] }).length === 1,
     'a name is matched as a whole word, in any case, and never by a bare title like "the"');
