@@ -3,7 +3,7 @@ import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, W
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
 import CartoonStudio from './CartoonStudio';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, shotCast, shotIsScenery, groundShotPrompt, withoutNames } from './cinematicPlan';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, recapSessionCast, shotCast, shotIsScenery, groundShotPrompt, withoutNames } from './cinematicPlan';
 import { ANCESTRY_VISUAL_HINTS } from '../../services/portraitGenerator';
 import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
@@ -101,6 +101,12 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     [session, chapters, npcs, characters, adversaries]
   );
   const artOptions = { chapters: artChapters, npcs, characters, adversaries, locations };
+  // Who was in this session: the AI writers are shown them and nobody else
+  // (fallen characters and people from other sessions used to wander in).
+  const sessionCast = useMemo(
+    () => recapSessionCast({ session, chapter: artChapters[0], lines: slides, characters, npcs, adversaries }),
+    [session, artChapters, slides, characters, npcs, adversaries]
+  );
 
   const save = (fields) => updateSession(session.id, { recap: { ...(saved || {}), ...fields } });
 
@@ -114,7 +120,9 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     if (!sources.sessions.some(s => (s.summary || s.notes || '').trim())) {
       throw new Error('This session has no summary yet. Add one in the Session Log first.');
     }
-    const { beats, question } = await writeRecapScript({ campaign, sources, characters, ...textProvider(getEffectiveKey) });
+    // The party as it was that session: no fallen characters unless the notes are about them.
+    const there = recapSessionCast({ session, chapter: artChapters[0], characters, npcs, adversaries });
+    const { beats, question } = await writeRecapScript({ campaign, sources, characters: there.characters, ...textProvider(getEffectiveKey) });
     // Pictures from this session only: the script reads the session before
     // it too, but its art belongs to last week's recap.
     const art = pickRecapArt(beats, artOptions);
@@ -159,11 +167,11 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
   const castOf = (text) => shotCast(text, { characters, npcs, adversaries }, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '' });
   const plainNames = (text, about = text) => withoutNames(text, castOf(about));
 
-  const drawScene = async ({ id, prompt, about }) => {
+  const drawScene = async ({ id, prompt, about, scenery: choice }) => {
     const chapter = artChapters[0] || null;
     const cast = castOf(about);
     // A shot that names nobody and mentions no person or creature is a place: it is drawn empty.
-    const scenery = shotIsScenery(about, cast);
+    const scenery = shotIsScenery(about, cast, choice);
     const scene = await regenerateScene({
       scene: { id, prompt: groundShotPrompt(prompt, cast, { scenery }), featuredEntityIds: cast.map(c => c.id), scenery },
       chapter,
@@ -512,6 +520,8 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                       npcs={npcs}
                       drawScene={drawScene}
                       plainNames={plainNames}
+                      castOf={castOf}
+                      cast={sessionCast}
                       adversaries={adversaries}
                       voiceKey={voiceKey}
                       getEffectiveKey={getEffectiveKey}

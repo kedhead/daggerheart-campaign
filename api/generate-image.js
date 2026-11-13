@@ -185,7 +185,9 @@ export default async function handler(req, res) {
       const emptyScene = scenery === true && type === 'storybook-scene';
       const preamble = emptyScene ? sceneryStyle(stylePreamble) : stylePreamble;
 
-      const fullPromptBase = `${emptyScene ? SCENERY_DIRECTIVE : ''}${preamble}. ${prompt}${mature ? ` ${MATURE_IMAGE_GUIDANCE}` : ''}`;
+      // The mature line asks for violence and wounds shown frankly. On a picture
+      // of an empty place it can only be obeyed by inventing people to fight.
+      const fullPromptBase = `${emptyScene ? SCENERY_DIRECTIVE : ''}${preamble}. ${prompt}${mature && !emptyScene ? ` ${MATURE_IMAGE_GUIDANCE}` : ''}`;
       const validSizes = ['1024x1024', '1024x1792', '1792x1024'];
       const imageSize = validSizes.includes(size) ? size : '1024x1024';
 

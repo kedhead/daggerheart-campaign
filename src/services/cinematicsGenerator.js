@@ -33,10 +33,13 @@ export async function writeRecapScript({ campaign, sources, characters, apiKey, 
 }
 
 /** The shot list for the animated recap: the script's beats storyboarded into short shots and a spoken line or two. */
-export async function writeStoryboard({ campaign, beats, sources, characters, npcs, adversaries = [], apiKey, provider }) {
-  const text = await aiService.generate(buildStoryboardPrompt({ campaignName: campaign?.name, beats, sources, characters, npcs }), apiKey, provider);
-  const known = [...(characters || []), ...(npcs || []), ...adversaries].map(e => e?.name).filter(Boolean);
-  const shots = parseStoryboard(text, beats, `${Date.now().toString(36)}-`, known);
+export async function writeStoryboard({ campaign, beats, sources, cast, characters, npcs, adversaries = [], apiKey, provider }) {
+  // The writer sees only who was in the session; the whole roster is kept to catch anyone it names anyway.
+  const rosters = { characters: characters || [], npcs: npcs || [], adversaries };
+  const there = cast || rosters;
+  const text = await aiService.generate(buildStoryboardPrompt({ campaignName: campaign?.name, beats, sources, ...there }), apiKey, provider);
+  const known = [...rosters.characters, ...rosters.npcs, ...rosters.adversaries].map(e => e?.name).filter(Boolean);
+  const shots = parseStoryboard(text, beats, `${Date.now().toString(36)}-`, known, { rosters, cast: there });
   if (!shots.some(s => s.camera)) throw new Error('The AI did not come back with a storyboard. Try again.');
   return shots;
 }
