@@ -3,7 +3,8 @@ import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, W
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
 import CartoonStudio from './CartoonStudio';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, featuredInLine, recapShotPrompt } from './cinematicPlan';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, shotCast, groundShotPrompt, withoutNames } from './cinematicPlan';
+import { ANCESTRY_VISUAL_HINTS } from '../../services/portraitGenerator';
 import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
@@ -153,10 +154,16 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
 
   // A fresh picture for one slide, drawn in the campaign's storybook style with
   // the portraits of whoever the line names as references.
+  // The campaign's people named in a shot, described so the image model
+  // draws them and not a famous namesake.
+  const castOf = (text) => shotCast(text, { characters, npcs, adversaries }, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '' });
+  const plainNames = (text, about = text) => withoutNames(text, castOf(about));
+
   const drawScene = async ({ id, prompt, about }) => {
     const chapter = artChapters[0] || null;
+    const cast = castOf(about);
     const scene = await regenerateScene({
-      scene: { id, prompt, featuredEntityIds: featuredInLine(about, { characters, npcs, adversaries }) },
+      scene: { id, prompt: groundShotPrompt(prompt, cast), featuredEntityIds: cast.map(c => c.id) },
       chapter,
       entities: { characters, npcs, adversaries },
       campaignId,
@@ -502,6 +509,8 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                       characters={characters}
                       npcs={npcs}
                       drawScene={drawScene}
+                      plainNames={plainNames}
+                      adversaries={adversaries}
                       voiceKey={voiceKey}
                       getEffectiveKey={getEffectiveKey}
                     />

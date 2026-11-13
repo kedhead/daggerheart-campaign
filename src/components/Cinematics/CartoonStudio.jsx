@@ -32,10 +32,11 @@ async function pool(items, job) {
  * @param {(fields: object) => Promise} props.save - merges fields into the saved recap
  * @param {(label: string, fn: () => Promise) => Promise} props.run - runs a job with the studio's busy state and error toast
  * @param {(args: {id: string, prompt: string, about: string}) => Promise<string>} props.drawScene - draws a picture, returns its URL
+ * @param {(text: string, about?: string) => string} [props.plainNames] - swaps character names in a prompt for plain labels
  */
 export default function CartoonStudio({
   recap, save, run, busy, setBusy, notify, campaign, session, sessions, chapters,
-  characters, npcs, drawScene, voiceKey, getEffectiveKey
+  characters, npcs, adversaries = [], drawScene, plainNames = (t) => t, voiceKey, getEffectiveKey
 }) {
   const campaignId = campaign?.id;
   const slides = recap.slides || [];
@@ -48,7 +49,7 @@ export default function CartoonStudio({
 
   const storyboard = () => run('storyboard', async () => {
     const made = await writeStoryboard({
-      campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), characters, npcs, ...textProvider(getEffectiveKey)
+      campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), characters, npcs, adversaries, ...textProvider(getEffectiveKey)
     });
     await save({ cartoon: { shots: made.map(s => (s.kind === 'line' ? { ...s, voiceKey: voiceForSpeaker(s.speaker, voiceKeys) } : s)), voice: cartoon?.voice || null } });
   });
@@ -60,8 +61,10 @@ export default function CartoonStudio({
     prompt: cartoonShotPrompt(shot),
     about: `${shot.description} ${(shot.featuring || []).join(' ')}`
   });
+  const who = (shot) => `${shot.description} ${(shot.featuring || []).join(' ')}`;
+  // The video model is told what moves, by role, not by a name it might know from elsewhere.
   const animate = (shot, imageUrl, onStatus) => animateToClip({
-    campaignId, imageUrl, prompt: cartoonMotionPrompt(shot), fileName: `recap-${session.id}-${shot.id}-${stamp()}`, onStatus
+    campaignId, imageUrl, prompt: plainNames(cartoonMotionPrompt(shot), who(shot)), fileName: `recap-${session.id}-${shot.id}-${stamp()}`, onStatus
   });
 
   // Voices, then drawings, then clips. Each result is saved as it lands, so a

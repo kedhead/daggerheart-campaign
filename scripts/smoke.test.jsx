@@ -39,7 +39,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, shotCast, withoutNames, groundShotPrompt, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3697,9 +3697,14 @@ section('Table cinematics');
     'the cliffhanger leaves room for the question to be spoken after its slam');
   // The animated cartoon: a storyboard of shots per beat, narration recorded beat by beat, characters who speak.
   const cBeats = [{ line: 'One party broke out of the prison of Korak.' }, { line: 'Then the floor gave way.' }, { line: 'At the Sky Docks a ghost with a very wide grin claimed to be family.' }];
-  const sbPrompt = buildStoryboardPrompt({ campaignName: 'Sundering', beats: cBeats, sources: { sessions: [{ summary: 'They escaped.', highlights: ['That ghost has my nose.'] }] }, characters: [{ name: 'Pippin' }], npcs: [{ name: 'Old Greel' }] });
+  const sbPrompt = buildStoryboardPrompt({ campaignName: 'Sundering', beats: cBeats, sources: { sessions: [{ summary: 'They escaped, and met Old Greel.', highlights: ['That ghost has my nose.'] }] }, characters: [{ name: 'Pippin Underbough', ancestry: 'Ribbet', characterClass: 'Rogue', appearanceDescription: 'a wiry green frog in a patched hood' }], npcs: [{ name: 'Old Greel', occupation: 'ghost' }, { name: 'Baron Vex', occupation: 'tyrant' }] });
   assert(/1\. One party broke out/.test(sbPrompt) && /3\. At the Sky Docks/.test(sbPrompt) && /Pippin/.test(sbPrompt) && /Old Greel/.test(sbPrompt) && /That ghost has my nose/.test(sbPrompt) && /"lines"/.test(sbPrompt),
     'the storyboard prompt carries the numbered script, the cast and what was said at the table');
+  assert(/Pippin Underbough \(Ribbet, Rogue, a wiry green frog in a patched hood\)/.test(sbPrompt) && /Old Greel \(ghost\)/.test(sbPrompt) && !/Baron Vex/.test(sbPrompt) && /Never add a character/.test(sbPrompt) && /famous character/.test(sbPrompt),
+    'the storyboard is told who each character is, is given only the people this story mentions, and is told to add nobody');
+  const strangers = parseStoryboard('{"shots":[{"beat":1,"description":"Pippin and Gandalf run.","camera":"wide","featuring":["Pippin","Gandalf","Old Greel"]}],"lines":[{"afterBeat":1,"speaker":"Gandalf","line":"Fly, you fools."},{"afterBeat":2,"speaker":"pippin","line":"Run!"}]}', cBeats, 'k-', ['Pippin Underbough', 'Old Greel']);
+  assert(strangers[0].featuring.join() === 'Pippin,Old Greel' && strangers.filter(s => s.kind === 'line').map(s => s.speaker).join() === 'pippin',
+    'a stranger the model put in a shot is dropped from its cast, and a stranger gets no spoken line');
   const board = parseStoryboard(`Here you go: {"shots":[
     {"beat":1,"description":"Pippin kicks the cell door off its hinges.","camera":"low angle","featuring":["Pippin"]},
     {"beat":1,"description":"The party sprints down a torchlit corridor.","camera":"tracking shot","featuring":["Pippin","Korra"]},
@@ -3740,6 +3745,31 @@ section('Table cinematics');
     'each take starts with its beat, a take whose words changed is left out (that beat plays on reading time), and the question is spoken after its slam');
   assert(cartoonPlan({ slides: cBeats, cartoon: null }).shots.length === 3 && cartoonPlan({ slides: cBeats, cartoon: null }).voices.length === 0 && !cartoonPlan({ slides: cBeats }).cliff,
     'with no storyboard at all the timeline still walks the beats');
+  // Who is in a shot: names swapped for plain labels and described, so "Pippin" is the campaign's rogue and not a hobbit.
+  const roster = {
+    characters: [{ id: 'pip', name: 'Pippin Underbough', ancestry: 'Ribbet', characterClass: 'Rogue', subclass: 'Nightwalker', appearanceDescription: 'A wiry green frog in a patched hood.', avatarUrl: 'https://x/pip.png' },
+      { id: 'kor', name: 'Korra', characterClass: 'Rogue' }],
+    npcs: [{ id: 'gre', name: 'Old Greel', occupation: 'Ferryman', description: 'A grinning ghost.', avatarUrl: 'https://x/gre.png' }],
+    adversaries: [{ id: 'kni', name: 'Skeleton Knight', role: 'bruiser', description: 'Rusted plate over bare bone.', imageUrl: 'https://x/kni.png' }]
+  };
+  const looks = { ancestryLook: a => (a === 'Ribbet' ? 'a frog-like humanoid with wide eyes' : '') };
+  const shotText = "Pippin's dagger flashes as Korra and Pippin Underbough face the Skeleton Knight on Old Greel's ferry.";
+  const sc = shotCast(shotText, roster, looks);
+  assert(sc.map(c => c.id).join() === 'pip,kor,gre,kni' && sc.map(c => c.label).join() === 'the rogue,the second rogue,the ferryman,the skeleton knight' && sc.map(c => c.ref).join() === '1,0,2,3',
+    `the people named in a shot get plain labels (two of a kind told apart) and a place among the reference portraits (got ${sc.map(c => `${c.label}:${c.ref}`)})`);
+  assert(/frog-like humanoid with wide eyes/.test(sc[0].look) && /Nightwalker/.test(sc[0].look) && /wiry green frog/.test(sc[0].look) && /grinning ghost/.test(sc[2].look) && /bruiser/.test(sc[3].look),
+    'each is described from their sheet: species look, role and appearance');
+  assert(withoutNames(shotText, sc) === "The rogue's dagger flashes as the second rogue and the rogue face the skeleton knight on the ferryman's ferry.",
+    `names are swapped for labels, full names and first names alike (got ${withoutNames(shotText, sc)})`);
+  const grounded = groundShotPrompt(`A frame: ${shotText} No text.`, sc);
+  assert(!/Pippin|Korra|Greel/.test(grounded) && /the rogue is a frog-like humanoid with wide eyes, Nightwalker, A wiry green frog in a patched hood \(drawn exactly as in reference image 1\)/.test(grounded)
+    && /the second rogue is one person, drawn the same way throughout;/.test(grounded) && /Exactly these 4 characters appear, and nobody else/.test(grounded) && /do not draw any famous or existing character/.test(grounded),
+    'the picture prompt names nobody, says who each label is and which reference shows them, and that nobody else is in the shot');
+  assert(shotCast('The pippins are ripe and Korral is far.', roster, looks).length === 0 && shotCast('PIPPIN runs.', roster, looks)[0].id === 'pip' && shotCast('The party runs.', { characters: [{ id: 'x', name: 'The Party' }] }).length === 1,
+    'a name is matched as a whole word, in any case, and never by a bare title like "the"');
+  const unnamed = groundShotPrompt('A frame: the empty docks at dawn.', []);
+  assert(/add no people it does not mention/.test(unnamed) && /Exactly one character appears/.test(groundShotPrompt('Korra waits.', shotCast('Korra waits.', roster))),
+    'a shot that names nobody is told to add nobody');
   const withCliff = recapTimings(slides, 30, { question: 'Will they?', questionSeconds: 2 });
   assert(withCliff.cliff && Math.abs(withCliff.cliff.start - (RECAP_TITLE_SECONDS + 30)) < 0.01 && withCliff.cliff.questionAt === withCliff.cliff.start + RECAP_CLIFF_SILENCE
     && withCliff.endStart > withCliff.cliff.questionAt + 2 && Math.abs(withCliff.total - (withCliff.endStart + RECAP_END_SECONDS)) < 0.01,
