@@ -494,6 +494,46 @@ export function narrationScript(slides, { trailer = false } = {}) {
 
 export const CARTOON_MAX_SHOTS = 16;
 export const CARTOON_MAX_LINES = 2;
+// How much the characters talk: the most spoken lines a storyboard may write.
+// "lots" leaves room for short exchanges between characters.
+export const CARTOON_TALK = { little: CARTOON_MAX_LINES, some: 4, lots: 8 };
+
+/**
+ * A spoken line as a shot: a close-up of whoever says it, played right after
+ * the beat it belongs to. Lines after the same beat play in order, so two or
+ * three of them are a conversation, cutting from face to face.
+ */
+export function lineShot({ id, beat, speaker, line, ...rest }) {
+  const who = clean(speaker);
+  return {
+    ...rest, id, kind: 'line', beat, speaker: who, line: clip(line, 140), featuring: [who],
+    description: `Close-up of ${who}, mid-sentence, mouth open, speaking with feeling to someone just off screen.`, camera: 'close-up'
+  };
+}
+
+/**
+ * `shots` with a new spoken line added after `beat`: at the end of that
+ * beat's shots, so it follows any lines already there.
+ */
+export function addLineShot(shots = [], { id, beat, speaker, line }) {
+  const made = lineShot({ id, beat, speaker, line });
+  let at = -1;
+  shots.forEach((s, i) => { if (s.beat <= beat) at = i; });
+  return [...shots.slice(0, at + 1), made, ...shots.slice(at + 1)];
+}
+
+/** `shots` with the spoken line `id` moved one place earlier (-1) or later (+1) among its own beat's lines. */
+export function moveLineShot(shots = [], id, step) {
+  const from = shots.findIndex(s => s.id === id);
+  const to = from + step;
+  const a = shots[from];
+  const b = shots[to];
+  if (!a || !b || a.kind !== 'line' || b.kind !== 'line' || a.beat !== b.beat) return shots;
+  const out = [...shots];
+  out[from] = b;
+  out[to] = a;
+  return out;
+}
 // A breath after each narrated beat, and around a spoken line.
 export const CARTOON_BEAT_TAIL = 0.35;
 export const CARTOON_LINE_LEAD = 0.25;
@@ -524,7 +564,7 @@ export function recapSessionCast({ session, chapter, lines = [], characters = []
  * and `adversaries` are the session's cast (recapSessionCast), not the whole
  * campaign: a writer shown everyone uses everyone.
  */
-export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [], adversaries = [] }) {
+export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [], adversaries = [], maxLines = CARTOON_MAX_LINES }) {
   const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
   const fallen = (e) => (e.deceased ? 'FALLEN: dead' : '');
   const party = (characters || []).filter(c => c?.name).slice(0, 8)
@@ -560,7 +600,8 @@ Rules for "shots":
 - These are original characters. Describe them only as they are described above: never borrow the look of a famous character who happens to share a name.
 
 Rules for "lines" (characters who speak, between the narrator's beats):
-- Up to ${CARTOON_MAX_LINES} short lines, each under 14 words, each spoken by one living character from the lists above, right after the beat it belongs to.
+- Up to ${maxLines} short lines, each under 14 words, each spoken by one living character from the lists above, right after the beat it belongs to.${maxLines > CARTOON_MAX_LINES ? `
+- Lines after the same beat play one after another, in the order you give them. Use that for a short exchange of two or three lines between characters who were both there: one speaks, the other answers. Spread the rest across the beats; never more than three lines after one beat.` : ''}
 - Prefer something actually said at the table. Otherwise write a short in-character reaction to what just happened in that beat: a reaction, never a new fact.
 - If nothing fits, give an empty list.
 
@@ -580,9 +621,10 @@ Answer with JSON only:
  * names someone from the campaign who should not be in it (anyone outside
  * the session's cast, or a fallen character or non-party member its own beat
  * does not name) is replaced by the beat's own words, and a line from someone
- * who was not there, or is dead, is dropped.
+ * who was not there, or is dead, is dropped. `maxLines` is the most spoken
+ * lines kept (never more than three after one beat).
  */
-export function parseStoryboard(text, beats = [], stamp = '', known = [], guard = null) {
+export function parseStoryboard(text, beats = [], stamp = '', known = [], guard = null, maxLines = CARTOON_MAX_LINES) {
   let data = {};
   try { data = JSON.parse(String(text || '').match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch { data = {}; }
   const beatAt = (n) => {
@@ -597,8 +639,7 @@ export function parseStoryboard(text, beats = [], stamp = '', known = [], guard 
     .filter(s => s.beat >= 0 && s.description);
   const lines = (Array.isArray(data.lines) ? data.lines : [])
     .map(l => ({ beat: beatAt(l?.afterBeat), speaker: clean(l?.speaker), line: clip(l?.line, 140) }))
-    .filter(l => l.beat >= 0 && l.speaker && l.line && isKnown(l.speaker))
-    .slice(0, CARTOON_MAX_LINES);
+    .filter(l => l.beat >= 0 && l.speaker && l.line && isKnown(l.speaker));
 
   // Who the session allows in a beat's shots.
   const flat = (r) => [...(r?.characters || []).map(e => ({ e, pc: true })), ...(r?.npcs || []).map(e => ({ e })), ...(r?.adversaries || []).map(e => ({ e }))].filter(x => x.e?.id);
@@ -612,6 +653,7 @@ export function parseStoryboard(text, beats = [], stamp = '', known = [], guard 
 
   const out = [];
   let room = CARTOON_MAX_SHOTS;
+  let talk = Math.max(0, maxLines);
   beats.forEach((b, i) => {
     // Leave one shot for every beat still to come.
     const most = Math.max(1, Math.min(2, room - (beats.length - i - 1)));
@@ -626,10 +668,10 @@ export function parseStoryboard(text, beats = [], stamp = '', known = [], guard 
       const who = speaker(l.speaker);
       // A speaker has to have been there, and alive.
       return !!who && castIds.has(who.e.id) && !who.e.deceased;
-    }).forEach(l => out.push({
-      id: `${stamp}l${out.length}`, kind: 'line', beat: i, speaker: l.speaker, line: l.line, featuring: [l.speaker],
-      description: `Close-up of ${l.speaker}, mid-sentence, mouth open, speaking with feeling to someone just off screen.`, camera: 'close-up'
-    }));
+    }).slice(0, Math.min(3, talk)).forEach(l => {
+      out.push(lineShot({ id: `${stamp}l${out.length}`, beat: i, speaker: l.speaker, line: l.line }));
+      talk -= 1;
+    });
   });
   return out;
 }

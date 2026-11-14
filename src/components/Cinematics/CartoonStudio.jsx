@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Clapperboard, Film, ImageIcon, Loader2, MessageSquare, PenLine, Trash2, Wand2, X } from 'lucide-react';
-import { cartoonNeeds, cartoonNarration, cartoonShotText, shotIsScenery, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, lineVoiceKey, lineIsVoiced, ACCOUNT_VOICE_PREFIX } from './cinematicPlan';
+import { Clapperboard, Film, ImageIcon, Loader2, MessageSquare, MessageSquarePlus, ArrowUp, ArrowDown, PenLine, Trash2, Wand2, X } from 'lucide-react';
+import { cartoonNeeds, cartoonNarration, cartoonShotText, shotIsScenery, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, lineVoiceKey, lineIsVoiced, ACCOUNT_VOICE_PREFIX, CARTOON_TALK, lineShot, addLineShot, moveLineShot } from './cinematicPlan';
 import { writeStoryboard, narrate, animateToClip, textProvider, listAccountVoices, saveCharacterVoice } from '../../services/cinematicsGenerator';
 import { CHARACTER_VOICES, RECAP_VOICE_KEY } from '../Storybook/narratorVoices';
 
@@ -66,13 +66,31 @@ export default function CartoonStudio({
   const todo = needs.voice + needs.draw + needs.animate;
   const minutes = Math.max(1, Math.ceil((needs.draw * 0.6 + needs.animate * 1.5) / AT_ONCE + needs.voice * 0.1));
 
+  // How much the storyboard lets the characters talk, and the line being added by hand.
+  const [talk, setTalk] = useState(CARTOON_TALK[cartoon?.talk] ? cartoon.talk : 'little');
+  const [adding, setAdding] = useState(null); // { beat, speaker, line }
+
   const storyboard = () => run('storyboard', async () => {
     const made = await writeStoryboard({
-      campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), cast, characters, npcs, adversaries, ...textProvider(getEffectiveKey)
+      campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), cast, characters, npcs, adversaries,
+      maxLines: CARTOON_TALK[talk], ...textProvider(getEffectiveKey)
     });
     // A line's voice is worked out when it is recorded, so a voice added to the account later is picked up.
-    await save({ cartoon: { shots: made, voice: cartoon?.voice || null } });
+    await save({ cartoon: { shots: made, voice: cartoon?.voice || null, talk } });
   });
+
+  // Who can be given a line: the session's cast first, then everyone else.
+  const castNames = cast ? [...cast.characters, ...cast.npcs, ...cast.adversaries].map(e => e.name) : [];
+  const otherNames = [...(characters || []), ...(npcs || []), ...adversaries].map(e => e?.name).filter(n => n && !castNames.includes(n));
+  const addLine = () => {
+    const speaker = (adding?.speaker || '').trim();
+    const line = (adding?.line || '').trim();
+    if (!speaker || !line) return;
+    save({ cartoon: { ...cartoon, shots: addLineShot(shots, { id: `${Date.now().toString(36)}-m${shots.length}`, beat: adding.beat, speaker, line }) } });
+    // Stay on the same beat with the next speaker ready: a conversation is typed one line after another.
+    setAdding({ beat: adding.beat, speaker: '', line: '' });
+  };
+  const moveLine = (shot, step) => save({ cartoon: { ...cartoon, shots: moveLineShot(shots, shot.id, step) } });
 
   const stamp = () => Date.now().toString(36);
   const say = (text, key, name) => narrate({ campaignId, text, voiceKey: key, fileName: `recap-${session.id}-${name}-${stamp()}` });
@@ -214,6 +232,14 @@ export default function CartoonStudio({
             </span>
           )}
         </p>
+        <label className="flex items-center gap-1.5 text-[11px] text-lr-text-dim" title="How many lines the storyboard writes for the characters. You can always add your own below.">
+          Talking
+          <select value={talk} onChange={(e) => setTalk(e.target.value)} disabled={!!busy} className="p-1 rounded bg-black/20 border border-white/10 text-white text-[11px]">
+            <option value="little">A little (up to {CARTOON_TALK.little} lines)</option>
+            <option value="some">Some (up to {CARTOON_TALK.some})</option>
+            <option value="lots">Lots (up to {CARTOON_TALK.lots}, with exchanges)</option>
+          </select>
+        </label>
         <button type="button" className="btn btn-secondary btn-sm inline-flex items-center gap-1" onClick={storyboard} disabled={!!busy}
           title={shots.length ? 'Writes a new shot list from the script. The shots below, and their art, are replaced.' : 'Writes the shot list from the script (text only, no art yet)'}>
           {busy === 'storyboard' ? <Loader2 size={14} className="animate-spin" /> : <PenLine size={14} />}
@@ -240,7 +266,9 @@ export default function CartoonStudio({
 
       {slides.map((slide, i) => {
         const own = shots.filter(s => s.beat === i);
-        if (!own.length) return null;
+        // Once there is a storyboard every beat is listed, so a line can be added after any of them.
+        if (!shots.length) return null;
+        const beatLines = own.filter(s => s.kind === 'line');
         return (
           <div key={i} className="space-y-1.5">
             <p className="text-[10px] uppercase tracking-widest text-lr-text-dim truncate">Beat {i + 1}: {slide.line}</p>
@@ -259,7 +287,8 @@ export default function CartoonStudio({
                         type="text"
                         defaultValue={shot.speaker}
                         aria-label="Who speaks"
-                        onBlur={(e) => { const speaker = e.target.value.trim(); if (speaker && speaker !== shot.speaker) update(shot.id, { speaker, featuring: [speaker] }); }}
+                        // Someone else speaking is a new face and a new voice: the close-up, its clip and the recording are made again.
+                        onBlur={(e) => { const speaker = e.target.value.trim(); if (speaker && speaker !== shot.speaker) update(shot.id, { ...lineShot({ ...shot, speaker }), cast: null, voiceKey: '', voicePicked: false, imageUrl: '', videoUrl: '', audioUrl: '', duration: 0 }); }}
                         className="w-28 p-1.5 rounded bg-black/20 border border-white/10 text-white text-xs"
                       />
                       <input
@@ -378,10 +407,52 @@ export default function CartoonStudio({
                     <button type="button" className={small} onClick={() => remove(shot)} disabled={!!busy || working(shot)} title="Take this shot out of the cartoon">
                       <Trash2 size={12} /> Remove
                     </button>
+                    {/* The order the lines are spoken in. */}
+                    {shot.kind === 'line' && beatLines.length > 1 && (
+                      <>
+                        <button type="button" className={small} onClick={() => moveLine(shot, -1)} disabled={!!busy || beatLines[0].id === shot.id} title="Say this line earlier" aria-label="Say this line earlier">
+                          <ArrowUp size={12} />
+                        </button>
+                        <button type="button" className={small} onClick={() => moveLine(shot, 1)} disabled={!!busy || beatLines[beatLines.length - 1].id === shot.id} title="Say this line later" aria-label="Say this line later">
+                          <ArrowDown size={12} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
+            {adding?.beat === i ? (
+              <div className="flex flex-wrap items-center gap-1.5 pl-[6.5rem]">
+                <select
+                  value={adding.speaker}
+                  aria-label="Who speaks the new line"
+                  onChange={(e) => setAdding({ ...adding, speaker: e.target.value })}
+                  className="max-w-[10rem] p-1.5 rounded bg-black/20 border border-white/10 text-white text-xs"
+                >
+                  <option value="">Who speaks?</option>
+                  {castNames.length > 0 && <optgroup label="In this session">{castNames.map(n => <option key={n} value={n}>{n}</option>)}</optgroup>}
+                  {otherNames.length > 0 && <optgroup label="Everyone else">{otherNames.map(n => <option key={n} value={n}>{n}</option>)}</optgroup>}
+                </select>
+                <input
+                  type="text"
+                  value={adding.line}
+                  maxLength={140}
+                  placeholder="What they say"
+                  aria-label="The new line"
+                  onChange={(e) => setAdding({ ...adding, line: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addLine(); }}
+                  className="flex-1 min-w-[160px] p-1.5 rounded bg-black/20 border border-white/10 text-white text-xs"
+                />
+                <button type="button" className="btn btn-secondary btn-sm" onClick={addLine} disabled={!!busy || !adding.speaker || !adding.line.trim()}>Add line</button>
+                <button type="button" className={small} onClick={() => setAdding(null)}>Done</button>
+              </div>
+            ) : (
+              <button type="button" className={`${small} pl-[6.5rem]`} onClick={() => setAdding({ beat: i, speaker: '', line: '' })} disabled={!!busy}
+                title="A character says something after this beat. Add several in a row for a conversation.">
+                <MessageSquarePlus size={12} /> Add a spoken line
+              </button>
+            )}
           </div>
         );
       })}
