@@ -665,6 +665,48 @@ export function voiceForSpeaker(name, voiceKeys = []) {
   return voiceKeys[hash % voiceKeys.length];
 }
 
+// A voice from the DM's own ElevenLabs account is kept as "el:<voice id>".
+export const ACCOUNT_VOICE_PREFIX = 'el:';
+
+/**
+ * The voice a speaker gets when the DM has not picked one for the line:
+ * the voice saved on their character, else a voice in the DM's ElevenLabs
+ * account named after them, else one of the built-in character voices (the
+ * same one every time). `accountVoices` is [{ id, name }].
+ */
+export function speakerVoiceKey(speaker, { characters = [], npcs = [], accountVoices = [], presetKeys = [] } = {}) {
+  const who = clean(speaker);
+  const said = ` ${who} `;
+  const person = [...(characters || []), ...(npcs || [])].find(e => e?.name && nameForms(e.name).some(f => nameRe(f).test(said)));
+  const have = (id) => accountVoices.some(v => v.id === id);
+  if (person?.recapVoice?.id && have(person.recapVoice.id)) return `${ACCOUNT_VOICE_PREFIX}${person.recapVoice.id}`;
+  // "Pippin" finds a voice called "Pippin", "Pippin Puddle-Jumper" or "pippin (frog)"; and a voice called "Pippin" finds "Pippin Puddle-Jumper".
+  const names = [...new Set([...(person ? nameForms(person.name) : []), ...nameForms(who)])];
+  const match = accountVoices.find(v => names.some(n => nameRe(n).test(` ${clean(v.name)} `)))
+    || accountVoices.find(v => nameForms(v.name).some(f => names.some(n => nameRe(f).test(` ${n} `))));
+  if (match) return `${ACCOUNT_VOICE_PREFIX}${match.id}`;
+  return voiceForSpeaker(who, presetKeys);
+}
+
+/**
+ * The voice a line is spoken in: the DM's pick for that line (`voicePicked`),
+ * else the speaker's own. Older storyboards stored the built-in default on
+ * every line; that is not a pick, so such a line still gets the speaker's own
+ * voice.
+ */
+export function lineVoiceKey(shot, voices = {}) {
+  if (shot?.voicePicked && shot.voiceKey) return shot.voiceKey;
+  const builtIn = voiceForSpeaker(shot?.speaker, voices.presetKeys || []);
+  return shot?.voiceKey && shot.voiceKey !== builtIn ? shot.voiceKey : speakerVoiceKey(shot?.speaker, voices);
+}
+
+/** Whether a line's recording is still in the voice it should be. */
+export function lineIsVoiced(shot, voices = {}) {
+  if (!shot?.audioUrl) return false;
+  const recordedIn = shot.voicedWith || shot.voiceKey || voiceForSpeaker(shot.speaker, voices.presetKeys || []);
+  return recordedIn === lineVoiceKey(shot, voices);
+}
+
 /** Whether a beat's recorded narration still matches its words. */
 const beatVoice = (recap, i, voice = recap?.cartoon?.voice) => {
   const take = voice?.beats?.[i];

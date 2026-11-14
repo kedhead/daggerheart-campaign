@@ -29,6 +29,7 @@ import { generateOpenAIImage } from '../api/_lib/openaiImage.js';
 import { runNanoBanana, replicateErrorReason, isTransientReplicateError } from '../api/_lib/replicateImage.js';
 import { videoCandidates, shouldTryNextVideoModel, videoUrlFromOutput, H3_VIDEO_MODEL } from '../api/_lib/videoChain.js';
 import { setContentIntensity, contentHeaders } from '../src/services/contentRating.js';
+import { accountVoices } from '../api/generate-narration.js';
 import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble, mapArtStyle, SCENERY_DIRECTIVE, sceneryStyle, ART_STYLE_PREAMBLES } from '../api/_lib/artStyle.js';
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
@@ -39,7 +40,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3808,6 +3809,25 @@ section('Table cinematics');
   assert(shotCast(cartoonShotText(ruin), roster, looks).length === 0 && !/characters/.test(cartoonShotPrompt(ruin)) && !/characters/.test(recapShotPrompt('The empty docks at dawn.'))
     && shotCast(cartoonShotText({ description: 'A hand grips a ledge.', camera: "Close-up on Pippin's hand" }), roster, looks)[0]?.id === 'pip',
     'a shot of an empty place is drawn empty, whoever the storyboard listed on it; someone named only in the framing is still in the shot');
+  // Character voices from the DM's own ElevenLabs account.
+  const myVoices = [{ id: 'vPip0000000001', name: 'Pippin' }, { id: 'vKor0000000002', name: 'Korra (gruff)' }, { id: 'vNar0000000003', name: 'Old storyteller' }, { id: 'vEmm0000000004', name: 'Emmanita Brightwater' }];
+  const speakers = { characters: [{ id: 'pj', name: 'Pippin Puddle-Jumper' }, { id: 'kor', name: 'Korra' }, { id: 'em', name: 'Emmanita' }, { id: 'zed', name: 'Zed', recapVoice: { id: 'vNar0000000003', name: 'Old storyteller' } }, { id: 'ghost', name: 'Wisp', recapVoice: { id: 'vGone000000009', name: 'Deleted' } }], accountVoices: myVoices, presetKeys: ['hero', 'rogue', 'sage'] };
+  assert(speakerVoiceKey('Pippin', speakers) === 'el:vPip0000000001' && speakerVoiceKey('Pippin Puddle-Jumper', speakers) === 'el:vPip0000000001' && speakerVoiceKey('korra', speakers) === 'el:vKor0000000002'
+    && speakerVoiceKey('Emmanita', speakers) === 'el:vEmm0000000004',
+    'a character speaks in the account voice named after them, whichever of the two has the longer name');
+  assert(speakerVoiceKey('Zed', speakers) === 'el:vNar0000000003' && ['hero', 'rogue', 'sage'].includes(speakerVoiceKey('Wisp', speakers)) && ['hero', 'rogue', 'sage'].includes(speakerVoiceKey('Baron Vex', speakers))
+    && speakerVoiceKey('Pippin', { ...speakers, accountVoices: [] }) === voiceForSpeaker('Pippin', speakers.presetKeys),
+    'a voice saved on the character wins while it still exists; with no voice of their own a speaker gets a built-in one');
+  const builtInPip = voiceForSpeaker('Pippin', speakers.presetKeys);
+  assert(lineVoiceKey({ speaker: 'Pippin' }, speakers) === 'el:vPip0000000001' && lineVoiceKey({ speaker: 'Pippin', voiceKey: builtInPip }, speakers) === 'el:vPip0000000001'
+    && lineVoiceKey({ speaker: 'Pippin', voiceKey: builtInPip, voicePicked: true }, speakers) === builtInPip && lineVoiceKey({ speaker: 'Pippin', voiceKey: 'el:vNar0000000003', voicePicked: true }, speakers) === 'el:vNar0000000003',
+    'a line uses its speaker\'s voice unless the DM picked one for it; the built-in default an older storyboard stored is not a pick');
+  assert(!lineIsVoiced({ speaker: 'Pippin', audioUrl: 'u', voiceKey: builtInPip }, speakers) && lineIsVoiced({ speaker: 'Pippin', audioUrl: 'u', voicedWith: 'el:vPip0000000001' }, speakers)
+    && !lineIsVoiced({ speaker: 'Pippin' }, speakers) && lineIsVoiced({ speaker: 'Baron Vex', audioUrl: 'u' }, speakers),
+    'a line recorded in a built-in voice is recorded again once its speaker has a voice of their own; one already in the right voice is kept');
+  assert(JSON.stringify(accountVoices([{ voice_id: 'b', name: ' Zed ', category: 'cloned' }, { voice_id: 'a', name: 'Rachel', category: 'premade' }, { voice_id: 'c', name: 'Amy', category: 'generated' }, { name: 'No id' }, null]))
+    === JSON.stringify([{ id: 'c', name: 'Amy', category: 'generated' }, { id: 'b', name: 'Zed', category: 'cloned' }]) && accountVoices(undefined).length === 0,
+    'the voice list is the account\'s own voices, by name, with the stock library left out');
   // Two people who share a first name, and the DM's own choice of who is in a shot.
   const frogs = {
     characters: [{ id: 'pj', name: 'Pippin Puddle-Jumper', characterClass: 'Rogue', avatarUrl: 'https://x/pj.png' }],

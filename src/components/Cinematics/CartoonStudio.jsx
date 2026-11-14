@@ -1,6 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Clapperboard, Film, ImageIcon, Loader2, MessageSquare, PenLine, Trash2, Wand2, X } from 'lucide-react';
-import { cartoonNeeds, cartoonNarration, cartoonShotText, shotIsScenery, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, voiceForSpeaker } from './cinematicPlan';
-import { writeStoryboard, narrate, animateToClip, textProvider } from '../../services/cinematicsGenerator';
+import { cartoonNeeds, cartoonNarration, cartoonShotText, shotIsScenery, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, lineVoiceKey, lineIsVoiced, ACCOUNT_VOICE_PREFIX } from './cinematicPlan';
+import { writeStoryboard, narrate, animateToClip, textProvider, listAccountVoices, saveCharacterVoice } from '../../services/cinematicsGenerator';
 import { CHARACTER_VOICES, RECAP_VOICE_KEY } from '../Storybook/narratorVoices';
 
 // One animated shot: about six seconds on the first video model, at roughly three cents a second.
@@ -43,16 +44,34 @@ export default function CartoonStudio({
   const slides = recap.slides || [];
   const cartoon = recap.cartoon || null;
   const shots = cartoon?.shots || [];
-  const needs = cartoonNeeds(recap);
+
+  // The voices the DM has made in their own ElevenLabs account, for the
+  // characters' spoken lines. `null` until they have been listed.
+  const [accountVoices, setAccountVoices] = useState(null);
+  const [voicesError, setVoicesError] = useState('');
+  useEffect(() => {
+    let live = true;
+    listAccountVoices()
+      .then(list => { if (live) setAccountVoices(list); })
+      .catch(err => { if (live) { setAccountVoices([]); setVoicesError(err.message || 'Could not list your ElevenLabs voices.'); } });
+    return () => { live = false; };
+  }, []);
+  const voiceKeys = CHARACTER_VOICES.map(v => v.key);
+  const voices = { characters, npcs, accountVoices: accountVoices || [], presetKeys: voiceKeys };
+  // A line recorded in a voice that is no longer its speaker's is recorded
+  // again. Only judged once the account's voices are known: until then a line
+  // in one of them would look wrong when it is not.
+  const inVoice = (shot) => (accountVoices && !voicesError ? lineIsVoiced(shot, voices) : !!shot.audioUrl);
+  const needs = cartoonNeeds({ ...recap, cartoon: cartoon && { ...cartoon, shots: shots.map(s => (s.kind === 'line' && s.audioUrl && !inVoice(s) ? { ...s, audioUrl: '' } : s)) } });
   const todo = needs.voice + needs.draw + needs.animate;
   const minutes = Math.max(1, Math.ceil((needs.draw * 0.6 + needs.animate * 1.5) / AT_ONCE + needs.voice * 0.1));
-  const voiceKeys = CHARACTER_VOICES.map(v => v.key);
 
   const storyboard = () => run('storyboard', async () => {
     const made = await writeStoryboard({
       campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), cast, characters, npcs, adversaries, ...textProvider(getEffectiveKey)
     });
-    await save({ cartoon: { shots: made.map(s => (s.kind === 'line' ? { ...s, voiceKey: voiceForSpeaker(s.speaker, voiceKeys) } : s)), voice: cartoon?.voice || null } });
+    // A line's voice is worked out when it is recorded, so a voice added to the account later is picked up.
+    await save({ cartoon: { shots: made, voice: cartoon?.voice || null } });
   });
 
   const stamp = () => Date.now().toString(36);
@@ -84,7 +103,7 @@ export default function CartoonStudio({
     const trailer = voiceKey === RECAP_VOICE_KEY;
     const takes = [...(work.voice.beats || [])];
     const stale = slides.map((s, i) => i).filter(i => !(takes[i]?.url && takes[i].line === slides[i].line));
-    const lines = work.shots.filter(s => s.kind === 'line' && !s.audioUrl);
+    const lines = work.shots.filter(s => s.kind === 'line' && !inVoice(s));
     const voiceJobs = (work.voice.introUrl ? 0 : 1) + stale.length + lines.length + (recap.question && work.voice.question !== recap.question ? 1 : 0);
     let voiced = 0;
     const voiceStep = () => setBusy(`shoot:Recording voices ${++voiced} of ${voiceJobs}…`);
@@ -116,8 +135,9 @@ export default function CartoonStudio({
     for (const shot of lines) {
       voiceStep();
       await attempt(`${shot.speaker}'s line`, async () => {
-        const line = await say(shot.line, shot.voiceKey || voiceForSpeaker(shot.speaker, voiceKeys), `c-line-${shot.id}`);
-        await patchShot(shot.id, { audioUrl: line.url, duration: line.duration });
+        const key = lineVoiceKey(shot, voices);
+        const line = await say(shot.line, key, `c-line-${shot.id}`);
+        await patchShot(shot.id, { audioUrl: line.url, duration: line.duration, voicedWith: key });
       });
     }
 
@@ -153,6 +173,19 @@ export default function CartoonStudio({
     const clip = await animate(shot, shot.imageUrl, label => setBusy(`animate-${shot.id}:${label}`));
     await update(shot.id, { videoUrl: clip.url });
   });
+  // A voice picked for a line. One of the DM's own voices, picked for a
+  // player character, is also remembered on that character, so their later
+  // lines (in this recap and the next) use it without being asked.
+  const pickVoice = (shot, key) => {
+    update(shot.id, { voiceKey: key, voicePicked: true, audioUrl: '', duration: 0 });
+    if (!key.startsWith(ACCOUNT_VOICE_PREFIX)) return;
+    const voice = (accountVoices || []).find(v => `${ACCOUNT_VOICE_PREFIX}${v.id}` === key);
+    const said = ` ${shot.speaker} `.toLowerCase();
+    const who = (characters || []).find(c => c?.id && c.name && (said.includes(` ${c.name.toLowerCase()} `) || said.includes(` ${c.name.split(/\s+/)[0].toLowerCase()} `)));
+    if (voice && who && campaignId) {
+      saveCharacterVoice(campaignId, who.id, voice).catch(err => notify.warning(`${voice.name} is set for this line, but could not be saved as ${who.name}'s voice (${err.message}).`));
+    }
+  };
   const remove = (shot) => save({ cartoon: { ...cartoon, shots: shots.filter(s => s.id !== shot.id) } });
 
   const shooting = busy?.startsWith('shoot');
@@ -165,6 +198,15 @@ export default function CartoonStudio({
         <p className="flex-1 min-w-[220px] text-[11px] text-lr-text-dim leading-relaxed">
           The script above is storyboarded into short shots, each drawn and animated for this recap. The narrator is recorded beat by beat,
           so the picture changes on his words, and a character or two speaks a line. The film and comic looks keep their own pictures.
+          <span className="block mt-1">
+            {voicesError
+              ? `Spoken lines use the built-in voices: ${voicesError}`
+              : accountVoices === null
+                ? 'Looking for your ElevenLabs voices…'
+                : accountVoices.length
+                  ? `Spoken lines: ${accountVoices.length} voice${accountVoices.length === 1 ? '' : 's'} found in your ElevenLabs account. A character whose name matches a voice speaks in it; pick another on any line.`
+                  : 'Spoken lines use the built-in voices: no voices of your own were found in the ElevenLabs account.'}
+          </span>
           {cast && (
             <span className="block mt-1">
               In this session: <span className="text-white">{[...cast.characters, ...cast.npcs, ...cast.adversaries].map(e => e.name).join(', ') || 'nobody named'}</span>.
@@ -231,12 +273,23 @@ export default function CartoonStudio({
                         className="flex-1 min-w-[160px] p-1.5 rounded bg-black/20 border border-white/10 text-white text-xs"
                       />
                       <select
-                        value={shot.voiceKey || voiceForSpeaker(shot.speaker, voiceKeys)}
+                        value={lineVoiceKey(shot, voices)}
                         aria-label="Voice"
-                        onChange={(e) => update(shot.id, { voiceKey: e.target.value, audioUrl: '', duration: 0 })}
-                        className="p-1.5 rounded bg-black/20 border border-white/10 text-white text-xs"
+                        onChange={(e) => pickVoice(shot, e.target.value)}
+                        className="max-w-[11rem] p-1.5 rounded bg-black/20 border border-white/10 text-white text-xs"
                       >
-                        {CHARACTER_VOICES.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+                        {(accountVoices || []).length > 0 && (
+                          <optgroup label="Your ElevenLabs voices">
+                            {accountVoices.map(v => <option key={v.id} value={`${ACCOUNT_VOICE_PREFIX}${v.id}`}>{v.name}</option>)}
+                          </optgroup>
+                        )}
+                        {/* A voice of the account's that has not been listed yet (or has since been deleted). */}
+                        {lineVoiceKey(shot, voices).startsWith(ACCOUNT_VOICE_PREFIX) && !(accountVoices || []).some(v => `${ACCOUNT_VOICE_PREFIX}${v.id}` === lineVoiceKey(shot, voices)) && (
+                          <option value={lineVoiceKey(shot, voices)}>Your ElevenLabs voice</option>
+                        )}
+                        <optgroup label="Built-in voices">
+                          {CHARACTER_VOICES.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+                        </optgroup>
                       </select>
                     </div>
                   ) : (
@@ -313,7 +366,7 @@ export default function CartoonStudio({
                   })()}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     {shot.camera && shot.kind !== 'line' && <span className="text-[11px] text-lr-text-dim italic">{shot.camera}</span>}
-                    {shot.kind === 'line' && <span className="text-[11px] text-lr-text-dim">{shot.audioUrl ? `Spoken (${Math.round(shot.duration || 0)}s)` : 'Not recorded yet'}</span>}
+                    {shot.kind === 'line' && <span className="text-[11px] text-lr-text-dim">{!shot.audioUrl ? 'Not recorded yet' : inVoice(shot) ? `Spoken (${Math.round(shot.duration || 0)}s)` : 'Recorded in another voice: Shoot it re-records it'}</span>}
                     <button type="button" className={small} onClick={() => redraw(shot)} disabled={!!busy}>
                       {busy === `draw-${shot.id}` ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
                       {busy === `draw-${shot.id}` ? 'Drawing…' : shot.imageUrl ? 'Redraw' : 'Draw'}

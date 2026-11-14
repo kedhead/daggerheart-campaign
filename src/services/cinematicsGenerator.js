@@ -4,11 +4,13 @@
  * cinematicPlan.js; this file only talks to the API and Storage.
  */
 
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import { aiService } from './aiService';
 import { apiFetch } from './apiClient';
 import { persistAudio, persistVideo } from './audioStorage';
 import { animateStill } from './animateStill';
-import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard } from '../components/Cinematics/cinematicPlan';
+import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
 import { NARRATOR_VOICES, CHARACTER_VOICES, DEFAULT_VOICE_KEY, probeDuration } from '../components/Storybook/narratorVoices';
 
 /** Which text model to use: the DM's own key if they have one, else the server's. */
@@ -44,9 +46,39 @@ export async function writeStoryboard({ campaign, beats, sources, cast, characte
   return shots;
 }
 
+let accountVoicesOnce = null;
+
+/** The voices made in the DM's own ElevenLabs account: [{ id, name, category }]. Asked for once per visit. */
+export function listAccountVoices() {
+  if (!accountVoicesOnce) {
+    accountVoicesOnce = (async () => {
+      const resp = await apiFetch('/api/generate-narration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'voices' })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(data.error || `Could not list the ElevenLabs voices (HTTP ${resp.status})`);
+      return Array.isArray(data.voices) ? data.voices : [];
+    })();
+    // A failure is not remembered: the next visit asks again.
+    accountVoicesOnce.catch(() => { accountVoicesOnce = null; });
+  }
+  return accountVoicesOnce;
+}
+
+/** Remember which of the DM's ElevenLabs voices a character speaks in, on the character. */
+export async function saveCharacterVoice(campaignId, characterId, voice) {
+  await updateDoc(doc(db, `campaigns/${campaignId}/characters`, characterId), { recapVoice: voice ? { id: voice.id, name: voice.name } : null });
+}
+
 /** Read `text` aloud in a narrator's or a character's voice and store the mp3. */
 export async function narrate({ campaignId, text, voiceKey = DEFAULT_VOICE_KEY, fileName }) {
-  const voice = [...NARRATOR_VOICES, ...CHARACTER_VOICES].find(v => v.key === voiceKey) || NARRATOR_VOICES[0];
+  // "el:<id>" is a voice from the DM's own ElevenLabs account.
+  const own = String(voiceKey || '').startsWith(ACCOUNT_VOICE_PREFIX)
+    ? { key: voiceKey, id: voiceKey.slice(ACCOUNT_VOICE_PREFIX.length), fallbackVoice: 'ash', style: 'Speak as a character in an animated adventure: natural, in the moment, with feeling.' }
+    : null;
+  const voice = own || [...NARRATOR_VOICES, ...CHARACTER_VOICES].find(v => v.key === voiceKey) || NARRATOR_VOICES[0];
   const resp = await apiFetch('/api/generate-narration', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
