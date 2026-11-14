@@ -40,7 +40,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3809,6 +3809,54 @@ section('Table cinematics');
   assert(shotCast(cartoonShotText(ruin), roster, looks).length === 0 && !/characters/.test(cartoonShotPrompt(ruin)) && !/characters/.test(recapShotPrompt('The empty docks at dawn.'))
     && shotCast(cartoonShotText({ description: 'A hand grips a ledge.', camera: "Close-up on Pippin's hand" }), roster, looks)[0]?.id === 'pip',
     'a shot of an empty place is drawn empty, whoever the storyboard listed on it; someone named only in the framing is still in the shot');
+  // More talking: lines added by hand, conversations, and how much the storyboard writes.
+  const talkBoard = [{ id: 'a0', kind: 'action', beat: 0 }, { id: 'a1', kind: 'action', beat: 1 }, { id: 'l1', kind: 'line', beat: 1, speaker: 'Korra', line: 'Not again.' }, { id: 'a2', kind: 'action', beat: 2 }];
+  const added = addLineShot(talkBoard, { id: 'm1', beat: 1, speaker: ' Pippin ', line: 'You said that last time.' });
+  assert(added.map(x => x.id).join() === 'a0,a1,l1,m1,a2' && added[3].kind === 'line' && added[3].speaker === 'Pippin' && added[3].featuring.join() === 'Pippin' && /Close-up of Pippin/.test(added[3].description) && added[3].camera === 'close-up',
+    `a line added by hand goes after its beat's other lines, as a close-up of its speaker (got ${added.map(x => x.id)})`);
+  assert(addLineShot(talkBoard, { id: 'm0', beat: 0, speaker: 'Pippin', line: 'Run!' }).map(x => x.id).join() === 'a0,m0,a1,l1,a2' && addLineShot([], { id: 'm', beat: 2, speaker: 'P', line: 'x' }).length === 1
+    && addLineShot(talkBoard, { id: 'm2', beat: 2, speaker: 'Pippin', line: 'Up!' }).map(x => x.id).join() === 'a0,a1,l1,a2,m2',
+    'it lands in the right beat wherever that beat sits');
+  assert(moveLineShot(added, 'm1', -1).map(x => x.id).join() === 'a0,a1,m1,l1,a2' && moveLineShot(added, 'l1', 1).map(x => x.id).join() === 'a0,a1,m1,l1,a2'
+    && moveLineShot(added, 'l1', -1) === added && moveLineShot(added, 'm1', 1) === added && moveLineShot(added, 'a1', 1) === added,
+    'a line can change places with the line next to it in its own beat, and never jumps a beat or an action shot');
+  const convo = cartoonPlan({ slides: cBeats, cartoon: { shots: [{ id: 'x', kind: 'action', beat: 0 }, lineShot({ id: 'q1', beat: 0, speaker: 'Korra', line: 'Not again.', audioUrl: 'https://x/q1.mp3', duration: 1.5 }), lineShot({ id: 'q2', beat: 0, speaker: 'Pippin', line: 'You said that last time.', audioUrl: 'https://x/q2.mp3', duration: 2 })] } });
+  const [, c1, c2] = convo.shots;
+  assert(c1.id === 'q1' && c2.id === 'q2' && Math.abs(c2.start - (c1.start + c1.duration)) < 1e-9 && convo.voices.map(v => v.url).join() === 'https://x/q1.mp3,https://x/q2.mp3' && convo.voices[1].start > convo.voices[0].start + 1.5,
+    'lines after the same beat play one after the other: a conversation, each voice after the one before has finished');
+  const chatty = JSON.stringify({ shots: [{ beat: 1, description: 'A door.', camera: 'wide' }], lines: [1, 1, 1, 1, 2, 2, 3, 3, 3].map((n, k) => ({ afterBeat: n, speaker: 'Korra', line: `Line ${k}` })) });
+  const countLines = (max) => parseStoryboard(chatty, cBeats, 't-', [], null, max).filter(x => x.kind === 'line');
+  assert(countLines(CARTOON_TALK.little).length === 2 && countLines(CARTOON_TALK.some).length === 4 && countLines(CARTOON_TALK.lots).length === 8 && countLines(CARTOON_TALK.lots).filter(x => x.beat === 0).length === 3
+    && parseStoryboard(chatty, cBeats, 't-').filter(x => x.kind === 'line').length === 2,
+    'the storyboard keeps as many lines as the talking setting allows, never more than three after one beat');
+  const quietPrompt = buildStoryboardPrompt({ beats: cBeats, sources: { sessions: [{ summary: 'x' }] } });
+  const chattyPrompt = buildStoryboardPrompt({ beats: cBeats, sources: { sessions: [{ summary: 'x' }] }, maxLines: CARTOON_TALK.lots });
+  assert(/Up to 2 short lines/.test(quietPrompt) && !/short exchange/.test(quietPrompt) && /Up to 8 short lines/.test(chattyPrompt) && /short exchange of two or three lines/.test(chattyPrompt) && /never more than three lines after one beat/.test(chattyPrompt),
+    'asked for more talking, the storyboard is told how many lines it may write and that lines after one beat make an exchange');
+
+  // Where the story is: a setting per beat that carries on, and goes into every shot.
+  const placed = { settings: { 0: 'a misty pine forest at dusk', 1: '', 3: "the king's castle" } };
+  assert(beatSetting(placed, 0) === 'a misty pine forest at dusk' && beatSetting(placed, 1) === 'a misty pine forest at dusk' && beatSetting(placed, 2) === 'a misty pine forest at dusk'
+    && beatSetting(placed, 3) === "the king's castle" && beatSetting(placed, 9) === "the king's castle" && beatSetting({ settings: { 2: 'a cave' } }, 1) === '' && beatSetting(null, 0) === '',
+    'a beat is wherever the last setting at or before it says; before any is given it is nowhere in particular');
+  const forestPrompt = cartoonShotPrompt({ kind: 'action', description: 'Pippin leaps a fallen log.', camera: 'low angle' }, 'a misty pine forest at dusk');
+  assert(/^A single frame from an animated film\. Setting: a misty pine forest at dusk\. The whole picture is in this place and nowhere else\. low angle\. Pippin leaps/.test(forestPrompt)
+    && /seen behind the speaker/.test(cartoonShotPrompt({ kind: 'line', description: 'Close-up of Pippin.', camera: 'close-up' }, 'a misty pine forest at dusk'))
+    && !/Setting:/.test(cartoonShotPrompt({ kind: 'action', description: 'Pippin leaps a fallen log.' })),
+    'the setting is the first thing a shot\'s picture is told, close-ups included; with none set the prompt says nothing about place');
+  assert(settingText('thornwood', [{ name: 'Thornwood', description: 'A forest of black pines where the paths move.' }, { name: 'Mythis' }]) === 'thornwood (A forest of black pines where the paths move)'
+    && settingText('Mythis', [{ name: 'Mythis' }]) === 'Mythis' && settingText('a cave', []) === 'a cave' && settingText('  ', []) === '',
+    'a setting that names a campaign location brings that location\'s description with it');
+  assert(JSON.stringify(settingsFromShots([{ beat: 0, kind: 'action', setting: 'A Forest' }, { beat: 0, kind: 'action', setting: 'the lake' }, { beat: 1, kind: 'action', setting: 'a forest' }, { beat: 1, kind: 'line', setting: 'a cave' },
+    { beat: 2, kind: 'action' }, { beat: 3, kind: 'action', setting: 'the castle' }])) === JSON.stringify({ 0: 'A Forest', 3: 'the castle' }),
+    'the storyboard\'s places become one setting per beat, kept only where the place changes');
+  assert(shotOutOfPlace({ imageUrl: 'u', drawnIn: 'a cave' }, 'the castle') && shotOutOfPlace({ imageUrl: 'u' }, 'the castle') && !shotOutOfPlace({ imageUrl: 'u', drawnIn: 'The Castle ' }, 'the castle')
+    && !shotOutOfPlace({ drawnIn: 'a cave' }, 'the castle') && !shotOutOfPlace({ imageUrl: 'u', drawnIn: 'a cave' }, ''),
+    'a drawn shot is out of place when it was drawn for somewhere else, or before any setting was given');
+  const placedBoard = parseStoryboard('{"shots":[{"beat":1,"setting":"a misty pine forest","description":"Korra runs.","camera":"wide"},{"beat":2,"setting":"a misty pine forest","description":"The floor gives way.","camera":"low"},{"beat":3,"setting":"the Sky Docks","description":"A ghost grins.","camera":"close-up"}]}', cBeats, 'p-');
+  assert(JSON.stringify(settingsFromShots(placedBoard)) === JSON.stringify({ 0: 'a misty pine forest', 2: 'the Sky Docks' }) && /"setting": where the shot takes place/.test(buildStoryboardPrompt({ beats: cBeats, sources: { sessions: [{ summary: 'x' }] } })),
+    'the storyboard is asked where each shot is, and its answer is read');
+
   // Character voices from the DM's own ElevenLabs account.
   const myVoices = [{ id: 'vPip0000000001', name: 'Pippin' }, { id: 'vKor0000000002', name: 'Korra (gruff)' }, { id: 'vNar0000000003', name: 'Old storyteller' }, { id: 'vEmm0000000004', name: 'Emmanita Brightwater' }];
   const speakers = { characters: [{ id: 'pj', name: 'Pippin Puddle-Jumper' }, { id: 'kor', name: 'Korra' }, { id: 'em', name: 'Emmanita' }, { id: 'zed', name: 'Zed', recapVoice: { id: 'vNar0000000003', name: 'Old storyteller' } }, { id: 'ghost', name: 'Wisp', recapVoice: { id: 'vGone000000009', name: 'Deleted' } }], accountVoices: myVoices, presetKeys: ['hero', 'rogue', 'sage'] };

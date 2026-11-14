@@ -494,6 +494,46 @@ export function narrationScript(slides, { trailer = false } = {}) {
 
 export const CARTOON_MAX_SHOTS = 16;
 export const CARTOON_MAX_LINES = 2;
+// How much the characters talk: the most spoken lines a storyboard may write.
+// "lots" leaves room for short exchanges between characters.
+export const CARTOON_TALK = { little: CARTOON_MAX_LINES, some: 4, lots: 8 };
+
+/**
+ * A spoken line as a shot: a close-up of whoever says it, played right after
+ * the beat it belongs to. Lines after the same beat play in order, so two or
+ * three of them are a conversation, cutting from face to face.
+ */
+export function lineShot({ id, beat, speaker, line, ...rest }) {
+  const who = clean(speaker);
+  return {
+    ...rest, id, kind: 'line', beat, speaker: who, line: clip(line, 140), featuring: [who],
+    description: `Close-up of ${who}, mid-sentence, mouth open, speaking with feeling to someone just off screen.`, camera: 'close-up'
+  };
+}
+
+/**
+ * `shots` with a new spoken line added after `beat`: at the end of that
+ * beat's shots, so it follows any lines already there.
+ */
+export function addLineShot(shots = [], { id, beat, speaker, line }) {
+  const made = lineShot({ id, beat, speaker, line });
+  let at = -1;
+  shots.forEach((s, i) => { if (s.beat <= beat) at = i; });
+  return [...shots.slice(0, at + 1), made, ...shots.slice(at + 1)];
+}
+
+/** `shots` with the spoken line `id` moved one place earlier (-1) or later (+1) among its own beat's lines. */
+export function moveLineShot(shots = [], id, step) {
+  const from = shots.findIndex(s => s.id === id);
+  const to = from + step;
+  const a = shots[from];
+  const b = shots[to];
+  if (!a || !b || a.kind !== 'line' || b.kind !== 'line' || a.beat !== b.beat) return shots;
+  const out = [...shots];
+  out[from] = b;
+  out[to] = a;
+  return out;
+}
 // A breath after each narrated beat, and around a spoken line.
 export const CARTOON_BEAT_TAIL = 0.35;
 export const CARTOON_LINE_LEAD = 0.25;
@@ -524,7 +564,7 @@ export function recapSessionCast({ session, chapter, lines = [], characters = []
  * and `adversaries` are the session's cast (recapSessionCast), not the whole
  * campaign: a writer shown everyone uses everyone.
  */
-export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [], adversaries = [] }) {
+export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [], adversaries = [], maxLines = CARTOON_MAX_LINES }) {
   const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
   const fallen = (e) => (e.deceased ? 'FALLEN: dead' : '');
   const party = (characters || []).filter(c => c?.name).slice(0, 8)
@@ -552,6 +592,7 @@ Rules for "shots":
 - Each shot illustrates its own beat and nothing else: the event that beat's words describe, as it happened last session. Never show an event from another beat, from earlier sessions, or one that did not happen. Never invent a fight, a death, a meeting or a place.
 - "from": the exact words of the beat that this shot illustrates.
 - "description": what we SEE, in one sentence of up to 28 words: who, doing what, where. Name the characters. Show the action the beat describes, mid-motion. No text, captions or speech bubbles in the picture.
+- "setting": where the shot takes place, in a few words ("a misty pine forest at dusk", "the throne room of the vampire king"). Take it from what happened last session: never move the story somewhere it did not go. Use exactly the same words for every shot in the same place, and change them only when the story moves.
 - "camera": the framing and move in a few words, varied from shot to shot: "wide establishing shot, slow push in", "close-up on her face", "low angle, tracking alongside", "over-the-shoulder".
 - Who may be in a shot: a party member from the list above, and anyone else only if that beat's own line names them. Never add a character. If a beat names nobody and is about a place or a thing, show that place or thing with no people.
 - Someone marked FALLEN is dead. They appear only in a beat whose own line names them.
@@ -560,12 +601,13 @@ Rules for "shots":
 - These are original characters. Describe them only as they are described above: never borrow the look of a famous character who happens to share a name.
 
 Rules for "lines" (characters who speak, between the narrator's beats):
-- Up to ${CARTOON_MAX_LINES} short lines, each under 14 words, each spoken by one living character from the lists above, right after the beat it belongs to.
+- Up to ${maxLines} short lines, each under 14 words, each spoken by one living character from the lists above, right after the beat it belongs to.${maxLines > CARTOON_MAX_LINES ? `
+- Lines after the same beat play one after another, in the order you give them. Use that for a short exchange of two or three lines between characters who were both there: one speaks, the other answers. Spread the rest across the beats; never more than three lines after one beat.` : ''}
 - Prefer something actually said at the table. Otherwise write a short in-character reaction to what just happened in that beat: a reaction, never a new fact.
 - If nothing fits, give an empty list.
 
 Answer with JSON only:
-{"shots": [{"beat": 1, "from": "...", "description": "...", "camera": "...", "featuring": ["..."]}], "lines": [{"afterBeat": 3, "speaker": "...", "line": "..."}]}`;
+{"shots": [{"beat": 1, "from": "...", "setting": "...", "description": "...", "camera": "...", "featuring": ["..."]}], "lines": [{"afterBeat": 3, "speaker": "...", "line": "..."}]}`;
 }
 
 /**
@@ -580,9 +622,10 @@ Answer with JSON only:
  * names someone from the campaign who should not be in it (anyone outside
  * the session's cast, or a fallen character or non-party member its own beat
  * does not name) is replaced by the beat's own words, and a line from someone
- * who was not there, or is dead, is dropped.
+ * who was not there, or is dead, is dropped. `maxLines` is the most spoken
+ * lines kept (never more than three after one beat).
  */
-export function parseStoryboard(text, beats = [], stamp = '', known = [], guard = null) {
+export function parseStoryboard(text, beats = [], stamp = '', known = [], guard = null, maxLines = CARTOON_MAX_LINES) {
   let data = {};
   try { data = JSON.parse(String(text || '').match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch { data = {}; }
   const beatAt = (n) => {
@@ -593,12 +636,11 @@ export function parseStoryboard(text, beats = [], stamp = '', known = [], guard 
   const isKnown = (name) => !forms.length || forms.includes(clean(name).toLowerCase()) || nameForms(name).some(f => forms.includes(f.toLowerCase()));
   const names = (list) => (Array.isArray(list) ? list.map(clean).filter(n => n && isKnown(n)).slice(0, 4) : []);
   const action = (Array.isArray(data.shots) ? data.shots : [])
-    .map(s => ({ beat: beatAt(s?.beat), description: clip(s?.description, 320), camera: clip(s?.camera, 90), featuring: names(s?.featuring) }))
+    .map(s => ({ beat: beatAt(s?.beat), description: clip(s?.description, 320), camera: clip(s?.camera, 90), featuring: names(s?.featuring), ...(clean(s?.setting) ? { setting: clip(s.setting, 120) } : {}) }))
     .filter(s => s.beat >= 0 && s.description);
   const lines = (Array.isArray(data.lines) ? data.lines : [])
     .map(l => ({ beat: beatAt(l?.afterBeat), speaker: clean(l?.speaker), line: clip(l?.line, 140) }))
-    .filter(l => l.beat >= 0 && l.speaker && l.line && isKnown(l.speaker))
-    .slice(0, CARTOON_MAX_LINES);
+    .filter(l => l.beat >= 0 && l.speaker && l.line && isKnown(l.speaker));
 
   // Who the session allows in a beat's shots.
   const flat = (r) => [...(r?.characters || []).map(e => ({ e, pc: true })), ...(r?.npcs || []).map(e => ({ e })), ...(r?.adversaries || []).map(e => ({ e }))].filter(x => x.e?.id);
@@ -612,12 +654,13 @@ export function parseStoryboard(text, beats = [], stamp = '', known = [], guard 
 
   const out = [];
   let room = CARTOON_MAX_SHOTS;
+  let talk = Math.max(0, maxLines);
   beats.forEach((b, i) => {
     // Leave one shot for every beat still to come.
     const most = Math.max(1, Math.min(2, room - (beats.length - i - 1)));
     const own = action.filter(s => s.beat === i).slice(0, most)
       // Someone who should not be here: show what the narrator says, not what the model made up.
-      .map(s => (guard && intruders(`${s.description} ${s.camera}`, i).length ? { beat: i, description: clip(b.line ?? b, 320), camera: s.camera && !intruders(s.camera, i).length ? s.camera : '', featuring: [] } : s));
+      .map(s => (guard && intruders(`${s.description} ${s.camera}`, i).length ? { beat: i, description: clip(b.line ?? b, 320), camera: s.camera && !intruders(s.camera, i).length ? s.camera : '', featuring: [], ...(s.setting && !intruders(s.setting, i).length ? { setting: s.setting } : {}) } : s));
     const list = own.length ? own : [{ beat: i, description: clip(b.line ?? b, 320), camera: '', featuring: [] }];
     list.forEach(s => out.push({ id: `${stamp}a${out.length}`, kind: 'action', ...s }));
     room -= list.length;
@@ -626,10 +669,10 @@ export function parseStoryboard(text, beats = [], stamp = '', known = [], guard 
       const who = speaker(l.speaker);
       // A speaker has to have been there, and alive.
       return !!who && castIds.has(who.e.id) && !who.e.deceased;
-    }).forEach(l => out.push({
-      id: `${stamp}l${out.length}`, kind: 'line', beat: i, speaker: l.speaker, line: l.line, featuring: [l.speaker],
-      description: `Close-up of ${l.speaker}, mid-sentence, mouth open, speaking with feeling to someone just off screen.`, camera: 'close-up'
-    }));
+    }).slice(0, Math.min(3, talk)).forEach(l => {
+      out.push(lineShot({ id: `${stamp}l${out.length}`, beat: i, speaker: l.speaker, line: l.line }));
+      talk -= 1;
+    });
   });
   return out;
 }
@@ -643,10 +686,63 @@ export function cartoonShotText(shot) {
   return `${clean(shot?.description)} ${clean(shot?.camera)}`.trim();
 }
 
-/** What to draw for a shot. */
-export function cartoonShotPrompt(shot) {
+// ── Where the story is ──
+//
+// Shots drawn one by one have no memory of each other: the party is in a
+// forest in one and a castle hall in the next. So each beat has a setting, a
+// few words for where it takes place, that goes into every one of its shots.
+// A setting carries on to the beats after it until another is given: type
+// "a misty pine forest" on beat 1 and "the king's castle" on beat 4.
+
+/** Where a beat takes place: its own setting, or the nearest one given before it. */
+export function beatSetting(cartoon, beat) {
+  const settings = cartoon?.settings || {};
+  for (let i = beat; i >= 0; i--) {
+    const here = clean(settings[i]);
+    if (here) return here;
+  }
+  return '';
+}
+
+/**
+ * A setting as the image model is told it. When it names one of the
+ * campaign's locations, that location's own description goes with it.
+ */
+export function settingText(setting, locations = []) {
+  const where = clean(setting);
+  if (!where) return '';
+  const place = (locations || []).find(l => l?.name && clean(l.name).toLowerCase() === where.toLowerCase());
+  const detail = place ? clip(place.description || place.notes, 220).replace(/[.\s]+$/, '') : '';
+  return detail ? `${where} (${detail})` : where;
+}
+
+/** The per-beat settings a storyboard gave its shots, keeping only the beats where the place changes. */
+export function settingsFromShots(shots = []) {
+  const out = {};
+  let last = '';
+  shots.forEach(s => {
+    const where = clean(s?.setting);
+    if (!where || s.kind === 'line' || out[s.beat] !== undefined) return;
+    if (where.toLowerCase() !== last.toLowerCase()) { out[s.beat] = where; last = where; }
+  });
+  return out;
+}
+
+/** Whether a drawn shot was drawn for somewhere other than where its beat now is. */
+export function shotOutOfPlace(shot, setting) {
+  const where = clean(setting);
+  return !!shot?.imageUrl && !!where && clean(shot.drawnIn).toLowerCase() !== where.toLowerCase();
+}
+
+/** What to draw for a shot. `setting` is where its beat takes place, as settingText() words it. */
+export function cartoonShotPrompt(shot, setting = '') {
   const what = clip(shot?.description, 400);
-  return `A single frame from an animated film: ${shot?.camera ? `${clip(shot.camera, 90)}. ` : ''}${what} Widescreen 16:9 composition, cinematic lighting, the moment caught mid-motion. No text, captions or speech bubbles.`;
+  const where = clean(setting);
+  // Said first and said firmly: the description often mentions no place at all, and the model then picks its own.
+  const place = where
+    ? `Setting: ${clip(where, 320)}. The whole picture is in this place and nowhere else${shot?.kind === 'line' ? ', seen behind the speaker' : ''}. `
+    : '';
+  return `A single frame from an animated film. ${place}${shot?.camera ? `${clip(shot.camera, 90)}. ` : ''}${what} Widescreen 16:9 composition, cinematic lighting, the moment caught mid-motion. No text, captions or speech bubbles.`;
 }
 
 /** How a shot's still should move. */

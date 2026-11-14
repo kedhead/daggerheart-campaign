@@ -528,6 +528,7 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
                       drawScene={drawScene}
                       plainNames={plainNames}
                       castOf={castOf}
+                      locations={locations}
                       cast={sessionCast}
                       adversaries={adversaries}
                       voiceKey={voiceKey}
