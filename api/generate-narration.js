@@ -35,6 +35,15 @@ export function voiceSettingsFrom(raw) {
   return out;
 }
 
+/** The account's own voices from a /v1/voices listing: id, name and kind, stock voices left out, by name. */
+export function accountVoices(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter(v => v && typeof v.voice_id === 'string' && v.name && v.category !== 'premade')
+    .map(v => ({ id: v.voice_id, name: String(v.name).trim().slice(0, 80), category: v.category || '' }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 200);
+}
+
 async function narrateViaElevenLabs(apiKey, text, voiceId, settings = DEFAULT_SETTINGS) {
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId || DEFAULT_ELEVENLABS_VOICE}`,
@@ -107,6 +116,26 @@ export default async function handler(req, res) {
   if (!user) return;
 
   try {
+    // The voices made in the ElevenLabs account itself (cloned or designed
+    // there), so a character can speak in the voice their player made for
+    // them. The library's stock voices are left out: the app has its own
+    // presets for those.
+    if (req.body?.action === 'voices') {
+      const key = process.env.ELEVENLABS_API_KEY;
+      if (!key) return res.status(500).json({ error: 'ELEVENLABS_API_KEY is not set on the server, so its voices cannot be listed.' });
+      const listed = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } });
+      if (!listed.ok) {
+        const why = await listed.text().catch(() => '');
+        return res.status(listed.status === 401 ? 401 : 502).json({
+          error: listed.status === 401
+            ? 'ElevenLabs would not list the voices: the API key on the server needs permission to read voices.'
+            : `ElevenLabs would not list the voices (HTTP ${listed.status} ${why.slice(0, 120)}).`
+        });
+      }
+      const data = await listed.json().catch(() => ({}));
+      return res.status(200).json({ voices: accountVoices(data.voices) });
+    }
+
     const { text, voiceId, voiceIds, voiceSettings, style, fallbackVoice, apiKey: rawClientKey } = req.body || {};
     // A preset may name several voices, best first: if the account lacks one,
     // the next is tried before falling back to the default narrator.
