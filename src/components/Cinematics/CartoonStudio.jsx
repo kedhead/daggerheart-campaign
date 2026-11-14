@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Clapperboard, Film, ImageIcon, Loader2, MessageSquare, MessageSquarePlus, ArrowUp, ArrowDown, PenLine, Trash2, Wand2, X } from 'lucide-react';
-import { cartoonNeeds, cartoonNarration, cartoonShotText, shotIsScenery, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, lineVoiceKey, lineIsVoiced, ACCOUNT_VOICE_PREFIX, CARTOON_TALK, lineShot, addLineShot, moveLineShot } from './cinematicPlan';
+import { Clapperboard, Film, ImageIcon, Loader2, MapPin, MessageSquare, MessageSquarePlus, ArrowUp, ArrowDown, PenLine, Trash2, Wand2, X } from 'lucide-react';
+import { cartoonNeeds, cartoonNarration, cartoonShotText, shotIsScenery, cartoonShotPrompt, cartoonMotionPrompt, narrationScript, recapSources, lineVoiceKey, lineIsVoiced, ACCOUNT_VOICE_PREFIX, CARTOON_TALK, lineShot, addLineShot, moveLineShot, beatSetting, settingText, shotOutOfPlace } from './cinematicPlan';
 import { writeStoryboard, narrate, animateToClip, textProvider, listAccountVoices, saveCharacterVoice } from '../../services/cinematicsGenerator';
 import { CHARACTER_VOICES, RECAP_VOICE_KEY } from '../Storybook/narratorVoices';
 
@@ -38,7 +38,7 @@ async function pool(items, job) {
  */
 export default function CartoonStudio({
   recap, save, run, busy, setBusy, notify, campaign, session, sessions, chapters,
-  characters, npcs, adversaries = [], cast = null, drawScene, plainNames = (t) => t, castOf = () => [], voiceKey, getEffectiveKey
+  characters, npcs, adversaries = [], cast = null, locations = [], drawScene, plainNames = (t) => t, castOf = () => [], voiceKey, getEffectiveKey
 }) {
   const campaignId = campaign?.id;
   const slides = recap.slides || [];
@@ -75,8 +75,11 @@ export default function CartoonStudio({
       campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), cast, characters, npcs, adversaries,
       maxLines: CARTOON_TALK[talk], ...textProvider(getEffectiveKey)
     });
+    const board = Array.isArray(made) ? { shots: made, settings: {} } : made;
+    // Places the DM has already set are theirs; otherwise the storyboard's own are used.
+    const mine = Object.values(cartoon?.settings || {}).some(v => String(v || '').trim());
     // A line's voice is worked out when it is recorded, so a voice added to the account later is picked up.
-    await save({ cartoon: { shots: made, voice: cartoon?.voice || null, talk } });
+    await save({ cartoon: { shots: board.shots, voice: cartoon?.voice || null, talk, settings: mine ? cartoon.settings : board.settings || {} } });
   });
 
   // Who can be given a line: the session's cast first, then everyone else.
@@ -92,11 +95,21 @@ export default function CartoonStudio({
   };
   const moveLine = (shot, step) => save({ cartoon: { ...cartoon, shots: moveLineShot(shots, shot.id, step) } });
 
+  // Where a shot's beat takes place, and the shots drawn for somewhere else.
+  const whereIs = (shot) => beatSetting(cartoon, shot.beat);
+  const outOfPlace = shots.filter(s => shotOutOfPlace(s, whereIs(s)));
+  const setSetting = (beat, text) => save({ cartoon: { ...cartoon, settings: { ...(cartoon?.settings || {}), [beat]: text.trim() } } });
+  // Their pictures (and the clips made from them) are dropped, so "Shoot it" makes them again in the right place.
+  const clearOutOfPlace = () => {
+    const ids = new Set(outOfPlace.map(s => s.id));
+    save({ cartoon: { ...cartoon, shots: shots.map(s => (ids.has(s.id) ? { ...s, imageUrl: '', videoUrl: '' } : s)) } });
+  };
+
   const stamp = () => Date.now().toString(36);
   const say = (text, key, name) => narrate({ campaignId, text, voiceKey: key, fileName: `recap-${session.id}-${name}-${stamp()}` });
   const draw = (shot) => drawScene({
     id: `recap_${session.id}_${shot.id}_${stamp()}`,
-    prompt: cartoonShotPrompt(shot),
+    prompt: cartoonShotPrompt(shot, settingText(whereIs(shot), locations)),
     about: cartoonShotText(shot),
     scenery: shot.scenery,
     cast: Array.isArray(shot.cast) ? shot.cast : null
@@ -110,7 +123,8 @@ export default function CartoonStudio({
   // failure part-way keeps what was made and the next run picks up from there.
   const shoot = () => run('shoot', async () => {
     // A different narrator than last time: his takes are all read again.
-    let work = { shots: [...shots], voice: { ...cartoonNarration(recap), voiceKey } };
+    // Everything else the cartoon holds (where each beat is, how much talking) rides along with every save.
+    let work = { ...cartoon, shots: [...shots], voice: { ...cartoonNarration(recap), voiceKey } };
     let saving = Promise.resolve();
     const commit = () => { const snapshot = work; saving = saving.then(() => save({ cartoon: snapshot })); return saving; };
     const patchShot = (id, patch) => { work = { ...work, shots: work.shots.map(s => (s.id === id ? { ...s, ...patch } : s)) }; return commit(); };
@@ -165,7 +179,7 @@ export default function CartoonStudio({
     if (toDraw.length) setBusy(`shoot:Drawing shots 0 of ${toDraw.length}… (about 30 seconds each)`);
     await pool(toDraw, shot => attempt(`drawing shot ${work.shots.findIndex(s => s.id === shot.id) + 1}`, async () => {
       const imageUrl = await draw(shot);
-      await patchShot(shot.id, { imageUrl, videoUrl: '' });
+      await patchShot(shot.id, { imageUrl, videoUrl: '', drawnIn: whereIs(shot) });
       setBusy(`shoot:Drawing shots ${++drawn} of ${toDraw.length}…`);
     }));
 
@@ -186,7 +200,7 @@ export default function CartoonStudio({
 
   // One shot at a time.
   const update = (id, patch) => save({ cartoon: { ...cartoon, shots: shots.map(s => (s.id === id ? { ...s, ...patch } : s)) } });
-  const redraw = (shot) => run(`draw-${shot.id}`, async () => { await update(shot.id, { imageUrl: await draw(shot), videoUrl: '' }); });
+  const redraw = (shot) => run(`draw-${shot.id}`, async () => { await update(shot.id, { imageUrl: await draw(shot), videoUrl: '', drawnIn: whereIs(shot) }); });
   const reanimate = (shot) => run(`animate-${shot.id}`, async () => {
     const clip = await animate(shot, shot.imageUrl, label => setBusy(`animate-${shot.id}:${label}`));
     await update(shot.id, { videoUrl: clip.url });
@@ -254,6 +268,23 @@ export default function CartoonStudio({
         )}
       </div>
 
+      <datalist id="recap-places">
+        {(locations || []).filter(l => l?.name).map(l => <option key={l.id || l.name} value={l.name} />)}
+      </datalist>
+      {shots.length > 0 && (
+        <p className="text-[11px] text-lr-text-dim">
+          Each beat has a <span className="text-white">Where</span>: every shot in it is drawn there, and it carries on to the beats below until you give another.
+          {outOfPlace.length > 0 && !shooting && (
+            <>
+              {' '}{outOfPlace.length} drawn shot{outOfPlace.length === 1 ? ' was' : 's were'} made for somewhere else.{' '}
+              <button type="button" className="underline text-white disabled:opacity-50" disabled={!!busy} onClick={clearOutOfPlace}
+                title="Drops those pictures and their clips, so Shoot it makes them again in the right place">
+                Redo {outOfPlace.length === 1 ? 'it' : 'them'} in the right place
+              </button>
+            </>
+          )}
+        </p>
+      )}
       {shots.length > 0 && (
         <p className="text-[11px] text-lr-text-dim">
           {shooting
@@ -272,6 +303,23 @@ export default function CartoonStudio({
         return (
           <div key={i} className="space-y-1.5">
             <p className="text-[10px] uppercase tracking-widest text-lr-text-dim truncate">Beat {i + 1}: {slide.line}</p>
+            {/* Where this beat takes place. Left empty, it is wherever the beat before it was. */}
+            <label className="flex items-center gap-1.5 text-[11px] text-lr-text-dim">
+              <MapPin size={12} className="shrink-0" />
+              <span className="shrink-0">Where</span>
+              <input
+                key={`where-${i}-${cartoon?.settings?.[i] || ''}`}
+                type="text"
+                list="recap-places"
+                defaultValue={cartoon?.settings?.[i] || ''}
+                maxLength={120}
+                disabled={!!busy}
+                placeholder={i > 0 && beatSetting(cartoon, i - 1) ? `Still: ${beatSetting(cartoon, i - 1)}` : 'e.g. a misty pine forest at dusk'}
+                aria-label={`Where beat ${i + 1} takes place`}
+                onBlur={(e) => { if (e.target.value.trim() !== (cartoon?.settings?.[i] || '')) setSetting(i, e.target.value); }}
+                className="flex-1 min-w-0 p-1 rounded bg-black/20 border border-white/10 text-white text-[11px]"
+              />
+            </label>
             {own.map(shot => (
               <div key={shot.id} className="flex gap-2 items-start">
                 <div className="w-24 h-14 shrink-0 rounded-md overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
@@ -395,6 +443,7 @@ export default function CartoonStudio({
                   })()}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     {shot.camera && shot.kind !== 'line' && <span className="text-[11px] text-lr-text-dim italic">{shot.camera}</span>}
+                    {shotOutOfPlace(shot, whereIs(shot)) && <span className="text-[11px] text-amber-300">Drawn somewhere else: Redraw puts it in {whereIs(shot)}</span>}
                     {shot.kind === 'line' && <span className="text-[11px] text-lr-text-dim">{!shot.audioUrl ? 'Not recorded yet' : inVoice(shot) ? `Spoken (${Math.round(shot.duration || 0)}s)` : 'Recorded in another voice: Shoot it re-records it'}</span>}
                     <button type="button" className={small} onClick={() => redraw(shot)} disabled={!!busy}>
                       {busy === `draw-${shot.id}` ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}

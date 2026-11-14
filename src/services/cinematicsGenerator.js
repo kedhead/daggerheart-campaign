@@ -10,7 +10,7 @@ import { aiService } from './aiService';
 import { apiFetch } from './apiClient';
 import { persistAudio, persistVideo } from './audioStorage';
 import { animateStill } from './animateStill';
-import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
+import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, settingsFromShots, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
 import { NARRATOR_VOICES, CHARACTER_VOICES, DEFAULT_VOICE_KEY, probeDuration } from '../components/Storybook/narratorVoices';
 
 /** Which text model to use: the DM's own key if they have one, else the server's. */
@@ -34,7 +34,11 @@ export async function writeRecapScript({ campaign, sources, characters, apiKey, 
   return { beats, question: parseRecapQuestion(text) };
 }
 
-/** The shot list for the animated recap: the script's beats storyboarded into short shots and a spoken line or two. */
+/**
+ * The shot list for the animated recap: the script's beats storyboarded into
+ * short shots and some spoken lines. Returns { shots, settings }: settings is
+ * where each beat takes place, by beat index, given only where the place changes.
+ */
 export async function writeStoryboard({ campaign, beats, sources, cast, characters, npcs, adversaries = [], maxLines, apiKey, provider }) {
   // The writer sees only who was in the session; the whole roster is kept to catch anyone it names anyway.
   const rosters = { characters: characters || [], npcs: npcs || [], adversaries };
@@ -43,7 +47,8 @@ export async function writeStoryboard({ campaign, beats, sources, cast, characte
   const known = [...rosters.characters, ...rosters.npcs, ...rosters.adversaries].map(e => e?.name).filter(Boolean);
   const shots = parseStoryboard(text, beats, `${Date.now().toString(36)}-`, known, { rosters, cast: there }, maxLines);
   if (!shots.some(s => s.camera)) throw new Error('The AI did not come back with a storyboard. Try again.');
-  return shots;
+  // The place lives on the beat, where the DM can see and change it, not on each shot.
+  return { shots: shots.map(({ setting, ...shot }) => shot), settings: settingsFromShots(shots) };
 }
 
 let accountVoicesOnce = null;
