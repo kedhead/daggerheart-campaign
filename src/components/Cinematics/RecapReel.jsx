@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { recapPlan, panelImages, recapArtFills, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_INTRO_VOICE_AT, RECAP_QUESTION_VOICE_DELAY } from './cinematicPlan';
 import { playWhoosh, playRiser, playSlam } from './cinematicSfx';
 import useReelMusic from './useReelMusic';
+import useReelMedia from './useReelMedia';
 import './RecapReel.css';
 
 // Slow drifts for full-screen pictures, and the wipes that bring a beat in,
@@ -41,6 +42,15 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   const cast = useMemo(() => recap?.cast || [], [recap]);
   const timing = useMemo(() => recapPlan(recap), [recap]);
   const panels = useMemo(() => panelImages(slides), [slides]);
+  // Every picture, clip and voice is downloaded before the reel starts and
+  // played from memory, so a slow connection cannot stall it between beats.
+  const mediaUrls = useMemo(() => [
+    ...slides.flatMap(s => [s.videoUrl, s.imageUrl]),
+    ...cast.map(c => c.imageUrl),
+    recap?.narration?.url, recap?.narration?.introUrl, recap?.narration?.questionUrl
+  ].filter(Boolean), [slides, cast, recap]);
+  const media = useReelMedia(mediaUrls);
+  const { ready, local } = media;
   const [t, setT] = useState(0);
   const [ratios, setRatios] = useState({}); // picture url → width / height, once loaded
   const narrationRef = useRef(null);
@@ -55,6 +65,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
   // One clock for the whole reel. Narration, once started, is the clock: if
   // it stalls to buffer, the pictures wait for it.
   useEffect(() => {
+    if (!ready) return undefined;
     const start = performance.now();
     let raf = 0;
     let narrationStarted = false;
@@ -88,7 +99,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [timing]);
+  }, [timing, ready]);
 
 
   const index = timing.slides.findIndex(s => t >= s.start && t < s.start + s.duration);
@@ -183,19 +194,19 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     return (
       <div key={`beat-${i}`} className={`rr-beat ${look} ${dim} rr-wipe-${film ? 'dissolve' : WIPES[i % WIPES.length]} ${entering ? 'is-entering' : ''}`}
         style={{ '--ratio': ratio || 1, '--beat': `${seconds}s` }}>
-        {!!ratio && <img src={url} alt="" className="rr-backdrop" />}
+        {!!ratio && <img src={local(url)} alt="" className="rr-backdrop" />}
         {url || s.videoUrl ? (
           <div className="rr-panel">
             {s.videoUrl ? (
               // A clip longer than its beat is sped up to fit, so the action
               // lands before the cut instead of being chopped off mid-move.
-              <video src={s.videoUrl} muted loop playsInline autoPlay className="rr-media"
+              <video src={local(s.videoUrl)} poster={url ? local(url) : undefined} muted loop playsInline autoPlay className="rr-media"
                 onLoadedMetadata={(e) => {
                   const rate = e.currentTarget.duration / seconds;
                   if (Number.isFinite(rate)) e.currentTarget.playbackRate = Math.max(1, Math.min(1.75, rate));
                 }} />
             ) : (
-              <img src={url} alt="" className={`rr-media ${ratio ? 'rr-push' : DRIFTS[i % DRIFTS.length]}`} style={{ animationDuration: `${seconds + 2}s` }} />
+              <img src={local(url)} alt="" className={`rr-media ${ratio ? 'rr-push' : DRIFTS[i % DRIFTS.length]}`} style={{ animationDuration: `${seconds + 2}s` }} />
             )}
           </div>
         ) : (
@@ -234,21 +245,24 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
 
   return (
     <div className={`recap-reel ${film ? 'rr-film' : ''}`}>
-      {recap?.narration?.url && <audio ref={narrationRef} src={recap.narration.url} preload="auto" />}
-      {recap?.narration?.introUrl && <audio ref={introRef} src={recap.narration.introUrl} preload="auto" />}
-      {recap?.narration?.questionUrl && <audio ref={questionRef} src={recap.narration.questionUrl} preload="auto" />}
+      {/* The voices go on the page once they have arrived, so each is fetched once and plays from memory. */}
+      {ready && recap?.narration?.url && <audio ref={narrationRef} src={local(recap.narration.url)} preload="auto" />}
+      {ready && recap?.narration?.introUrl && <audio ref={introRef} src={local(recap.narration.introUrl)} preload="auto" />}
+      {ready && recap?.narration?.questionUrl && <audio ref={questionRef} src={local(recap.narration.questionUrl)} preload="auto" />}
       {musicFallback}
 
-      {/* Load every picture up front, so no panel slams in half-loaded. */}
-      <div className="rr-preload" aria-hidden>
-        {[...new Set(panels.flat())].map(url => (
-          <img key={url} src={url} alt="" onLoad={(e) => {
-            const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
-            if (w && h) setRatios(r => (r[url] ? r : { ...r, [url]: w / h }));
-          }} />
-        ))}
-        {cast.map(c => <img key={`cast-${c.imageUrl}`} src={c.imageUrl} alt="" />)}
-      </div>
+      {/* Each picture decoded up front, and its shape read, so no panel slams in half-drawn. */}
+      {ready && (
+        <div className="rr-preload" aria-hidden>
+          {[...new Set(panels.flat())].map(url => (
+            <img key={url} src={local(url)} alt="" onLoad={(e) => {
+              const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+              if (w && h) setRatios(r => (r[url] ? r : { ...r, [url]: w / h }));
+            }} />
+          ))}
+          {cast.map(c => <img key={`cast-${c.imageUrl}`} src={local(c.imageUrl)} alt="" />)}
+        </div>
+      )}
 
       {!inCliff && !onEnd && cutAt < 0 && (
         <>
@@ -263,7 +277,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
 
       {castAt >= 0 && cast[castAt] && (
         <div key={`cast-${castAt}`} className={`rr-cast ${castAt % 2 ? 'rr-cast-flip' : ''}`} style={{ '--beat': `${timing.cast.each}s` }}>
-          <img src={cast[castAt].imageUrl} alt="" className="rr-cast-portrait" />
+          <img src={local(cast[castAt].imageUrl)} alt="" className="rr-cast-portrait" />
           <div className="rr-cast-text">
             <div className="rr-cast-kicker">{castAt === 0 ? 'Starring' : 'And'}</div>
             <div className="rr-cast-name">{cast[castAt].name}</div>
@@ -274,7 +288,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
 
       {cutAt >= 0 && (
         <div className="rr-montage">
-          <img key={`cut-${cutAt}`} src={shots[quick.cuts[cutAt].shot]} alt="" className="rr-mcut" style={{ animationDuration: `${quick.cuts[cutAt].duration}s` }} />
+          <img key={`cut-${cutAt}`} src={local(shots[quick.cuts[cutAt].shot])} alt="" className="rr-mcut" style={{ animationDuration: `${quick.cuts[cutAt].duration}s` }} />
           <div className="rr-letterbox rr-letterbox-top" />
           <div className="rr-letterbox rr-letterbox-bottom" />
         </div>
@@ -285,6 +299,12 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
           <div className="rr-title-kicker">Previously on</div>
           <div className="rr-title-name">{recap?.title}</div>
           <div className="rr-title-rule" />
+          {/* Shown only while the pictures and voices are still arriving; a click starts with what is here. */}
+          {!ready && (
+            <button type="button" className="rr-loading" onClick={media.start} title="Start now with what has loaded">
+              Getting the reel ready… {media.loaded} of {media.total}
+            </button>
+          )}
         </div>
       )}
 
