@@ -503,6 +503,23 @@
 .rr-cartoon .rr-fit .rr-panel { width: min(100vw, calc(90vh * var(--ratio))); }
 .rr-cartoon .rr-sub { bottom: 7.5vh; }
 
+/* The shots share one layer, stacked by their part in the cut. */
+.rr-shots { position: absolute; inset: 0; isolation: isolate; }
+/* The shot after this one: on the page so it is loaded, not yet seen. */
+.rr-beat.rr-upnext { opacity: 0; pointer-events: none; animation: none; }
+.rr-loading {
+  margin-top: 4vh;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: 'Inter Tight', 'Inter', system-ui, sans-serif;
+  font-size: clamp(12px, 2.4vh, 32px);
+  letter-spacing: 0.08em;
+  color: rgba(245, 240, 225, 0.6);
+  animation: rr-fade-in 0.6s 0.8s both;
+}
+
 /* A character speaking: their name on a tab, the line in a speech box. */
 .rr-say {
   position: absolute;

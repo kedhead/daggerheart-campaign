@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cartoonPlan, recapArtFills, recapMusicFactor, recapCueVolume, RECAP_INTRO_VOICE_AT } from './cinematicPlan';
 import { playWhoosh, playRiser, playSlam } from './cinematicSfx';
 import useReelMusic from './useReelMusic';
+import useReelMedia from './useReelMedia';
 import './RecapReel.css';
 
 // How long the title card will wait for "Previously on…" to finish.
@@ -27,6 +28,15 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
   const introUrl = recap?.cartoon?.voice?.introUrl || '';
   const [t, setT] = useState(0);
   const [ratios, setRatios] = useState({}); // picture url → width / height, once loaded
+  // Every clip, picture and voice is downloaded before the reel starts and
+  // played from memory, so a slow connection cannot stall it between shots.
+  const mediaUrls = useMemo(
+    () => [...plan.shots.flatMap(s => [s.videoUrl, s.imageUrl]), ...plan.voices.map(v => v.url), introUrl].filter(Boolean),
+    [plan, introUrl]
+  );
+  const media = useReelMedia(mediaUrls);
+  const { ready, local } = media;
+  const videoEls = useRef({}); // shot index → its <video>, while it is on the page
   // Callbacks by ref, so a parent re-render never restarts the reel.
   const doneRef = useRef(onDone);
   const blockedRef = useRef(onSoundBlocked);
@@ -37,7 +47,8 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
   // are Audio objects, not elements on the page, so the stage's "click for
   // sound" cannot set them all talking at once.
   useEffect(() => {
-    const make = (url) => { const a = new Audio(); a.preload = 'auto'; a.src = url; return a; };
+    if (!ready) return undefined;
+    const make = (url) => { const a = new Audio(); a.preload = 'auto'; a.src = local(url); return a; };
     const intro = introUrl ? make(introUrl) : null;
     const voices = plan.voices.map(v => ({ ...v, audio: make(v.url), started: false }));
     const say = (audio) => audio.play().catch(err => { if (err?.name === 'NotAllowedError') blockedRef.current?.(true); });
@@ -64,7 +75,9 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
       cancelAnimationFrame(raf);
       [intro, ...voices.map(v => v.audio)].forEach(a => { try { a?.pause(); } catch { /* gone */ } });
     };
-  }, [plan, introUrl]);
+    // `local` reads from a ref that is complete once `ready` is true.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, introUrl, ready]);
 
   const at = plan.shots.findIndex(s => t >= s.start && t < s.start + s.duration);
   const shot = plan.shots[at] || null;
@@ -78,6 +91,16 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
   const [layers, setLayers] = useState({ current: -1, previous: -1 });
   useEffect(() => {
     setLayers(l => (at === l.current ? l : { current: at, previous: l.current }));
+  }, [at]);
+  // The shot after is already on the page, hidden and loaded, so the cut to
+  // it has nothing to wait for. Before the first shot, that is shot 0.
+  const upNext = at >= 0 ? (at + 1 < plan.shots.length ? at + 1 : -1) : (ready && t < plan.titleEnd + 1 && plan.shots.length ? 0 : -1);
+  // A shot's clip starts from the top the moment the shot does.
+  useEffect(() => {
+    const video = videoEls.current[at];
+    if (!video) return;
+    try { video.currentTime = 0; } catch { /* not loaded far enough to seek; it is at the start anyway */ }
+    video.play().catch(() => {});
   }, [at]);
 
   // Sound effects: a boom under the title, a soft whoosh as each beat
@@ -111,30 +134,33 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
   const musicFallback = useReelMusic(recap?.musicUrl || '', inCliff || onEnd ? 0 : level * recapMusicFactor({ speaking }), blockedRef);
 
   const pictures = useMemo(() => [...new Set(plan.shots.map(s => s.imageUrl).filter(Boolean))], [plan]);
-  const clips = useMemo(() => [...new Set(plan.shots.map(s => s.videoUrl).filter(Boolean))], [plan]);
 
-  const renderShot = (i, entering) => {
+  // `role` is 'current', 'previous' (still showing underneath) or 'next' (hidden, getting ready).
+  const renderShot = (i, role) => {
     const s = plan.shots[i];
     if (!s) return null;
+    const entering = role === 'current';
     const known = ratios[s.imageUrl];
     const screen = typeof window !== 'undefined' && window.innerHeight ? window.innerWidth / window.innerHeight : 16 / 9;
     // Art shaped unlike the screen sits whole and centred over a blurred copy of itself.
     const ratio = known && !recapArtFills(known, screen) ? known : 0;
     return (
-      <div key={`shot-${i}`} className={`rr-beat ${ratio ? 'rr-fit' : 'rr-full'} ${entering ? 'is-entering' : ''}`}
-        style={{ '--ratio': ratio || 1, '--beat': `${s.duration}s` }}>
-        {!!ratio && <img src={s.imageUrl} alt="" className="rr-backdrop" />}
+      <div key={`shot-${i}`} className={`rr-beat ${ratio ? 'rr-fit' : 'rr-full'} ${entering ? 'is-entering' : ''} ${role === 'next' ? 'rr-upnext' : ''}`}
+        style={{ '--ratio': ratio || 1, '--beat': `${s.duration}s`, zIndex: role === 'current' ? 2 : role === 'previous' ? 1 : 0 }}>
+        {!!ratio && <img src={local(s.imageUrl)} alt="" className="rr-backdrop" />}
         {s.videoUrl || s.imageUrl ? (
           <div className="rr-panel">
             {s.videoUrl ? (
               // A clip is longer than its shot; nudge it along so more of the move lands before the cut.
-              <video src={s.videoUrl} poster={s.imageUrl || undefined} muted playsInline autoPlay className="rr-media"
+              // Played from the effect above, not autoplay: it waits, loaded, until its shot begins.
+              <video src={local(s.videoUrl)} poster={s.imageUrl ? local(s.imageUrl) : undefined} muted playsInline preload="auto" className="rr-media"
+                ref={(el) => { if (el) videoEls.current[i] = el; else delete videoEls.current[i]; }}
                 onLoadedMetadata={(e) => {
                   const rate = e.currentTarget.duration / s.duration / 1.5;
                   if (Number.isFinite(rate)) e.currentTarget.playbackRate = Math.max(1, Math.min(1.35, rate));
                 }} />
             ) : (
-              <img src={s.imageUrl} alt="" className="rr-media rr-push" style={{ animationDuration: `${s.duration + 1}s` }} />
+              <img src={local(s.imageUrl)} alt="" className={`rr-media ${entering || role === 'previous' ? 'rr-push' : ''}`} style={{ animationDuration: `${s.duration + 1}s` }} />
             )}
           </div>
         ) : (
@@ -148,21 +174,28 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
     <div className="recap-reel rr-film rr-cartoon">
       {musicFallback}
 
-      {/* Load every picture and clip up front, so each cut is instant. */}
-      <div className="rr-preload" aria-hidden>
-        {pictures.map(url => (
-          <img key={url} src={url} alt="" onLoad={(e) => {
-            const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
-            if (w && h) setRatios(r => (r[url] ? r : { ...r, [url]: w / h }));
-          }} />
-        ))}
-        {clips.map(url => <video key={url} src={url} muted playsInline preload="auto" />)}
-      </div>
+      {/* Each picture's shape, read once it has arrived. */}
+      {ready && (
+        <div className="rr-preload" aria-hidden>
+          {pictures.map(url => (
+            <img key={url} src={local(url)} alt="" onLoad={(e) => {
+              const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+              if (w && h) setRatios(r => (r[url] ? r : { ...r, [url]: w / h }));
+            }} />
+          ))}
+        </div>
+      )}
 
       {!inCliff && !onEnd && (
         <>
-          {layers.previous >= 0 && layers.previous !== layers.current && renderShot(layers.previous, false)}
-          {layers.current >= 0 && renderShot(layers.current, true)}
+          {/* In shot order, not by role: a clip that changed places on the page would stop playing. */}
+          <div className="rr-shots">
+            {/* `at` is the shot on screen now. `layers` catches up a moment later, so until it does its
+                "current" is the shot just left. Going by `at` keeps the new shot's element, already loaded
+                as the one up next, on the page through the cut. */}
+            {[...new Set([layers.previous, layers.current, at, upNext])].filter(i => i >= 0).sort((a, b) => a - b)
+              .map(i => renderShot(i, i === at ? 'current' : i === layers.current || i === layers.previous ? 'previous' : 'next'))}
+          </div>
           <div className="rr-letterbox rr-letterbox-top" />
           <div className="rr-letterbox rr-letterbox-bottom" />
           <div className="rr-vignette" />
@@ -182,6 +215,12 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
           <div className="rr-title-kicker">Previously on</div>
           <div className="rr-title-name">{recap?.title}</div>
           <div className="rr-title-rule" />
+          {/* Shown only while the clips are still arriving; a click starts with what is here. */}
+          {!ready && (
+            <button type="button" className="rr-loading" onClick={media.start} title="Start now with what has loaded">
+              Getting the reel ready… {media.loaded} of {media.total}
+            </button>
+          )}
         </div>
       )}
 
