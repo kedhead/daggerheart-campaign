@@ -212,7 +212,7 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
 
       {t < plan.titleEnd && (
         <div className={`rr-title ${t > plan.titleEnd - 0.45 ? 'is-leaving' : ''}`}>
-          <div className="rr-title-kicker">Previously on</div>
+          <div className="rr-title-kicker">{recap?.kicker ?? 'Previously on'}</div>
           <div className="rr-title-name">{recap?.title}</div>
           <div className="rr-title-rule" />
           {/* Shown only while the clips are still arriving; a click starts with what is here. */}
@@ -230,7 +230,9 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
         </div>
       )}
 
-      {onEnd && (
+      {/* A stand-alone cinematic has no end card: it fades out. */}
+      {onEnd && recap?.noEnd && <div className="rr-cliff rr-fade-end" />}
+      {onEnd && !recap?.noEnd && (
         <div className="rr-end">
           <div className="rr-end-kicker">Tonight</div>
           <div className="rr-end-label">{recap?.endLabel || 'The story continues'}</div>

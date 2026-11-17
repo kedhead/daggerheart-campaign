@@ -564,7 +564,9 @@ export function recapSessionCast({ session, chapter, lines = [], characters = []
  * and `adversaries` are the session's cast (recapSessionCast), not the whole
  * campaign: a writer shown everyone uses everyone.
  */
-export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [], adversaries = [], maxLines = CARTOON_MAX_LINES }) {
+export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, characters = [], npcs = [], adversaries = [], maxLines = CARTOON_MAX_LINES, mode = 'recap' }) {
+  // 'scene': a stand-alone cinematic the DM described (sources.scene), not a recap of a session.
+  const scene = mode === 'scene';
   const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
   const fallen = (e) => (e.deceased ? 'FALLEN: dead' : '');
   const party = (characters || []).filter(c => c?.name).slice(0, 8)
@@ -573,26 +575,30 @@ export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, 
     ...(npcs || []).filter(n => n?.name).slice(0, 12).map(n => sheet(n, [fallen(n), clean(n.ancestry), clean(n.occupation), clip(n.description, 70)].filter(Boolean).join(', '))),
     ...(adversaries || []).filter(x => x?.name).slice(0, 8).map(x => sheet(x, [clean(x.role), clip(x.description, 70)].filter(Boolean).join(', ')))
   ];
-  const sessions = sources?.sessions || [];
+  const sessions = scene ? [] : sources?.sessions || [];
   const last = sessions[sessions.length - 1];
   const before = sessions.length > 1 ? sessions[sessions.length - 2] : null;
   const quotes = (last?.highlights || []).slice(0, 8).map(h => `"${clip(h, 160)}"`);
-  const happened = clip(sessionNotesText(last) || last?.notes, 3200);
+  const happened = scene ? clip(sources?.scene, 3200) : clip(sessionNotesText(last) || last?.notes, 3200);
+  const when = scene ? 'as the scene describes it' : 'as it happened last session';
 
-  return `You are storyboarding an animated "Previously on…" recap${campaignName ? ` for the tabletop RPG campaign "${campaignName}"` : ''}. A narrator reads the script below, one beat at a time, while short animated shots play. Turn it into a shot list. Your job is to illustrate the script faithfully, not to add to the story.
+  const opening = scene
+    ? `You are storyboarding a short animated cinematic${campaignName ? ` for the tabletop RPG campaign "${campaignName}"` : ''}: a scene the DM plays on the big screen at a dramatic moment of the game. A narrator reads the script below, one beat at a time, while short animated shots play and the characters speak. Turn it into a shot list. Your job is to illustrate the script faithfully, not to add to the story.`
+    : `You are storyboarding an animated "Previously on…" recap${campaignName ? ` for the tabletop RPG campaign "${campaignName}"` : ''}. A narrator reads the script below, one beat at a time, while short animated shots play. Turn it into a shot list. Your job is to illustrate the script faithfully, not to add to the story.`;
+  return `${opening}
 
 THE SCRIPT (one beat per line):
 ${beats.map((b, i) => `${i + 1}. ${clean(b.line ?? b)}`).join('\n')}
 
-WHO WAS THERE LAST SESSION
+${scene ? 'WHO IS IN THIS SCENE' : 'WHO WAS THERE LAST SESSION'}
 ${party.length ? `The party (the players' own characters): ${party.join('; ')}.\n` : ''}${others.length ? `Others: ${others.join('; ')}.\n` : ''}Nobody else exists for this storyboard.
-${happened ? `\nWHAT HAPPENED LAST SESSION (the recap is about this; use it for the detail of each beat):\n${happened}\n` : ''}${before ? `\nEARLIER, for background only (never show these events):\n${clip(before.summary || before.notes, 500)}\n` : ''}${quotes.length ? `\nThings actually said at the table: ${quotes.join(' ')}\n` : ''}
+${happened ? `\n${scene ? 'THE SCENE THE DM ASKED FOR (use it for the detail of each beat)' : 'WHAT HAPPENED LAST SESSION (the recap is about this; use it for the detail of each beat)'}:\n${happened}\n` : ''}${before ? `\nEARLIER, for background only (never show these events):\n${clip(before.summary || before.notes, 500)}\n` : ''}${quotes.length ? `\nThings actually said at the table: ${quotes.join(' ')}\n` : ''}
 Rules for "shots":
 - One shot for a short beat, two for a beat of more than about 12 words. At most ${CARTOON_MAX_SHOTS} shots in all.
-- Each shot illustrates its own beat and nothing else: the event that beat's words describe, as it happened last session. Never show an event from another beat, from earlier sessions, or one that did not happen. Never invent a fight, a death, a meeting or a place.
+- Each shot illustrates its own beat and nothing else: the event that beat's words describe, ${when}. Never show an event from another beat${scene ? '' : ', from earlier sessions'}, or one that ${scene ? 'the script does not describe' : 'did not happen'}. Never invent a fight, a death, a meeting or a place.
 - "from": the exact words of the beat that this shot illustrates.
 - "description": what we SEE, in one sentence of up to 28 words: who, doing what, where. Name the characters. Show the action the beat describes, mid-motion. No text, captions or speech bubbles in the picture.
-- "setting": where the shot takes place, in a few words ("a misty pine forest at dusk", "the throne room of the vampire king"). Take it from what happened last session: never move the story somewhere it did not go. Use exactly the same words for every shot in the same place, and change them only when the story moves.
+- "setting": where the shot takes place, in a few words ("a misty pine forest at dusk", "the throne room of the vampire king"). Take it from ${scene ? 'the scene' : 'what happened last session'}: never move the story somewhere it did not go. Use exactly the same words for every shot in the same place, and change them only when the story moves.
 - "camera": the framing and move in a few words, varied from shot to shot: "wide establishing shot, slow push in", "close-up on her face", "low angle, tracking alongside", "over-the-shoulder".
 - Who may be in a shot: a party member from the list above, and anyone else only if that beat's own line names them. Never add a character. If a beat names nobody and is about a place or a thing, show that place or thing with no people.
 - Someone marked FALLEN is dead. They appear only in a beat whose own line names them.
@@ -603,7 +609,7 @@ Rules for "shots":
 Rules for "lines" (characters who speak, between the narrator's beats):
 - Up to ${maxLines} short lines, each under 14 words, each spoken by one living character from the lists above, right after the beat it belongs to.${maxLines > CARTOON_MAX_LINES ? `
 - Lines after the same beat play one after another, in the order you give them. Use that for a short exchange of two or three lines between characters who were both there: one speaks, the other answers. Spread the rest across the beats; never more than three lines after one beat.` : ''}
-- Prefer something actually said at the table. Otherwise write a short in-character reaction to what just happened in that beat: a reaction, never a new fact.
+- ${scene ? 'Write each line in that character\'s own voice: a reaction to what just happened in that beat, or an answer to the line before. Never a new fact the script does not hold.' : 'Prefer something actually said at the table. Otherwise write a short in-character reaction to what just happened in that beat: a reaction, never a new fact.'}
 - If nothing fits, give an empty list.
 
 Answer with JSON only:
@@ -825,7 +831,8 @@ export function cartoonNeeds(recap) {
   const beats = (recap?.slides || []).filter((s, i) => !beatVoice(recap, i, voice)).length;
   const question = recap?.question && clean(voice.question) !== clean(recap.question) ? 1 : 0;
   return {
-    voice: beats + (voice.introUrl ? 0 : 1) + question + shots.filter(s => s.kind === 'line' && !s.audioUrl).length,
+    // `introText: ''` means the reel opens without a spoken line (a stand-alone cinematic).
+    voice: beats + (voice.introUrl || recap?.introText === '' ? 0 : 1) + question + shots.filter(s => s.kind === 'line' && !s.audioUrl).length,
     draw: shots.filter(s => !s.imageUrl).length,
     animate: shots.filter(s => !s.videoUrl).length
   };
@@ -874,7 +881,8 @@ export function cartoonPlan(recap) {
     : null;
   if (cliff && questionSeconds && voice.questionUrl) voices.push({ url: voice.questionUrl, start: cliff.questionAt + RECAP_QUESTION_VOICE_DELAY });
   const endStart = cliff ? cliff.start + cliff.duration : at;
-  return { shots, voices, captions, cliff, endStart, total: endStart + RECAP_END_SECONDS, titleEnd: RECAP_TITLE_SECONDS };
+  // With no end card (`noEnd`), the reel just fades out.
+  return { shots, voices, captions, cliff, endStart, total: endStart + (recap?.noEnd ? CINEMATIC_FADE_SECONDS : RECAP_END_SECONDS), titleEnd: RECAP_TITLE_SECONDS };
 }
 
 // ── Who is in a shot ───────────────────────────────────────────────────────
@@ -1023,4 +1031,80 @@ export function groundShotPrompt(prompt, cast = [], { scenery = false, absent = 
   }).join('; ');
   const count = cast.length === 1 ? 'Exactly one character appears' : `Exactly these ${cast.length} characters appear`;
   return `${base} Who is in the shot: ${who}. ${count}, and nobody else. They are original characters from this story: do not draw any famous or existing character.`;
+}
+
+// ── Stand-alone cinematics ─────────────────────────────────────────────────
+//
+// The same animated-cartoon reel as the recap, made from a moment the DM
+// describes instead of a session: the AI writes the narrator's beats, the
+// storyboard turns them into shots and spoken lines, and it is shot and played
+// the same way. Kept in the DM-only gmScreen collection, ready to play.
+
+export const CINEMATIC_FADE_SECONDS = 1.4;
+export const CINEMATIC_LENGTHS = { short: 4, medium: 6, long: 8 };
+
+/** The prompt that writes a cinematic's narration from the DM's description. */
+export function buildCinematicPrompt({ campaignName = '', prompt = '', characters = [], npcs = [], adversaries = [], setting = '', beats = CINEMATIC_LENGTHS.medium }) {
+  const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
+  const cast = [
+    ...(characters || []).filter(c => c?.name).map(c => sheet(c, [c.deceased ? 'FALLEN: dead' : '', 'player character', clean(c.ancestry), clean(c.characterClass || c.class), clip(c.appearanceDescription, 90)].filter(Boolean).join(', '))),
+    ...(npcs || []).filter(n => n?.name).map(n => sheet(n, [clean(n.ancestry), clean(n.occupation), clip(n.description, 90)].filter(Boolean).join(', '))),
+    ...(adversaries || []).filter(x => x?.name).map(x => sheet(x, [clean(x.role), clip(x.description, 90)].filter(Boolean).join(', ')))
+  ];
+  return `Write the narration for a short animated cinematic${campaignName ? ` in the tabletop RPG campaign "${campaignName}"` : ''}. The DM plays it on the big screen at a dramatic moment of the game, so it should land like the best scene of a fantasy film.
+
+THE MOMENT THE DM WANTS:
+${clip(prompt, 2500)}
+${setting ? `\nWHERE IT HAPPENS: ${clip(setting, 200)}\n` : ''}${cast.length ? `\nWHO IS IN IT: ${cast.join('; ')}.\nNobody else is in this scene.\n` : ''}
+Rules:
+- Exactly ${beats} beats, in order: set the scene, build, then the moment itself, and end on an image that hangs in the air.
+- Each beat is one line the narrator reads: present tense, vivid and cinematic, 8 to 20 words, with a couple of very short punches for rhythm.
+- Show what the DM described. Keep to it: do not add characters, deaths or twists it does not ask for.
+- Name the characters in the lines where they act, spelled exactly as above.
+- Leave the talking to the characters: the narrator describes, never quotes them.
+- "title": a short, dramatic title for the scene (2 to 5 words).
+- "setting": where it happens, in a few words, if the DM did not say.
+
+Answer with JSON only: {"title": "...", "setting": "...", "beats": [{"line": "..."}]}`;
+}
+
+/** The title, setting and beats from the model's answer. */
+export function parseCinematicScript(text) {
+  let data = {};
+  try { data = JSON.parse(String(text || '').match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch { data = {}; }
+  const beats = (Array.isArray(data.beats) ? data.beats : [])
+    .map(b => ({ line: clip(typeof b === 'string' ? b : b?.line, 220) }))
+    .filter(b => b.line)
+    .slice(0, CINEMATIC_LENGTHS.long + 2);
+  return { title: clip(data.title, 60), setting: clip(data.setting, 120), beats };
+}
+
+/**
+ * Who a cinematic is about, from the DM's description: the campaign's people
+ * it names (the fallen too, since the DM named them on purpose).
+ */
+export function cinematicCastIds(prompt, { characters = [], npcs = [], adversaries = [] } = {}) {
+  return shotCast(prompt, { characters, npcs, adversaries }).map(c => c.id).concat(
+    // shotCast stops at four; a scene can hold more.
+    [...(characters || []), ...(npcs || []), ...(adversaries || [])]
+      .filter(e => e?.id && e.name && nameForms(e.name).some(f => nameRe(f).test(` ${clean(prompt)} `)))
+      .map(e => e.id)
+  ).filter((id, i, all) => all.indexOf(id) === i);
+}
+
+/** The reel data a cinematic plays with (CartoonReel). */
+export function cinematicReel(cinematic, { campaignName = '', musicUrl = '' } = {}) {
+  return {
+    style: 'cartoon',
+    kicker: campaignName || 'A cinematic',
+    title: cinematic?.title || 'Untitled',
+    slides: cinematic?.slides || [],
+    question: '',
+    introText: '',
+    noEnd: true,
+    cartoon: cinematic?.cartoon || null,
+    musicUrl,
+    musicLevel: cinematic?.musicLevel ?? 0.6,
+    sfxLevel: cinematic?.sfxLevel ?? 1
+  };
 }

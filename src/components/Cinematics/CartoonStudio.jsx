@@ -35,10 +35,18 @@ async function pool(items, job) {
  * @param {(args: {id: string, prompt: string, about: string}) => Promise<string>} props.drawScene - draws a picture, returns its URL
  * @param {(text: string, about?: string) => string} [props.plainNames] - swaps character names in a prompt for plain labels
  * @param {(text: string, ids?: string[]|null) => Array<{id: string, name: string}>} [props.castOf] - who is in a shot: the people its text names, or the DM's own choice (`ids`)
+ * @param {string} [props.fileKey] - names the files it makes (the session's id, for a recap)
+ * @param {object} [props.storyboardSources] - what the storyboard is written from (a recap's sessions, or { scene })
+ * @param {'recap'|'scene'} [props.storyboardMode]
+ * @param {string} [props.defaultTalk] - the talking setting before one is saved
+ *
+ * `recap.introText` is the line read over the title card: unset means
+ * "Previously on… <campaign>", and '' means none.
  */
 export default function CartoonStudio({
   recap, save, run, busy, setBusy, notify, campaign, session, sessions, chapters,
-  characters, npcs, adversaries = [], cast = null, locations = [], drawScene, plainNames = (t) => t, castOf = () => [], voiceKey, getEffectiveKey
+  characters, npcs, adversaries = [], cast = null, locations = [], drawScene,
+  fileKey = null, storyboardSources = null, storyboardMode = 'recap', defaultTalk = 'little', castLabel = 'In this session', castHint = 'Name them in the script above, then re-storyboard.', blurb = null, plainNames = (t) => t, castOf = () => [], voiceKey, getEffectiveKey
 }) {
   const campaignId = campaign?.id;
   const slides = recap.slides || [];
@@ -67,12 +75,14 @@ export default function CartoonStudio({
   const minutes = Math.max(1, Math.ceil((needs.draw * 0.6 + needs.animate * 1.5) / AT_ONCE + needs.voice * 0.1));
 
   // How much the storyboard lets the characters talk, and the line being added by hand.
-  const [talk, setTalk] = useState(CARTOON_TALK[cartoon?.talk] ? cartoon.talk : 'little');
+  const [talk, setTalk] = useState(CARTOON_TALK[cartoon?.talk] ? cartoon.talk : defaultTalk);
+  const key = fileKey || session?.id || 'reel';
+  const introText = recap.introText ?? `Previously on… ${campaign?.name || 'our story'}.`;
   const [adding, setAdding] = useState(null); // { beat, speaker, line }
 
   const storyboard = () => run('storyboard', async () => {
     const made = await writeStoryboard({
-      campaign, beats: slides, sources: recapSources({ session, sessions, chapters }), cast, characters, npcs, adversaries,
+      campaign, beats: slides, sources: storyboardSources || recapSources({ session, sessions, chapters }), mode: storyboardMode, cast, characters, npcs, adversaries,
       maxLines: CARTOON_TALK[talk], ...textProvider(getEffectiveKey)
     });
     const board = Array.isArray(made) ? { shots: made, settings: {} } : made;
@@ -106,9 +116,9 @@ export default function CartoonStudio({
   };
 
   const stamp = () => Date.now().toString(36);
-  const say = (text, key, name) => narrate({ campaignId, text, voiceKey: key, fileName: `recap-${session.id}-${name}-${stamp()}` });
+  const say = (text, voice, name) => narrate({ campaignId, text, voiceKey: voice, fileName: `recap-${key}-${name}-${stamp()}` });
   const draw = (shot) => drawScene({
-    id: `recap_${session.id}_${shot.id}_${stamp()}`,
+    id: `recap_${key}_${shot.id}_${stamp()}`,
     prompt: cartoonShotPrompt(shot, settingText(whereIs(shot), locations)),
     about: cartoonShotText(shot),
     scenery: shot.scenery,
@@ -116,7 +126,7 @@ export default function CartoonStudio({
   });
   // The video model is told what moves, by role, not by a name it might know from elsewhere.
   const animate = (shot, imageUrl, onStatus) => animateToClip({
-    campaignId, imageUrl, prompt: plainNames(cartoonMotionPrompt(shot), cartoonShotText(shot), Array.isArray(shot.cast) ? shot.cast : null), fileName: `recap-${session.id}-${shot.id}-${stamp()}`, onStatus
+    campaignId, imageUrl, prompt: plainNames(cartoonMotionPrompt(shot), cartoonShotText(shot), Array.isArray(shot.cast) ? shot.cast : null), fileName: `recap-${key}-${shot.id}-${stamp()}`, onStatus
   });
 
   // Voices, then drawings, then clips. Each result is saved as it lands, so a
@@ -136,13 +146,13 @@ export default function CartoonStudio({
     const takes = [...(work.voice.beats || [])];
     const stale = slides.map((s, i) => i).filter(i => !(takes[i]?.url && takes[i].line === slides[i].line));
     const lines = work.shots.filter(s => s.kind === 'line' && !inVoice(s));
-    const voiceJobs = (work.voice.introUrl ? 0 : 1) + stale.length + lines.length + (recap.question && work.voice.question !== recap.question ? 1 : 0);
+    const voiceJobs = (work.voice.introUrl || !introText ? 0 : 1) + stale.length + lines.length + (recap.question && work.voice.question !== recap.question ? 1 : 0);
     let voiced = 0;
     const voiceStep = () => setBusy(`shoot:Recording voices ${++voiced} of ${voiceJobs}…`);
-    if (!work.voice.introUrl) {
+    if (!work.voice.introUrl && introText) {
       voiceStep();
-      await attempt('the "Previously on" line', async () => {
-        const intro = await say(`Previously on… ${campaign?.name || 'our story'}.`, voiceKey, 'c-intro');
+      await attempt('the opening line', async () => {
+        const intro = await say(introText, voiceKey, 'c-intro');
         work = { ...work, voice: { ...work.voice, introUrl: intro.url } };
         await commit();
       });
@@ -228,8 +238,12 @@ export default function CartoonStudio({
     <div className="space-y-3 p-3 rounded-lg border border-white/10 bg-black/20">
       <div className="flex flex-wrap items-center gap-2">
         <p className="flex-1 min-w-[220px] text-[11px] text-lr-text-dim leading-relaxed">
-          The script above is storyboarded into short shots, each drawn and animated for this recap. The narrator is recorded beat by beat,
-          so the picture changes on his words, and a character or two speaks a line. The film and comic looks keep their own pictures.
+          {blurb || (
+            <>
+              The script above is storyboarded into short shots, each drawn and animated for this recap. The narrator is recorded beat by beat,
+              so the picture changes on his words, and a character or two speaks a line. The film and comic looks keep their own pictures.
+            </>
+          )}
           <span className="block mt-1">
             {voicesError
               ? `Spoken lines use the built-in voices: ${voicesError}`
@@ -241,8 +255,8 @@ export default function CartoonStudio({
           </span>
           {cast && (
             <span className="block mt-1">
-              In this session: <span className="text-white">{[...cast.characters, ...cast.npcs, ...cast.adversaries].map(e => e.name).join(', ') || 'nobody named'}</span>.
-              {' '}The storyboard may use only them. Someone missing? Name them in the script above, then re-storyboard.
+              {castLabel}: <span className="text-white">{[...cast.characters, ...cast.npcs, ...cast.adversaries].map(e => e.name).join(', ') || 'nobody named'}</span>.
+              {' '}The storyboard may use only them. Someone missing? {castHint}
             </span>
           )}
         </p>

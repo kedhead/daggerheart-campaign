@@ -10,7 +10,7 @@ import { aiService } from './aiService';
 import { apiFetch } from './apiClient';
 import { persistAudio, persistVideo } from './audioStorage';
 import { animateStill } from './animateStill';
-import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, settingsFromShots, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
+import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, settingsFromShots, buildCinematicPrompt, parseCinematicScript, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
 import { NARRATOR_VOICES, CHARACTER_VOICES, DEFAULT_VOICE_KEY, probeDuration } from '../components/Storybook/narratorVoices';
 
 /** Which text model to use: the DM's own key if they have one, else the server's. */
@@ -39,11 +39,11 @@ export async function writeRecapScript({ campaign, sources, characters, apiKey, 
  * short shots and some spoken lines. Returns { shots, settings }: settings is
  * where each beat takes place, by beat index, given only where the place changes.
  */
-export async function writeStoryboard({ campaign, beats, sources, cast, characters, npcs, adversaries = [], maxLines, apiKey, provider }) {
+export async function writeStoryboard({ campaign, beats, sources, mode = 'recap', cast, characters, npcs, adversaries = [], maxLines, apiKey, provider }) {
   // The writer sees only who was in the session; the whole roster is kept to catch anyone it names anyway.
   const rosters = { characters: characters || [], npcs: npcs || [], adversaries };
   const there = cast || rosters;
-  const text = await aiService.generate(buildStoryboardPrompt({ campaignName: campaign?.name, beats, sources, ...there, maxLines }), apiKey, provider);
+  const text = await aiService.generate(buildStoryboardPrompt({ campaignName: campaign?.name, beats, sources, ...there, maxLines, mode }), apiKey, provider);
   const known = [...rosters.characters, ...rosters.npcs, ...rosters.adversaries].map(e => e?.name).filter(Boolean);
   const shots = parseStoryboard(text, beats, `${Date.now().toString(36)}-`, known, { rosters, cast: there }, maxLines);
   if (!shots.some(s => s.camera)) throw new Error('The AI did not come back with a storyboard. Try again.');
@@ -75,6 +75,14 @@ export function listAccountVoices() {
 /** Remember which of the DM's ElevenLabs voices a character speaks in, on the character. */
 export async function saveCharacterVoice(campaignId, characterId, voice) {
   await updateDoc(doc(db, `campaigns/${campaignId}/characters`, characterId), { recapVoice: voice ? { id: voice.id, name: voice.name } : null });
+}
+
+/** A stand-alone cinematic's narration, from the DM's description: { title, setting, beats }. */
+export async function writeCinematicScript({ campaign, prompt, cast, setting, beats, apiKey, provider }) {
+  const text = await aiService.generate(buildCinematicPrompt({ campaignName: campaign?.name, prompt, ...(cast || {}), setting, beats }), apiKey, provider);
+  const script = parseCinematicScript(text);
+  if (!script.beats.length) throw new Error('The AI did not come back with a script. Try again.');
+  return script;
 }
 
 /** Read `text` aloud in a narrator's or a character's voice and store the mp3. */
