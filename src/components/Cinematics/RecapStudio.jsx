@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Sparkles, Mic, Film, Loader2, Play, Monitor, ExternalLink, ImageIcon, Wand2, RefreshCw, Clapperboard } from 'lucide-react';
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
 import CartoonStudio from './CartoonStudio';
-import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, recapSessionCast, shotCast, shotAbsent, shotIsScenery, groundShotPrompt, withoutNames } from './cinematicPlan';
-import { ANCESTRY_VISUAL_HINTS } from '../../services/portraitGenerator';
-import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
+import VolumeSlider from './VolumeSlider';
+import useShotArt from './useShotArt';
+import { playedSessions, sessionNumberOf, recapSources, pickRecapArt, narrationScript, recapPlan, cartoonPlan, recapCast, recapStarring, recapArtChapters, recapGallery, recapShotPrompt, recapSessionCast } from './cinematicPlan';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
 import { ensureSoundSet } from './cinematicSounds';
@@ -22,31 +22,6 @@ const MUSIC_THEMES = ['mystical', 'exploration', 'tension', 'battle', 'victory',
 // One animated shot: about six seconds on the first video model, at roughly three cents a second.
 const CLIP_COST = 0.18;
 const SHOT_MOTION = 'Slow cinematic camera push-in while the characters move and act out the moment, keep the exact art style, no text.';
-
-/**
- * The music volume. It keeps its own value while it is dragged and saves a
- * moment after the last move. (It used to save only on "pointer up", which a
- * phone or tablet does not always send for a slider, so the setting was lost.)
- */
-function VolumeSlider({ label = 'Volume', level, onCommit }) {
-  const [value, setValue] = useState(Math.round(level * 100));
-  const timer = useRef(null);
-  const commit = useRef(onCommit);
-  commit.current = onCommit;
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const change = (next) => {
-    setValue(next);
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => commit.current(next / 100), 350);
-  };
-  return (
-    <label className="flex items-center gap-2 mt-2 text-[11px] text-lr-text-dim">
-      <span className="w-12 shrink-0">{label}</span>
-      <input type="range" min="0" max="100" step="5" value={value} onChange={(e) => change(Number(e.target.value))} className="flex-1" />
-      <span className="w-9 text-right tabular-nums">{value}%</span>
-    </label>
-  );
-}
 
 const sessionLabel = (s, n) => `${n ? `Session ${n}` : 'Session'}${s?.title ? `: ${s.title}` : ''}`;
 
@@ -108,6 +83,9 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
     [session, artChapters, slides, characters, npcs, adversaries]
   );
 
+  // Drawing a shot with the campaign's people in it as themselves, in this session's chapter style.
+  const { castOf, plainNames, drawScene } = useShotArt({ campaign, characters, npcs, adversaries, chapter: artChapters[0] || null, getEffectiveKey });
+
   const save = (fields) => updateSession(session.id, { recap: { ...(saved || {}), ...fields } });
 
   const run = async (label, fn) => {
@@ -162,38 +140,6 @@ export default function RecapStudio({ isOpen, onClose, campaign, sessions = [], 
 
   // A fresh picture for one slide, drawn in the campaign's storybook style with
   // the portraits of whoever the line names as references.
-  // The campaign's people named in a shot, described so the image model
-  // draws them and not a famous namesake.
-  // `ids` is the DM's own choice for a shot, when they have changed who is in it.
-  const everyone = { characters, npcs, adversaries };
-  const castOf = (text, ids = null) => shotCast(text, everyone, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '', ids });
-  const namesOut = (text, about, ids) => {
-    const cast = castOf(about, ids);
-    return withoutNames(text, cast, shotAbsent(`${about} ${text}`, everyone, cast));
-  };
-  const plainNames = (text, about = text, ids = null) => namesOut(text, about, ids);
-
-  const drawScene = async ({ id, prompt, about, scenery: choice, cast: ids = null }) => {
-    const chapter = artChapters[0] || null;
-    const cast = castOf(about, ids);
-    const absent = shotAbsent(`${about} ${prompt}`, everyone, cast);
-    // A shot that names nobody and mentions no person or creature is a place: it is drawn empty.
-    const scenery = shotIsScenery(about, cast, choice);
-    const scene = await regenerateScene({
-      scene: { id, prompt: groundShotPrompt(prompt, cast, { scenery, absent }), featuredEntityIds: cast.map(c => c.id), scenery },
-      chapter,
-      entities: { characters, npcs, adversaries },
-      campaignId,
-      apiKey: getEffectiveKey?.('openai')?.key || null,
-      gameSystem: campaign?.gameSystem || 'daggerheart',
-      styleKey: chapter?.styleKey || campaign?.storybookStyle || DEFAULT_STYLE_KEY,
-      styleCustom: chapter?.styleCustom || campaign?.storybookStyleCustom || '',
-      imageModel: 'nano-banana-2'
-    });
-    if (!scene?.imageUrl) throw new Error('The picture did not come back.');
-    return scene.imageUrl;
-  };
-
   const newShot = (i, text) => run(`shot-${i}`, async () => {
     const description = (text || slides[i]?.line || '').trim();
     if (!description) throw new Error('Describe the shot first.');

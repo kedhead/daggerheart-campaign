@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import ConfirmDeleteModal from '../ConfirmDeleteModal';
-import { Plus, BookOpen, ScrollText, Sparkles, Clapperboard } from 'lucide-react';
+import { Plus, BookOpen, ScrollText, Sparkles, Clapperboard, Film } from 'lucide-react';
 import RecapStudio from '../Cinematics/RecapStudio';
+import CinematicStudio from '../Cinematics/CinematicStudio';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
 import SessionLive from './SessionLive';
@@ -73,6 +74,7 @@ export default function SessionsView({
   const [liveSession, setLiveSession] = useState(null);
   const [isGMAssistantOpen, setIsGMAssistantOpen] = useState(false);
   const [isRecapOpen, setIsRecapOpen] = useState(false);
+  const [isCinematicsOpen, setIsCinematicsOpen] = useState(false);
 
   const gmAssistantHandlers = {
     addSession,
@@ -184,6 +186,15 @@ export default function SessionsView({
               <Clapperboard size={20} />
               Previously on…
             </button>
+            <button
+              type="button"
+              className="btn btn-secondary flex items-center gap-2 px-5 py-3"
+              onClick={() => setIsCinematicsOpen(true)}
+              title="Animated scenes for the big moments, ready to play on the battle map monitor"
+            >
+              <Film size={20} />
+              Cinematics
+            </button>
             {gmAssistantReady && (
               <button
                 type="button"
@@ -293,6 +304,18 @@ export default function SessionsView({
           entities={linkEntities}
         />
       </Modal>
+
+      {isDM && isCinematicsOpen && (
+        <CinematicStudio
+          isOpen
+          onClose={() => setIsCinematicsOpen(false)}
+          campaign={campaign}
+          characters={characters}
+          npcs={npcs}
+          adversaries={adversaries}
+          locations={locations}
+        />
+      )}
 
       {isDM && isRecapOpen && (
         <RecapStudio

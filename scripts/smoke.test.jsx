@@ -40,7 +40,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, buildCinematicPrompt, parseCinematicScript, cinematicCastIds, cinematicReel, CINEMATIC_LENGTHS, CINEMATIC_FADE_SECONDS, RECAP_END_SECONDS as RECAP_END_SECS, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3856,6 +3856,36 @@ section('Table cinematics');
   const placedBoard = parseStoryboard('{"shots":[{"beat":1,"setting":"a misty pine forest","description":"Korra runs.","camera":"wide"},{"beat":2,"setting":"a misty pine forest","description":"The floor gives way.","camera":"low"},{"beat":3,"setting":"the Sky Docks","description":"A ghost grins.","camera":"close-up"}]}', cBeats, 'p-');
   assert(JSON.stringify(settingsFromShots(placedBoard)) === JSON.stringify({ 0: 'a misty pine forest', 2: 'the Sky Docks' }) && /"setting": where the shot takes place/.test(buildStoryboardPrompt({ beats: cBeats, sources: { sessions: [{ summary: 'x' }] } })),
     'the storyboard is asked where each shot is, and its answer is read');
+
+  // Stand-alone cinematics: written from the DM's description, played like the animated recap.
+  const cineCast = { characters: [{ id: 'pj', name: 'Pippin Puddle-Jumper', ancestry: 'Ribbet', characterClass: 'Rogue' }, { id: 'ila', name: 'Ila', deceased: true }],
+    npcs: [{ id: 'bub', name: 'Bubbles', occupation: 'Seraph' }], adversaries: [{ id: 'king', name: 'King Finius', role: 'solo', description: 'An elder vampire king.' }] };
+  const cinePrompt = buildCinematicPrompt({ campaignName: 'Sundering', prompt: 'Pippin confronts King Finius in his throne room. Bubbles arrives in a burst of light.', ...cineCast, setting: 'the vampire throne room', beats: CINEMATIC_LENGTHS.short });
+  assert(/Pippin confronts King Finius/.test(cinePrompt) && /WHERE IT HAPPENS: the vampire throne room/.test(cinePrompt) && /Exactly 4 beats/.test(cinePrompt)
+    && /Pippin Puddle-Jumper \(player character, Ribbet, Rogue\)/.test(cinePrompt) && /Ila \(FALLEN: dead, player character\)/.test(cinePrompt) && /King Finius \(solo, An elder vampire king\.\)/.test(cinePrompt)
+    && /Nobody else is in this scene/.test(cinePrompt) && /never quotes them/.test(cinePrompt),
+    'the cinematic script is written from the DM\'s description, for the cast and place they chose, at the length they picked');
+  const cineScript = parseCinematicScript('Sure! {"title":"The King Laughs","setting":"a crypt","beats":[{"line":"Torches gutter."},"The doors slam.",{"line":""},{"nope":1}]}');
+  assert(cineScript.title === 'The King Laughs' && cineScript.setting === 'a crypt' && cineScript.beats.map(b => b.line).join('|') === 'Torches gutter.|The doors slam.'
+    && parseCinematicScript('nothing').beats.length === 0,
+    'its answer gives a title, a place and the narration beats, skipping empty ones');
+  assert(cinematicCastIds('Pippin and Bubbles face King Finius while Ila watches.', cineCast).sort().join() === 'bub,ila,king,pj' && cinematicCastIds('An empty hall.', cineCast).length === 0,
+    'its cast is everyone the description names, the fallen included, since the DM named them');
+  const cineReel = cinematicReel({ title: 'The King Laughs', slides: [{ line: 'a' }], cartoon: { shots: [] }, musicLevel: 0.3 }, { campaignName: 'Sundering', musicUrl: 'https://x/m.mp3' });
+  assert(cineReel.style === 'cartoon' && cineReel.kicker === 'Sundering' && cineReel.title === 'The King Laughs' && cineReel.introText === '' && cineReel.noEnd && cineReel.question === ''
+    && cineReel.musicUrl === 'https://x/m.mp3' && cineReel.musicLevel === 0.3 && cineReel.sfxLevel === 1,
+    'it plays as a cartoon reel under the campaign\'s name, with no "Previously on", no cliffhanger and no end card');
+  const cinePlan = cartoonPlan({ ...cineReel, slides: [{ line: 'One line.' }] });
+  const recapLike = cartoonPlan({ slides: [{ line: 'One line.' }] });
+  assert(Math.abs((cinePlan.total - cinePlan.endStart) - CINEMATIC_FADE_SECONDS) < 1e-9 && Math.abs((recapLike.total - recapLike.endStart) - RECAP_END_SECS) < 1e-9,
+    'without an end card the reel just fades out');
+  assert(cartoonNeeds({ slides: [], introText: '' }).voice === 0 && cartoonNeeds({ slides: [] }).voice === 1,
+    'a cinematic records no "Previously on" line; a recap still does');
+  const sceneBoard = buildStoryboardPrompt({ campaignName: 'Sundering', beats: cBeats, sources: { scene: 'Pippin confronts the king.' }, mode: 'scene', characters: [cineCast.characters[0]] });
+  assert(/short animated cinematic/.test(sceneBoard) && /WHO IS IN THIS SCENE/.test(sceneBoard) && /THE SCENE THE DM ASKED FOR[^]*Pippin confronts the king/.test(sceneBoard)
+    && !/Previously on|LAST SESSION|at the table|EARLIER/.test(sceneBoard) && /as the scene describes it/.test(sceneBoard) && /in that character's own voice/.test(sceneBoard)
+    && /Previously on/.test(buildStoryboardPrompt({ beats: cBeats, sources: { sessions: [{ summary: 'x' }] } })),
+    'a cinematic is storyboarded from the DM\'s scene, with none of the recap\'s talk of last session');
 
   // Character voices from the DM's own ElevenLabs account.
   const myVoices = [{ id: 'vPip0000000001', name: 'Pippin' }, { id: 'vKor0000000002', name: 'Korra (gruff)' }, { id: 'vNar0000000003', name: 'Old storyteller' }, { id: 'vEmm0000000004', name: 'Emmanita Brightwater' }];
