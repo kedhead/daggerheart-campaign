@@ -1166,6 +1166,29 @@ export function continuityStale(lines = [], i) {
   return !!(l?.continues && i > 0 && l.imageUrl && l.fromClip !== lines[i - 1]?.videoUrl);
 }
 
+// Words that mean "the party" when a line names nobody: "four figures", "they", "the heroes".
+const GROUP_WORDS = /\b(the party|the heroes|the companions|the adventurers|the group|the four|the three|the five|the two|figures|silhouettes|prisoners|captives|they|them|their|everyone|all of them|both of them|together)\b/i;
+
+/** Whether a line talks about a group of people without naming them. */
+export function mentionsGroup(text) {
+  return GROUP_WORDS.test(String(text || ''));
+}
+
+/**
+ * Who a screenplay line's picture shows, and how that was decided:
+ * 'chosen' by the DM (line.cast, which may be empty for nobody), 'auto' for a
+ * character line (speaker and listener), 'named' for the cast an action or
+ * narrator line names, 'guessed' (the party) when it names nobody but speaks of
+ * a group, or 'none'.
+ */
+export function screenplayShotCast(line, { idOf = () => null, namedIds = [], partyIds = [] } = {}) {
+  if (Array.isArray(line?.cast)) return { ids: line.cast.filter(Boolean), how: 'chosen' };
+  if (line?.kind === 'line') return { ids: [idOf(line.speaker), line.to ? idOf(line.to) : null].filter(Boolean), how: 'auto' };
+  if (namedIds.length) return { ids: namedIds, how: 'named' };
+  if (mentionsGroup(line?.text)) return { ids: partyIds.slice(0, 4), how: partyIds.length ? 'guessed' : 'none' };
+  return { ids: [], how: 'none' };
+}
+
 /** A shot's picture or motion prompt with the DM's own note for it. */
 export function withShotNote(prompt, note) {
   const said = clip(note, 240);
@@ -1212,6 +1235,7 @@ Write about ${count} lines, in order. Each line is one shot of the film, and is 
 
 Rules:
 - Make the characters talk to each other: real exchanges of two to four lines in which each answers the one before, with action lines between them to show what happens.
+- Every action and narrator line names each character it shows, by name ("Pippin and Xajax hang in chains"), never "the party", "they", "the heroes" or "figures" alone; a line that shows only a place names nobody.
 - Open on an action that sets the scene, build, play the moment the DM described, and end on an image that hangs in the air.
 - Keep to what the DM described. Do not add characters, deaths or twists it does not ask for.
 - Only the people listed speak or appear, named exactly as above.
