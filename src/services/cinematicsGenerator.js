@@ -10,7 +10,7 @@ import { aiService } from './aiService';
 import { apiFetch } from './apiClient';
 import { persistAudio, persistVideo } from './audioStorage';
 import { animateStill } from './animateStill';
-import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, settingsFromShots, buildCinematicPrompt, parseCinematicScript, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
+import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, settingsFromShots, buildCinematicPrompt, parseCinematicScript, buildScreenplayPrompt, parseScreenplay, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
 import { NARRATOR_VOICES, CHARACTER_VOICES, DEFAULT_VOICE_KEY, probeDuration } from '../components/Storybook/narratorVoices';
 
 /** Which text model to use: the DM's own key if they have one, else the server's. */
@@ -82,6 +82,15 @@ export async function writeCinematicScript({ campaign, prompt, cast, setting, be
   const text = await aiService.generate(buildCinematicPrompt({ campaignName: campaign?.name, prompt, ...(cast || {}), setting, beats }), apiKey, provider);
   const script = parseCinematicScript(text);
   if (!script.beats.length) throw new Error('The AI did not come back with a script. Try again.');
+  return script;
+}
+
+/** A cinematic written as a screenplay: { title, setting, lines }. */
+export async function writeScreenplay({ campaign, prompt, cast, setting, length, narrator, apiKey, provider }) {
+  const text = await aiService.generate(buildScreenplayPrompt({ campaignName: campaign?.name, prompt, ...(cast || {}), setting, length, narrator }), apiKey, provider);
+  const castNames = [...(cast?.characters || []), ...(cast?.npcs || []), ...(cast?.adversaries || [])].map(e => e?.name).filter(Boolean);
+  const script = parseScreenplay(text, { castNames, stamp: `${Date.now().toString(36)}-` });
+  if (!script.lines.length) throw new Error('The AI did not come back with a screenplay. Try again.');
   return script;
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { cartoonPlan, recapArtFills, recapMusicFactor, recapCueVolume, RECAP_INTRO_VOICE_AT } from './cinematicPlan';
+import { cartoonPlan, screenplayPlan, recapArtFills, recapMusicFactor, recapCueVolume, RECAP_INTRO_VOICE_AT } from './cinematicPlan';
 import { playWhoosh, playRiser, playSlam } from './cinematicSfx';
 import useReelMusic from './useReelMusic';
 import useReelMedia from './useReelMedia';
@@ -23,7 +23,8 @@ const MAX_TITLE_HOLD = 6;
  * @param {object} [props.sfx] - a createSoundPlayer() player; without one the reel uses synthesised hits
  */
 export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
-  const plan = useMemo(() => cartoonPlan(recap), [recap]);
+  // A cinematic written as a screenplay has its own timeline; everything else plays the same.
+  const plan = useMemo(() => (recap?.screenplay ? screenplayPlan(recap) : cartoonPlan(recap)), [recap]);
   const question = recap?.question || '';
   const introUrl = recap?.cartoon?.voice?.introUrl || '';
   const [t, setT] = useState(0);
