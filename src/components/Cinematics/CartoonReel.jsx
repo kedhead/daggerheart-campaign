@@ -146,7 +146,7 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
     // Art shaped unlike the screen sits whole and centred over a blurred copy of itself.
     const ratio = known && !recapArtFills(known, screen) ? known : 0;
     return (
-      <div key={`shot-${i}`} className={`rr-beat ${ratio ? 'rr-fit' : 'rr-full'} ${entering ? 'is-entering' : ''} ${role === 'next' ? 'rr-upnext' : ''}`}
+      <div key={`shot-${i}`} className={`rr-beat ${ratio ? 'rr-fit' : 'rr-full'} ${entering ? 'is-entering' : ''} ${role === 'next' ? 'rr-upnext' : ''} ${s.transition ? `rr-tr-${s.transition}` : ''}`}
         style={{ '--ratio': ratio || 1, '--beat': `${s.duration}s`, zIndex: role === 'current' ? 2 : role === 'previous' ? 1 : 0 }}>
         {!!ratio && <img src={local(s.imageUrl)} alt="" className="rr-backdrop" />}
         {s.videoUrl || s.imageUrl ? (
@@ -157,8 +157,10 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
               <video src={local(s.videoUrl)} poster={s.imageUrl ? local(s.imageUrl) : undefined} muted playsInline preload="auto" className="rr-media"
                 ref={(el) => { if (el) videoEls.current[i] = el; else delete videoEls.current[i]; }}
                 onLoadedMetadata={(e) => {
-                  const rate = e.currentTarget.duration / s.duration / 1.5;
-                  if (Number.isFinite(rate)) e.currentTarget.playbackRate = Math.max(1, Math.min(1.35, rate));
+                  // A shot the next one carries on from plays its clip right to the last
+                  // frame by the cut, since that frame is where the next shot begins.
+                  const rate = s.endsOnClip ? e.currentTarget.duration / s.duration : e.currentTarget.duration / s.duration / 1.5;
+                  if (Number.isFinite(rate)) e.currentTarget.playbackRate = s.endsOnClip ? Math.max(0.75, Math.min(2, rate)) : Math.max(1, Math.min(1.35, rate));
                 }} />
             ) : (
               <img src={local(s.imageUrl)} alt="" className={`rr-media ${entering || role === 'previous' ? 'rr-push' : ''}`} style={{ animationDuration: `${s.duration + 1}s` }} />
@@ -167,6 +169,7 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
         ) : (
           <div className="rr-panel rr-media-empty" />
         )}
+        {entering && s.transition === 'fade' && <div className="rr-fade-black" />}
       </div>
     );
   };

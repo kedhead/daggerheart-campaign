@@ -1138,6 +1138,33 @@ export const SCREENPLAY_LENGTHS = { short: 8, medium: 12, long: 18 };
 export const SCREENPLAY_NARRATION = { none: 'No narrator', some: 'A little narration', lots: 'Narrated' };
 export const SCREENPLAY_TIMING = { lead: 0.15, pad: 0.45, jcut: 0.3, action: 3.2, narratorTail: 0.35 };
 export const SCREENPLAY_KINDS = ['line', 'action', 'narrator'];
+export const SCREENPLAY_TRANSITIONS = { cut: 'Cut', dissolve: 'Dissolve', fade: 'Fade from black' };
+
+/**
+ * How a shot comes in, when the DM has not said: the first fades in from
+ * black, a shot that carries on from the one before cuts straight in (the
+ * movement continues), an answer in a conversation cuts to the other face,
+ * and anything else dissolves.
+ */
+export function screenplayTransition(line, prev) {
+  if (SCREENPLAY_TRANSITIONS[line?.transition]) return line.transition;
+  if (!prev) return 'fade';
+  if (line?.continues) return 'cut';
+  if (line?.kind === 'line' && prev.kind === 'line') return 'cut';
+  return 'dissolve';
+}
+
+/** Whether a shot that carries on from the one before was made from an older clip of that shot. */
+export function continuityStale(lines = [], i) {
+  const l = lines[i];
+  return !!(l?.continues && i > 0 && l.imageUrl && l.fromClip !== lines[i - 1]?.videoUrl);
+}
+
+/** A shot's picture or motion prompt with the DM's own note for it. */
+export function withShotNote(prompt, note) {
+  const said = clip(note, 240);
+  return said ? `${prompt} Direction for this shot, which overrides anything above: ${said.replace(/[.\s]+$/, '')}.` : prompt;
+}
 
 /** The prompt that writes a cinematic as a screenplay. */
 export function buildScreenplayPrompt({ campaignName = '', prompt = '', characters = [], npcs = [], adversaries = [], setting = '', length = 'medium', narrator = 'some' }) {
@@ -1159,7 +1186,7 @@ THE MOMENT THE DM WANTS:
 ${clip(prompt, 2500)}
 ${setting ? `\nWHERE IT HAPPENS: ${clip(setting, 200)}\n` : ''}${cast.length ? `\nWHO IS IN IT: ${cast.join('; ')}.\nNobody else is in this scene.\n` : ''}
 Write about ${count} lines, in order. Each line is one shot of the film, and is one of:
-- {"type": "action", "text": "...", "camera": "..."}: what we SEE in one moment, 8 to 25 words, present tense, naming who acts. "camera" is the framing in a few words ("wide shot", "low angle on the king", "close on his hand"), varied from shot to shot.
+- {"type": "action", "text": "...", "camera": "...", "continues": false}: what we SEE in one moment, 8 to 25 words, present tense, naming who acts. "camera" is the framing in a few words ("wide shot", "low angle on the king", "close on his hand"), varied from shot to shot. "continues": true only when this shot carries straight on from the shot before it, in the same place from the same angle, the movement unbroken.
 - {"type": "line", "speaker": "...", "to": "...", "text": "..."}: one character speaks, under 18 words, in their own voice. "to" is who they are talking to, or "" if no one.
 - {"type": "narrator", "text": "..."}: a voice over the picture, 8 to 20 words.
 
@@ -1207,6 +1234,7 @@ export function parseScreenplay(text, { castNames = [], stamp = '' } = {}) {
       Object.assign(out, { speaker, to: to && to !== speaker ? to : '' });
     }
     if (kind === 'action' && clean(l?.camera)) out.camera = clip(l.camera, 90);
+    if (kind === 'action' && l?.continues === true && lines.length) out.continues = true;
     if (clean(l?.where)) out.where = clip(l.where, 120);
     lines.push(out);
   });
@@ -1255,6 +1283,8 @@ export function screenplayMotionPrompt(shot) {
 export function screenplayPlan(recap) {
   const lines = recap?.screenplay?.lines || [];
   const T = SCREENPLAY_TIMING;
+  // The DM can hold a spoken shot on screen a little longer after the words.
+  const hold = (l) => Math.max(0, Math.min(6, Number(l.hold) || 0));
   const shots = [];
   const voices = [];
   const captions = [];
@@ -1264,12 +1294,12 @@ export function screenplayPlan(recap) {
     let duration;
     if (l.kind === 'line') {
       const said = l.audioUrl ? l.duration || 2 : Math.max(1.6, text.split(' ').length / 2.6);
-      duration = T.lead + said + T.pad;
+      duration = T.lead + said + T.pad + hold(l);
       const jcut = i > 0 && lines[i - 1]?.kind === 'line' ? T.jcut : 0;
       if (l.audioUrl) voices.push({ url: l.audioUrl, start: at + T.lead - jcut });
     } else if (l.kind === 'narrator') {
       const said = l.audioUrl ? l.duration || 3 : Math.max(2.5, text.length / 15);
-      duration = said + T.narratorTail;
+      duration = said + T.narratorTail + hold(l);
       if (l.audioUrl) voices.push({ url: l.audioUrl, start: at });
       captions.push({ beat: i, line: text, start: at, duration });
     } else {
@@ -1278,7 +1308,10 @@ export function screenplayPlan(recap) {
     const shot = screenplayShot(l);
     shots.push({
       id: l.id, kind: shot.kind, beat: i, speaker: shot.speaker || '', line: l.kind === 'line' ? text : '',
-      imageUrl: l.imageUrl || '', videoUrl: l.videoUrl || '', start: at, duration
+      imageUrl: l.imageUrl || '', videoUrl: l.videoUrl || '', start: at, duration,
+      transition: screenplayTransition(l, lines[i - 1]),
+      // The next shot starts on this clip's last frame, so this clip must reach it before the cut.
+      endsOnClip: !!lines[i + 1]?.continues
     });
     at += duration;
   });

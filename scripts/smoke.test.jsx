@@ -40,7 +40,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, buildScreenplayPrompt, parseScreenplay, lineWhere, screenplayShot, screenplayMotionPrompt, screenplayPlan, screenplayNeeds, SCREENPLAY_TIMING, SCREENPLAY_LENGTHS, buildCinematicPrompt, parseCinematicScript, cinematicCastIds, cinematicReel, CINEMATIC_LENGTHS, CINEMATIC_FADE_SECONDS, RECAP_END_SECONDS as RECAP_END_SECS, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, buildScreenplayPrompt, parseScreenplay, lineWhere, screenplayShot, screenplayMotionPrompt, screenplayPlan, screenplayNeeds, screenplayTransition, continuityStale, withShotNote, SCREENPLAY_TIMING, SCREENPLAY_LENGTHS, buildCinematicPrompt, parseCinematicScript, cinematicCastIds, cinematicReel, CINEMATIC_LENGTHS, CINEMATIC_FADE_SECONDS, RECAP_END_SECONDS as RECAP_END_SECS, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3944,6 +3944,25 @@ section('Table cinematics');
   const spReel = cinematicReel({ format: 'screenplay', screenplay: voicedSp, title: 'T' }, {});
   assert(spReel.screenplay === voicedSp && cinematicReel({ slides: [{ line: 'a' }] }, {}).screenplay === null,
     'a screenplay cinematic plays from its screenplay; an older one from its beats');
+
+  // Flow and control: transitions, carried-on shots, lengths and notes.
+  const flow = [{ id: 'a', kind: 'action', text: 'x' }, { id: 'b', kind: 'action', text: 'y', continues: true }, { id: 'c', kind: 'line', speaker: 'P', text: 'z' },
+    { id: 'd', kind: 'line', speaker: 'K', text: 'w' }, { id: 'e', kind: 'narrator', text: 'v' }, { id: 'f', kind: 'action', text: 'u', transition: 'fade' }];
+  assert(flow.map((l, i) => screenplayTransition(l, flow[i - 1])).join() === 'fade,cut,dissolve,cut,dissolve,fade',
+    'a scene fades in, a carried-on shot cuts straight in, an answer cuts to the other face, anything else dissolves, and the DM\'s own choice wins');
+  assert(!continuityStale([{ videoUrl: 'v1' }, { continues: true, imageUrl: 'f', fromClip: 'v1' }], 1) && continuityStale([{ videoUrl: 'v2' }, { continues: true, imageUrl: 'f', fromClip: 'v1' }], 1)
+    && !continuityStale([{ videoUrl: 'v2' }, { continues: false, imageUrl: 'f', fromClip: 'v1' }], 1) && !continuityStale([{ continues: true, imageUrl: 'f' }], 0),
+    'a carried-on shot is remade when the clip before it changed');
+  assert(withShotNote('A frame.', 'make it darker.') === 'A frame. Direction for this shot, which overrides anything above: make it darker.' && withShotNote('A frame.', '  ') === 'A frame.',
+    'the DM\'s note for a shot goes at the end of its prompt, above everything else');
+  const flowPlan = screenplayPlan({ screenplay: { lines: [
+    { id: 'a', kind: 'action', text: 'x', seconds: 6 }, { id: 'b', kind: 'action', text: 'y', continues: true },
+    { id: 'c', kind: 'line', speaker: 'P', text: 'z', audioUrl: 'c', duration: 2, hold: 1.5 }, { id: 'd', kind: 'action', text: 'w', seconds: 99 }] } });
+  assert(flowPlan.shots[0].duration === 6 && flowPlan.shots[0].endsOnClip && !flowPlan.shots[1].endsOnClip && flowPlan.shots[1].transition === 'cut'
+    && Math.abs(flowPlan.shots[2].duration - (SCREENPLAY_TIMING.lead + 2 + SCREENPLAY_TIMING.pad + 1.5)) < 1e-9 && flowPlan.shots[3].duration === 8,
+    'an action lasts as long as the DM set (up to eight seconds), a spoken shot holds for as long as asked after its words, and a shot the next carries on from plays to its end');
+  assert(parseScreenplay('{"lines":[{"type":"action","text":"a","continues":true},{"type":"action","text":"b","continues":true},{"type":"line","speaker":"P","text":"c","continues":true}]}').lines.map(l => !!l.continues).join() === 'false,true,false',
+    'only an action after another shot can carry on from it');
 
   // Character voices from the DM's own ElevenLabs account.
   const myVoices = [{ id: 'vPip0000000001', name: 'Pippin' }, { id: 'vKor0000000002', name: 'Korra (gruff)' }, { id: 'vNar0000000003', name: 'Old storyteller' }, { id: 'vEmm0000000004', name: 'Emmanita Brightwater' }];

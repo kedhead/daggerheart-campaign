@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
-import { ArrowDown, ArrowUp, Clapperboard, Film, ImageIcon, Loader2, MapPin, MessageSquare, Mic, Trash2, Wand2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Clapperboard, Film, ImageIcon, Link2, Loader2, MapPin, MessageSquare, Mic, Trash2, Wand2 } from 'lucide-react';
 import {
   screenplayShot, screenplayMotionPrompt, screenplayNeeds, lineWhere, cartoonShotPrompt, settingText,
-  lineVoiceKey, lineIsVoiced, shotOutOfPlace, ACCOUNT_VOICE_PREFIX
+  lineVoiceKey, lineIsVoiced, shotOutOfPlace, ACCOUNT_VOICE_PREFIX,
+  screenplayPlan, screenplayTransition, continuityStale, withShotNote, SCREENPLAY_TRANSITIONS, SCREENPLAY_TIMING
 } from './cinematicPlan';
 import { narrate, animateToClip, listAccountVoices, saveCharacterVoice } from '../../services/cinematicsGenerator';
+import { persistImage } from '../../services/audioStorage';
+import { lastFrameOf } from '../../utils/videoFrame';
 import { CHARACTER_VOICES } from '../Storybook/narratorVoices';
 
 // One animated shot: about six seconds on the first video model, at roughly three cents a second.
@@ -63,7 +66,12 @@ export default function ScreenplayStudio({
     if (l.kind === 'narrator') return l.voicedWith === narratorKey;
     return accountVoices && !voicesError ? lineIsVoiced({ ...l, speaker: l.speaker }, voices) : true;
   };
-  const needs = screenplayNeeds(screenplay, voiced);
+  // A shot that carries on from the one before is remade when that shot's clip changed.
+  const current = lines.map((l, i) => (continuityStale(lines, i) ? { ...l, imageUrl: '', videoUrl: '' } : l));
+  const needs = screenplayNeeds({ ...screenplay, lines: current }, voiced);
+  const plan = screenplayPlan({ screenplay });
+  const [open, setOpen] = useState(() => new Set()); // lines whose shot settings are showing
+  const toggle = (id) => setOpen(o => { const n = new Set(o); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const todo = needs.voice + needs.draw + needs.animate;
   const minutes = Math.max(1, Math.ceil((needs.draw * 0.6 + needs.animate * 1.5) / AT_ONCE + needs.voice * 0.1));
 
@@ -73,8 +81,12 @@ export default function ScreenplayStudio({
   const otherNames = everyone.map(e => e.name).filter(n => !castNames.includes(n));
   const idOf = (name) => (castList.find(e => e.name === name) || everyone.find(e => e.name === name))?.id;
 
+  // Edits read the latest saved lines, so a slow redraw finishing later never
+  // undoes something changed while it ran (a note typed just before it, say).
+  const latest = useRef(lines);
+  latest.current = lines;
   const setLines = (next) => save({ screenplay: { ...screenplay, lines: next } });
-  const update = (id, patch) => setLines(lines.map(l => (l.id === id ? { ...l, ...patch } : l)));
+  const update = (id, patch) => setLines(latest.current.map(l => (l.id === id ? { ...l, ...patch } : l)));
   // Changing what a line is about makes its picture, clip and recording stale.
   const fresh = { imageUrl: '', videoUrl: '', audioUrl: '', duration: 0 };
   const move = (i, step) => {
@@ -110,7 +122,7 @@ export default function ScreenplayStudio({
     const shot = screenplayShot(l);
     return drawScene({
       id: `scene_${key}_${l.id}_${stamp()}`,
-      prompt: cartoonShotPrompt(shot, settingText(whereOf(i), locations)),
+      prompt: withShotNote(cartoonShotPrompt(shot, settingText(whereOf(i), locations)), l.note),
       about: `${shot.description} ${l.kind === 'line' ? '' : l.text}`.trim(),
       scenery: l.scenery,
       cast: shotCastIds(l)
@@ -120,9 +132,15 @@ export default function ScreenplayStudio({
     const shot = screenplayShot(l);
     return animateToClip({
       campaignId, imageUrl, onStatus,
-      prompt: plainNames(screenplayMotionPrompt(shot), shot.description, shotCastIds(l)),
+      prompt: plainNames(withShotNote(screenplayMotionPrompt(shot), l.note), shot.description, shotCastIds(l)),
       fileName: `scene-${key}-${l.id}-${stamp()}`
     });
+  };
+  // The opening picture of a shot that carries on: the last frame of the clip before it.
+  const frameAfter = async (prevClip, l) => {
+    const blob = await lastFrameOf(prevClip);
+    const { url } = await persistImage(campaignId, blob, `scene-${key}-${l.id}-from-${stamp()}`);
+    return url;
   };
   const say = (text, voice, name) => narrate({ campaignId, text, voiceKey: voice, fileName: `scene-${key}-${name}-${stamp()}` });
 
@@ -146,8 +164,12 @@ export default function ScreenplayStudio({
         await patch(l.id, { audioUrl: take.url, duration: take.duration, voicedWith: voice, spokenText: l.text });
       });
     }
+    // Shots that carry on from the one before wait for its clip; the rest are made a few at a time.
+    work = work.map((l, i) => (continuityStale(work, i) ? { ...l, imageUrl: '', videoUrl: '' } : l));
+    const carries = (l) => { const i = work.findIndex(x => x.id === l.id); return !!l.continues && i > 0; };
+
     // 2. Drawings.
-    const toDraw = work.filter(l => !l.imageUrl);
+    const toDraw = work.filter(l => !l.imageUrl && !carries(l));
     let drawn = 0;
     if (toDraw.length) setBusy(`shoot:Drawing shots 0 of ${toDraw.length}… (about 30 seconds each)`);
     await pool(toDraw, l => attempt(`drawing ${label(l)}`, async () => {
@@ -157,7 +179,7 @@ export default function ScreenplayStudio({
       setBusy(`shoot:Drawing shots ${++drawn} of ${toDraw.length}…`);
     }));
     // 3. Clips.
-    const toAnimate = work.filter(l => l.imageUrl && !l.videoUrl);
+    const toAnimate = work.filter(l => l.imageUrl && !l.videoUrl && !carries(l));
     let animated = 0;
     if (toAnimate.length) setBusy(`shoot:Animating shots 0 of ${toAnimate.length}… (a minute or two each)`);
     await pool(toAnimate, l => attempt(`animating ${label(l)}`, async () => {
@@ -165,12 +187,45 @@ export default function ScreenplayStudio({
       await patch(l.id, { videoUrl: clip.url });
       setBusy(`shoot:Animating shots ${++animated} of ${toAnimate.length}…`);
     }));
+    // 4. Shots that carry on, in order: each starts on the last frame of the clip before it.
+    const chained = work.filter(l => carries(l) && (!l.imageUrl || !l.videoUrl));
+    let carried = 0;
+    for (const l of chained) {
+      setBusy(`shoot:Carrying shots on ${++carried} of ${chained.length}… (one after another)`);
+      await attempt(`carrying on ${label(l)}`, async () => {
+        const i = work.findIndex(x => x.id === l.id);
+        const prev = work[i - 1];
+        let line = work[i];
+        if (!line.imageUrl) {
+          if (!prev?.videoUrl) throw new Error('the shot before it has no clip yet');
+          try {
+            const imageUrl = await frameAfter(prev.videoUrl, line);
+            await patch(l.id, { imageUrl, videoUrl: '', fromClip: prev.videoUrl, drawnIn: whereOf(i) });
+          } catch (err) {
+            // The frame could not be read: draw this one fresh rather than leave a hole.
+            notify.warning(`Line ${i + 1} could not carry on from the shot before (${err.message}); it was drawn fresh instead.`);
+            const imageUrl = await draw(line, i);
+            await patch(l.id, { imageUrl, videoUrl: '', fromClip: prev.videoUrl, drawnIn: whereOf(i) });
+          }
+          line = work[i];
+        }
+        const clip = await animate(line, line.imageUrl);
+        await patch(l.id, { videoUrl: clip.url });
+      });
+    }
     await saving;
     if (failed.length) notify.warning(`Shot what it could. Still missing: ${failed.join('; ')}. Press "Shoot it" again to retry those.`);
     else notify.success('The scene is shot. Preview it below.');
   });
 
-  const redraw = (l, i) => run(`draw-${l.id}`, async () => { await update(l.id, { imageUrl: await draw(l, i), videoUrl: '', drawnIn: whereOf(i) }); });
+  const redraw = (l, i, extra = {}) => run(`draw-${l.id}`, async () => {
+    const prev = lines[i - 1];
+    if (l.continues && prev?.videoUrl) {
+      await update(l.id, { ...extra, imageUrl: await frameAfter(prev.videoUrl, l), videoUrl: '', fromClip: prev.videoUrl, drawnIn: whereOf(i) });
+      return;
+    }
+    await update(l.id, { ...extra, imageUrl: await draw(l, i), videoUrl: '', drawnIn: whereOf(i) });
+  });
   const reanimate = (l) => run(`animate-${l.id}`, async () => {
     const clip = await animate(l, l.imageUrl, s => setBusy(`animate-${l.id}:${s}`));
     await update(l.id, { videoUrl: clip.url });
@@ -234,6 +289,28 @@ export default function ScreenplayStudio({
         )}
       </p>
 
+      {/* The whole scene at a glance, in playing order. Tap a shot to jump to it. */}
+      {lines.length > 0 && (
+        <div className="flex gap-1 overflow-x-auto pb-1" aria-label="Filmstrip">
+          {lines.map((l, i) => {
+            const t = plan.shots[i];
+            const how = t?.transition === 'cut' ? (l.continues && i > 0 ? 'carries on' : 'cut') : t?.transition === 'fade' ? 'fade' : 'dissolve';
+            return (
+              <button key={l.id} type="button" title={`${i + 1}. ${l.kind === 'line' ? `${l.speaker}: ` : ''}${l.text}`}
+                onClick={() => document.getElementById(`sp-line-${l.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className="shrink-0 w-16 text-left">
+                <div className={`w-16 h-9 rounded overflow-hidden bg-black/40 border flex items-center justify-center ${current[i].imageUrl ? 'border-white/10' : 'border-amber-300/40'}`}>
+                  {current[i].imageUrl ? <img src={l.imageUrl} alt="" className="w-full h-full object-cover" />
+                    : l.kind === 'line' ? <MessageSquare size={12} className="text-lr-text-dim" /> : <ImageIcon size={12} className="text-lr-text-dim" />}
+                </div>
+                <div className="text-[9px] text-lr-text-dim leading-tight truncate">{i + 1} · {t ? `${t.duration.toFixed(1)}s` : ''}</div>
+                <div className="text-[9px] text-lr-text-dim/70 leading-tight truncate">{how}</div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <datalist id="screenplay-places">{locations.filter(l => l?.name).map(l => <option key={l.id || l.name} value={l.name} />)}</datalist>
 
       {lines.map((l, i) => {
@@ -241,7 +318,7 @@ export default function ScreenplayStudio({
         const working = busy === `draw-${l.id}` || busy?.startsWith(`animate-${l.id}`);
         const where = whereOf(i);
         return (
-          <div key={l.id} className="flex gap-2 items-start p-2 rounded-lg border border-white/5 bg-black/20">
+          <div key={l.id} id={`sp-line-${l.id}`} className="flex gap-2 items-start p-2 rounded-lg border border-white/5 bg-black/20">
             <div className="w-20 h-12 shrink-0 rounded overflow-hidden bg-black/40 border border-white/10 flex items-center justify-center">
               {l.videoUrl ? <video src={l.videoUrl} muted autoPlay loop playsInline className="w-full h-full object-cover" />
                 : l.imageUrl ? <img src={l.imageUrl} alt="" className="w-full h-full object-cover" />
@@ -318,7 +395,55 @@ export default function ScreenplayStudio({
                   <option value="narrator">Narrator</option>
                 </select>
                 <button type="button" className={small} onClick={() => setLines(lines.filter(x => x.id !== l.id))} disabled={!!busy || working} aria-label="Remove line" title="Remove line"><Trash2 size={12} /></button>
+                <button type="button" className={small} onClick={() => toggle(l.id)} aria-expanded={open.has(l.id)} aria-label={`Shot settings for line ${i + 1}`}>
+                  {open.has(l.id) ? <ChevronUp size={12} /> : <ChevronDown size={12} />} Shot
+                  {(l.note || l.continues || l.transition || l.seconds || l.hold) && <span className="text-lr-accent">•</span>}
+                </button>
               </div>
+              {open.has(l.id) && (
+                <div className="space-y-1.5 p-2 rounded border border-white/10 bg-black/30">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <label className="inline-flex items-center gap-1 text-[11px] text-lr-text-dim">
+                      In
+                      <select value={l.transition || ''} disabled={!!busy} aria-label={`Transition into line ${i + 1}`} className={input}
+                        onChange={(e) => update(l.id, { transition: e.target.value })}>
+                        <option value="">Auto ({SCREENPLAY_TRANSITIONS[screenplayTransition({ ...l, transition: '' }, lines[i - 1])].toLowerCase()})</option>
+                        {Object.entries(SCREENPLAY_TRANSITIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                    </label>
+                    <label className="inline-flex items-center gap-1 text-[11px] text-lr-text-dim">
+                      {l.kind === 'action' ? 'Length' : 'Hold after'}
+                      <input type="number" min={l.kind === 'action' ? 1.5 : 0} max={l.kind === 'action' ? 8 : 6} step="0.5" disabled={!!busy}
+                        key={`${l.id}-len-${l.kind === 'action' ? l.seconds : l.hold}`}
+                        defaultValue={l.kind === 'action' ? (l.seconds || SCREENPLAY_TIMING.action) : (l.hold || 0)}
+                        aria-label={`${l.kind === 'action' ? 'Length' : 'Hold after'} for line ${i + 1}, in seconds`}
+                        onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) update(l.id, l.kind === 'action' ? { seconds: v } : { hold: v }); }}
+                        className={`${input} w-16`} />
+                      s
+                    </label>
+                    {i > 0 && (
+                      <label className="inline-flex items-center gap-1 text-[11px] text-lr-text-dim" title="Starts from the last frame of the clip before it, so the movement carries on across the cut. Made after that clip, one at a time.">
+                        <input type="checkbox" checked={!!l.continues} disabled={!!busy} onChange={(e) => update(l.id, { continues: e.target.checked, imageUrl: '', videoUrl: '' })} />
+                        <Link2 size={11} /> Carry on from the shot before
+                      </label>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <input key={`${l.id}-note-${l.note || ''}`} type="text" defaultValue={l.note || ''} maxLength={240} disabled={!!busy}
+                      placeholder="Note for this shot, e.g. make it darker, Pippin on the left" aria-label={`Note for line ${i + 1}`}
+                      onBlur={(e) => { if (e.target.value.trim() !== (l.note || '')) update(l.id, { note: e.target.value.trim() }); }}
+                      className={`${input} flex-1 min-w-[180px]`} />
+                    <button type="button" className={small} onClick={(e) => {
+                      // Save what is typed, then redraw with it.
+                      const typed = e.currentTarget.previousSibling?.value?.trim() ?? l.note ?? '';
+                      redraw({ ...l, note: typed }, i, { note: typed });
+                    }} disabled={!!busy}>
+                      <Wand2 size={12} /> Redraw with note
+                    </button>
+                  </div>
+                  {l.continues && i > 0 && <p className="text-[10px] text-lr-text-dim">Carried-on shots start from the clip before, so a note changes how it moves, not its first picture.</p>}
+                </div>
+              )}
             </div>
           </div>
         );

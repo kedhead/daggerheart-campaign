@@ -52,6 +52,16 @@ export async function persistVideo(campaignId, blob, filename) {
   return { url, storagePath };
 }
 
+/** Store a picture (a PNG blob) and return its download URL and storage path. */
+export async function persistImage(campaignId, blob, filename) {
+  const safeName = (filename || 'frame').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 80);
+  const storagePath = `campaigns/${campaignId}/storybook/images/${safeName}.png`;
+  const storageRef = ref(storage, storagePath);
+  await uploadBytes(storageRef, blob, { contentType: blob.type || 'image/png' });
+  const url = await getDownloadURL(storageRef);
+  return { url, storagePath };
+}
+
 /**
  * Save audio cache mappings to Firestore
  * @param {string} campaignId - Campaign ID
