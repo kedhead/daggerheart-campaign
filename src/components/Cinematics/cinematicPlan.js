@@ -1038,7 +1038,7 @@ export function groundShotPrompt(prompt, cast = [], { scenery = false, absent = 
 // The same animated-cartoon reel as the recap, made from a moment the DM
 // describes instead of a session: the AI writes the narrator's beats, the
 // storyboard turns them into shots and spoken lines, and it is shot and played
-// the same way. Kept in the DM-only gmScreen collection, ready to play.
+// the same way. Saved in the campaign (see services/cinematicStore.js), ready to play.
 
 export const CINEMATIC_FADE_SECONDS = 1.4;
 export const CINEMATIC_LENGTHS = { short: 4, medium: 6, long: 8 };

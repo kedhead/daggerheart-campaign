@@ -1,16 +1,21 @@
 // The DM's saved cinematics.
 //
-// Kept in the campaign's gmScreen collection, which only the DM can read or
-// write (players cannot open one early and spoil it), one document each,
-// marked kind: 'cinematic'. Playing one copies what it needs into the
-// monitor's cue, so the monitor never reads these documents itself.
+// Kept in the campaign's battleMapDisplay collection, one document each,
+// marked kind: 'cinematic'. Only the DM can write there, and the app shows
+// these to nobody else. (They were first kept in the DM-only gmScreen
+// collection, but the live database refused it: its rules for that
+// collection are in firestore.rules but were never deployed, and the rules
+// for battleMapDisplay are, since every monitor cue is written there.)
+// Playing one copies what it needs into the monitor's cue, so the monitor
+// never reads these documents itself.
 
 import { collection, deleteDoc, doc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 const KIND = 'cinematic';
-const colRef = (campaignId) => collection(db, `campaigns/${campaignId}/gmScreen`);
-const docRef = (campaignId, id) => doc(db, `campaigns/${campaignId}/gmScreen`, id);
+const PLACE = 'battleMapDisplay';
+const colRef = (campaignId) => collection(db, `campaigns/${campaignId}/${PLACE}`);
+const docRef = (campaignId, id) => doc(db, `campaigns/${campaignId}/${PLACE}`, id);
 
 // Firestore refuses `undefined` anywhere in a document.
 const plain = (value) => JSON.parse(JSON.stringify(value ?? {}));

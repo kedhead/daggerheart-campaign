@@ -137,7 +137,7 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
       <div className="flex flex-wrap items-start gap-3">
         <p className="flex-1 min-w-[240px] text-sm text-lr-text-muted leading-relaxed">
           Animated scenes for the big moments: describe what happens and who is in it, and the AI writes it, storyboards it and voices your
-          characters. Shoot it once, and it is ready to play on the monitor whenever the moment comes. Only you can see these.
+          characters. Shoot it once, and it is ready to play on the monitor whenever the moment comes. Only you see these in the app.
         </p>
         <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={startNew} disabled={!!busy || !campaignId}>
           {busy === 'new' ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} New cinematic
