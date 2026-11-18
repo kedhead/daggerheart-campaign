@@ -520,6 +520,20 @@
   animation: rr-fade-in 0.6s 0.8s both;
 }
 
+/* A screenplay shot comes in by its own transition: a straight cut, a dissolve, or a fade up from black. */
+.rr-cartoon.rr-film .rr-beat.is-entering.rr-tr-cut { animation: none; }
+.rr-cartoon.rr-film .rr-beat.is-entering.rr-tr-dissolve { animation: rr-dissolve 0.8s ease both; }
+.rr-cartoon.rr-film .rr-beat.is-entering.rr-tr-fade { animation: none; }
+.rr-fade-black {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #000;
+  pointer-events: none;
+  animation: rr-fade-black 1s ease-out both;
+}
+@keyframes rr-fade-black { from { opacity: 1; } to { opacity: 0; } }
+
 /* A character speaking: their name on a tab, the line in a speech box. */
 .rr-say {
   position: absolute;

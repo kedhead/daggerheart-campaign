@@ -1115,8 +1115,219 @@ export function cinematicReel(cinematic, { campaignName = '', musicUrl = '' } = 
     introText: '',
     noEnd: true,
     cartoon: cinematic?.cartoon || null,
+    // A cinematic written as a screenplay plays from it (screenplayPlan) instead of the narration beats.
+    screenplay: cinematic?.format === 'screenplay' ? cinematic.screenplay || { lines: [] } : null,
     musicUrl,
     musicLevel: cinematic?.musicLevel ?? 0.6,
     sfxLevel: cinematic?.sfxLevel ?? 1
+  };
+}
+
+// ── Cinematics as screenplays ──────────────────────────────────────────────
+//
+// A cinematic driven by narration beats felt like a recap with lines bolted
+// on. As a screenplay, the scene is one ordered list of lines, each one shot:
+//   action:   what we see ("Bubbles bursts through the stained glass.")
+//   line:     a character speaks, to someone or to no one
+//   narrator: an optional voice over the picture
+// A character speaking to someone is filmed over the listener's shoulder, so
+// an exchange cuts between the two faces like a film conversation, and the
+// next line's voice starts a moment before its picture (a J-cut).
+
+export const SCREENPLAY_LENGTHS = { short: 8, medium: 12, long: 18 };
+export const SCREENPLAY_NARRATION = { none: 'No narrator', some: 'A little narration', lots: 'Narrated' };
+export const SCREENPLAY_TIMING = { lead: 0.15, pad: 0.45, jcut: 0.3, action: 3.2, narratorTail: 0.35 };
+export const SCREENPLAY_KINDS = ['line', 'action', 'narrator'];
+export const SCREENPLAY_TRANSITIONS = { cut: 'Cut', dissolve: 'Dissolve', fade: 'Fade from black' };
+
+/**
+ * How a shot comes in, when the DM has not said: the first fades in from
+ * black, a shot that carries on from the one before cuts straight in (the
+ * movement continues), an answer in a conversation cuts to the other face,
+ * and anything else dissolves.
+ */
+export function screenplayTransition(line, prev) {
+  if (SCREENPLAY_TRANSITIONS[line?.transition]) return line.transition;
+  if (!prev) return 'fade';
+  if (line?.continues) return 'cut';
+  if (line?.kind === 'line' && prev.kind === 'line') return 'cut';
+  return 'dissolve';
+}
+
+/** Whether a shot that carries on from the one before was made from an older clip of that shot. */
+export function continuityStale(lines = [], i) {
+  const l = lines[i];
+  return !!(l?.continues && i > 0 && l.imageUrl && l.fromClip !== lines[i - 1]?.videoUrl);
+}
+
+/** A shot's picture or motion prompt with the DM's own note for it. */
+export function withShotNote(prompt, note) {
+  const said = clip(note, 240);
+  return said ? `${prompt} Direction for this shot, which overrides anything above: ${said.replace(/[.\s]+$/, '')}.` : prompt;
+}
+
+/** The prompt that writes a cinematic as a screenplay. */
+export function buildScreenplayPrompt({ campaignName = '', prompt = '', characters = [], npcs = [], adversaries = [], setting = '', length = 'medium', narrator = 'some' }) {
+  const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
+  const cast = [
+    ...(characters || []).filter(c => c?.name).map(c => sheet(c, [c.deceased ? 'FALLEN: dead' : '', 'player character', clean(c.ancestry), clean(c.characterClass || c.class), clip(c.appearanceDescription, 90)].filter(Boolean).join(', '))),
+    ...(npcs || []).filter(n => n?.name).map(n => sheet(n, [clean(n.ancestry), clean(n.occupation), clip(n.description, 90)].filter(Boolean).join(', '))),
+    ...(adversaries || []).filter(x => x?.name).map(x => sheet(x, [clean(x.role), clip(x.description, 90)].filter(Boolean).join(', ')))
+  ];
+  const count = SCREENPLAY_LENGTHS[length] || SCREENPLAY_LENGTHS.medium;
+  const narration = {
+    none: 'Do not use the narrator at all: the scene is told by what we see and what the characters say.',
+    some: 'Use the narrator at most twice, briefly: to open the scene and/or to close it.',
+    lots: 'The narrator may carry the story between moments, in up to a quarter of the lines.'
+  }[narrator] || '';
+  return `Write the screenplay for a short animated cinematic${campaignName ? ` in the tabletop RPG campaign "${campaignName}"` : ''}. The DM plays it on the big screen at a dramatic moment of the game, so it should play like the best scene of a fantasy film: characters talking to each other, reacting, and something happening.
+
+THE MOMENT THE DM WANTS:
+${clip(prompt, 2500)}
+${setting ? `\nWHERE IT HAPPENS: ${clip(setting, 200)}\n` : ''}${cast.length ? `\nWHO IS IN IT: ${cast.join('; ')}.\nNobody else is in this scene.\n` : ''}
+Write about ${count} lines, in order. Each line is one shot of the film, and is one of:
+- {"type": "action", "text": "...", "camera": "...", "continues": false}: what we SEE in one moment, 8 to 25 words, present tense, naming who acts. "camera" is the framing in a few words ("wide shot", "low angle on the king", "close on his hand"), varied from shot to shot. "continues": true only when this shot carries straight on from the shot before it, in the same place from the same angle, the movement unbroken.
+- {"type": "line", "speaker": "...", "to": "...", "text": "..."}: one character speaks, under 18 words, in their own voice. "to" is who they are talking to, or "" if no one.
+- {"type": "narrator", "text": "..."}: a voice over the picture, 8 to 20 words.
+
+Rules:
+- Make the characters talk to each other: real exchanges of two to four lines in which each answers the one before, with action lines between them to show what happens.
+- Open on an action that sets the scene, build, play the moment the DM described, and end on an image that hangs in the air.
+- Keep to what the DM described. Do not add characters, deaths or twists it does not ask for.
+- Only the people listed speak or appear, named exactly as above.
+- ${narration}
+- A line may carry "where" (a few words for the place) when the scene moves somewhere new; the first line always carries it.
+- "title": a short, dramatic title (2 to 5 words). "setting": where it begins.
+
+Answer with JSON only: {"title": "...", "setting": "...", "lines": [ ... ]}`;
+}
+
+/**
+ * The screenplay from the model's answer. `castNames` are the people allowed
+ * to speak: a line from anyone else is dropped, and "to" must be someone else
+ * from the cast. `stamp` keeps line ids apart from an earlier draft's.
+ */
+export function parseScreenplay(text, { castNames = [], stamp = '' } = {}) {
+  let data = {};
+  try { data = JSON.parse(String(text || '').match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch { data = {}; }
+  const allowed = castNames.map(n => clean(n));
+  // "Pippin" finds "Pippin Puddle-Jumper"; the cast's own spelling is kept.
+  const who = (name) => {
+    const said = clean(name);
+    if (!said) return '';
+    if (!allowed.length) return said;
+    return allowed.find(n => n.toLowerCase() === said.toLowerCase())
+      || allowed.find(n => nameForms(n).some(f => f.toLowerCase() === said.toLowerCase()))
+      || allowed.find(n => nameForms(said).some(f => nameForms(n).some(g => g.toLowerCase() === f.toLowerCase())))
+      || '';
+  };
+  const lines = [];
+  (Array.isArray(data.lines) ? data.lines : []).forEach(l => {
+    const kind = { action: 'action', line: 'line', dialogue: 'line', narrator: 'narrator' }[clean(l?.type).toLowerCase()];
+    const body = clip(l?.text, kind === 'line' ? 160 : 240);
+    if (!kind || !body) return;
+    const out = { id: `${stamp}p${lines.length}`, kind, text: body };
+    if (kind === 'line') {
+      const speaker = who(l.speaker);
+      if (!speaker) return;
+      const to = who(l.to);
+      Object.assign(out, { speaker, to: to && to !== speaker ? to : '' });
+    }
+    if (kind === 'action' && clean(l?.camera)) out.camera = clip(l.camera, 90);
+    if (kind === 'action' && l?.continues === true && lines.length) out.continues = true;
+    if (clean(l?.where)) out.where = clip(l.where, 120);
+    lines.push(out);
+  });
+  const capped = lines.slice(0, 24);
+  const setting = clip(data.setting, 120);
+  if (capped.length && !capped[0].where && setting) capped[0] = { ...capped[0], where: setting };
+  return { title: clip(data.title, 60), setting, lines: capped };
+}
+
+/** Where a line takes place: its own "where", or the nearest one before it. */
+export function lineWhere(lines = [], i) {
+  for (let k = i; k >= 0; k--) {
+    const here = clean(lines[k]?.where);
+    if (here) return here;
+  }
+  return '';
+}
+
+/** A screenplay line as the shot that is drawn and animated for it. */
+export function screenplayShot(line) {
+  if (line?.kind === 'line') {
+    const speaker = clean(line.speaker);
+    const listener = clean(line.to);
+    return listener
+      ? { kind: 'line', speaker, listener, camera: 'over-the-shoulder',
+        description: `Over-the-shoulder shot from behind ${listener}, who is in the near foreground with their back to us, looking at ${speaker}, who faces the camera and speaks to them with feeling, mid-sentence.` }
+      : { kind: 'line', speaker, camera: 'close-up', description: `Close-up of ${speaker}, mid-sentence, speaking with feeling.` };
+  }
+  return { kind: 'action', description: clean(line?.text), camera: clean(line?.camera) };
+}
+
+/** How a screenplay shot's still should move. */
+export function screenplayMotionPrompt(shot) {
+  if (shot?.kind === 'line' && shot.listener) {
+    return `${shot.speaker} talks to ${shot.listener}: lips moving as they speak, face alive with expression, a small gesture. ${shot.listener}, seen from behind in the near foreground, listens and barely moves. Hold the framing. Keep the exact art style, no text.`;
+  }
+  return cartoonMotionPrompt(shot);
+}
+
+/**
+ * The screenplay's timeline, in the shape cartoonPlan() gives (so CartoonReel
+ * plays it): a character's line lasts as long as its recording, a narrator's
+ * line as long as his, an action line a few seconds. When one character line
+ * follows another, its voice starts a moment before its picture.
+ */
+export function screenplayPlan(recap) {
+  const lines = recap?.screenplay?.lines || [];
+  const T = SCREENPLAY_TIMING;
+  // The DM can hold a spoken shot on screen a little longer after the words.
+  const hold = (l) => Math.max(0, Math.min(6, Number(l.hold) || 0));
+  const shots = [];
+  const voices = [];
+  const captions = [];
+  let at = RECAP_TITLE_SECONDS;
+  lines.forEach((l, i) => {
+    const text = clean(l.text);
+    let duration;
+    if (l.kind === 'line') {
+      const said = l.audioUrl ? l.duration || 2 : Math.max(1.6, text.split(' ').length / 2.6);
+      duration = T.lead + said + T.pad + hold(l);
+      const jcut = i > 0 && lines[i - 1]?.kind === 'line' ? T.jcut : 0;
+      if (l.audioUrl) voices.push({ url: l.audioUrl, start: at + T.lead - jcut });
+    } else if (l.kind === 'narrator') {
+      const said = l.audioUrl ? l.duration || 3 : Math.max(2.5, text.length / 15);
+      duration = said + T.narratorTail + hold(l);
+      if (l.audioUrl) voices.push({ url: l.audioUrl, start: at });
+      captions.push({ beat: i, line: text, start: at, duration });
+    } else {
+      duration = Math.max(1.5, Math.min(8, Number(l.seconds) || T.action));
+    }
+    const shot = screenplayShot(l);
+    shots.push({
+      id: l.id, kind: shot.kind, beat: i, speaker: shot.speaker || '', line: l.kind === 'line' ? text : '',
+      imageUrl: l.imageUrl || '', videoUrl: l.videoUrl || '', start: at, duration,
+      transition: screenplayTransition(l, lines[i - 1]),
+      // The next shot starts on this clip's last frame, so this clip must reach it before the cut.
+      endsOnClip: !!lines[i + 1]?.continues
+    });
+    at += duration;
+  });
+  const endStart = at;
+  return { shots, voices, captions, cliff: null, endStart, total: endStart + (recap?.noEnd ? CINEMATIC_FADE_SECONDS : RECAP_END_SECONDS), titleEnd: RECAP_TITLE_SECONDS };
+}
+
+/**
+ * What "Shoot it" still has to make for a screenplay. `voiced(line)` says
+ * whether a line's recording is still good (its words, speaker and voice).
+ */
+export function screenplayNeeds(screenplay, voiced = (l) => !!l.audioUrl) {
+  const lines = screenplay?.lines || [];
+  return {
+    voice: lines.filter(l => (l.kind === 'line' || l.kind === 'narrator') && !voiced(l)).length,
+    draw: lines.filter(l => !l.imageUrl).length,
+    animate: lines.filter(l => !l.videoUrl).length
   };
 }

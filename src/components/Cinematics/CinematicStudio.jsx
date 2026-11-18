@@ -3,13 +3,14 @@ import { ArrowLeft, Clapperboard, ExternalLink, Loader2, Monitor, Play, Plus, Sp
 import Modal from '../Modal';
 import CinematicStage from './CinematicStage';
 import CartoonStudio from './CartoonStudio';
+import ScreenplayStudio from './ScreenplayStudio';
 import VolumeSlider from './VolumeSlider';
 import useShotArt from './useShotArt';
-import { cinematicCastIds, cinematicReel, cartoonPlan, cartoonNeeds, CINEMATIC_LENGTHS, CARTOON_TALK } from './cinematicPlan';
+import { cinematicCastIds, cinematicReel, cartoonPlan, cartoonNeeds, screenplayPlan, screenplayNeeds, SCREENPLAY_LENGTHS, SCREENPLAY_NARRATION } from './cinematicPlan';
 import { playOnMonitor, openMonitorWindow } from './cinematicChannel';
 import { audioContext } from './cinematicSfx';
 import { ensureSoundSet } from './cinematicSounds';
-import { writeCinematicScript, writeStoryboard, textProvider } from '../../services/cinematicsGenerator';
+import { writeScreenplay, textProvider } from '../../services/cinematicsGenerator';
 import { watchCinematics, createCinematic, updateCinematic, deleteCinematic } from '../../services/cinematicStore';
 import { NARRATOR_VOICES, RECAP_VOICE_KEY } from '../Storybook/narratorVoices';
 import { MUSIC_LIBRARY, getTrackUrl, getTrackDisplayName } from '../../data/musicLibrary';
@@ -62,7 +63,17 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
   const everyone = useMemo(() => [...characters, ...npcs, ...adversaries].filter(e => e?.id && e.name), [characters, npcs, adversaries]);
 
   const reelOf = (c) => cinematicReel(c, { campaignName: campaign?.name, musicUrl: c?.musicTrack ? getTrackUrl(c.musicTrack) : '' });
+  // A cinematic written before screenplays existed keeps its narration beats.
+  const isScreenplay = (c) => c?.format === 'screenplay';
   const statusOf = (c) => {
+    if (isScreenplay(c)) {
+      const lines = c.screenplay?.lines || [];
+      if (!lines.length) return 'Not written yet';
+      const needs = screenplayNeeds(c.screenplay);
+      const left = needs.voice + needs.draw + needs.animate;
+      const length = minutesAndSeconds(screenplayPlan(reelOf(c)).total);
+      return left ? `${lines.length} shots, ${left} things still to make · ${length}` : `${lines.length} shots, ready · ${length}`;
+    }
     const shots = c?.cartoon?.shots || [];
     if (!c?.slides?.length) return 'Not written yet';
     if (!shots.length) return 'Written, not storyboarded';
@@ -71,7 +82,7 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
     const length = minutesAndSeconds(cartoonPlan(reelOf(c)).total);
     return left ? `${shots.length} shots, ${left} things still to make · ${length}` : `${shots.length} shots, ready · ${length}`;
   };
-  const playable = (c) => (c?.cartoon?.shots || []).length > 0;
+  const playable = (c) => (isScreenplay(c) ? (c.screenplay?.lines || []).length : (c?.cartoon?.shots || []).length) > 0;
 
   const withSounds = async (data) => {
     try {
@@ -92,8 +103,8 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
 
   const startNew = () => run('new', async () => {
     const id = await createCinematic(campaignId, {
-      title: '', prompt: '', castIds: null, setting: '', length: 'medium', voiceKey: RECAP_VOICE_KEY,
-      musicTrack: DEFAULT_TRACK, musicLevel: 0.6, sfxLevel: 1, slides: [], cartoon: null
+      title: '', prompt: '', castIds: null, setting: '', length: 'medium', narrator: 'some', voiceKey: RECAP_VOICE_KEY,
+      musicTrack: DEFAULT_TRACK, musicLevel: 0.6, sfxLevel: 1, format: 'screenplay', screenplay: { lines: [] }, slides: [], cartoon: null
     });
     setOpenId(id);
   });
@@ -104,28 +115,27 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
     if (openId === c.id) setOpenId(null);
   });
 
-  // The AI writes the narration from the description, then storyboards it into shots and spoken lines.
+  // The AI writes the scene as a screenplay: action, character lines (real
+  // back-and-forth) and, if wanted, a little narration. An older cinematic
+  // written as narration beats switches to a screenplay when it is rewritten.
   const write = () => run('write', async () => {
     const prompt = String(current?.prompt || '').trim();
     if (!prompt) throw new Error('Describe the moment first.');
-    const cast = castFor(current);
-    setBusy('write:Writing the script…');
-    const script = await writeCinematicScript({
-      campaign, prompt, cast, setting: current.setting, beats: CINEMATIC_LENGTHS[current.length] || CINEMATIC_LENGTHS.medium, ...textProvider(getEffectiveKey)
+    setBusy('write:Writing the screenplay…');
+    const script = await writeScreenplay({
+      campaign, prompt, cast: castFor(current), setting: current.setting, length: current.length || 'medium',
+      narrator: current.narrator || 'some', ...textProvider(getEffectiveKey)
     });
-    setBusy('write:Storyboarding the shots and lines…');
-    const board = await writeStoryboard({
-      campaign, beats: script.beats, sources: { scene: prompt }, mode: 'scene', cast, characters, npcs, adversaries,
-      maxLines: CARTOON_TALK.lots, ...textProvider(getEffectiveKey)
-    });
-    const where = String(current.setting || '').trim() || script.setting;
+    const where = String(current.setting || '').trim();
+    const lines = where && script.lines.length ? [{ ...script.lines[0], where }, ...script.lines.slice(1)] : script.lines;
     await save({
       title: String(current.title || '').trim() || script.title,
-      slides: script.beats,
-      // A new script: its old shots and recordings no longer fit.
-      cartoon: { shots: board.shots, voice: null, talk: 'lots', settings: { ...(board.settings || {}), ...(where ? { 0: where } : {}) } }
+      format: 'screenplay',
+      screenplay: { lines },
+      slides: [],
+      cartoon: null
     });
-    notify.success('Written and storyboarded. Check the shots and lines, then press Shoot it.');
+    notify.success('Written. Read it through, change anything you like, then press Shoot it.');
   });
 
   const field = 'w-full p-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm';
@@ -196,11 +206,13 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
     const others = everyone.filter(e => !ids.includes(e.id));
     const slides = c.slides || [];
     const writing = busy?.startsWith('write');
+    const screenplay = isScreenplay(c);
+    const written = screenplay ? (c.screenplay?.lines || []).length > 0 : slides.length > 0;
     return (
       <div className="space-y-4">
         <button type="button" className={small} onClick={() => setOpenId(null)} disabled={!!busy}><ArrowLeft size={14} /> All cinematics</button>
 
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-3">
           <div>
             <label className={label}>Title</label>
             <input key={`title-${c.id}-${c.title}`} type="text" defaultValue={c.title} maxLength={60} placeholder="The AI suggests one if you leave it empty"
@@ -209,7 +221,13 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
           <div>
             <label className={label}>Length</label>
             <select value={c.length || 'medium'} onChange={(e) => save({ length: e.target.value })} disabled={!!busy} className={field}>
-              {Object.keys(CINEMATIC_LENGTHS).map(k => <option key={k} value={k}>{LENGTH_LABELS[k]} ({CINEMATIC_LENGTHS[k]} beats)</option>)}
+              {Object.keys(SCREENPLAY_LENGTHS).map(k => <option key={k} value={k}>{LENGTH_LABELS[k]} (about {SCREENPLAY_LENGTHS[k]} shots)</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={label}>Narrator</label>
+            <select value={c.narrator || 'some'} onChange={(e) => save({ narrator: e.target.value })} disabled={!!busy} className={field}>
+              {Object.entries(SCREENPLAY_NARRATION).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
         </div>
@@ -255,14 +273,41 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" className="btn btn-primary inline-flex items-center gap-2" onClick={write} disabled={!!busy || !String(c.prompt || '').trim()}>
             {writing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-            {writing ? (busy.split(':')[1] || 'Writing…') : slides.length ? 'Rewrite it' : 'Write it'}
+            {writing ? (busy.split(':')[1] || 'Writing…') : written ? 'Rewrite it' : 'Write it'}
           </button>
           <span className="text-[11px] text-lr-text-dim">
-            {slides.length ? 'Rewriting replaces the script, shots and recordings below.' : 'Writes the narration and storyboards it into shots and character lines. Text only, so it is quick and cheap.'}
+            {written
+              ? 'Rewriting replaces the screenplay, shots and recordings below.'
+              : 'Writes the scene as a screenplay: what happens, and your characters talking to each other. Text only, so it is quick and cheap.'}
           </span>
         </div>
 
-        {slides.length > 0 && (
+        {screenplay && (c.screenplay?.lines || []).length > 0 && (
+          <ScreenplayStudio
+            cinematic={c}
+            save={save}
+            run={run}
+            busy={busy}
+            setBusy={setBusy}
+            notify={notify}
+            campaign={campaign}
+            characters={characters}
+            npcs={npcs}
+            adversaries={adversaries}
+            cast={castFor(c)}
+            locations={locations}
+            drawScene={drawScene}
+            plainNames={plainNames}
+            castOf={castOf}
+            narratorKey={c.voiceKey || RECAP_VOICE_KEY}
+          />
+        )}
+
+        {!screenplay && slides.length > 0 && (
+          <p className="text-[11px] text-amber-300">This cinematic was written before screenplays. Rewrite it to get character conversations and the new editor; until then it plays as it is.</p>
+        )}
+
+        {!screenplay && slides.length > 0 && (
           <div className="space-y-1.5">
             <label className={label}>Narration</label>
             {slides.map((s, i) => (
@@ -274,7 +319,7 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
           </div>
         )}
 
-        {slides.length > 0 && (
+        {!screenplay && slides.length > 0 && (
           <CartoonStudio
             recap={{ slides, question: '', cartoon: c.cartoon || null, voiceKey: c.voiceKey || RECAP_VOICE_KEY, introText: '' }}
             save={save}

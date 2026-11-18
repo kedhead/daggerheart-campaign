@@ -40,7 +40,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, buildCinematicPrompt, parseCinematicScript, cinematicCastIds, cinematicReel, CINEMATIC_LENGTHS, CINEMATIC_FADE_SECONDS, RECAP_END_SECONDS as RECAP_END_SECS, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, buildScreenplayPrompt, parseScreenplay, lineWhere, screenplayShot, screenplayMotionPrompt, screenplayPlan, screenplayNeeds, screenplayTransition, continuityStale, withShotNote, SCREENPLAY_TIMING, SCREENPLAY_LENGTHS, buildCinematicPrompt, parseCinematicScript, cinematicCastIds, cinematicReel, CINEMATIC_LENGTHS, CINEMATIC_FADE_SECONDS, RECAP_END_SECONDS as RECAP_END_SECS, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3898,6 +3898,71 @@ section('Table cinematics');
     && !/Previously on|LAST SESSION|at the table|EARLIER/.test(sceneBoard) && /as the scene describes it/.test(sceneBoard) && /in that character's own voice/.test(sceneBoard)
     && /Previously on/.test(buildStoryboardPrompt({ beats: cBeats, sources: { sessions: [{ summary: 'x' }] } })),
     'a cinematic is storyboarded from the DM\'s scene, with none of the recap\'s talk of last session');
+
+  // Cinematics as screenplays: action, character lines in conversation, optional narrator.
+  const spPrompt = buildScreenplayPrompt({ campaignName: 'Sundering', prompt: 'Pippin confronts the king.', ...cineCast, setting: 'the throne room', length: 'short', narrator: 'none' });
+  assert(/about 8 lines/.test(spPrompt) && /"type": "line", "speaker"/.test(spPrompt) && /each answers the one before/.test(spPrompt) && /Do not use the narrator at all/.test(spPrompt)
+    && /Use the narrator at most twice/.test(buildScreenplayPrompt({ prompt: 'x', narrator: 'some' })) && /about 18 lines/.test(buildScreenplayPrompt({ prompt: 'x', length: 'long' })) && SCREENPLAY_LENGTHS.medium === 12,
+    'the screenplay is asked for as action, conversations and as much narration as the DM wants, at the length they picked');
+  const sp = parseScreenplay(`{"title":"The King Laughs","setting":"the throne room","lines":[
+    {"type":"action","text":"Torches gutter in the vast hall.","camera":"wide shot"},
+    {"type":"line","speaker":"Pippin","to":"King Finius","text":"Your reign ends tonight."},
+    {"type":"line","speaker":"King Finius","to":"Pippin","text":"Little frog. You amuse me."},
+    {"type":"line","speaker":"Gandalf","to":"Pippin","text":"Fly, you fools."},
+    {"type":"line","speaker":"Bubbles","to":"Bubbles","text":"I talk to myself."},
+    {"type":"narrator","text":"And the doors slammed shut.","where":"the sealed doors"},
+    {"type":"song","text":"la la"},{"type":"action","text":""}]}`, { castNames: ['Pippin Puddle-Jumper', 'Bubbles', 'King Finius'], stamp: 'x-' });
+  assert(sp.title === 'The King Laughs' && sp.lines.map(l => l.kind).join() === 'action,line,line,line,narrator'
+    && sp.lines[1].speaker === 'Pippin Puddle-Jumper' && sp.lines[1].to === 'King Finius' && sp.lines[2].to === 'Pippin Puddle-Jumper' && sp.lines[3].speaker === 'Bubbles' && sp.lines[3].to === ''
+    && sp.lines[0].where === 'the throne room' && sp.lines[0].camera === 'wide shot' && sp.lines[4].where === 'the sealed doors' && sp.lines.every(l => l.id.startsWith('x-')),
+    `the screenplay keeps its lines in order, gives speakers their full names, drops anyone outside the cast and lines of no known kind, and starts in its setting (got ${sp.lines.map(l => l.kind)})`);
+  assert(lineWhere(sp.lines, 3) === 'the throne room' && lineWhere(sp.lines, 4) === 'the sealed doors' && lineWhere([], 0) === '', 'a line is wherever the last place given at or before it says');
+  const ots = screenplayShot(sp.lines[1]);
+  assert(ots.camera === 'over-the-shoulder' && /from behind King Finius/.test(ots.description) && /looking at Pippin Puddle-Jumper/.test(ots.description) && ots.listener === 'King Finius'
+    && screenplayShot(sp.lines[3]).camera === 'close-up' && screenplayShot(sp.lines[0]).description === 'Torches gutter in the vast hall.' && screenplayShot(sp.lines[0]).camera === 'wide shot'
+    && /King Finius, seen from behind in the near foreground, listens/.test(screenplayMotionPrompt(ots)) && /lips moving/.test(screenplayMotionPrompt(screenplayShot(sp.lines[3]))),
+    'a line said to someone is filmed over their shoulder onto the speaker, so an exchange cuts between the two; a line to nobody is a close-up');
+  const T = SCREENPLAY_TIMING;
+  const voicedSp = { lines: [
+    { id: 'a', kind: 'action', text: 'Torches gutter.', imageUrl: 'i', videoUrl: 'v' },
+    { id: 'b', kind: 'line', speaker: 'Pippin', to: 'King', text: 'Your reign ends.', audioUrl: 'b.mp3', duration: 2 },
+    { id: 'c', kind: 'line', speaker: 'King', to: 'Pippin', text: 'Little frog.', audioUrl: 'c.mp3', duration: 1.5 },
+    { id: 'd', kind: 'narrator', text: 'And the doors slammed shut.', audioUrl: 'd.mp3', duration: 3 },
+    { id: 'e', kind: 'action', text: 'Dust.', seconds: 5 }] };
+  const spPlan = screenplayPlan({ screenplay: voicedSp, noEnd: true });
+  const [pa, pb, pc, pd, pe] = spPlan.shots;
+  assert(spPlan.shots.length === 5 && pa.start === RECAP_TITLE_SECONDS && Math.abs(pa.duration - T.action) < 1e-9 && Math.abs(pb.duration - (T.lead + 2 + T.pad)) < 1e-9
+    && Math.abs(pd.duration - (3 + T.narratorTail)) < 1e-9 && pe.duration === 5 && pb.kind === 'line' && pb.speaker === 'Pippin' && pb.line === 'Your reign ends.' && pa.kind === 'action',
+    'each shot lasts as long as what is said in it; an action a few seconds, or as long as the DM set');
+  const vb = spPlan.voices.find(v => v.url === 'b.mp3'); const vc = spPlan.voices.find(v => v.url === 'c.mp3');
+  assert(Math.abs(vb.start - (pb.start + T.lead)) < 1e-9 && Math.abs(vc.start - (pc.start + T.lead - T.jcut)) < 1e-9 && vc.start < pc.start && vc.start > vb.start + 2,
+    'an answer\'s voice starts a moment before its picture (a J-cut), after the line before has finished');
+  assert(spPlan.captions.length === 1 && spPlan.captions[0].line === 'And the doors slammed shut.' && !spPlan.cliff && Math.abs(spPlan.total - spPlan.endStart - CINEMATIC_FADE_SECONDS) < 1e-9,
+    'only the narrator is subtitled (the characters\' lines get their speech boxes), and the scene fades out');
+  assert(JSON.stringify(screenplayNeeds(voicedSp)) === JSON.stringify({ voice: 0, draw: 4, animate: 4 }) && screenplayNeeds(voicedSp, l => l.id !== 'b').voice === 1,
+    'what is left to make is counted per line');
+  const spReel = cinematicReel({ format: 'screenplay', screenplay: voicedSp, title: 'T' }, {});
+  assert(spReel.screenplay === voicedSp && cinematicReel({ slides: [{ line: 'a' }] }, {}).screenplay === null,
+    'a screenplay cinematic plays from its screenplay; an older one from its beats');
+
+  // Flow and control: transitions, carried-on shots, lengths and notes.
+  const flow = [{ id: 'a', kind: 'action', text: 'x' }, { id: 'b', kind: 'action', text: 'y', continues: true }, { id: 'c', kind: 'line', speaker: 'P', text: 'z' },
+    { id: 'd', kind: 'line', speaker: 'K', text: 'w' }, { id: 'e', kind: 'narrator', text: 'v' }, { id: 'f', kind: 'action', text: 'u', transition: 'fade' }];
+  assert(flow.map((l, i) => screenplayTransition(l, flow[i - 1])).join() === 'fade,cut,dissolve,cut,dissolve,fade',
+    'a scene fades in, a carried-on shot cuts straight in, an answer cuts to the other face, anything else dissolves, and the DM\'s own choice wins');
+  assert(!continuityStale([{ videoUrl: 'v1' }, { continues: true, imageUrl: 'f', fromClip: 'v1' }], 1) && continuityStale([{ videoUrl: 'v2' }, { continues: true, imageUrl: 'f', fromClip: 'v1' }], 1)
+    && !continuityStale([{ videoUrl: 'v2' }, { continues: false, imageUrl: 'f', fromClip: 'v1' }], 1) && !continuityStale([{ continues: true, imageUrl: 'f' }], 0),
+    'a carried-on shot is remade when the clip before it changed');
+  assert(withShotNote('A frame.', 'make it darker.') === 'A frame. Direction for this shot, which overrides anything above: make it darker.' && withShotNote('A frame.', '  ') === 'A frame.',
+    'the DM\'s note for a shot goes at the end of its prompt, above everything else');
+  const flowPlan = screenplayPlan({ screenplay: { lines: [
+    { id: 'a', kind: 'action', text: 'x', seconds: 6 }, { id: 'b', kind: 'action', text: 'y', continues: true },
+    { id: 'c', kind: 'line', speaker: 'P', text: 'z', audioUrl: 'c', duration: 2, hold: 1.5 }, { id: 'd', kind: 'action', text: 'w', seconds: 99 }] } });
+  assert(flowPlan.shots[0].duration === 6 && flowPlan.shots[0].endsOnClip && !flowPlan.shots[1].endsOnClip && flowPlan.shots[1].transition === 'cut'
+    && Math.abs(flowPlan.shots[2].duration - (SCREENPLAY_TIMING.lead + 2 + SCREENPLAY_TIMING.pad + 1.5)) < 1e-9 && flowPlan.shots[3].duration === 8,
+    'an action lasts as long as the DM set (up to eight seconds), a spoken shot holds for as long as asked after its words, and a shot the next carries on from plays to its end');
+  assert(parseScreenplay('{"lines":[{"type":"action","text":"a","continues":true},{"type":"action","text":"b","continues":true},{"type":"line","speaker":"P","text":"c","continues":true}]}').lines.map(l => !!l.continues).join() === 'false,true,false',
+    'only an action after another shot can carry on from it');
 
   // Character voices from the DM's own ElevenLabs account.
   const myVoices = [{ id: 'vPip0000000001', name: 'Pippin' }, { id: 'vKor0000000002', name: 'Korra (gruff)' }, { id: 'vNar0000000003', name: 'Old storyteller' }, { id: 'vEmm0000000004', name: 'Emmanita Brightwater' }];
