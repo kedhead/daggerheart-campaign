@@ -839,7 +839,8 @@ export async function regenerateScene({
       const hint = getAncestryVisualHint(entity.ancestry);
       if (hint) entityAncestryHints[id] = `${entity.name} is ${hint}`;
     }
-    entityNames[id] = entity.name;
+    // A caller that swapped names for labels (recap shots) passes them, so the name does not come back here.
+    entityNames[id] = scene.labels?.[id] || entity.name;
     entityLooks[id] = lookForScene(entity, chapter?.castStates);
   }
   return await generateSceneImage({

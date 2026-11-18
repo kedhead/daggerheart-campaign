@@ -906,6 +906,13 @@ function nameForms(name) {
 }
 const nameRe = (form) => new RegExp(`(?<![A-Za-z])${escapeRe(form)}(?![A-Za-z])`, 'gi');
 
+// In what is drawn, a name counts only where it is written as a name, with a
+// capital: an NPC called "Grim" or "Hope" was put into any shot whose
+// narration said "a grim silence" or "hope fades", and drawn from their portrait.
+const startsUpper = (s) => /^\p{Lu}/u.test(String(s || ''));
+const namedAsName = (form, text) => [...String(text || '').matchAll(nameRe(form))].some(m => startsUpper(m[0]));
+const dropNamed = (form, text) => String(text || '').replace(nameRe(form), m => (startsUpper(m) ? ' ' : m));
+
 /**
  * The campaign's people named in `text`, at most four, each with a label that
  * carries no outside meaning, how they look, and whether there is a portrait
@@ -935,11 +942,11 @@ export function shotCast(text, { characters = [], npcs = [], adversaries = [] } 
   let rest = line;
   [...everyone].sort((x, y) => clean(y.e.name).length - clean(x.e.name).length).forEach(({ e }) => {
     const [full] = nameForms(e.name);
-    if (full && nameRe(full).test(rest)) { hit.add(e.id); rest = rest.replace(nameRe(full), ' '); }
+    if (full && namedAsName(full, rest)) { hit.add(e.id); rest = dropNamed(full, rest); }
   });
   everyone.forEach(({ e }) => {
     const first = nameForms(e.name)[1];
-    if (first && claims.get(first.toLowerCase()) === 1 && nameRe(first).test(rest)) hit.add(e.id);
+    if (first && claims.get(first.toLowerCase()) === 1 && namedAsName(first, rest)) hit.add(e.id);
   });
   const found = (Array.isArray(ids)
     ? ids.map(id => everyone.find(x => x.e.id === id)).filter(Boolean)
@@ -953,10 +960,14 @@ export function shotCast(text, { characters = [], npcs = [], adversaries = [] } 
     const base = (job || (type === 'adversary' ? clean(e.name) : type === 'character' ? 'adventurer' : 'local')).toLowerCase();
     counts[base] = (counts[base] || 0) + 1;
     const label = counts[base] === 1 ? `the ${base}` : `the ${['', '', 'second', 'third', 'fourth'][counts[base]]} ${base}`;
-    const species = ancestryLook(e.ancestry) || clean(e.ancestry);
+    const portrait = type === 'adversary' ? e.imageUrl : e.avatarUrl;
+    // With a portrait, the portrait is how they look. The stock phrase for
+    // their ancestry ("a mechanical automaton of gears and brass" for a Clank)
+    // overruled it, and a Clank came back as a gold robot whatever the portrait
+    // showed. It is only used for someone with no portrait to go by.
+    const species = portrait ? '' : ancestryLook(e.ancestry) || clean(e.ancestry);
     const detail = clip(type === 'character' ? e.appearanceDescription : e.description, 200).replace(/[.\s]+$/, '');
     const look = [species, type === 'character' ? clean(e.subclass) : type === 'adversary' ? clean(e.role) : '', detail].filter(Boolean).join(', ');
-    const portrait = type === 'adversary' ? e.imageUrl : e.avatarUrl;
     return { id: e.id, type, name: clean(e.name), forms: nameForms(e.name), label, look, ref: portrait ? ++refs : 0 };
   });
 }
@@ -986,7 +997,8 @@ export function withoutNames(text, cast = [], absent = []) {
   // itself mistaken for a name ("the skeleton knight" for "Skeleton").
   const mark = (i) => `\u0001${i}\u0001`;
   // A "the" before the name goes with it: the label brings its own.
-  const swap = (form, i) => { out = out.replace(new RegExp(`(?:(?<![A-Za-z])the\\s+)?${nameRe(form).source}`, 'gi'), mark(i)); };
+  // Only where the name is written as one: "a grim silence" keeps its word.
+  const swap = (form, i) => { out = out.replace(new RegExp(`(?:(?<![A-Za-z])the\\s+)?${nameRe(form).source}`, 'gi'), m => (startsUpper(m.replace(/^the\s+/i, '')) ? mark(i) : m)); };
   // Full names before first names, so "Pippin Underbough" is not left as "the rogue Underbough".
   cast.forEach((c, i) => swap(c.forms[0], i));
   cast.forEach((c, i) => c.forms.slice(1).forEach(f => swap(f, i)));
@@ -1087,7 +1099,7 @@ export function cinematicCastIds(prompt, { characters = [], npcs = [], adversari
   return shotCast(prompt, { characters, npcs, adversaries }).map(c => c.id).concat(
     // shotCast stops at four; a scene can hold more.
     [...(characters || []), ...(npcs || []), ...(adversaries || [])]
-      .filter(e => e?.id && e.name && nameForms(e.name).some(f => nameRe(f).test(` ${clean(prompt)} `)))
+      .filter(e => e?.id && e.name && nameForms(e.name).some(f => namedAsName(f, ` ${clean(prompt)} `)))
       .map(e => e.id)
   ).filter((id, i, all) => all.indexOf(id) === i);
 }

@@ -3792,12 +3792,24 @@ section('Table cinematics');
   const sc = shotCast(shotText, roster, looks);
   assert(sc.map(c => c.id).join() === 'pip,kor,gre,kni' && sc.map(c => c.label).join() === 'the rogue,the second rogue,the ferryman,the skeleton knight' && sc.map(c => c.ref).join() === '1,0,2,3',
     `the people named in a shot get plain labels (two of a kind told apart) and a place among the reference portraits (got ${sc.map(c => `${c.label}:${c.ref}`)})`);
-  assert(/frog-like humanoid with wide eyes/.test(sc[0].look) && /Nightwalker/.test(sc[0].look) && /wiry green frog/.test(sc[0].look) && /grinning ghost/.test(sc[2].look) && /bruiser/.test(sc[3].look),
-    'each is described from their sheet: species look, role and appearance');
+  assert(!/frog-like humanoid/.test(sc[0].look) && /Nightwalker/.test(sc[0].look) && /wiry green frog/.test(sc[0].look) && /grinning ghost/.test(sc[2].look) && /bruiser/.test(sc[3].look),
+    'each is described from their sheet (role and appearance); with a portrait to go by, the stock phrase for their ancestry is left out');
+  const clank = { id: 'xa', name: 'Xajax', ancestry: 'Clank', characterClass: 'Guardian', avatarUrl: 'https://x/xa.png' };
+  const clankLook = (a) => (a === 'Clank' ? 'a mechanical automaton made of gears, brass, and enchanted metal plates' : '');
+  const xaWithPortrait = shotCast('Xajax raises his shield.', { characters: [clank] }, { ancestryLook: clankLook })[0];
+  const xaWithout = shotCast('Xajax raises his shield.', { characters: [{ ...clank, avatarUrl: '' }] }, { ancestryLook: clankLook })[0];
+  assert(!/brass|gears/.test(xaWithPortrait.look) && xaWithPortrait.ref === 1 && /drawn exactly as in reference image 1/.test(groundShotPrompt('Xajax raises his shield.', [xaWithPortrait]))
+    && /gears, brass/.test(xaWithout.look) && xaWithout.ref === 0,
+    'a Clank with a portrait is drawn from the portrait, not as a stock brass automaton; with no portrait the ancestry phrase still describes them');
+  const commonNames = { npcs: [{ id: 'grim', name: 'Grim', avatarUrl: 'https://x/g.png' }, { id: 'hope', name: 'Hope Ashwood', avatarUrl: 'https://x/h.png' }] };
+  assert(shotCast('A grim silence falls; hope fades from the hall.', commonNames).length === 0 && shotCast('Grim waits by the door while Hope watches.', commonNames).map(c => c.id).join() === 'grim,hope'
+    && withoutNames('A grim silence falls as Grim waits.', shotCast('Grim waits.', commonNames)) === 'A grim silence falls as the local waits.'
+    && cinematicCastIds('a grim silence', commonNames).length === 0 && cinematicCastIds('Grim betrays them.', commonNames).join() === 'grim',
+    'a name counts only where it is written as one, with a capital: "a grim silence" does not bring in an NPC called Grim');
   assert(withoutNames(shotText, sc) === "The rogue's dagger flashes as the second rogue and the rogue face the skeleton knight on the ferryman's ferry.",
     `names are swapped for labels, full names and first names alike (got ${withoutNames(shotText, sc)})`);
   const grounded = groundShotPrompt(`A frame: ${shotText} No text.`, sc);
-  assert(!/Pippin|Korra|Greel/.test(grounded) && /the rogue is a frog-like humanoid with wide eyes, Nightwalker, A wiry green frog in a patched hood \(drawn exactly as in reference image 1\)/.test(grounded)
+  assert(!/Pippin|Korra|Greel/.test(grounded) && /the rogue is Nightwalker, A wiry green frog in a patched hood \(drawn exactly as in reference image 1\)/.test(grounded)
     && /the second rogue is one person, drawn the same way throughout;/.test(grounded) && /Exactly these 4 characters appear, and nobody else/.test(grounded) && /do not draw any famous or existing character/.test(grounded),
     'the picture prompt names nobody, says who each label is and which reference shows them, and that nobody else is in the shot');
   assert(shotCast('The pippins are ripe and Korral is far.', roster, looks).length === 0 && shotCast('PIPPIN runs.', roster, looks)[0].id === 'pip' && shotCast('The party runs.', { characters: [{ id: 'x', name: 'The Party' }] }).length === 1,
