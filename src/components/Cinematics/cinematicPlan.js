@@ -773,17 +773,21 @@ export const ACCOUNT_VOICE_PREFIX = 'el:';
 
 /**
  * The voice a speaker gets when the DM has not picked one for the line:
- * the voice saved on their character, else a voice in the DM's ElevenLabs
+ * the voice saved on their character, NPC or adversary (an ElevenLabs voice
+ * of the DM's own, or a built-in one), else a voice in the DM's ElevenLabs
  * account named after them, else one of the built-in character voices (the
  * same one every time). `accountVoices` is [{ id, name }].
  */
-export function speakerVoiceKey(speaker, { characters = [], npcs = [], accountVoices = [], presetKeys = [] } = {}) {
+export function speakerVoiceKey(speaker, { characters = [], npcs = [], adversaries = [], accountVoices = [], presetKeys = [] } = {}) {
   const who = clean(speaker);
   const said = ` ${who} `;
-  const person = [...(characters || []), ...(npcs || [])].find(e => e?.name && nameForms(e.name).some(f => nameRe(f).test(said)));
+  // Characters, NPCs and adversaries alike keep the voice saved on them (recapVoice).
+  const person = [...(characters || []), ...(npcs || []), ...(adversaries || [])].find(e => e?.name && nameForms(e.name).some(f => nameRe(f).test(said)));
   const have = (id) => accountVoices.some(v => v.id === id);
   // The voice saved on the character; trusted as it is when the account's voices could not be listed.
   if (person?.recapVoice?.id && (have(person.recapVoice.id) || !accountVoices.length)) return `${ACCOUNT_VOICE_PREFIX}${person.recapVoice.id}`;
+  // A built-in voice the DM chose for them.
+  if (person?.recapVoice?.preset && presetKeys.includes(person.recapVoice.preset)) return person.recapVoice.preset;
   // "Pippin" finds a voice called "Pippin", "Pippin Puddle-Jumper" or "pippin (frog)"; and a voice called "Pippin" finds "Pippin Puddle-Jumper".
   const names = [...new Set([...(person ? nameForms(person.name) : []), ...nameForms(who)])];
   const match = accountVoices.find(v => names.some(n => nameRe(n).test(` ${clean(v.name)} `)))

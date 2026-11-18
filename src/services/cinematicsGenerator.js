@@ -72,9 +72,17 @@ export function listAccountVoices() {
   return accountVoicesOnce;
 }
 
-/** Remember which of the DM's ElevenLabs voices a character speaks in, on the character. */
-export async function saveCharacterVoice(campaignId, characterId, voice) {
-  await updateDoc(doc(db, `campaigns/${campaignId}/characters`, characterId), { recapVoice: voice ? { id: voice.id, name: voice.name } : null });
+const SPEAKER_COLLECTIONS = { character: 'characters', npc: 'npcs', adversary: 'adversaries' };
+
+/**
+ * Remember the voice someone speaks in, on them, so recaps and cinematics
+ * use it every time: one of the DM's ElevenLabs voices ({ id, name }), a
+ * built-in voice ({ preset }), or null to go back to matching by name.
+ * `type` is 'character', 'npc' or 'adversary'.
+ */
+export async function saveCharacterVoice(campaignId, entityId, voice, type = 'character') {
+  const value = voice?.id ? { id: voice.id, name: voice.name || '' } : voice?.preset ? { preset: voice.preset } : null;
+  await updateDoc(doc(db, `campaigns/${campaignId}/${SPEAKER_COLLECTIONS[type] || 'characters'}`, entityId), { recapVoice: value });
 }
 
 /** A stand-alone cinematic's narration, from the DM's description: { title, setting, beats }. */

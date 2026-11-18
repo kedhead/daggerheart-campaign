@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Clapperboard, Film, ImageIcon, Link2, Loader2, MapPin, MessageSquare, Mic, Trash2, Wand2 } from 'lucide-react';
 import {
   screenplayShot, screenplayMotionPrompt, screenplayNeeds, lineWhere, cartoonShotPrompt, settingText,
-  lineVoiceKey, lineIsVoiced, shotOutOfPlace, ACCOUNT_VOICE_PREFIX,
+  lineVoiceKey, lineIsVoiced, speakerVoiceKey, shotOutOfPlace, ACCOUNT_VOICE_PREFIX,
   screenplayPlan, screenplayTransition, continuityStale, withShotNote, SCREENPLAY_TRANSITIONS, SCREENPLAY_TIMING
 } from './cinematicPlan';
 import { narrate, animateToClip, listAccountVoices, saveCharacterVoice } from '../../services/cinematicsGenerator';
@@ -58,7 +58,13 @@ export default function ScreenplayStudio({
       .catch(err => { if (live) { setAccountVoices([]); setVoicesError(err.message || 'Could not list your ElevenLabs voices.'); } });
     return () => { live = false; };
   }, []);
-  const voices = { characters, npcs, accountVoices: accountVoices || [], presetKeys: CHARACTER_VOICES.map(v => v.key) };
+  // Voices chosen in the list below, shown at once while the save reaches the character.
+  const [chosen, setChosen] = useState({});
+  const withChosen = (list) => list.map(e => (chosen[e.id] !== undefined ? { ...e, recapVoice: chosen[e.id] } : e));
+  const voices = {
+    characters: withChosen(characters), npcs: withChosen(npcs), adversaries: withChosen(adversaries),
+    accountVoices: accountVoices || [], presetKeys: CHARACTER_VOICES.map(v => v.key)
+  };
 
   // Whether a line's recording is still good: its words, and its voice.
   const voiced = (l) => {
@@ -235,13 +241,30 @@ export default function ScreenplayStudio({
     setLines(lines.map(l => (ids.has(l.id) ? { ...l, imageUrl: '', videoUrl: '' } : l)));
   };
 
-  // A voice picked for a line; one of the DM's own voices is remembered on a player character.
+  // Who someone is (a character, NPC or adversary), to save their voice on them.
+  const typeOf = (id) => (characters.some(e => e.id === id) ? 'character' : npcs.some(e => e.id === id) ? 'npc' : adversaries.some(e => e.id === id) ? 'adversary' : '');
+  const voiceLabel = (key) => (key.startsWith(ACCOUNT_VOICE_PREFIX)
+    ? (accountVoices || []).find(v => `${ACCOUNT_VOICE_PREFIX}${v.id}` === key)?.name || 'your ElevenLabs voice'
+    : CHARACTER_VOICES.find(v => v.key === key)?.label || key);
+  const savedValue = (e) => {
+    const saved = chosen[e.id] !== undefined ? chosen[e.id] : e.recapVoice;
+    return saved?.id ? `${ACCOUNT_VOICE_PREFIX}${saved.id}` : saved?.preset || '';
+  };
+  // A cast member's voice, saved on them: every line they speak, here and in the recaps, uses it.
+  const setSpeakerVoice = (e, value) => {
+    const account = value.startsWith(ACCOUNT_VOICE_PREFIX) ? (accountVoices || []).find(v => `${ACCOUNT_VOICE_PREFIX}${v.id}` === value) : null;
+    const voice = account ? { id: account.id, name: account.name } : value ? { preset: value } : null;
+    setChosen(c => ({ ...c, [e.id]: voice }));
+    // Their lines follow their voice now, unless one was given its own.
+    setLines(latest.current.map(l => (l.kind === 'line' && l.speaker === e.name && !l.voicePicked ? { ...l, voiceKey: '' } : l)));
+    if (campaignId && typeOf(e.id)) {
+      saveCharacterVoice(campaignId, e.id, voice, typeOf(e.id)).catch(err => notify.warning(`${e.name}'s voice could not be saved (${err.message}); it is used for this cinematic only.`));
+    }
+  };
+
+  // A voice picked for one line only.
   const pickVoice = (l, value) => {
     update(l.id, { voiceKey: value, voicePicked: true, audioUrl: '' });
-    if (!value.startsWith(ACCOUNT_VOICE_PREFIX)) return;
-    const voice = (accountVoices || []).find(v => `${ACCOUNT_VOICE_PREFIX}${v.id}` === value);
-    const who = characters.find(c => c.name === l.speaker);
-    if (voice && who && campaignId) saveCharacterVoice(campaignId, who.id, voice).catch(() => {});
   };
 
   const shooting = busy?.startsWith('shoot');
@@ -308,6 +331,30 @@ export default function ScreenplayStudio({
               </button>
             );
           })}
+        </div>
+      )}
+
+      {/* Each speaker's voice, the same every time they talk. */}
+      {castList.length > 0 && (
+        <div className="space-y-1 p-2 rounded border border-white/10 bg-black/30">
+          <p className="text-[11px] text-lr-text-dim">
+            <span className="text-white">Voices.</span> Each character speaks in the same voice every time, in cinematics and recaps.
+            Set it once here and it is saved on them; leave it on Auto to use the ElevenLabs voice named after them.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {castList.map(e => (
+              <label key={e.id} className="flex items-center gap-1.5 text-[11px] text-lr-text-dim min-w-0">
+                <span className="text-white truncate w-28 shrink-0" title={e.name}>{e.name}</span>
+                <select value={savedValue(e)} disabled={!!busy} aria-label={`Voice for ${e.name}`} onChange={(ev) => setSpeakerVoice(e, ev.target.value)} className={`${input} flex-1 min-w-0`}>
+                  <option value="">Auto: {voiceLabel(speakerVoiceKey(e.name, { ...voices, ...{ characters: voices.characters.map(x => (x.id === e.id ? { ...x, recapVoice: null } : x)), npcs: voices.npcs.map(x => (x.id === e.id ? { ...x, recapVoice: null } : x)), adversaries: voices.adversaries.map(x => (x.id === e.id ? { ...x, recapVoice: null } : x)) } }))}</option>
+                  {(accountVoices || []).length > 0 && (
+                    <optgroup label="Your ElevenLabs voices">{accountVoices.map(v => <option key={v.id} value={`${ACCOUNT_VOICE_PREFIX}${v.id}`}>{v.name}</option>)}</optgroup>
+                  )}
+                  <optgroup label="Built-in voices">{CHARACTER_VOICES.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}</optgroup>
+                </select>
+              </label>
+            ))}
+          </div>
         </div>
       )}
 

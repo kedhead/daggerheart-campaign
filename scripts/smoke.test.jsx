@@ -3974,6 +3974,10 @@ section('Table cinematics');
     'the screenplay, both storyboards and the older cinematic writer are all told how the characters talk');
   assert(speakerVoiceKey('Zed', { characters: [{ id: 'zed', name: 'Zed', recapVoice: { id: 'vNar0000000003', name: 'Old storyteller' } }], accountVoices: [], presetKeys: ['hero'] }) === 'el:vNar0000000003',
     'a voice saved on a character is still used when the account\'s voices could not be listed');
+  const villains = { adversaries: [{ id: 'king', name: 'King Finius', recapVoice: { id: 'vKing000000005', name: 'Vampire King' } }], npcs: [{ id: 'bub', name: 'Bubbles', recapVoice: { preset: 'bright' } }],
+    accountVoices: [{ id: 'vKing000000005', name: 'Vampire King' }], presetKeys: ['hero', 'bright'] };
+  assert(speakerVoiceKey('King Finius', villains) === 'el:vKing000000005' && speakerVoiceKey('Bubbles', villains) === 'bright' && speakerVoiceKey('Bubbles', { ...villains, presetKeys: ['hero'] }) !== 'bright',
+    'NPCs and adversaries keep their saved voice too, an ElevenLabs one or a built-in one');
 
   // Character voices from the DM's own ElevenLabs account.
   const myVoices = [{ id: 'vPip0000000001', name: 'Pippin' }, { id: 'vKor0000000002', name: 'Korra (gruff)' }, { id: 'vNar0000000003', name: 'Old storyteller' }, { id: 'vEmm0000000004', name: 'Emmanita Brightwater' }];
