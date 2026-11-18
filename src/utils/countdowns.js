@@ -1,10 +1,9 @@
 // Which GM countdowns the players may see.
 //
-// Countdowns live in campaigns/{id}/gmScreen/countdowns, which only the DM can
-// read — and that stays true. A countdown the DM marks "show players" is
-// copied, trimmed to what a player needs, into playerDisplay/current, which
-// every member can read. So nothing private becomes readable and no Firestore
-// rule changes.
+// Countdowns live in campaigns/{id}/battleMapDisplay/countdowns, which only
+// the DM can write and the app shows to nobody else. A countdown the DM marks
+// "show players" is copied, trimmed to what a player needs, into
+// playerDisplay/current, which is what the players' screens read.
 
 /** The public countdowns, in the DM's order, with only display fields. */
 export function publicCountdowns(items = []) {
