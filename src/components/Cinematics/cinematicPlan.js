@@ -606,6 +606,7 @@ Rules for "shots":
 - "featuring": the names of the characters in the shot, spelled exactly as above.
 - These are original characters. Describe them only as they are described above: never borrow the look of a famous character who happens to share a name.
 
+${howTheyTalk([...(characters || []), ...(npcs || [])])}
 Rules for "lines" (characters who speak, between the narrator's beats):
 - Up to ${maxLines} short lines, each under 14 words, each spoken by one living character from the lists above, right after the beat it belongs to.${maxLines > CARTOON_MAX_LINES ? `
 - Lines after the same beat play one after another, in the order you give them. Use that for a short exchange of two or three lines between characters who were both there: one speaks, the other answers. Spread the rest across the beats; never more than three lines after one beat.` : ''}
@@ -772,16 +773,21 @@ export const ACCOUNT_VOICE_PREFIX = 'el:';
 
 /**
  * The voice a speaker gets when the DM has not picked one for the line:
- * the voice saved on their character, else a voice in the DM's ElevenLabs
+ * the voice saved on their character, NPC or adversary (an ElevenLabs voice
+ * of the DM's own, or a built-in one), else a voice in the DM's ElevenLabs
  * account named after them, else one of the built-in character voices (the
  * same one every time). `accountVoices` is [{ id, name }].
  */
-export function speakerVoiceKey(speaker, { characters = [], npcs = [], accountVoices = [], presetKeys = [] } = {}) {
+export function speakerVoiceKey(speaker, { characters = [], npcs = [], adversaries = [], accountVoices = [], presetKeys = [] } = {}) {
   const who = clean(speaker);
   const said = ` ${who} `;
-  const person = [...(characters || []), ...(npcs || [])].find(e => e?.name && nameForms(e.name).some(f => nameRe(f).test(said)));
+  // Characters, NPCs and adversaries alike keep the voice saved on them (recapVoice).
+  const person = [...(characters || []), ...(npcs || []), ...(adversaries || [])].find(e => e?.name && nameForms(e.name).some(f => nameRe(f).test(said)));
   const have = (id) => accountVoices.some(v => v.id === id);
-  if (person?.recapVoice?.id && have(person.recapVoice.id)) return `${ACCOUNT_VOICE_PREFIX}${person.recapVoice.id}`;
+  // The voice saved on the character; trusted as it is when the account's voices could not be listed.
+  if (person?.recapVoice?.id && (have(person.recapVoice.id) || !accountVoices.length)) return `${ACCOUNT_VOICE_PREFIX}${person.recapVoice.id}`;
+  // A built-in voice the DM chose for them.
+  if (person?.recapVoice?.preset && presetKeys.includes(person.recapVoice.preset)) return person.recapVoice.preset;
   // "Pippin" finds a voice called "Pippin", "Pippin Puddle-Jumper" or "pippin (frog)"; and a voice called "Pippin" finds "Pippin Puddle-Jumper".
   const names = [...new Set([...(person ? nameForms(person.name) : []), ...nameForms(who)])];
   const match = accountVoices.find(v => names.some(n => nameRe(n).test(` ${clean(v.name)} `)))
@@ -1067,7 +1073,7 @@ export function buildCinematicPrompt({ campaignName = '', prompt = '', character
 
 THE MOMENT THE DM WANTS:
 ${clip(prompt, 2500)}
-${setting ? `\nWHERE IT HAPPENS: ${clip(setting, 200)}\n` : ''}${cast.length ? `\nWHO IS IN IT: ${cast.join('; ')}.\nNobody else is in this scene.\n` : ''}
+${setting ? `\nWHERE IT HAPPENS: ${clip(setting, 200)}\n` : ''}${cast.length ? `\nWHO IS IN IT: ${cast.join('; ')}.\nNobody else is in this scene.\n` : ''}${howTheyTalk([...(characters || []), ...(npcs || [])])}
 Rules:
 - Exactly ${beats} beats, in order: set the scene, build, then the moment itself, and end on an image that hangs in the air.
 - Each beat is one line the narrator reads: present tense, vivid and cinematic, 8 to 20 words, with a couple of very short punches for rhythm.
@@ -1166,6 +1172,20 @@ export function withShotNote(prompt, note) {
   return said ? `${prompt} Direction for this shot, which overrides anything above: ${said.replace(/[.\s]+$/, '')}.` : prompt;
 }
 
+/**
+ * How the people in a scene talk, from their sheets: "Story Voice &
+ * Personality" (storyVoice) and "Sample Lines" (voiceLines). Every AI writer
+ * that gives a character something to say gets this, so their lines sound
+ * like them. '' when nobody has either filled in.
+ */
+export function howTheyTalk(people = []) {
+  const rows = (people || []).filter(e => e?.name && (clean(e.storyVoice) || clean(e.voiceLines))).slice(0, 12).map(e => {
+    const lines = String(e.voiceLines || '').split(/\n+/).map(clean).filter(Boolean).slice(0, 4).map(l => (/^["“]/.test(l) ? l : `"${l}"`));
+    return `- ${clean(e.name)}: ${[clip(e.storyVoice, 240), lines.length ? `Says things like: ${clip(lines.join(' '), 260)}` : ''].filter(Boolean).join(' ')}`;
+  });
+  return rows.length ? `\nHOW THEY TALK (write every line in its speaker's own voice, echoing the rhythm of their sample lines, not their exact words):\n${rows.join('\n')}\n` : '';
+}
+
 /** The prompt that writes a cinematic as a screenplay. */
 export function buildScreenplayPrompt({ campaignName = '', prompt = '', characters = [], npcs = [], adversaries = [], setting = '', length = 'medium', narrator = 'some' }) {
   const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
@@ -1184,10 +1204,10 @@ export function buildScreenplayPrompt({ campaignName = '', prompt = '', characte
 
 THE MOMENT THE DM WANTS:
 ${clip(prompt, 2500)}
-${setting ? `\nWHERE IT HAPPENS: ${clip(setting, 200)}\n` : ''}${cast.length ? `\nWHO IS IN IT: ${cast.join('; ')}.\nNobody else is in this scene.\n` : ''}
+${setting ? `\nWHERE IT HAPPENS: ${clip(setting, 200)}\n` : ''}${cast.length ? `\nWHO IS IN IT: ${cast.join('; ')}.\nNobody else is in this scene.\n` : ''}${howTheyTalk([...(characters || []), ...(npcs || [])])}
 Write about ${count} lines, in order. Each line is one shot of the film, and is one of:
 - {"type": "action", "text": "...", "camera": "...", "continues": false}: what we SEE in one moment, 8 to 25 words, present tense, naming who acts. "camera" is the framing in a few words ("wide shot", "low angle on the king", "close on his hand"), varied from shot to shot. "continues": true only when this shot carries straight on from the shot before it, in the same place from the same angle, the movement unbroken.
-- {"type": "line", "speaker": "...", "to": "...", "text": "..."}: one character speaks, under 18 words, in their own voice. "to" is who they are talking to, or "" if no one.
+- {"type": "line", "speaker": "...", "to": "...", "text": "..."}: one character speaks, under 18 words, in their own voice (see HOW THEY TALK where given). "to" is who they are talking to, or "" if no one.
 - {"type": "narrator", "text": "..."}: a voice over the picture, 8 to 20 words.
 
 Rules:

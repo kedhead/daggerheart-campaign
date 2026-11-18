@@ -65,7 +65,7 @@ export default function CartoonStudio({
     return () => { live = false; };
   }, []);
   const voiceKeys = CHARACTER_VOICES.map(v => v.key);
-  const voices = { characters, npcs, accountVoices: accountVoices || [], presetKeys: voiceKeys };
+  const voices = { characters, npcs, adversaries, accountVoices: accountVoices || [], presetKeys: voiceKeys };
   // A line recorded in a voice that is no longer its speaker's is recorded
   // again. Only judged once the account's voices are known: until then a line
   // in one of them would look wrong when it is not.
@@ -223,9 +223,12 @@ export default function CartoonStudio({
     if (!key.startsWith(ACCOUNT_VOICE_PREFIX)) return;
     const voice = (accountVoices || []).find(v => `${ACCOUNT_VOICE_PREFIX}${v.id}` === key);
     const said = ` ${shot.speaker} `.toLowerCase();
-    const who = (characters || []).find(c => c?.id && c.name && (said.includes(` ${c.name.toLowerCase()} `) || said.includes(` ${c.name.split(/\s+/)[0].toLowerCase()} `)));
+    const named = (c) => c?.id && c.name && (said.includes(` ${c.name.toLowerCase()} `) || said.includes(` ${c.name.split(/\s+/)[0].toLowerCase()} `));
+    const found = [['character', characters], ['npc', npcs], ['adversary', adversaries]]
+      .map(([type, list]) => ({ type, who: (list || []).find(named) })).find(x => x.who);
+    const who = found?.who;
     if (voice && who && campaignId) {
-      saveCharacterVoice(campaignId, who.id, voice).catch(err => notify.warning(`${voice.name} is set for this line, but could not be saved as ${who.name}'s voice (${err.message}).`));
+      saveCharacterVoice(campaignId, who.id, voice, found.type).catch(err => notify.warning(`${voice.name} is set for this line, but could not be saved as ${who.name}'s voice (${err.message}).`));
     }
   };
   const remove = (shot) => save({ cartoon: { ...cartoon, shots: shots.filter(s => s.id !== shot.id) } });
