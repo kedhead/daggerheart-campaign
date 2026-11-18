@@ -5,7 +5,10 @@ import { publicCountdowns } from '../utils/countdowns';
 
 /**
  * GM countdowns (SRD "Countdowns" — progress/consequence clocks).
- * Stored in a single DM-only doc: campaigns/{id}/gmScreen/countdowns
+ * Stored in a single doc: campaigns/{id}/battleMapDisplay/countdowns, which
+ * only the DM can write. (It was gmScreen/countdowns, a DM-only collection,
+ * but the live database refused it: that collection's rule is in
+ * firestore.rules and was never deployed. battleMapDisplay's rules are live.)
  * Each item: { id, name, value, max, kind: 'standard'|'progress'|'consequence'|'long-term', public? }
  *
  * Countdowns marked `public` are mirrored into playerDisplay/current so the
@@ -15,7 +18,7 @@ export function useCountdowns(campaignId) {
   const [countdowns, setCountdowns] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const path = campaignId ? `campaigns/${campaignId}/gmScreen/countdowns` : null;
+  const path = campaignId ? `campaigns/${campaignId}/battleMapDisplay/countdowns` : null;
 
   useEffect(() => {
     if (!path) { setLoading(false); return; }
