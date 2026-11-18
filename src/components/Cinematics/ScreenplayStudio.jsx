@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Clapperboard, Film, ImageIcon, Link2, Loader2, MapPin, MessageSquare, Mic, Trash2, Wand2 } from 'lucide-react';
 import {
   screenplayShot, screenplayMotionPrompt, screenplayNeeds, lineWhere, cartoonShotPrompt, settingText,
-  lineVoiceKey, lineIsVoiced, speakerVoiceKey, shotOutOfPlace, ACCOUNT_VOICE_PREFIX,
+  lineVoiceKey, lineIsVoiced, speakerVoiceKey, shotOutOfPlace, screenplayShotCast, ACCOUNT_VOICE_PREFIX,
   screenplayPlan, screenplayTransition, continuityStale, withShotNote, SCREENPLAY_TRANSITIONS, SCREENPLAY_TIMING
 } from './cinematicPlan';
 import { narrate, animateToClip, listAccountVoices, saveCharacterVoice } from '../../services/cinematicsGenerator';
@@ -113,12 +113,18 @@ export default function ScreenplayStudio({
     setLines([...lines.slice(0, i + 1), made, ...lines.slice(i + 1)]);
   };
 
-  // Who a line's picture shows: the speaker and listener, or the cast an action names.
-  const shotCastIds = (l) => {
-    if (l.kind === 'line') return [idOf(l.speaker), l.to ? idOf(l.to) : null].filter(Boolean);
+  // Who a line's picture shows: whoever the DM picked; else the speaker and
+  // listener, the cast an action names, or the party when it says "they".
+  const partyIds = (cast?.characters?.length ? cast.characters : characters).filter(e => e?.id).map(e => e.id);
+  const shotCastOf = (l) => {
     const named = new Set(castOf(l.text).map(c => c.id));
-    return castList.filter(e => named.has(e.id)).map(e => e.id);
+    const namedIds = [...castList, ...everyone].filter((e, k, all) => named.has(e.id) && all.findIndex(x => x.id === e.id) === k).map(e => e.id);
+    return screenplayShotCast(l, { idOf, namedIds, partyIds });
   };
+  const shotCastIds = (l) => shotCastOf(l).ids;
+  const nameOf = (id) => everyone.find(e => e.id === id)?.name || castList.find(e => e.id === id)?.name || 'Someone';
+  // A new choice of who is in it means a new picture and clip.
+  const setShotCast = (l, ids) => update(l.id, { cast: ids, imageUrl: '', videoUrl: '' });
   const whereOf = (i) => lineWhere(lines, i);
   const outOfPlace = lines.filter((l, i) => shotOutOfPlace(l, whereOf(i)));
 
@@ -130,7 +136,8 @@ export default function ScreenplayStudio({
       id: `scene_${key}_${l.id}_${stamp()}`,
       prompt: withShotNote(cartoonShotPrompt(shot, settingText(whereOf(i), locations)), l.note),
       about: `${shot.description} ${l.kind === 'line' ? '' : l.text}`.trim(),
-      scenery: l.scenery,
+      // Nobody picked for it: just the place.
+      scenery: l.scenery || (Array.isArray(l.cast) && l.cast.length === 0),
       cast: shotCastIds(l)
     });
   };
@@ -423,6 +430,39 @@ export default function ScreenplayStudio({
                 <span className="text-[11px] text-lr-text-dim italic">{shot.camera}</span>
                 {shotOutOfPlace(l, where) && <span className="text-[11px] text-amber-300">Drawn somewhere else</span>}
               </div>
+              {(() => {
+                const { ids, how } = shotCastOf(l);
+                const addable = (list) => list.filter(e => !ids.includes(e.id));
+                const castIds = new Set(castList.map(e => e.id));
+                return (
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]" aria-label={`Who is in line ${i + 1}'s shot`}>
+                    <span className="text-lr-text-dim">In this shot:</span>
+                    {ids.length === 0 && <span className="text-lr-text-dim italic">nobody, just the place</span>}
+                    {ids.map(id => (
+                      <span key={id} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-lr-accent/15 border border-lr-accent/40 text-white">
+                        {nameOf(id)}
+                        <button type="button" disabled={!!busy} onClick={() => setShotCast(l, ids.filter(x => x !== id))}
+                          aria-label={`Take ${nameOf(id)} out of line ${i + 1}'s shot`} title="Take out of this shot" className="text-lr-text-dim hover:text-white px-0.5">×</button>
+                      </span>
+                    ))}
+                    <select value="" disabled={!!busy} aria-label={`Add someone to line ${i + 1}'s shot`}
+                      onChange={(e) => { if (e.target.value) setShotCast(l, [...ids, e.target.value]); }}
+                      className="p-0.5 rounded bg-black/20 border border-white/10 text-lr-text-dim text-[11px]">
+                      <option value="">+ Add someone</option>
+                      {addable(castList).length > 0 && <optgroup label="In this cinematic">{addable(castList).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</optgroup>}
+                      {addable(everyone.filter(e => !castIds.has(e.id))).length > 0 && (
+                        <optgroup label="Everyone else">{addable(everyone.filter(e => !castIds.has(e.id))).map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</optgroup>
+                      )}
+                    </select>
+                    {how === 'guessed' && <span className="text-amber-300" title="This line names nobody, so the party is assumed. Pick who it really is.">guessed: the line names nobody</span>}
+                    {how === 'chosen' ? (
+                      <button type="button" className={small} disabled={!!busy} onClick={() => setLines(latest.current.map(x => { if (x.id !== l.id) return x; const { cast: _, ...rest } = x; return { ...rest, imageUrl: '', videoUrl: '' }; }))} title="Go back to who the line names">Reset</button>
+                    ) : ids.length > 0 && (
+                      <button type="button" className={small} disabled={!!busy} onClick={() => setShotCast(l, [])} title="No one, just the place">Nobody</button>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <button type="button" className={small} onClick={() => redraw(l, i)} disabled={!!busy}>
                   {busy === `draw-${l.id}` ? <Loader2 size={12} className="animate-spin" /> : <Wand2 size={12} />}
@@ -460,11 +500,19 @@ export default function ScreenplayStudio({
                     </label>
                     <label className="inline-flex items-center gap-1 text-[11px] text-lr-text-dim">
                       {l.kind === 'action' ? 'Length' : 'Hold after'}
-                      <input type="number" min={l.kind === 'action' ? 1.5 : 0} max={l.kind === 'action' ? 8 : 6} step="0.5" disabled={!!busy}
+                      <input type="number" min={l.kind === 'action' ? 1.5 : 0} max={l.kind === 'action' ? 8 : 6} step="any" disabled={!!busy}
                         key={`${l.id}-len-${l.kind === 'action' ? l.seconds : l.hold}`}
-                        defaultValue={l.kind === 'action' ? (l.seconds || SCREENPLAY_TIMING.action) : (l.hold || 0)}
+                        defaultValue={l.kind === 'action' ? (Number(l.seconds) > 0 ? l.seconds : SCREENPLAY_TIMING.action) : (Number(l.hold) > 0 ? l.hold : 0)}
                         aria-label={`${l.kind === 'action' ? 'Length' : 'Hold after'} for line ${i + 1}, in seconds`}
-                        onBlur={(e) => { const v = Number(e.target.value); if (Number.isFinite(v)) update(l.id, l.kind === 'action' ? { seconds: v } : { hold: v }); }}
+                        onBlur={(e) => {
+                          // Empty or nonsense keeps what it was; anything else is kept in range.
+                          const raw = e.target.value.trim();
+                          const v = Number(raw);
+                          if (!raw || !Number.isFinite(v)) { e.target.value = l.kind === 'action' ? (Number(l.seconds) > 0 ? l.seconds : SCREENPLAY_TIMING.action) : (Number(l.hold) > 0 ? l.hold : 0); return; }
+                          const kept = l.kind === 'action' ? Math.min(8, Math.max(1.5, v)) : Math.min(6, Math.max(0, v));
+                          e.target.value = kept;
+                          update(l.id, l.kind === 'action' ? { seconds: kept } : { hold: kept });
+                        }}
                         className={`${input} w-16`} />
                       s
                     </label>
