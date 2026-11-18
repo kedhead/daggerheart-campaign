@@ -38,7 +38,7 @@ export default function useShotArt({ campaign, characters = [], npcs = [], adver
     const absent = shotAbsent(`${about} ${prompt}`, everyone, cast);
     const scenery = shotIsScenery(about, cast, choice);
     const scene = await regenerateScene({
-      scene: { id, prompt: groundShotPrompt(prompt, cast, { scenery, absent }), featuredEntityIds: cast.map(c => c.id), scenery },
+      scene: { id, prompt: groundShotPrompt(prompt, cast, { scenery, absent }), featuredEntityIds: cast.map(c => c.id), labels: Object.fromEntries(cast.map(c => [c.id, c.label])), scenery },
       chapter,
       entities: everyone,
       campaignId: campaign?.id,
