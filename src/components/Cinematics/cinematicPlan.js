@@ -1144,7 +1144,7 @@ export function cinematicReel(cinematic, { campaignName = '', musicUrl = '' } = 
 // next line's voice starts a moment before its picture (a J-cut).
 
 export const SCREENPLAY_LENGTHS = { short: 8, medium: 12, long: 18 };
-export const SCREENPLAY_NARRATION = { none: 'No narrator', some: 'A little narration', lots: 'Narrated' };
+export const SCREENPLAY_NARRATION = { none: 'No narrator', some: 'A little narration', lots: 'Narrated', voiceover: 'Narrator over every action shot' };
 export const SCREENPLAY_TIMING = { lead: 0.15, pad: 0.45, jcut: 0.3, action: 3.2, narratorTail: 0.35 };
 export const SCREENPLAY_KINDS = ['line', 'action', 'narrator'];
 export const SCREENPLAY_TRANSITIONS = { cut: 'Cut', dissolve: 'Dissolve', fade: 'Fade from black' };
@@ -1224,7 +1224,8 @@ export function buildScreenplayPrompt({ campaignName = '', prompt = '', characte
   const narration = {
     none: 'Do not use the narrator at all: the scene is told by what we see and what the characters say.',
     some: 'Use the narrator at most twice, briefly: to open the scene and/or to close it.',
-    lots: 'The narrator may carry the story between moments, in up to a quarter of the lines.'
+    lots: 'The narrator may carry the story between moments, in up to a quarter of the lines.',
+    voiceover: 'Do not write narrator lines. Instead give EVERY action line a "narration": what the narrator says over that shot, 8 to 20 words, present tense, dramatic, adding to the picture rather than describing it word for word. Character lines never carry narration.'
   }[narrator] || '';
   return `Write the screenplay for a short animated cinematic${campaignName ? ` in the tabletop RPG campaign "${campaignName}"` : ''}. The DM plays it on the big screen at a dramatic moment of the game, so it should play like the best scene of a fantasy film: characters talking to each other, reacting, and something happening.
 
@@ -1248,6 +1249,42 @@ Rules:
 - "title": a short, dramatic title (2 to 5 words). "setting": where it begins.
 
 Answer with JSON only: {"title": "...", "setting": "...", "lines": [ ... ]}`;
+}
+
+/**
+ * The prompt that writes the narrator's voice-over for a screenplay's action
+ * shots (the ones in `ids`), keeping the rest of the screenplay as context.
+ */
+export function buildShotNarrationPrompt({ campaignName = '', prompt = '', lines = [], ids = [] }) {
+  const want = new Set(ids);
+  const script = lines.map((l, i) => {
+    const tag = want.has(l.id) ? ` [NARRATE id=${l.id}]` : '';
+    if (l.kind === 'line') return `${i + 1}. ${clean(l.speaker)}${l.to ? ` to ${clean(l.to)}` : ''}: "${clean(l.text)}"`;
+    if (l.kind === 'narrator') return `${i + 1}. NARRATOR: ${clean(l.text)}`;
+    return `${i + 1}. ACTION: ${clean(l.text)}${clean(l.narration) ? ` (narrator: ${clean(l.narration)})` : ''}${tag}`;
+  }).join('\n');
+  return `You are the narrator of a short animated cinematic${campaignName ? ` in the tabletop RPG campaign "${campaignName}"` : ''}, played on the big screen at a dramatic moment of the game.
+${prompt ? `\nTHE MOMENT: ${clip(prompt, 1200)}\n` : ''}
+THE SCREENPLAY, shot by shot:
+${script}
+
+Write what the narrator says over each shot marked [NARRATE]: 8 to 20 words each, present tense, like an epic fantasy film's narrator, adding feeling and stakes to the picture rather than describing it word for word. Follow the story in order, never repeat a phrase, and never put words in a character's mouth. Name characters exactly as the screenplay does.
+
+Answer with JSON only: {"narration": [{"id": "...", "text": "..."}]}`;
+}
+
+/** The narrator's words for each shot id, from the model's answer. */
+export function parseShotNarration(text, ids = []) {
+  let data = {};
+  try { data = JSON.parse(String(text || '').match(/\{[\s\S]*\}/)?.[0] || '{}'); } catch { data = {}; }
+  const want = new Set(ids);
+  const out = {};
+  (Array.isArray(data.narration) ? data.narration : []).forEach(n => {
+    const id = clean(n?.id);
+    const said = clip(n?.text, 240);
+    if (want.has(id) && said) out[id] = said;
+  });
+  return out;
 }
 
 /**
@@ -1285,6 +1322,7 @@ export function parseScreenplay(text, { castNames = [], stamp = '' } = {}) {
       Object.assign(out, { speaker, to: to && to !== speaker ? to : '' });
     }
     if (out.kind === 'action' && clean(l?.camera)) out.camera = clip(l.camera, 90);
+    if (out.kind === 'action' && clean(l?.narration)) out.narration = clip(l.narration, 240);
     if (out.kind === 'action' && l?.continues === true && lines.length) out.continues = true;
     if (clean(l?.where)) out.where = clip(l.where, 120);
     lines.push(out);
@@ -1373,6 +1411,14 @@ export function screenplayPlan(recap) {
       captions.push({ beat: i, line: text, start: at, duration });
     } else {
       duration = Math.max(1.5, Math.min(8, Number(l.seconds) || T.action));
+      // The narrator over an action shot: the shot lasts at least as long as the words.
+      const over = clean(l.narration);
+      if (over) {
+        const said = l.narrationUrl ? l.narrationDuration || 3 : Math.max(2.5, over.length / 15);
+        duration = Math.max(duration, said + T.narratorTail);
+        if (l.narrationUrl) voices.push({ url: l.narrationUrl, start: at });
+        captions.push({ beat: i, line: over, start: at, duration });
+      }
     }
     const shot = screenplayShot(l);
     shots.push({
@@ -1392,10 +1438,10 @@ export function screenplayPlan(recap) {
  * What "Shoot it" still has to make for a screenplay. `voiced(line)` says
  * whether a line's recording is still good (its words, speaker and voice).
  */
-export function screenplayNeeds(screenplay, voiced = (l) => !!l.audioUrl) {
+export function screenplayNeeds(screenplay, voiced = (l) => (l.kind === 'action' ? !!l.narrationUrl : !!l.audioUrl)) {
   const lines = screenplay?.lines || [];
   return {
-    voice: lines.filter(l => (l.kind === 'line' || l.kind === 'narrator') && !voiced(l)).length,
+    voice: lines.filter(l => ((l.kind === 'line' || l.kind === 'narrator') || (l.kind === 'action' && clean(l.narration))) && !voiced(l)).length,
     draw: lines.filter(l => !l.imageUrl).length,
     animate: lines.filter(l => !l.videoUrl).length
   };

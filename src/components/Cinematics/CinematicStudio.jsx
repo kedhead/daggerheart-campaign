@@ -300,6 +300,7 @@ export default function CinematicStudio({ isOpen, onClose, campaign, characters 
             plainNames={plainNames}
             castOf={castOf}
             narratorKey={c.voiceKey || RECAP_VOICE_KEY}
+            textKeys={textProvider(getEffectiveKey)}
           />
         )}
 
