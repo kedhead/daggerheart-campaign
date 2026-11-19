@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Clapperboard, Film, ImageIcon, Link2, Loader2, MapPin, MessageSquare, Mic, Trash2, Wand2 } from 'lucide-react';
 import {
   screenplayShot, screenplayMotionPrompt, screenplayNeeds, lineWhere, cartoonShotPrompt, settingText,
-  lineVoiceKey, lineIsVoiced, speakerVoiceKey, shotOutOfPlace, screenplayShotCast, ACCOUNT_VOICE_PREFIX,
+  lineVoiceKey, lineIsVoiced, speakerVoiceKey, shotOutOfPlace, screenplayShotCast, lineReadsAsAction, ACCOUNT_VOICE_PREFIX,
   screenplayPlan, screenplayTransition, continuityStale, withShotNote, SCREENPLAY_TRANSITIONS, SCREENPLAY_TIMING
 } from './cinematicPlan';
 import { narrate, animateToClip, listAccountVoices, saveCharacterVoice } from '../../services/cinematicsGenerator';
@@ -123,6 +123,8 @@ export default function ScreenplayStudio({
   };
   const shotCastIds = (l) => shotCastOf(l).ids;
   const nameOf = (id) => everyone.find(e => e.id === id)?.name || castList.find(e => e.id === id)?.name || 'Someone';
+  // Someone with no portrait is drawn from words alone, and comes out different each time.
+  const hasPortrait = (id) => { const e = everyone.find(x => x.id === id) || castList.find(x => x.id === id); return !!(e?.avatarUrl || (adversaries.some(a => a.id === id) && e?.imageUrl)); };
   // A new choice of who is in it means a new picture and clip.
   const setShotCast = (l, ids) => update(l.id, { cast: ids, imageUrl: '', videoUrl: '' });
   const whereOf = (i) => lineWhere(lines, i);
@@ -427,9 +429,16 @@ export default function ScreenplayStudio({
                     <optgroup label="Built-in voices">{CHARACTER_VOICES.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}</optgroup>
                   </select>
                 )}
-                <span className="text-[11px] text-lr-text-dim italic">{shot.camera}</span>
+                {shot.camera && <span className="text-[11px] text-lr-text-dim italic">{shot.camera}</span>}
                 {shotOutOfPlace(l, where) && <span className="text-[11px] text-amber-300">Drawn somewhere else</span>}
               </div>
+              {lineReadsAsAction(l) && (
+                <div className="flex flex-wrap items-center gap-2 p-1.5 rounded border border-amber-400/40 bg-amber-500/10 text-[11px] text-amber-200">
+                  This reads like something that happens, not something {l.speaker || 'they'} says, so it is filmed as an action. Make it one so nobody reads it aloud.
+                  <button type="button" disabled={!!busy} onClick={() => update(l.id, { kind: 'action', speaker: '', to: '', voiceKey: '', voicePicked: false, ...fresh })}
+                    className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-white hover:bg-amber-500/30">Make it an action</button>
+                </div>
+              )}
               {(() => {
                 const { ids, how } = shotCastOf(l);
                 const addable = (list) => list.filter(e => !ids.includes(e.id));
@@ -439,8 +448,9 @@ export default function ScreenplayStudio({
                     <span className="text-lr-text-dim">In this shot:</span>
                     {ids.length === 0 && <span className="text-lr-text-dim italic">nobody, just the place</span>}
                     {ids.map(id => (
-                      <span key={id} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-lr-accent/15 border border-lr-accent/40 text-white">
-                        {nameOf(id)}
+                      <span key={id} title={hasPortrait(id) ? undefined : `${nameOf(id)} has no portrait, so they are drawn from their description and can look different each time. Give them a portrait to keep their look.`}
+                        className={`inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-white ${hasPortrait(id) ? 'bg-lr-accent/15 border border-lr-accent/40' : 'bg-amber-500/10 border border-dashed border-amber-400/60'}`}>
+                        {nameOf(id)}{!hasPortrait(id) && <span className="text-amber-300">· no portrait</span>}
                         <button type="button" disabled={!!busy} onClick={() => setShotCast(l, ids.filter(x => x !== id))}
                           aria-label={`Take ${nameOf(id)} out of line ${i + 1}'s shot`} title="Take out of this shot" className="text-lr-text-dim hover:text-white px-0.5">×</button>
                       </span>

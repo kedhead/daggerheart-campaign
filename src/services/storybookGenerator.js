@@ -319,7 +319,10 @@ async function ensureStyledPortrait({ entity, entityType, styleKey, styleCustom,
 
 async function generateSceneImage({ scene, entityDescriptions, entityAncestryHints, entityPortraits, entityLooks = {}, entityNames = {}, styleKey, styleCustom, gameSystem, campaignId, apiKey, imageModel }) {
   // Build featured entity descriptions with ancestry hints prominently placed
-  const featuredParts = (scene.featuredEntityIds || []).map(id => {
+  // A caller that swapped names for labels (cinematic and recap shots) has
+  // already said who everyone is and how they look; repeating their real names
+  // and stock ancestry phrases here undid that.
+  const featuredParts = scene.labels ? [] : (scene.featuredEntityIds || []).map(id => {
     const desc = entityDescriptions[id];
     const hint = entityAncestryHints?.[id];
     if (!desc && !hint) return null;
