@@ -900,14 +900,17 @@ export function cartoonPlan(recap) {
 // sheet, tied to their reference portrait, and the model is told that those
 // people and nobody else are in the picture.
 
-const NAME_TITLES = ['the', 'lord', 'lady', 'sir', 'captain', 'master'];
+const NAME_TITLES = ['the', 'lord', 'lady', 'sir', 'captain', 'master', 'king', 'queen', 'prince', 'princess', 'duke', 'duchess', 'baron', 'baroness', 'count', 'countess', 'emperor', 'empress', 'elder', 'high', 'dame', 'father', 'mother', 'brother', 'sister', 'saint', 'archmage', 'general', 'commander'];
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** The ways a name is written in a line: in full, and by first name when that is distinctive. */
 function nameForms(name) {
   const full = clean(name);
   if (full.length < 3) return [];
-  const first = full.split(' ')[0];
+  // "King Finius, the Elder Vampire King" is "Finius" in a line: drop the epithet after a comma, then the titles before the name.
+  const words = full.split(',')[0].trim().split(' ');
+  while (words.length > 1 && NAME_TITLES.includes(words[0].toLowerCase())) words.shift();
+  const first = words[0];
   return first !== full && first.length >= 4 && !NAME_TITLES.includes(first.toLowerCase()) ? [full, first] : [full];
 }
 const nameRe = (form) => new RegExp(`(?<![A-Za-z])${escapeRe(form)}(?![A-Za-z])`, 'gi');
@@ -1235,6 +1238,7 @@ Write about ${count} lines, in order. Each line is one shot of the film, and is 
 
 Rules:
 - Make the characters talk to each other: real exchanges of two to four lines in which each answers the one before, with action lines between them to show what happens.
+- A character line is only the words they say out loud, never what they do; what anyone does is an action line.
 - Every action and narrator line names each character it shows, by name ("Pippin and Xajax hang in chains"), never "the party", "they", "the heroes" or "figures" alone; a line that shows only a place names nobody.
 - Open on an action that sets the scene, build, play the moment the DM described, and end on an image that hangs in the air.
 - Keep to what the DM described. Do not add characters, deaths or twists it does not ask for.
@@ -1271,14 +1275,17 @@ export function parseScreenplay(text, { castNames = [], stamp = '' } = {}) {
     const body = clip(l?.text, kind === 'line' ? 160 : 240);
     if (!kind || !body) return;
     const out = { id: `${stamp}p${lines.length}`, kind, text: body };
-    if (kind === 'line') {
+    // A "line" that only describes what happens is an action.
+    if (kind === 'line' && lineReadsAsAction({ kind, text: body, speaker: who(l.speaker) || clean(l.speaker), to: who(l.to) || clean(l.to) })) {
+      out.kind = 'action';
+    } else if (kind === 'line') {
       const speaker = who(l.speaker);
       if (!speaker) return;
       const to = who(l.to);
       Object.assign(out, { speaker, to: to && to !== speaker ? to : '' });
     }
-    if (kind === 'action' && clean(l?.camera)) out.camera = clip(l.camera, 90);
-    if (kind === 'action' && l?.continues === true && lines.length) out.continues = true;
+    if (out.kind === 'action' && clean(l?.camera)) out.camera = clip(l.camera, 90);
+    if (out.kind === 'action' && l?.continues === true && lines.length) out.continues = true;
     if (clean(l?.where)) out.where = clip(l.where, 120);
     lines.push(out);
   });
@@ -1298,7 +1305,25 @@ export function lineWhere(lines = [], i) {
 }
 
 /** A screenplay line as the shot that is drawn and animated for it. */
+// Words someone uses when talking: "I", "you", "we"...
+const SPOKEN_WORDS = /\b(i|i'm|i've|i'll|i'd|me|my|mine|myself|we|we're|we'll|us|our|ours|you|you're|you'll|your|yours|yourself)\b/i;
+
+/**
+ * A character line that is really stage directions ("Finius tears open his
+ * wrist, flooding Emmanita's mouth with blood"): no "I" or "you", no question,
+ * and it talks about the speaker or listener by name or as he, she or they.
+ * It is filmed as what it describes, and the editor offers to make it an action.
+ */
+export function lineReadsAsAction(line) {
+  if (line?.kind !== 'line') return false;
+  const text = clean(line.text);
+  if (!text || /["\u201c\u201d?]/.test(text) || SPOKEN_WORDS.test(text)) return false;
+  const forms = [line.speaker, line.to].filter(Boolean).flatMap(n => nameForms(n));
+  return forms.some(f => nameRe(f).test(text)) || /^(he|she|they|his|her|their)\b/i.test(text);
+}
+
 export function screenplayShot(line) {
+  if (lineReadsAsAction(line)) return { kind: 'action', description: clean(line.text), camera: '' };
   if (line?.kind === 'line') {
     const speaker = clean(line.speaker);
     const listener = clean(line.to);
