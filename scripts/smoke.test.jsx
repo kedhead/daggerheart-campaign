@@ -40,7 +40,7 @@ import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec }
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
 import WikiText from '../src/components/WikiText/WikiText.jsx';
 import { inlineMarkdown } from '../src/components/WikiText/inlineMarkdown.js';
-import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, howTheyTalk, buildScreenplayPrompt, parseScreenplay, lineWhere, screenplayShot, screenplayMotionPrompt, screenplayPlan, screenplayNeeds, screenplayTransition, continuityStale, withShotNote, screenplayShotCast, mentionsGroup, lineReadsAsAction, SCREENPLAY_TIMING, SCREENPLAY_LENGTHS, buildCinematicPrompt, parseCinematicScript, cinematicCastIds, cinematicReel, CINEMATIC_LENGTHS, CINEMATIC_FADE_SECONDS, RECAP_END_SECONDS as RECAP_END_SECS, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
+import { recapArtChapters, recapGallery, featuredInLine, recapShotPrompt, phaseNumber, buildPhaseMotionPrompt, phaseShiftFromBoss, introFromEntity, buildIntroPrompt, parseIntroSubtitles, playedSessions, sessionNumberOf, recapSources, buildRecapPrompt, parseRecapScript, pickRecapArt, recapTimings, narrationScript, RECAP_TITLE_SECONDS, RECAP_END_SECONDS, isFreshCue, parseRecapQuestion, panelImages, recapArtFills, RECAP_CLIFF_SILENCE, recapPlan, recapCast, recapStarring, recapCardLine, recapMusicFactor, recapCueVolume, RECAP_QUESTION_VOICE_DELAY, buildStoryboardPrompt, parseStoryboard, cartoonPlan, cartoonNeeds, cartoonShotPrompt, cartoonMotionPrompt, voiceForSpeaker, CARTOON_BEAT_TAIL, CARTOON_MAX_SHOTS, recapSessionCast, howTheyTalk, buildScreenplayPrompt, parseScreenplay, lineWhere, screenplayShot, screenplayMotionPrompt, screenplayPlan, screenplayNeeds, screenplayTransition, continuityStale, withShotNote, screenplayShotCast, mentionsGroup, lineReadsAsAction, buildShotNarrationPrompt, parseShotNarration, SCREENPLAY_TIMING, SCREENPLAY_LENGTHS, buildCinematicPrompt, parseCinematicScript, cinematicCastIds, cinematicReel, CINEMATIC_LENGTHS, CINEMATIC_FADE_SECONDS, RECAP_END_SECONDS as RECAP_END_SECS, beatSetting, settingText, settingsFromShots, shotOutOfPlace, CARTOON_TALK, lineShot, addLineShot, moveLineShot, speakerVoiceKey, lineVoiceKey, lineIsVoiced, shotCast, shotAbsent, shotIsScenery, withoutNames, groundShotPrompt, cartoonShotText, montageCuts, RECAP_CAST_SECONDS } from '../src/components/Cinematics/cinematicPlan.js';
 import { buildRevisionPrompt, parseRevision, buildEpiloguePrompt, buildBlurbPrompt } from '../api/_lib/bookRevision.js';
 import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } from '../api/_lib/dialogue.js';
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
@@ -3977,6 +3977,26 @@ section('Table cinematics');
     assert(shotCast('Finius laughs as Emmanita falls.', titled).map(c => c.id).sort().join() === 'e,k', 'a titled name with an epithet is found by the name itself');
     const parsed = parseScreenplay(JSON.stringify({ lines: [{ type: 'line', speaker: 'Emmanita', to: 'Finius', text: fed.text }] }), { castNames: ['Emmanita', 'King Finius, the Elder Vampire King of Mythis'] });
     assert(parsed.lines[0].kind === 'action' && !parsed.lines[0].speaker, 'the writer\'s stage directions in a character line come out as an action');
+  }
+  {
+    const over = screenplayPlan({ screenplay: { lines: [
+      { id: 'a', kind: 'action', text: 'Finius feeds Emmanita.', narration: 'The blood of an elder king is never freely given.', narrationUrl: 'n.mp3', narrationDuration: 5 },
+      { id: 'b', kind: 'line', speaker: 'Emmanita', text: 'What have you done to me?', audioUrl: 'v.mp3', duration: 2 },
+      { id: 'c', kind: 'action', text: 'She falls.' }
+    ] } });
+    assert(over.voices.some(v => v.url === 'n.mp3' && v.start === over.shots[0].start), 'the narrator over an action shot starts with it');
+    assert(over.shots[0].duration >= 5 + SCREENPLAY_TIMING.narratorTail, 'a narrated action shot lasts as long as the narration');
+    assert(over.captions.length === 1 && over.captions[0].beat === 0, 'its words are captioned; the character line and plain action are not narrated');
+    assert(over.shots[2].duration === SCREENPLAY_TIMING.action, 'an action without narration keeps its own length');
+    const needs = screenplayNeeds({ lines: [{ kind: 'action', text: 'x', narration: 'Words.' , imageUrl: 'i', videoUrl: 'v' }, { kind: 'action', text: 'y', imageUrl: 'i', videoUrl: 'v' }] });
+    assert(needs.voice === 1, 'narration not yet recorded is counted as a voice take still to make');
+    const ask = buildShotNarrationPrompt({ prompt: 'The feeding', lines: [{ id: 'a', kind: 'action', text: 'Finius feeds Emmanita.' }, { id: 'b', kind: 'line', speaker: 'Emmanita', text: 'No!' }], ids: ['a'] });
+    assert(ask.includes('[NARRATE id=a]') && !ask.includes('[NARRATE id=b]'), 'only the action shots asked for are marked for narration');
+    const got = parseShotNarration('{"narration":[{"id":"a","text":"Blood answers blood."},{"id":"b","text":"Not me."}]}', ['a']);
+    assert(got.a === 'Blood answers blood.' && !got.b, 'narration is kept only for the shots asked for');
+    const voiced = parseScreenplay(JSON.stringify({ lines: [{ type: 'action', text: 'Pippin runs.', narration: 'He never looks back.' }] }), { castNames: ['Pippin'] });
+    assert(voiced.lines[0].narration === 'He never looks back.', 'the writer can give an action shot its narration');
+    assert(buildScreenplayPrompt({ prompt: 'x', narrator: 'voiceover' }).includes('EVERY action line a "narration"'), 'the voice-over setting asks for narration on every action line');
   }
   assert(withShotNote('A frame.', 'make it darker.') === 'A frame. Direction for this shot, which overrides anything above: make it darker.' && withShotNote('A frame.', '  ') === 'A frame.',
     'the DM\'s note for a shot goes at the end of its prompt, above everything else');

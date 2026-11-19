@@ -5,7 +5,7 @@ import {
   lineVoiceKey, lineIsVoiced, speakerVoiceKey, shotOutOfPlace, screenplayShotCast, lineReadsAsAction, ACCOUNT_VOICE_PREFIX,
   screenplayPlan, screenplayTransition, continuityStale, withShotNote, SCREENPLAY_TRANSITIONS, SCREENPLAY_TIMING
 } from './cinematicPlan';
-import { narrate, animateToClip, listAccountVoices, saveCharacterVoice } from '../../services/cinematicsGenerator';
+import { narrate, animateToClip, listAccountVoices, saveCharacterVoice, writeShotNarration } from '../../services/cinematicsGenerator';
 import { persistImage } from '../../services/audioStorage';
 import { lastFrameOf } from '../../utils/videoFrame';
 import { CHARACTER_VOICES } from '../Storybook/narratorVoices';
@@ -42,7 +42,7 @@ async function pool(items, job) {
  */
 export default function ScreenplayStudio({
   cinematic, save, run, busy, setBusy, notify, campaign, characters = [], npcs = [], adversaries = [],
-  cast, locations = [], drawScene, plainNames = (t) => t, castOf = () => [], narratorKey
+  cast, locations = [], drawScene, plainNames = (t) => t, castOf = () => [], narratorKey, textKeys = {}
 }) {
   const campaignId = campaign?.id;
   const screenplay = cinematic.screenplay || { lines: [] };
@@ -68,6 +68,8 @@ export default function ScreenplayStudio({
 
   // Whether a line's recording is still good: its words, and its voice.
   const voiced = (l) => {
+    // An action shot's recording is the narrator over it.
+    if (l.kind === 'action') return !String(l.narration || '').trim() || (!!l.narrationUrl && l.narrationSpoken === l.narration && l.narrationVoicedWith === narratorKey);
     if (!l.audioUrl || l.spokenText !== l.text) return false;
     if (l.kind === 'narrator') return l.voicedWith === narratorKey;
     return accountVoices && !voicesError ? lineIsVoiced({ ...l, speaker: l.speaker }, voices) : true;
@@ -159,6 +161,16 @@ export default function ScreenplayStudio({
   };
   const say = (text, voice, name) => narrate({ campaignId, text, voiceKey: voice, fileName: `scene-${key}-${name}-${stamp()}` });
 
+  // The narrator over every action shot that has none yet, written in one go.
+  const silentActions = lines.filter(l => l.kind === 'action' && !String(l.narration || '').trim());
+  const narrateAll = () => run('narrate-all', async () => {
+    setBusy('narrate-all:Writing the narration…');
+    const ids = silentActions.map(l => l.id);
+    const found = await writeShotNarration({ campaign, prompt: cinematic.prompt || '', lines: latest.current, ids, ...textKeys });
+    setLines(latest.current.map(l => (found[l.id] && !String(l.narration || '').trim() ? { ...l, narration: found[l.id], narrationUrl: '' } : l)));
+    notify.success?.(`Narration written for ${Object.keys(found).length} shot${Object.keys(found).length === 1 ? '' : 's'}. Shoot it records it.`);
+  });
+
   const shoot = () => run('shoot', async () => {
     let work = [...lines];
     let saving = Promise.resolve();
@@ -169,10 +181,17 @@ export default function ScreenplayStudio({
     const label = (l) => `line ${work.findIndex(x => x.id === l.id) + 1}`;
 
     // 1. Voices.
-    const toVoice = work.filter(l => (l.kind === 'line' || l.kind === 'narrator') && l.text && !voiced(l));
+    const toVoice = work.filter(l => (l.kind === 'action' ? !!String(l.narration || '').trim() : (l.kind === 'line' || l.kind === 'narrator') && l.text) && !voiced(l));
     let n = 0;
     for (const l of toVoice) {
       setBusy(`shoot:Recording voices ${++n} of ${toVoice.length}…`);
+      if (l.kind === 'action') {
+        await attempt(`the narration over ${label(l)}`, async () => {
+          const take = await say(l.narration, narratorKey, `${l.id}-over`);
+          await patch(l.id, { narrationUrl: take.url, narrationDuration: take.duration, narrationVoicedWith: narratorKey, narrationSpoken: l.narration });
+        });
+        continue;
+      }
       await attempt(`the voice for ${label(l)}`, async () => {
         const voice = l.kind === 'narrator' ? narratorKey : lineVoiceKey(l, voices);
         const take = await say(l.text, voice, l.id);
@@ -300,6 +319,13 @@ export default function ScreenplayStudio({
                   : 'Characters use the built-in voices: none of your own were found in the ElevenLabs account.'}
           </span>
         </p>
+        {silentActions.length > 0 && (
+          <button type="button" className="btn btn-secondary btn-sm inline-flex items-center gap-1" onClick={narrateAll} disabled={!!busy}
+            title="Writes what the narrator says over each action shot that has no narration yet. Character lines stay as they are.">
+            {busy?.startsWith('narrate-all') ? <Loader2 size={14} className="animate-spin" /> : <Mic size={14} />}
+            {busy?.startsWith('narrate-all') ? 'Writing narration…' : `Narrate ${silentActions.length} action shot${silentActions.length === 1 ? '' : 's'}`}
+          </button>
+        )}
         <button type="button" className="btn btn-primary btn-sm inline-flex items-center gap-1" onClick={shoot} disabled={!!busy || !todo || !lines.length}
           title="Records the voices, then draws and animates every shot still missing. Safe to press again.">
           {shooting ? <Loader2 size={14} className="animate-spin" /> : <Clapperboard size={14} />}
@@ -410,6 +436,17 @@ export default function ScreenplayStudio({
                 // New words: a new recording, and for an action a new picture.
                 onBlur={(e) => { const text = e.target.value.trim(); if (text !== l.text) update(l.id, { text, audioUrl: '', ...(l.kind === 'line' ? {} : { imageUrl: '', videoUrl: '' }) }); }}
                 className={`${input} w-full resize-y`} />
+              {l.kind === 'action' && (
+                <label className="flex items-start gap-1.5 text-[11px] text-lr-text-dim">
+                  <Mic size={12} className="mt-1.5 shrink-0" />
+                  <textarea key={`${l.id}-over-${l.narration || ''}`} defaultValue={l.narration || ''} rows={1} maxLength={240} disabled={!!busy}
+                    placeholder="Narrator over this shot (optional), e.g. The blood of an elder king does not come freely."
+                    aria-label={`Narration over line ${i + 1}`}
+                    // New words: a new recording.
+                    onBlur={(e) => { const narration = e.target.value.trim(); if (narration !== (l.narration || '')) update(l.id, { narration, narrationUrl: '' }); }}
+                    className={`${input} w-full resize-y italic`} />
+                </label>
+              )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <label className="inline-flex items-center gap-1 text-[11px] text-lr-text-dim">
                   <MapPin size={11} />

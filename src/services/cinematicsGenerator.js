@@ -10,7 +10,7 @@ import { aiService } from './aiService';
 import { apiFetch } from './apiClient';
 import { persistAudio, persistVideo } from './audioStorage';
 import { animateStill } from './animateStill';
-import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, settingsFromShots, buildCinematicPrompt, parseCinematicScript, buildScreenplayPrompt, parseScreenplay, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
+import { buildIntroPrompt, parseIntroSubtitles, buildRecapPrompt, parseRecapScript, parseRecapQuestion, buildStoryboardPrompt, parseStoryboard, settingsFromShots, buildCinematicPrompt, parseCinematicScript, buildScreenplayPrompt, parseScreenplay, buildShotNarrationPrompt, parseShotNarration, ACCOUNT_VOICE_PREFIX } from '../components/Cinematics/cinematicPlan';
 import { NARRATOR_VOICES, CHARACTER_VOICES, DEFAULT_VOICE_KEY, probeDuration } from '../components/Storybook/narratorVoices';
 
 /** Which text model to use: the DM's own key if they have one, else the server's. */
@@ -100,6 +100,14 @@ export async function writeScreenplay({ campaign, prompt, cast, setting, length,
   const script = parseScreenplay(text, { castNames, stamp: `${Date.now().toString(36)}-` });
   if (!script.lines.length) throw new Error('The AI did not come back with a screenplay. Try again.');
   return script;
+}
+
+/** The narrator's voice-over for a screenplay's action shots `ids`: { [id]: text }. */
+export async function writeShotNarration({ campaign, prompt, lines, ids, apiKey, provider }) {
+  const text = await aiService.generate(buildShotNarrationPrompt({ campaignName: campaign?.name, prompt, lines, ids }), apiKey, provider);
+  const found = parseShotNarration(text, ids);
+  if (!Object.keys(found).length) throw new Error('The AI did not come back with any narration. Try again.');
+  return found;
 }
 
 /** Read `text` aloud in a narrator's or a character's voice and store the mp3. */
