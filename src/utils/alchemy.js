@@ -126,3 +126,53 @@ export function takeDose(satchel, concoctionId, roll) {
     effect
   };
 }
+
+/** Change an ingredient's name, quantity or notes; a quantity of zero takes it out. */
+export function updateIngredient(satchel, id, patch = {}) {
+  const s = normalizeSatchel(satchel);
+  return {
+    ...s,
+    ingredients: s.ingredients.map(i => {
+      if (i.id !== id) return i;
+      const name = patch.name !== undefined ? str(patch.name, 80) : i.name;
+      const qty = patch.qty !== undefined ? Math.max(0, Math.round(Number(patch.qty) || 0)) : i.qty;
+      const notes = patch.notes !== undefined ? str(patch.notes, 300) : i.notes || '';
+      return { ...i, name: name || i.name, qty, notes };
+    }).filter(i => i.qty > 0)
+  };
+}
+
+export function removeIngredient(satchel, id) {
+  const s = normalizeSatchel(satchel);
+  return { ...s, ingredients: s.ingredients.filter(i => i.id !== id) };
+}
+
+export const MAX_DOSES = 5;
+
+/** Change a kept concoction: its words, and how many doses are left (0 to 5). */
+export function updateConcoction(satchel, id, patch = {}) {
+  const s = normalizeSatchel(satchel);
+  return {
+    ...s,
+    concoctions: s.concoctions.map(c => {
+      if (c.id !== id) return c;
+      const next = { ...c };
+      ['name', 'hopeEffect', 'fearEffect'].forEach(k => { if (patch[k] !== undefined && str(patch[k], k === 'name' ? 80 : 400)) next[k] = str(patch[k], k === 'name' ? 80 : 400); });
+      ['description', 'critEffect'].forEach(k => { if (patch[k] !== undefined) next[k] = str(patch[k], 400); });
+      if (patch.doses !== undefined) {
+        next.doses = Math.max(0, Math.min(MAX_DOSES, Math.round(Number(patch.doses) || 0)));
+        next.maxDoses = Math.max(Number(c.maxDoses) || 0, next.doses, 1);
+      }
+      return next;
+    })
+  };
+}
+
+export function removeConcoction(satchel, id) {
+  const s = normalizeSatchel(satchel);
+  return { ...s, concoctions: s.concoctions.filter(c => c.id !== id) };
+}
+
+export function clearLog(satchel) {
+  return { ...normalizeSatchel(satchel), log: [] };
+}
