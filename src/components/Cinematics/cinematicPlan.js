@@ -1046,12 +1046,19 @@ export function groundShotPrompt(prompt, cast = [], { scenery = false, absent = 
     // A shot of a place stays a shot of a place: an image model fills an empty scene with adventurers unless told not to.
     return `${base} Nobody from the story is in this shot. Show only what the description says: if it mentions no person or creature, the scene is empty of people and creatures.`;
   }
+  // Someone with a portrait is described by the portrait alone: words from
+  // their sheet ("ghostly", "small", a subclass like "Winged Sentinel") were
+  // read over the picture, and a frog came back as a fairy.
   const who = cast.map(c => {
-    const seen = c.ref ? `drawn exactly as in reference image ${c.ref}` : '';
-    return c.look ? `${c.label} is ${c.look}${seen ? ` (${seen})` : ''}` : seen ? `${c.label} is ${seen}` : `${c.label} is one person, drawn the same way throughout`;
+    if (c.ref) return `${c.label} is the person in reference image ${c.ref}: draw them exactly as that image shows them, the same species, face, body, size, colours and clothing`;
+    return c.look ? `${c.label} is ${c.look}` : `${c.label} is one person, drawn the same way throughout`;
   }).join('; ');
+  const refs = cast.filter(c => c.ref);
+  const match = refs.length > 1
+    ? ` Each reference image is a different person (${refs.map(c => `image ${c.ref} is ${c.label}`).join(', ')}); never blend two of them into one figure.`
+    : '';
   const count = cast.length === 1 ? 'Exactly one character appears' : `Exactly these ${cast.length} characters appear`;
-  return `${base} Who is in the shot: ${who}. ${count}, and nobody else. They are original characters from this story: do not draw any famous or existing character.`;
+  return `${base} Who is in the shot: ${who}.${match} ${count}, and nobody else. They are original characters from this story: do not draw any famous or existing character.`;
 }
 
 // ── Stand-alone cinematics ─────────────────────────────────────────────────

@@ -126,7 +126,8 @@ export default function ScreenplayStudio({
   const shotCastIds = (l) => shotCastOf(l).ids;
   const nameOf = (id) => everyone.find(e => e.id === id)?.name || castList.find(e => e.id === id)?.name || 'Someone';
   // Someone with no portrait is drawn from words alone, and comes out different each time.
-  const hasPortrait = (id) => { const e = everyone.find(x => x.id === id) || castList.find(x => x.id === id); return !!(e?.avatarUrl || (adversaries.some(a => a.id === id) && e?.imageUrl)); };
+  const portraitOf = (id) => { const e = everyone.find(x => x.id === id) || castList.find(x => x.id === id); return e?.avatarUrl || (adversaries.some(a => a.id === id) ? e?.imageUrl : '') || ''; };
+  const hasPortrait = (id) => !!portraitOf(id);
   // A new choice of who is in it means a new picture and clip.
   const setShotCast = (l, ids) => update(l.id, { cast: ids, imageUrl: '', videoUrl: '' });
   const whereOf = (i) => lineWhere(lines, i);
@@ -134,9 +135,12 @@ export default function ScreenplayStudio({
 
   const stamp = () => Date.now().toString(36);
   const key = cinematic.id;
+  // What the artist was given for each line's latest drawing, saved with the picture.
+  const told = useRef({});
   const draw = (l, i) => {
     const shot = screenplayShot(l);
     return drawScene({
+      onTold: (info) => { told.current[l.id] = info; },
       id: `scene_${key}_${l.id}_${stamp()}`,
       prompt: withShotNote(cartoonShotPrompt(shot, settingText(whereOf(i), locations)), l.note),
       about: `${shot.description} ${l.kind === 'line' ? '' : l.text}`.trim(),
@@ -145,6 +149,7 @@ export default function ScreenplayStudio({
       cast: shotCastIds(l)
     });
   };
+  const toldFor = (id) => ({ drawnWith: told.current[id] || null });
   const animate = (l, imageUrl, onStatus) => {
     const shot = screenplayShot(l);
     return animateToClip({
@@ -209,7 +214,7 @@ export default function ScreenplayStudio({
     await pool(toDraw, l => attempt(`drawing ${label(l)}`, async () => {
       const i = work.findIndex(x => x.id === l.id);
       const imageUrl = await draw(work[i], i);
-      await patch(l.id, { imageUrl, videoUrl: '', drawnIn: whereOf(i) });
+      await patch(l.id, { imageUrl, videoUrl: '', drawnIn: whereOf(i), ...toldFor(l.id) });
       setBusy(`shoot:Drawing shots ${++drawn} of ${toDraw.length}…`);
     }));
     // 3. Clips.
@@ -239,7 +244,7 @@ export default function ScreenplayStudio({
             // The frame could not be read: draw this one fresh rather than leave a hole.
             notify.warning(`Line ${i + 1} could not carry on from the shot before (${err.message}); it was drawn fresh instead.`);
             const imageUrl = await draw(line, i);
-            await patch(l.id, { imageUrl, videoUrl: '', fromClip: prev.videoUrl, drawnIn: whereOf(i) });
+            await patch(l.id, { imageUrl, videoUrl: '', fromClip: prev.videoUrl, drawnIn: whereOf(i), ...toldFor(l.id) });
           }
           line = work[i];
         }
@@ -258,7 +263,8 @@ export default function ScreenplayStudio({
       await update(l.id, { ...extra, imageUrl: await frameAfter(prev.videoUrl, l), videoUrl: '', fromClip: prev.videoUrl, drawnIn: whereOf(i) });
       return;
     }
-    await update(l.id, { ...extra, imageUrl: await draw(l, i), videoUrl: '', drawnIn: whereOf(i) });
+    const imageUrl = await draw(l, i);
+    await update(l.id, { ...extra, imageUrl, videoUrl: '', drawnIn: whereOf(i), ...toldFor(l.id) });
   });
   const reanimate = (l) => run(`animate-${l.id}`, async () => {
     const clip = await animate(l, l.imageUrl, s => setBusy(`animate-${l.id}:${s}`));
@@ -487,6 +493,7 @@ export default function ScreenplayStudio({
                     {ids.map(id => (
                       <span key={id} title={hasPortrait(id) ? undefined : `${nameOf(id)} has no portrait, so they are drawn from their description and can look different each time. Give them a portrait to keep their look.`}
                         className={`inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-white ${hasPortrait(id) ? 'bg-lr-accent/15 border border-lr-accent/40' : 'bg-amber-500/10 border border-dashed border-amber-400/60'}`}>
+                        {hasPortrait(id) && <img src={portraitOf(id)} alt="" title={`${nameOf(id)}'s portrait is sent to the artist`} className="w-4 h-4 rounded-full object-cover -ml-1" />}
                         {nameOf(id)}{!hasPortrait(id) && <span className="text-amber-300">· no portrait</span>}
                         <button type="button" disabled={!!busy} onClick={() => setShotCast(l, ids.filter(x => x !== id))}
                           aria-label={`Take ${nameOf(id)} out of line ${i + 1}'s shot`} title="Take out of this shot" className="text-lr-text-dim hover:text-white px-0.5">×</button>
@@ -584,6 +591,24 @@ export default function ScreenplayStudio({
                     </button>
                   </div>
                   {l.continues && i > 0 && <p className="text-[10px] text-lr-text-dim">Carried-on shots start from the clip before, so a note changes how it moves, not its first picture.</p>}
+                  {l.drawnWith?.prompt && (
+                    <details className="text-[11px] text-lr-text-dim">
+                      <summary className="cursor-pointer hover:text-white">What the artist was told for this picture</summary>
+                      <div className="mt-1 space-y-1">
+                        <div className="flex flex-wrap gap-2">
+                          {(l.drawnWith.people || []).length === 0 && <span>Nobody from the story.</span>}
+                          {(l.drawnWith.people || []).map(p => (
+                            <span key={`${p.name}-${p.ref}`} className="inline-flex items-center gap-1">
+                              {/^https?:/.test(p.portrait || '') && <img src={p.portrait} alt="" className="w-6 h-6 rounded object-cover" />}
+                              <span className="text-white">{p.name}</span> as &ldquo;{p.label}&rdquo;
+                              {p.ref ? ` (reference image ${p.ref})` : <span className="text-amber-300"> (no portrait sent)</span>}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="whitespace-pre-wrap break-words p-1.5 rounded bg-black/40 text-[10px] leading-relaxed">{l.drawnWith.prompt}</p>
+                      </div>
+                    </details>
+                  )}
                 </div>
               )}
             </div>
