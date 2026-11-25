@@ -1,6 +1,7 @@
 import { shotCast, shotAbsent, shotIsScenery, groundShotPrompt, withoutNames } from './cinematicPlan';
 import { ANCESTRY_VISUAL_HINTS } from '../../services/portraitGenerator';
 import { regenerateScene, DEFAULT_STYLE_KEY } from '../../services/storybookGenerator';
+import { lookForScene } from '../../utils/characterState';
 
 /**
  * Drawing a shot for an animated reel (the recap's or a stand-alone
@@ -24,7 +25,8 @@ export default function useShotArt({ campaign, characters = [], npcs = [], adver
   const everyone = { characters, npcs, adversaries };
 
   // `ids` is the DM's own choice for a shot, when they have changed who is in it.
-  const castOf = (text, ids = null) => shotCast(text, everyone, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '', ids });
+  // How each person looks in this story: as the chapter recorded them (a recap), or as they are now.
+  const castOf = (text, ids = null) => shotCast(text, everyone, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '', ids, lookOf: e => lookForScene(e, chapter?.castStates) });
 
   /** `text` with the people in it swapped for plain labels (for the video model). */
   const plainNames = (text, about = text, ids = null) => {

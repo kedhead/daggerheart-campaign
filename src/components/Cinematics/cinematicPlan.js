@@ -4,6 +4,7 @@
 
 import { stripWikiLinks } from '../../utils/campaignMemory';
 import { mentionedEntityIds, sessionNotesText } from '../../utils/storybookCast';
+import { currentLook, currentStateLabel } from '../../utils/characterState';
 
 const clean = (text) => stripWikiLinks(String(text || '')).replace(/\s+/g, ' ').trim();
 const clip = (text, n) => {
@@ -570,9 +571,9 @@ export function buildStoryboardPrompt({ campaignName = '', beats = [], sources, 
   const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
   const fallen = (e) => (e.deceased ? 'FALLEN: dead' : '');
   const party = (characters || []).filter(c => c?.name).slice(0, 8)
-    .map(c => sheet(c, [fallen(c), clean(c.ancestry), clean(c.characterClass || c.class), clip(c.appearanceDescription, 90)].filter(Boolean).join(', ')));
+    .map(c => sheet(c, [fallen(c), clean(c.ancestry), clean(c.characterClass || c.class), currentStateLabel(c), clip(c.appearanceDescription, 90)].filter(Boolean).join(', ')));
   const others = [
-    ...(npcs || []).filter(n => n?.name).slice(0, 12).map(n => sheet(n, [fallen(n), clean(n.ancestry), clean(n.occupation), clip(n.description, 70)].filter(Boolean).join(', '))),
+    ...(npcs || []).filter(n => n?.name).slice(0, 12).map(n => sheet(n, [fallen(n), clean(n.ancestry), clean(n.occupation), currentStateLabel(n), clip(n.description, 70)].filter(Boolean).join(', '))),
     ...(adversaries || []).filter(x => x?.name).slice(0, 8).map(x => sheet(x, [clean(x.role), clip(x.description, 70)].filter(Boolean).join(', ')))
   ];
   const sessions = scene ? [] : sources?.sessions || [];
@@ -935,7 +936,7 @@ const dropNamed = (form, text) => String(text || '').replace(nameRe(form), m => 
  * `ids`, when given, is the DM's own choice of who is in the shot and
  * replaces what the text says (an empty list means nobody).
  */
-export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '', ids = null } = {}) {
+export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '', ids = null, lookOf = currentLook } = {}) {
   const line = clean(text);
   const everyone = [
     ...(characters || []).map(e => ({ e, type: 'character' })),
@@ -977,7 +978,9 @@ export function shotCast(text, { characters = [], npcs = [], adversaries = [] } 
     const species = portrait ? '' : ancestryLook(e.ancestry) || clean(e.ancestry);
     const detail = clip(type === 'character' ? e.appearanceDescription : e.description, 200).replace(/[.\s]+$/, '');
     const look = [species, type === 'character' ? clean(e.subclass) : type === 'adversary' ? clean(e.role) : '', detail].filter(Boolean).join(', ');
-    return { id: e.id, type, name: clean(e.name), forms: nameForms(e.name), label, look, ref: portrait ? ++refs : 0 };
+    // A ghost, a vampire, a curse: how they look now, over the portrait.
+    const now = lookOf(e) || '';
+    return { id: e.id, type, name: clean(e.name), forms: nameForms(e.name), label, look, now, ref: portrait ? ++refs : 0 };
   });
 }
 
@@ -1049,9 +1052,14 @@ export function groundShotPrompt(prompt, cast = [], { scenery = false, absent = 
   // Someone with a portrait is described by the portrait alone: words from
   // their sheet ("ghostly", "small", a subclass like "Winged Sentinel") were
   // read over the picture, and a frog came back as a fairy.
+  // A transformation (ghost, vampire...) or a change the player wrote is the
+  // one thing that overrides the portrait.
   const who = cast.map(c => {
+    const now = clean(c.now);
+    if (c.ref && now) return `${c.label} is the person in reference image ${c.ref}: keep their species, face, body, size and clothing from that image, but they are now ${now}, so show that change clearly`;
     if (c.ref) return `${c.label} is the person in reference image ${c.ref}: draw them exactly as that image shows them, the same species, face, body, size, colours and clothing`;
-    return c.look ? `${c.label} is ${c.look}` : `${c.label} is one person, drawn the same way throughout`;
+    const base = c.look ? `${c.label} is ${c.look}` : `${c.label} is one person, drawn the same way throughout`;
+    return now ? `${base}, and is now ${now}` : base;
   }).join('; ');
   const refs = cast.filter(c => c.ref);
   const match = refs.length > 1
@@ -1075,8 +1083,8 @@ export const CINEMATIC_LENGTHS = { short: 4, medium: 6, long: 8 };
 export function buildCinematicPrompt({ campaignName = '', prompt = '', characters = [], npcs = [], adversaries = [], setting = '', beats = CINEMATIC_LENGTHS.medium }) {
   const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
   const cast = [
-    ...(characters || []).filter(c => c?.name).map(c => sheet(c, [c.deceased ? 'FALLEN: dead' : '', 'player character', clean(c.ancestry), clean(c.characterClass || c.class), clip(c.appearanceDescription, 90)].filter(Boolean).join(', '))),
-    ...(npcs || []).filter(n => n?.name).map(n => sheet(n, [clean(n.ancestry), clean(n.occupation), clip(n.description, 90)].filter(Boolean).join(', '))),
+    ...(characters || []).filter(c => c?.name).map(c => sheet(c, [c.deceased ? 'FALLEN: dead' : '', 'player character', clean(c.ancestry), clean(c.characterClass || c.class), currentStateLabel(c), clip(c.appearanceDescription, 90)].filter(Boolean).join(', '))),
+    ...(npcs || []).filter(n => n?.name).map(n => sheet(n, [clean(n.ancestry), clean(n.occupation), currentStateLabel(n), clip(n.description, 90)].filter(Boolean).join(', '))),
     ...(adversaries || []).filter(x => x?.name).map(x => sheet(x, [clean(x.role), clip(x.description, 90)].filter(Boolean).join(', ')))
   ];
   return `Write the narration for a short animated cinematic${campaignName ? ` in the tabletop RPG campaign "${campaignName}"` : ''}. The DM plays it on the big screen at a dramatic moment of the game, so it should land like the best scene of a fantasy film.
@@ -1223,8 +1231,8 @@ export function howTheyTalk(people = []) {
 export function buildScreenplayPrompt({ campaignName = '', prompt = '', characters = [], npcs = [], adversaries = [], setting = '', length = 'medium', narrator = 'some' }) {
   const sheet = (e, what) => `${clean(e.name)}${what ? ` (${what})` : ''}`;
   const cast = [
-    ...(characters || []).filter(c => c?.name).map(c => sheet(c, [c.deceased ? 'FALLEN: dead' : '', 'player character', clean(c.ancestry), clean(c.characterClass || c.class), clip(c.appearanceDescription, 90)].filter(Boolean).join(', '))),
-    ...(npcs || []).filter(n => n?.name).map(n => sheet(n, [clean(n.ancestry), clean(n.occupation), clip(n.description, 90)].filter(Boolean).join(', '))),
+    ...(characters || []).filter(c => c?.name).map(c => sheet(c, [c.deceased ? 'FALLEN: dead' : '', 'player character', clean(c.ancestry), clean(c.characterClass || c.class), currentStateLabel(c), clip(c.appearanceDescription, 90)].filter(Boolean).join(', '))),
+    ...(npcs || []).filter(n => n?.name).map(n => sheet(n, [clean(n.ancestry), clean(n.occupation), currentStateLabel(n), clip(n.description, 90)].filter(Boolean).join(', '))),
     ...(adversaries || []).filter(x => x?.name).map(x => sheet(x, [clean(x.role), clip(x.description, 90)].filter(Boolean).join(', ')))
   ];
   const count = SCREENPLAY_LENGTHS[length] || SCREENPLAY_LENGTHS.medium;
