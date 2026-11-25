@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { FlaskConical, Plus, Minus, Sparkles, Loader2, Dices, Trash2, Sprout } from 'lucide-react';
+import { FlaskConical, Plus, Minus, Sparkles, Loader2, Dices, Trash2, Sprout, Pencil, Check, X } from 'lucide-react';
 import {
   normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction,
-  keepConcoction, takeDose
+  keepConcoction, takeDose, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, MAX_DOSES, rollVolatility
 } from '../../utils/alchemy';
 import { aiService } from '../../services/aiService';
 import { textProvider } from '../../services/cinematicsGenerator';
@@ -16,6 +16,15 @@ const OUTCOME_STYLE = {
 };
 
 const input = 'w-full p-2 rounded-lg bg-black/25 border border-white/10 text-white text-sm';
+
+// A brew that came out strange or went wild wears it.
+const VOLATILITY_BADGE = {
+  strange: { label: '🌀 Strange brew', cls: 'text-sky-300 border-sky-400/40 bg-sky-400/10', tip: 'The ingredients reacted oddly: every dose has a weird side effect.' },
+  wild: { label: '💥 Wild brew', cls: 'text-rose-300 border-rose-400/50 bg-rose-500/15 animate-pulse', tip: 'The reaction ran wild: extreme effects either way, and a lasting side effect on every dose.' }
+};
+const Badge = ({ v }) => (VOLATILITY_BADGE[v] ? (
+  <span title={VOLATILITY_BADGE[v].tip} className={`inline-block px-2 py-0.5 rounded-full border text-[11px] font-bold ${VOLATILITY_BADGE[v].cls}`}>{VOLATILITY_BADGE[v].label}</span>
+) : null);
 
 /**
  * The Alchemy homebrew module on a character sheet: a satchel of ingredients,
@@ -38,6 +47,8 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
   const [brew, setBrew] = useState(null); // the concoction being reviewed
   const [taking, setTaking] = useState(null);
   const [lastResult, setLastResult] = useState(null); // { id, outcome, effect, hope, fear }
+  const [editing, setEditing] = useState(null); // { id, kind: 'ingredient' | 'concoction', ...fields being changed }
+  const [confirming, setConfirming] = useState(null); // id of what is about to be thrown out
 
   const save = (next) => updateCharacter?.(character.id, { satchel: next });
 
@@ -72,8 +83,10 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
     setBrewing(true);
     try {
       const { apiKey, provider } = textProvider(getEffectiveKey);
-      const text = await aiService.generate(buildBrewPrompt(chosen, character), apiKey, provider);
-      const result = parseConcoction(text, chosen);
+      // Most brews behave; some come out strange, and a few go wild.
+      const volatility = rollVolatility();
+      const text = await aiService.generate(buildBrewPrompt(chosen, character, volatility), apiKey, provider);
+      const result = parseConcoction(text, chosen, volatility);
       if (!result) throw new Error('The brew fizzled: the AI did not come back with a concoction. Try again.');
       setBrew(result);
     } catch (err) {
@@ -106,7 +119,30 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
     }
   };
 
-  const remove = (id) => save({ ...satchel, concoctions: satchel.concoctions.filter(c => c.id !== id) });
+  const removeBrew = (id) => { save(removeConcoction(satchel, id)); setConfirming(null); if (lastResult?.id === id) setLastResult(null); };
+  const removeIng = (id) => { save(removeIngredient(satchel, id)); setConfirming(null); setPicked(p => p.filter(x => x !== id)); };
+  const startEdit = (kind, item) => { setConfirming(null); setEditing({ kind, ...item }); };
+  const saveEdit = () => {
+    if (!editing) return;
+    const { kind, id, ...fields } = editing;
+    save(kind === 'ingredient' ? updateIngredient(satchel, id, fields) : updateConcoction(satchel, id, fields));
+    if (kind === 'ingredient' && !(Number(fields.qty) > 0)) setPicked(p => p.filter(x => x !== id));
+    setEditing(null);
+  };
+  const field = (k) => ({ value: editing?.[k] ?? '', onChange: (e) => setEditing(d => ({ ...d, [k]: e.target.value })) });
+
+  // "Throw out" asks once more before it goes.
+  const ThrowOut = ({ id, name, onYes }) => (confirming === id ? (
+    <span className="inline-flex items-center gap-1 text-xs text-red-300">
+      Throw out {name}?
+      <button type="button" className="btn btn-sm bg-red-500/80 hover:bg-red-500 text-white" onClick={onYes}>Yes</button>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirming(null)}>No</button>
+    </span>
+  ) : (
+    <button type="button" className="btn btn-ghost btn-sm inline-flex items-center gap-1 text-lr-text-dim hover:text-red-300" onClick={() => setConfirming(id)} aria-label={`Throw out ${name}`}>
+      <Trash2 size={14} /> Throw out
+    </button>
+  ));
 
   return (
     <div className="space-y-5">
@@ -117,6 +153,23 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
         <div className="space-y-1.5">
           {satchel.ingredients.map(i => {
             const on = picked.includes(i.id);
+            if (editing?.kind === 'ingredient' && editing.id === i.id) {
+              return (
+                <div key={i.id} className="p-2 rounded-lg border border-emerald-400/40 bg-black/30 space-y-1.5">
+                  <div className="grid grid-cols-[1fr_4rem] gap-2">
+                    <input className={input} maxLength={80} aria-label="Ingredient name" {...field('name')} />
+                    <input className={input} type="number" min="0" aria-label="Quantity" {...field('qty')} />
+                  </div>
+                  <input className={input} maxLength={300} placeholder="Notes (optional)" aria-label="Notes" {...field('notes')} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" className="btn btn-primary btn-sm inline-flex items-center gap-1" onClick={saveEdit} disabled={!String(editing.name || '').trim()}><Check size={14} /> Save</button>
+                    <button type="button" className="btn btn-ghost btn-sm inline-flex items-center gap-1" onClick={() => setEditing(null)}><X size={14} /> Cancel</button>
+                    <span className="flex-1" />
+                    <ThrowOut id={i.id} name={i.name} onYes={() => { removeIng(i.id); setEditing(null); }} />
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={i.id} className={`flex items-start gap-2 p-2 rounded-lg border ${on ? 'border-emerald-400/50 bg-emerald-400/10' : 'border-white/10 bg-black/20'}`}>
                 {canEdit && (
@@ -130,6 +183,10 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                   {canEdit && <button type="button" className="p-1 text-lr-text-dim hover:text-white" onClick={() => save(adjustIngredient(satchel, i.id, -1))} aria-label="One fewer"><Minus size={14} /></button>}
                   <span className="text-sm font-mono text-white w-6 text-center">{i.qty}</span>
                   {canEdit && <button type="button" className="p-1 text-lr-text-dim hover:text-white" onClick={() => save(adjustIngredient(satchel, i.id, 1))} aria-label="One more"><Plus size={14} /></button>}
+                  {canEdit && (
+                    <button type="button" className="p-1 ml-1 text-lr-text-dim hover:text-white" onClick={() => startEdit('ingredient', { id: i.id, name: i.name, qty: i.qty, notes: i.notes || '' })}
+                      aria-label={`Edit or remove ${i.name}`} title="Edit or remove"><Pencil size={14} /></button>
+                  )}
                 </div>
               </div>
             );
@@ -166,13 +223,16 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
       {/* ── A fresh brew, to review before keeping ── */}
       {brew && (
         <section className="p-3 rounded-xl border border-emerald-400/40 bg-emerald-400/5 space-y-2">
-          <div className="text-xs uppercase tracking-widest text-emerald-300 font-bold">Fresh brew: tweak anything, then keep it</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs uppercase tracking-widest text-emerald-300 font-bold">Fresh brew: tweak anything, then keep it</div>
+            <Badge v={brew.volatility} />
+          </div>
           <input className={`${input} font-bold`} value={brew.name} onChange={(e) => setBrew(b => ({ ...b, name: e.target.value }))} aria-label="Name" />
           <textarea className={input} rows={2} value={brew.description} onChange={(e) => setBrew(b => ({ ...b, description: e.target.value }))} aria-label="Description" />
-          {[['hopeEffect', 'With Hope'], ['fearEffect', 'With Fear'], ['critEffect', 'Critical']].map(([k, label]) => (
+          {[['hopeEffect', 'With Hope'], ['fearEffect', 'With Fear'], ['critEffect', 'Critical'], ...(brew.volatility ? [['sideEffect', 'Side effect, on every dose']] : [])].map(([k, label]) => (
             <label key={k} className="block text-xs text-lr-text-dim">
               {label}
-              <textarea className={`${input} mt-1`} rows={2} value={brew[k]} onChange={(e) => setBrew(b => ({ ...b, [k]: e.target.value }))} />
+              <textarea className={`${input} mt-1`} rows={2} value={brew[k] || ''} onChange={(e) => setBrew(b => ({ ...b, [k]: e.target.value }))} />
             </label>
           ))}
           <label className="flex items-center gap-2 text-xs text-lr-text-dim">
@@ -195,11 +255,39 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
         {satchel.concoctions.length === 0 && <p className="text-xs text-lr-text-dim">Nothing brewed yet.</p>}
         {satchel.concoctions.map(c => {
           const result = lastResult?.id === c.id ? lastResult : null;
+          if (editing?.kind === 'concoction' && editing.id === c.id) {
+            return (
+              <div key={c.id} className="p-3 rounded-xl border border-purple-400/40 bg-black/30 space-y-2">
+                <div className="text-xs uppercase tracking-widest text-purple-300 font-bold">Editing {c.name}</div>
+                <input className={`${input} font-bold`} maxLength={80} aria-label="Name" {...field('name')} />
+                <textarea className={input} rows={2} maxLength={400} aria-label="Description" placeholder="Description (optional)" {...field('description')} />
+                {[['hopeEffect', 'With Hope'], ['fearEffect', 'With Fear'], ['critEffect', 'Critical (optional)'], ...(c.volatility || c.sideEffect ? [['sideEffect', 'Side effect, on every dose (optional)']] : [])].map(([k, label]) => (
+                  <label key={k} className="block text-xs text-lr-text-dim">
+                    {label}
+                    <textarea className={`${input} mt-1`} rows={2} maxLength={400} {...field(k)} />
+                  </label>
+                ))}
+                <label className="flex items-center gap-2 text-xs text-lr-text-dim">
+                  Doses left
+                  <input className={`${input} w-16`} type="number" min="0" max={MAX_DOSES} {...field('doses')} />
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" className="btn btn-primary btn-sm inline-flex items-center gap-1" onClick={saveEdit}
+                    disabled={!String(editing.name || '').trim() || !String(editing.hopeEffect || '').trim() || !String(editing.fearEffect || '').trim()}>
+                    <Check size={14} /> Save
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-sm inline-flex items-center gap-1" onClick={() => setEditing(null)}><X size={14} /> Cancel</button>
+                  <span className="flex-1" />
+                  <ThrowOut id={c.id} name={c.name} onYes={() => { removeBrew(c.id); setEditing(null); }} />
+                </div>
+              </div>
+            );
+          }
           return (
             <div key={c.id} className="p-3 rounded-xl border border-white/10 bg-black/20 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-bold text-white">{c.name}</div>
+                  <div className="font-bold text-white">{c.name} <Badge v={c.volatility} /></div>
                   {c.description && <div className="text-xs text-lr-text-muted italic">{c.description}</div>}
                 </div>
                 <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-mono ${c.doses > 0 ? 'bg-white/10 text-white' : 'bg-red-500/15 text-red-300'}`}>
@@ -210,6 +298,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                 <p><span className="font-bold text-amber-300">With Hope:</span> <span className="text-lr-text-muted">{c.hopeEffect}</span></p>
                 <p><span className="font-bold text-purple-300">With Fear:</span> <span className="text-lr-text-muted">{c.fearEffect}</span></p>
                 {c.critEffect && <p><span className="font-bold text-emerald-300">Critical:</span> <span className="text-lr-text-muted">{c.critEffect}</span></p>}
+                {c.sideEffect && <p><span className="font-bold text-sky-300">Every dose:</span> <span className="text-lr-text-muted">{c.sideEffect}</span></p>}
               </div>
               {result && (
                 <div className={`p-2 rounded-lg border text-sm ${OUTCOME_STYLE[result.outcome].cls}`}>
@@ -221,14 +310,16 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                 </div>
               )}
               {canEdit && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button type="button" className="btn btn-primary btn-sm inline-flex items-center gap-1" onClick={() => dose(c)}
                     disabled={!campaign?.id || taking === c.id || !(c.doses > 0)}>
                     {taking === c.id ? <Loader2 size={14} className="animate-spin" /> : <Dices size={14} />} Take a dose
                   </button>
-                  <button type="button" className="btn btn-ghost btn-sm inline-flex items-center gap-1" onClick={() => remove(c.id)} aria-label={`Throw out ${c.name}`}>
-                    <Trash2 size={14} />
+                  <button type="button" className="btn btn-ghost btn-sm inline-flex items-center gap-1"
+                    onClick={() => startEdit('concoction', { id: c.id, name: c.name, description: c.description || '', hopeEffect: c.hopeEffect, fearEffect: c.fearEffect, critEffect: c.critEffect || '', sideEffect: c.sideEffect || '', doses: c.doses })}>
+                    <Pencil size={14} /> Edit
                   </button>
+                  <ThrowOut id={c.id} name={c.name} onYes={() => removeBrew(c.id)} />
                 </div>
               )}
             </div>
@@ -238,7 +329,18 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
 
       {satchel.log.length > 0 && (
         <section className="space-y-1">
-          <h3 className="text-xs uppercase tracking-widest text-lr-text-dim font-bold">Recent doses</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs uppercase tracking-widest text-lr-text-dim font-bold">Recent doses</h3>
+            {canEdit && (confirming === 'log' ? (
+              <span className="inline-flex items-center gap-1 text-xs text-red-300">
+                Clear the log?
+                <button type="button" className="btn btn-sm bg-red-500/80 hover:bg-red-500 text-white" onClick={() => { save(clearLog(satchel)); setConfirming(null); setLastResult(null); }}>Yes</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirming(null)}>No</button>
+              </span>
+            ) : (
+              <button type="button" className="text-xs text-lr-text-dim hover:text-white" onClick={() => setConfirming('log')}>Clear</button>
+            ))}
+          </div>
           {satchel.log.slice(0, 6).map(e => (
             <p key={e.id} className="text-xs text-lr-text-muted">
               <span className="text-white">{e.concoction}</span> · {OUTCOME_STYLE[e.outcome]?.label || e.outcome}: {e.effect}
