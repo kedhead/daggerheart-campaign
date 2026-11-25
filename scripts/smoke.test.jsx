@@ -34,7 +34,7 @@ import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble,
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
 import { withoutUndefined } from '../src/utils/withoutUndefined.js';
-import { normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction, keepConcoction, takeDose, doseOutcome, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, rollVolatility } from '../src/utils/alchemy.js';
+import { normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction, keepConcoction, takeDose, doseOutcome, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, rollVolatility, ITEM_KINDS, kindOf } from '../src/utils/alchemy.js';
 import { isHomebrewOn, HOMEBREW_MODULES } from '../src/utils/homebrew.js';
 import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec } from '../src/utils/sceneSpec.js';
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
@@ -4172,6 +4172,19 @@ section('Boss phase transitions');
 }
 
 section('Homebrew: alchemy');
+{
+  const ing = [{ name: 'Blastcap' }, { name: 'Sulfur' }];
+  const bomb = buildBrewPrompt(ing, { name: 'Tarkin', level: 3 }, 'stable', 'bomb');
+  assert(/into a bomb, grenade or flask they throw/.test(bomb) && /plus their Finesse/.test(bomb) && /every enemy within Very Close range/.test(bomb) && /lands short and catches the thrower/.test(bomb),
+    'a bomb is thrown with Finesse: Hope bursts on the enemies, Fear catches the thrower');
+  assert(/plus their Knowledge/.test(buildBrewPrompt(ing, {}, 'stable', 'scroll')) && /exactly 1/.test(buildBrewPrompt(ing, {}, 'stable', 'scroll')), 'a spell scroll is read with Knowledge, once');
+  assert(/takes hold of the target/.test(buildBrewPrompt(ing, {}, 'stable', 'poison')) && /plus their Presence/.test(buildBrewPrompt(ing, {}, 'stable', 'talisman')), 'poisons take hold of a target; talismans are invoked with Presence');
+  assert(/EVERY bomb/.test(buildBrewPrompt(ing, {}, 'wild', 'bomb')) && /WENT WILD/.test(buildBrewPrompt(ing, {}, 'wild', 'bomb')), 'a wild bomb gets the wild rules too, worded for bombs');
+  const scroll = parseConcoction('{"name":"Ashen Word","hopeEffect":"Blink anywhere within Far range.","fearEffect":"Mark 2 Stress.","doses":3}', ing, 'stable', 'scroll');
+  assert(scroll.kind === 'scroll' && scroll.doses === 1, 'a scroll holds one reading, whatever the AI says');
+  assert(kindOf({}).label === 'Potion' && kindOf(scroll).verb === 'Read it' && ITEM_KINDS.bomb.trait === 'finesse', 'older items without a kind are potions');
+  assert(updateConcoction({ concoctions: [{ id: 'x', name: 'A', hopeEffect: 'h', fearEffect: 'f', doses: 1 }] }, 'x', { kind: 'talisman' }).concoctions[0].kind === 'talisman', 'an item\'s kind can be changed');
+}
 {
   const rolls = Array.from({ length: 1000 }, (_, k) => rollVolatility((k + 0.5) / 1000));
   const count = (v) => rolls.filter(r => r === v).length;

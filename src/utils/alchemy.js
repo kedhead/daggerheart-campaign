@@ -79,30 +79,87 @@ THIS BREW WENT WILD. The reaction ran away from the alchemist; this is the dange
 - "sideEffect": a strange, lasting mark that happens on EVERY dose whatever the roll: hair turns silver, eyes change colour, they hear plants whisper, gravity is a little lighter for them until the next rest. One sentence.`
 };
 
-/** The prompt for brewing a concoction from the chosen ingredients. */
-export function buildBrewPrompt(ingredients, character = {}, volatility = 'stable') {
+// What can be made from the satchel. Each kind is used its own way, rolls its
+// own trait, and has its own idea of what Hope, Fear and a critical mean.
+export const ITEM_KINDS = {
+  potion: {
+    label: 'Potion', verb: 'Take a dose', unit: 'dose', trait: null, uses: [1, 3],
+    what: 'a potion, tonic or drug they take themselves',
+    how: 'what it looks, smells and tastes like and how it is taken (smoked, swallowed, rubbed into the gums…)',
+    use: 'When they take a dose they roll the Duality dice',
+    hope: 'a clear benefit to the drinker in Daggerheart terms, sized for tier {tier}: e.g. advantage on a kind of roll for the scene, +1 to a trait until the end of the scene, clear Stress, gain a Hope, +1 Evasion, resist a condition, see in darkness. One or two parts, no more.',
+    fear: 'a real cost to the drinker in Daggerheart terms: e.g. mark Stress, become Vulnerable, disadvantage on a kind of roll, lose a Hope, a vivid hallucination the GM narrates, the GM gains a Fear. It should sting but not end the character.',
+    crit: 'the Hope effect, stronger or lasting longer, with a flourish.'
+  },
+  poison: {
+    label: 'Poison', verb: 'Use it', unit: 'use', trait: 'finesse', uses: [1, 3],
+    what: 'a poison they coat a blade with, slip into food or drink, or blow as a dust at a target',
+    how: 'what it looks and smells like, and how it is applied (coated on a weapon, dropped in a cup, blown from the palm…)',
+    use: 'When they use it on a target they roll the Duality dice plus their Finesse',
+    hope: 'the poison takes hold of the target in Daggerheart terms, sized for tier {tier}: e.g. the target is Poisoned and takes 1d6 direct damage at the start of each of their turns for the scene, becomes Vulnerable, marks Stress, is slowed (disadvantage on attacks), or falls asleep if unaware. Say how long it lasts and how to end it.',
+    fear: 'it goes wrong for the poisoner: e.g. they get some on their own skin and mark Stress, the target notices and is alerted, the dose is wasted, or the GM gains a Fear. It should sting but not end the character.',
+    crit: 'the poison takes hold far worse: doubled damage, longer, or an extra condition.'
+  },
+  bomb: {
+    label: 'Bomb', verb: 'Throw it', unit: 'bomb', trait: 'finesse', uses: [1, 2],
+    what: 'a bomb, grenade or flask they throw',
+    how: 'what it looks like and what happens when it bursts (a flash, a cloud, sticky fire, shrieking shards…)',
+    use: 'When they throw it they roll the Duality dice plus their Finesse',
+    hope: 'it bursts on target in Daggerheart terms, sized for tier {tier}: damage dice and type (e.g. 2d8 physical or 2d6 magic for tier 1-2, 3d8 for tier 3, 4d8 for tier 4) to every enemy within Very Close range of where it lands, plus one rider: Restrained, on fire, blinded (disadvantage), knocked prone, or difficult ground.',
+    fear: 'it goes wrong: it lands short and catches the thrower or an ally in the blast for half damage, fizzles and the GM gains a Fear, or it goes off in the hand. It should sting but not end the character.',
+    crit: 'a devastating burst: maximum damage dice, a wider radius (Close range), or a lasting effect on the area.'
+  },
+  scroll: {
+    label: 'Spell scroll', verb: 'Read it', unit: 'reading', trait: 'knowledge', uses: [1, 1],
+    what: 'a single-use spell scroll, inked with the ingredients',
+    how: 'what the scroll looks like and what reading it aloud is like (the ink crawls, the words burn away as spoken…)',
+    use: 'When they read it they roll the Duality dice plus their Knowledge',
+    hope: 'the spell works, in Daggerheart terms, sized for tier {tier}: name one clear spell effect with range, targets and duration, like a damage spell (dice and range), a ward (+2 to Armor or Evasion for the scene), a blink to anywhere within Far range, a charm, a light, or a mending.',
+    fear: 'the magic slips its leash: a wild surge the GM narrates, the spell hits the wrong target, the reader marks 2 Stress, or the GM gains a Fear. It should sting but not end the character.',
+    crit: 'the spell is cast at its height: doubled range or targets, or it lasts until the next rest.'
+  },
+  talisman: {
+    label: 'Talisman', verb: 'Invoke it', unit: 'charge', trait: 'presence', uses: [1, 3],
+    what: 'a talisman, charm or fetish they wear and invoke',
+    how: 'what it looks like and what invoking it is like (it hums, warms, bleeds light…)',
+    use: 'When they invoke it they roll the Duality dice plus their Presence',
+    hope: 'the talisman answers, in Daggerheart terms, sized for tier {tier}: e.g. reduce incoming damage by one threshold, an ally within Close range clears 2 Stress, turn a failed roll into a success once, ward off a kind of creature for the scene, or see what is hidden.',
+    fear: 'the talisman takes its price: the wearer marks Stress or loses a Hope, something the charm was keeping away takes notice, it burns the skin (Vulnerable), or the GM gains a Fear. It should sting but not end the character.',
+    crit: 'the talisman answers in full: the Hope effect for everyone nearby, or it lasts the whole scene.'
+  }
+};
+export const ITEM_KIND_KEYS = Object.keys(ITEM_KINDS);
+export const kindOf = (item) => ITEM_KINDS[item?.kind] || ITEM_KINDS.potion;
+
+/** The prompt for making an item of `kind` from the chosen ingredients. */
+export function buildBrewPrompt(ingredients, character = {}, volatility = 'stable', kind = 'potion') {
   const level = Math.max(1, Number(character.level) || 1);
   const tier = level <= 1 ? 1 : level <= 4 ? 2 : level <= 7 ? 3 : 4;
+  const k = ITEM_KINDS[kind] || ITEM_KINDS.potion;
   const list = ingredients.map(i => `- ${i.name}${i.notes ? ` (${i.notes})` : ''}`).join('\n');
-  return `You are the alchemy engine for a Daggerheart campaign's homebrew rule. ${character.name || 'A character'}${character.class ? `, a level ${level} ${character.class}` : ` (level ${level})`}, combines these ingredients into a concoction they will take:
+  const [lo, hi] = k.uses;
+  const odd = (VOLATILITY_RULES[volatility] || '').replace(/EVERY dose/g, `EVERY ${k.unit}`).replace(/This brew/gi, `This ${k.label.toLowerCase()}`);
+  return `You are the alchemy engine for a Daggerheart campaign's homebrew rule. ${character.name || 'A character'}${character.class ? `, a level ${level} ${character.class}` : ` (level ${level})`}, combines these ingredients into ${k.what}:
 ${list}
 
-When they take a dose they roll the Duality dice: with Hope the good effect happens, with Fear the bad one, and on doubles (a critical) the critical effect. Invent the concoction those ingredients would make together.
+${k.use}: with Hope the good effect happens, with Fear the bad one, and on doubles (a critical) the critical effect. Invent the ${k.label.toLowerCase()} those ingredients would make together.
 
 Rules:
 - Name it like street alchemy: evocative, two to four words.
-- "description": what it looks, smells and tastes like and how it's taken (smoked, swallowed, rubbed into the gums…), in 1-2 sentences that draw on the ingredients.
-- "hopeEffect": a clear benefit in Daggerheart terms, sized for tier ${tier}: e.g. advantage on a kind of roll for the scene, +1 to a trait until the end of the scene, clear Stress, gain a Hope, +1 Evasion, resist a condition, see in darkness. One or two parts, no more.
-- "fearEffect": a real cost in Daggerheart terms: e.g. mark Stress, become Vulnerable, disadvantage on a kind of roll, lose a Hope, a vivid hallucination the GM narrates, the GM gains a Fear. It should sting but not end the character.
-- "critEffect": what doubles do: the Hope effect, stronger or lasting longer, with a flourish.
-- "doses": 1 to 3.
+- "description": ${k.how}, in 1-2 sentences that draw on the ingredients.
+- "hopeEffect": ${k.hope.replace('{tier}', tier)}
+- "fearEffect": ${k.fear}
+- "critEffect": ${k.crit}
+- "doses": how many ${k.unit}s it holds, ${lo === hi ? `exactly ${lo}` : `${lo} to ${hi}`}.
 - Effects follow from the ingredients' natures. Concrete and playable at the table: say what to roll or mark and for how long.
-${VOLATILITY_RULES[volatility] || ''}
+${odd}
 Answer with JSON only: {"name": "...", "description": "...", "hopeEffect": "...", "fearEffect": "...", "critEffect": "...",${volatility !== 'stable' ? ' "sideEffect": "...",' : ''} "doses": number}`;
 }
 
 /** A concoction from the model's answer, or null. */
-export function parseConcoction(text, ingredients = [], volatility = 'stable') {
+export function parseConcoction(text, ingredients = [], volatility = 'stable', kind = 'potion') {
+  const k = ITEM_KINDS[kind] ? kind : 'potion';
+  const [lo, hi] = ITEM_KINDS[k].uses;
   const json = String(text || '').match(/\{[\s\S]*\}/);
   if (!json) return null;
   let raw;
@@ -113,11 +170,11 @@ export function parseConcoction(text, ingredients = [], volatility = 'stable') {
     hopeEffect: str(raw.hopeEffect, 400),
     fearEffect: str(raw.fearEffect, 400),
     critEffect: str(raw.critEffect, 400),
-    doses: Math.max(1, Math.min(3, Math.round(Number(raw.doses) || 1)))
+    doses: Math.max(lo, Math.min(hi, Math.round(Number(raw.doses) || lo)))
   };
   if (!c.name || !c.hopeEffect || !c.fearEffect) return null;
   const odd = VOLATILITY[volatility] && volatility !== 'stable' ? { volatility, sideEffect: str(raw.sideEffect, 300) } : {};
-  return { ...c, ...odd, maxDoses: c.doses, ingredients: ingredients.map(i => i.name) };
+  return { ...c, kind: k, ...odd, maxDoses: c.doses, ingredients: ingredients.map(i => i.name) };
 }
 
 /** Put a brewed concoction in the satchel, using one of each ingredient. */
@@ -190,6 +247,7 @@ export function updateConcoction(satchel, id, patch = {}) {
       const next = { ...c };
       ['name', 'hopeEffect', 'fearEffect'].forEach(k => { if (patch[k] !== undefined && str(patch[k], k === 'name' ? 80 : 400)) next[k] = str(patch[k], k === 'name' ? 80 : 400); });
       ['description', 'critEffect', 'sideEffect'].forEach(k => { if (patch[k] !== undefined) next[k] = str(patch[k], 400); });
+      if (patch.kind !== undefined && ITEM_KINDS[patch.kind]) next.kind = patch.kind;
       if (patch.doses !== undefined) {
         next.doses = Math.max(0, Math.min(MAX_DOSES, Math.round(Number(patch.doses) || 0)));
         next.maxDoses = Math.max(Number(c.maxDoses) || 0, next.doses, 1);
