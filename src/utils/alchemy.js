@@ -50,8 +50,37 @@ export function consumeIngredients(satchel, ids) {
   return ids.reduce((s, id) => adjustIngredient(s, id, -1), normalizeSatchel(satchel));
 }
 
+// How unstable a brew turns out, rolled in code so the odds are real:
+// most are what you'd expect, some come out strange, a few go wild.
+export const VOLATILITY = {
+  stable: { label: 'Stable', chance: 0.65 },
+  strange: { label: 'Strange', chance: 0.25 },
+  wild: { label: 'Wild', chance: 0.10 }
+};
+
+/** Roll how a brew turns out; `rand` is a number from 0 to 1. */
+export function rollVolatility(rand = Math.random()) {
+  if (rand < VOLATILITY.wild.chance) return 'wild';
+  if (rand < VOLATILITY.wild.chance + VOLATILITY.strange.chance) return 'strange';
+  return 'stable';
+}
+
+const VOLATILITY_RULES = {
+  stable: '',
+  strange: `
+THIS BREW CAME OUT STRANGE. The ingredients reacted in an unexpected way:
+- Every effect gets a bizarre, memorable twist on top of its rules: the character's voice drops two octaves, their shadow moves a moment late, they can taste colours, small animals follow them, they glow faintly, they speak only in rhyme… Keep the twist harmless on its own but fun to play.
+- "sideEffect": that odd thing, which happens on EVERY dose whatever the roll, for the rest of the scene. One sentence.`,
+  wild: `
+THIS BREW WENT WILD. The reaction ran away from the alchemist; this is the dangerous, legendary kind of concoction people tell stories about:
+- "hopeEffect" is EXTREME: well beyond the tier's usual size, for example temporary flight, turning invisible until they attack, regaining all Hope, a +3 to a trait, or shrugging off a killing blow, but only for a short time.
+- "fearEffect" is EXTREME and WEIRD: a heavy cost that changes the scene, for example turning into a small animal until the next rest, swapping minds with the nearest creature, marking 3 Stress and becoming Vulnerable, aging ten years for a day, or the GM gaining 2 Fear as something unwanted notices them. Never instantly fatal.
+- "critEffect": something astonishing, the kind of moment the table will remember.
+- "sideEffect": a strange, lasting mark that happens on EVERY dose whatever the roll: hair turns silver, eyes change colour, they hear plants whisper, gravity is a little lighter for them until the next rest. One sentence.`
+};
+
 /** The prompt for brewing a concoction from the chosen ingredients. */
-export function buildBrewPrompt(ingredients, character = {}) {
+export function buildBrewPrompt(ingredients, character = {}, volatility = 'stable') {
   const level = Math.max(1, Number(character.level) || 1);
   const tier = level <= 1 ? 1 : level <= 4 ? 2 : level <= 7 ? 3 : 4;
   const list = ingredients.map(i => `- ${i.name}${i.notes ? ` (${i.notes})` : ''}`).join('\n');
@@ -68,12 +97,12 @@ Rules:
 - "critEffect": what doubles do: the Hope effect, stronger or lasting longer, with a flourish.
 - "doses": 1 to 3.
 - Effects follow from the ingredients' natures. Concrete and playable at the table: say what to roll or mark and for how long.
-
-Answer with JSON only: {"name": "...", "description": "...", "hopeEffect": "...", "fearEffect": "...", "critEffect": "...", "doses": number}`;
+${VOLATILITY_RULES[volatility] || ''}
+Answer with JSON only: {"name": "...", "description": "...", "hopeEffect": "...", "fearEffect": "...", "critEffect": "...",${volatility !== 'stable' ? ' "sideEffect": "...",' : ''} "doses": number}`;
 }
 
 /** A concoction from the model's answer, or null. */
-export function parseConcoction(text, ingredients = []) {
+export function parseConcoction(text, ingredients = [], volatility = 'stable') {
   const json = String(text || '').match(/\{[\s\S]*\}/);
   if (!json) return null;
   let raw;
@@ -87,7 +116,8 @@ export function parseConcoction(text, ingredients = []) {
     doses: Math.max(1, Math.min(3, Math.round(Number(raw.doses) || 1)))
   };
   if (!c.name || !c.hopeEffect || !c.fearEffect) return null;
-  return { ...c, maxDoses: c.doses, ingredients: ingredients.map(i => i.name) };
+  const odd = VOLATILITY[volatility] && volatility !== 'stable' ? { volatility, sideEffect: str(raw.sideEffect, 300) } : {};
+  return { ...c, ...odd, maxDoses: c.doses, ingredients: ingredients.map(i => i.name) };
 }
 
 /** Put a brewed concoction in the satchel, using one of each ingredient. */
@@ -113,7 +143,8 @@ export function takeDose(satchel, concoctionId, roll) {
   const c = s.concoctions.find(x => x.id === concoctionId);
   if (!c || !(c.doses > 0)) return { satchel: s, outcome: null, effect: '' };
   const outcome = doseOutcome(roll);
-  const effect = effectFor(c, outcome);
+  const side = str(c.sideEffect, 300);
+  const effect = side ? `${effectFor(c, outcome)} Also: ${side}` : effectFor(c, outcome);
   const dieValue = (group) => (roll?.dice || []).find(d => d.groupId === group)?.value ?? null;
   const entry = { id: newId('dose'), at: Date.now(), concoction: c.name, outcome, effect, hope: dieValue('hope'), fear: dieValue('fear') };
   return {
@@ -158,7 +189,7 @@ export function updateConcoction(satchel, id, patch = {}) {
       if (c.id !== id) return c;
       const next = { ...c };
       ['name', 'hopeEffect', 'fearEffect'].forEach(k => { if (patch[k] !== undefined && str(patch[k], k === 'name' ? 80 : 400)) next[k] = str(patch[k], k === 'name' ? 80 : 400); });
-      ['description', 'critEffect'].forEach(k => { if (patch[k] !== undefined) next[k] = str(patch[k], 400); });
+      ['description', 'critEffect', 'sideEffect'].forEach(k => { if (patch[k] !== undefined) next[k] = str(patch[k], 400); });
       if (patch.doses !== undefined) {
         next.doses = Math.max(0, Math.min(MAX_DOSES, Math.round(Number(patch.doses) || 0)));
         next.maxDoses = Math.max(Number(c.maxDoses) || 0, next.doses, 1);

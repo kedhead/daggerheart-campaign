@@ -34,7 +34,7 @@ import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble,
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
 import { withoutUndefined } from '../src/utils/withoutUndefined.js';
-import { normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction, keepConcoction, takeDose, doseOutcome, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog } from '../src/utils/alchemy.js';
+import { normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction, keepConcoction, takeDose, doseOutcome, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, rollVolatility } from '../src/utils/alchemy.js';
 import { isHomebrewOn, HOMEBREW_MODULES } from '../src/utils/homebrew.js';
 import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec } from '../src/utils/sceneSpec.js';
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
@@ -4172,6 +4172,20 @@ section('Boss phase transitions');
 }
 
 section('Homebrew: alchemy');
+{
+  const rolls = Array.from({ length: 1000 }, (_, k) => rollVolatility((k + 0.5) / 1000));
+  const count = (v) => rolls.filter(r => r === v).length;
+  assert(count('wild') === 100 && count('strange') === 250 && count('stable') === 650, `brews go wild 10% and strange 25% of the time (got ${count('wild')}/${count('strange')}/${count('stable')})`);
+  const ing = [{ name: 'Glowcap' }, { name: 'Bitterroot' }];
+  assert(/WENT WILD/.test(buildBrewPrompt(ing, {}, 'wild')) && /EXTREME/.test(buildBrewPrompt(ing, {}, 'wild')) && /CAME OUT STRANGE/.test(buildBrewPrompt(ing, {}, 'strange')) && !/STRANGE|WILD/.test(buildBrewPrompt(ing, {})),
+    'a wild or strange brew asks for extreme or weird effects; a stable one does not');
+  const wild = parseConcoction('{"name":"Sky Rot","hopeEffect":"Fly for a minute.","fearEffect":"Become a toad until the next rest.","sideEffect":"Your hair turns silver.","doses":1}', ing, 'wild');
+  assert(wild.volatility === 'wild' && wild.sideEffect === 'Your hair turns silver.' && !parseConcoction('{"name":"x","hopeEffect":"a","fearEffect":"b","sideEffect":"c"}', ing).sideEffect,
+    'a wild brew keeps its side effect; a stable one has none');
+  const kept = keepConcoction({}, wild, []);
+  const dosed = takeDose(kept, kept.concoctions[0].id, { outcome: 'fear', flags: {} });
+  assert(dosed.effect === 'Become a toad until the next rest. Also: Your hair turns silver.', `the side effect happens on every dose (got ${dosed.effect})`);
+}
 {
   const bag = { ingredients: [{ id: 'a', name: 'Glowcap', qty: 2, notes: '' }, { id: 'b', name: 'Bitterroot', qty: 1 }],
     concoctions: [{ id: 'c', name: 'Lantern Lung', hopeEffect: 'See in the dark.', fearEffect: 'Mark a Stress.', doses: 1, maxDoses: 2 }], log: [{ id: 'l', concoction: 'Lantern Lung' }] };

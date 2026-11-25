@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FlaskConical, Plus, Minus, Sparkles, Loader2, Dices, Trash2, Sprout, Pencil, Check, X } from 'lucide-react';
 import {
   normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction,
-  keepConcoction, takeDose, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, MAX_DOSES
+  keepConcoction, takeDose, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, MAX_DOSES, rollVolatility
 } from '../../utils/alchemy';
 import { aiService } from '../../services/aiService';
 import { textProvider } from '../../services/cinematicsGenerator';
@@ -16,6 +16,15 @@ const OUTCOME_STYLE = {
 };
 
 const input = 'w-full p-2 rounded-lg bg-black/25 border border-white/10 text-white text-sm';
+
+// A brew that came out strange or went wild wears it.
+const VOLATILITY_BADGE = {
+  strange: { label: '🌀 Strange brew', cls: 'text-sky-300 border-sky-400/40 bg-sky-400/10', tip: 'The ingredients reacted oddly: every dose has a weird side effect.' },
+  wild: { label: '💥 Wild brew', cls: 'text-rose-300 border-rose-400/50 bg-rose-500/15 animate-pulse', tip: 'The reaction ran wild: extreme effects either way, and a lasting side effect on every dose.' }
+};
+const Badge = ({ v }) => (VOLATILITY_BADGE[v] ? (
+  <span title={VOLATILITY_BADGE[v].tip} className={`inline-block px-2 py-0.5 rounded-full border text-[11px] font-bold ${VOLATILITY_BADGE[v].cls}`}>{VOLATILITY_BADGE[v].label}</span>
+) : null);
 
 /**
  * The Alchemy homebrew module on a character sheet: a satchel of ingredients,
@@ -74,8 +83,10 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
     setBrewing(true);
     try {
       const { apiKey, provider } = textProvider(getEffectiveKey);
-      const text = await aiService.generate(buildBrewPrompt(chosen, character), apiKey, provider);
-      const result = parseConcoction(text, chosen);
+      // Most brews behave; some come out strange, and a few go wild.
+      const volatility = rollVolatility();
+      const text = await aiService.generate(buildBrewPrompt(chosen, character, volatility), apiKey, provider);
+      const result = parseConcoction(text, chosen, volatility);
       if (!result) throw new Error('The brew fizzled: the AI did not come back with a concoction. Try again.');
       setBrew(result);
     } catch (err) {
@@ -212,13 +223,16 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
       {/* ── A fresh brew, to review before keeping ── */}
       {brew && (
         <section className="p-3 rounded-xl border border-emerald-400/40 bg-emerald-400/5 space-y-2">
-          <div className="text-xs uppercase tracking-widest text-emerald-300 font-bold">Fresh brew: tweak anything, then keep it</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs uppercase tracking-widest text-emerald-300 font-bold">Fresh brew: tweak anything, then keep it</div>
+            <Badge v={brew.volatility} />
+          </div>
           <input className={`${input} font-bold`} value={brew.name} onChange={(e) => setBrew(b => ({ ...b, name: e.target.value }))} aria-label="Name" />
           <textarea className={input} rows={2} value={brew.description} onChange={(e) => setBrew(b => ({ ...b, description: e.target.value }))} aria-label="Description" />
-          {[['hopeEffect', 'With Hope'], ['fearEffect', 'With Fear'], ['critEffect', 'Critical']].map(([k, label]) => (
+          {[['hopeEffect', 'With Hope'], ['fearEffect', 'With Fear'], ['critEffect', 'Critical'], ...(brew.volatility ? [['sideEffect', 'Side effect, on every dose']] : [])].map(([k, label]) => (
             <label key={k} className="block text-xs text-lr-text-dim">
               {label}
-              <textarea className={`${input} mt-1`} rows={2} value={brew[k]} onChange={(e) => setBrew(b => ({ ...b, [k]: e.target.value }))} />
+              <textarea className={`${input} mt-1`} rows={2} value={brew[k] || ''} onChange={(e) => setBrew(b => ({ ...b, [k]: e.target.value }))} />
             </label>
           ))}
           <label className="flex items-center gap-2 text-xs text-lr-text-dim">
@@ -247,7 +261,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                 <div className="text-xs uppercase tracking-widest text-purple-300 font-bold">Editing {c.name}</div>
                 <input className={`${input} font-bold`} maxLength={80} aria-label="Name" {...field('name')} />
                 <textarea className={input} rows={2} maxLength={400} aria-label="Description" placeholder="Description (optional)" {...field('description')} />
-                {[['hopeEffect', 'With Hope'], ['fearEffect', 'With Fear'], ['critEffect', 'Critical (optional)']].map(([k, label]) => (
+                {[['hopeEffect', 'With Hope'], ['fearEffect', 'With Fear'], ['critEffect', 'Critical (optional)'], ...(c.volatility || c.sideEffect ? [['sideEffect', 'Side effect, on every dose (optional)']] : [])].map(([k, label]) => (
                   <label key={k} className="block text-xs text-lr-text-dim">
                     {label}
                     <textarea className={`${input} mt-1`} rows={2} maxLength={400} {...field(k)} />
@@ -273,7 +287,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
             <div key={c.id} className="p-3 rounded-xl border border-white/10 bg-black/20 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-bold text-white">{c.name}</div>
+                  <div className="font-bold text-white">{c.name} <Badge v={c.volatility} /></div>
                   {c.description && <div className="text-xs text-lr-text-muted italic">{c.description}</div>}
                 </div>
                 <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-mono ${c.doses > 0 ? 'bg-white/10 text-white' : 'bg-red-500/15 text-red-300'}`}>
@@ -284,6 +298,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                 <p><span className="font-bold text-amber-300">With Hope:</span> <span className="text-lr-text-muted">{c.hopeEffect}</span></p>
                 <p><span className="font-bold text-purple-300">With Fear:</span> <span className="text-lr-text-muted">{c.fearEffect}</span></p>
                 {c.critEffect && <p><span className="font-bold text-emerald-300">Critical:</span> <span className="text-lr-text-muted">{c.critEffect}</span></p>}
+                {c.sideEffect && <p><span className="font-bold text-sky-300">Every dose:</span> <span className="text-lr-text-muted">{c.sideEffect}</span></p>}
               </div>
               {result && (
                 <div className={`p-2 rounded-lg border text-sm ${OUTCOME_STYLE[result.outcome].cls}`}>
@@ -301,7 +316,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                     {taking === c.id ? <Loader2 size={14} className="animate-spin" /> : <Dices size={14} />} Take a dose
                   </button>
                   <button type="button" className="btn btn-ghost btn-sm inline-flex items-center gap-1"
-                    onClick={() => startEdit('concoction', { id: c.id, name: c.name, description: c.description || '', hopeEffect: c.hopeEffect, fearEffect: c.fearEffect, critEffect: c.critEffect || '', doses: c.doses })}>
+                    onClick={() => startEdit('concoction', { id: c.id, name: c.name, description: c.description || '', hopeEffect: c.hopeEffect, fearEffect: c.fearEffect, critEffect: c.critEffect || '', sideEffect: c.sideEffect || '', doses: c.doses })}>
                     <Pencil size={14} /> Edit
                   </button>
                   <ThrowOut id={c.id} name={c.name} onYes={() => removeBrew(c.id)} />
