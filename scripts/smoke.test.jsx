@@ -4177,6 +4177,10 @@ section('Homebrew: alchemy');
   const bomb = buildBrewPrompt(ing, { name: 'Tarkin', level: 3 }, 'stable', 'bomb');
   assert(/into a bomb, grenade or flask they throw/.test(bomb) && /plus their Finesse/.test(bomb) && /every enemy within Very Close range/.test(bomb) && /lands short and catches the thrower/.test(bomb),
     'a bomb is thrown with Finesse: Hope bursts on the enemies, Fear catches the thrower');
+  const arrows = buildBrewPrompt(ing, { level: 5 }, 'stable', 'arrow');
+  assert(/quiver of special arrows/.test(arrows) && /plus their Agility, as an attack/.test(arrows) && /\+2d6 for tier 3/.test(arrows) && /2 to 5/.test(arrows) && /bursts around the archer/.test(arrows),
+    'arrows are fired with Agility: extra damage and a rider with Hope, a misfire with Fear, a quiver of 2 to 5');
+  assert(parseConcoction('{"name":"Thornsong","hopeEffect":"h","fearEffect":"f","doses":9}', ing, 'stable', 'arrow').doses === 5 && ITEM_KINDS.arrow.verb === 'Fire one', 'a quiver holds at most five arrows');
   assert(/plus their Knowledge/.test(buildBrewPrompt(ing, {}, 'stable', 'scroll')) && /exactly 1/.test(buildBrewPrompt(ing, {}, 'stable', 'scroll')), 'a spell scroll is read with Knowledge, once');
   assert(/takes hold of the target/.test(buildBrewPrompt(ing, {}, 'stable', 'poison')) && /plus their Presence/.test(buildBrewPrompt(ing, {}, 'stable', 'talisman')), 'poisons take hold of a target; talismans are invoked with Presence');
   assert(/EVERY bomb/.test(buildBrewPrompt(ing, {}, 'wild', 'bomb')) && /WENT WILD/.test(buildBrewPrompt(ing, {}, 'wild', 'bomb')), 'a wild bomb gets the wild rules too, worded for bombs');
