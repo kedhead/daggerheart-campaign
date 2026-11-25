@@ -3798,7 +3798,7 @@ section('Table cinematics');
   const clankLook = (a) => (a === 'Clank' ? 'a mechanical automaton made of gears, brass, and enchanted metal plates' : '');
   const xaWithPortrait = shotCast('Xajax raises his shield.', { characters: [clank] }, { ancestryLook: clankLook })[0];
   const xaWithout = shotCast('Xajax raises his shield.', { characters: [{ ...clank, avatarUrl: '' }] }, { ancestryLook: clankLook })[0];
-  assert(!/brass|gears/.test(xaWithPortrait.look) && xaWithPortrait.ref === 1 && /drawn exactly as in reference image 1/.test(groundShotPrompt('Xajax raises his shield.', [xaWithPortrait]))
+  assert(!/brass|gears/.test(xaWithPortrait.look) && xaWithPortrait.ref === 1 && /is the person in reference image 1: draw them exactly as that image shows them/.test(groundShotPrompt('Xajax raises his shield.', [xaWithPortrait]))
     && /gears, brass/.test(xaWithout.look) && xaWithout.ref === 0,
     'a Clank with a portrait is drawn from the portrait, not as a stock brass automaton; with no portrait the ancestry phrase still describes them');
   const commonNames = { npcs: [{ id: 'grim', name: 'Grim', avatarUrl: 'https://x/g.png' }, { id: 'hope', name: 'Hope Ashwood', avatarUrl: 'https://x/h.png' }] };
@@ -3809,9 +3809,25 @@ section('Table cinematics');
   assert(withoutNames(shotText, sc) === "The rogue's dagger flashes as the second rogue and the rogue face the skeleton knight on the ferryman's ferry.",
     `names are swapped for labels, full names and first names alike (got ${withoutNames(shotText, sc)})`);
   const grounded = groundShotPrompt(`A frame: ${shotText} No text.`, sc);
-  assert(!/Pippin|Korra|Greel/.test(grounded) && /the rogue is Nightwalker, A wiry green frog in a patched hood \(drawn exactly as in reference image 1\)/.test(grounded)
+  assert(!/Pippin|Korra|Greel/.test(grounded) && /the rogue is the person in reference image 1: draw them exactly as that image shows them, the same species/.test(grounded) && !/wiry green frog/.test(grounded)
     && /the second rogue is one person, drawn the same way throughout;/.test(grounded) && /Exactly these 4 characters appear, and nobody else/.test(grounded) && /do not draw any famous or existing character/.test(grounded),
     'the picture prompt names nobody, says who each label is and which reference shows them, and that nobody else is in the shot');
+  {
+    const two = [{ id: 'p', name: 'Pippin', forms: ['Pippin'], label: 'the rogue', look: 'Faerie, tiny winged fey', ref: 1 }, { id: 'b', name: 'Bubbles', forms: ['Bubbles'], label: 'the seraph', look: 'Winged Sentinel', ref: 2 }];
+    const told = groundShotPrompt('A frame: the rogue and the seraph stand in the ruins.', two);
+    assert(!/winged|fey|Faerie|Sentinel/i.test(told), 'words from the sheet of someone with a portrait never reach the artist, so they cannot overrule the portrait');
+    assert(/image 1 is the rogue, image 2 is the seraph\); never blend two of them into one figure/.test(told), 'with several portraits, each is tied to its person and they are not to be merged');
+  }
+  {
+    const ghostly = { characters: [{ id: 'p', name: 'Pippin Puddle-Jumper', characterClass: 'Rogue', avatarUrl: 'https://x/p.png', activeTransformation: 'ghost', appearanceDescription: 'tiny and fey' }, { id: 'k', name: 'Korra', characterClass: 'Bard', currentLook: 'missing her left arm' }] };
+    const cast = shotCast('Pippin and Korra stand in the ruins.', ghostly);
+    const told = groundShotPrompt('A frame: Pippin and Korra stand in the ruins.', cast);
+    assert(/keep their species, face, body, size and clothing from that image, but they are now a ghost: translucent/.test(told) && !/tiny and fey/.test(told),
+      'a transformed character keeps their portrait\'s species and face but is drawn as the ghost they are now');
+    assert(/and is now missing her left arm/.test(told), 'a change the player wrote on the sheet is drawn too, with or without a portrait');
+    assert(shotCast('Pippin waits.', ghostly, { lookOf: () => '' })[0].now === '', 'a recap can draw someone as they looked back then');
+    assert(/transformed: Ghost/.test(buildScreenplayPrompt({ prompt: 'x', characters: ghostly.characters })), 'the writer knows who is a ghost, a vampire and so on');
+  }
   assert(shotCast('The pippins are ripe and Korral is far.', roster, looks).length === 0 && shotCast('PIPPIN runs.', roster, looks)[0].id === 'pip' && shotCast('The party runs.', { characters: [{ id: 'x', name: 'The Party' }] }).length === 1,
     'a name is matched as a whole word, in any case, and never by a bare title like "the"');
   const unnamed = groundShotPrompt('A frame: the empty docks at dawn.', []);
