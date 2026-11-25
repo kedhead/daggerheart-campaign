@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlaskConical, Plus, Minus, Sparkles, Loader2, Dices, Trash2, Sprout, Pencil, Check, X, Skull, Bomb, ScrollText, Gem } from 'lucide-react';
+import { FlaskConical, Plus, Minus, Sparkles, Loader2, Dices, Trash2, Sprout, Pencil, Check, X, Skull, Bomb, ScrollText, Gem, MoveUpRight } from 'lucide-react';
 import {
   normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction,
   keepConcoction, takeDose, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, MAX_DOSES, rollVolatility, ITEM_KINDS, ITEM_KIND_KEYS, kindOf
@@ -17,8 +17,8 @@ const OUTCOME_STYLE = {
 
 const input = 'w-full p-2 rounded-lg bg-black/25 border border-white/10 text-white text-sm';
 
-const KIND_ICON = { potion: FlaskConical, poison: Skull, bomb: Bomb, scroll: ScrollText, talisman: Gem };
-const KIND_COLOR = { potion: 'text-purple-300', poison: 'text-lime-300', bomb: 'text-orange-300', scroll: 'text-sky-300', talisman: 'text-amber-300' };
+const KIND_ICON = { potion: FlaskConical, poison: Skull, bomb: Bomb, arrow: MoveUpRight, scroll: ScrollText, talisman: Gem };
+const KIND_COLOR = { potion: 'text-purple-300', poison: 'text-lime-300', bomb: 'text-orange-300', arrow: 'text-teal-300', scroll: 'text-sky-300', talisman: 'text-amber-300' };
 const TRAIT_NAME = { finesse: 'Finesse', knowledge: 'Knowledge', presence: 'Presence', instinct: 'Instinct', agility: 'Agility', strength: 'Strength' };
 const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
 
@@ -239,7 +239,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
             disabled={brewing || chosen.length < 2}
           >
             {brewing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-            {brewing ? 'Brewing…' : chosen.length < 2 ? 'Tick 2–5 ingredients to combine' : `Make a ${ITEM_KINDS[makeKind].label.toLowerCase()} from ${chosen.length} ingredients`}
+            {brewing ? 'Brewing…' : chosen.length < 2 ? 'Tick 2–5 ingredients to combine' : `Make ${makeKind === 'arrow' ? 'arrows' : `a ${ITEM_KINDS[makeKind].label.toLowerCase()}`} from ${chosen.length} ingredients`}
           </button>
         )}
       </section>
@@ -326,7 +326,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                   {c.description && <div className="text-xs text-lr-text-muted italic">{c.description}</div>}
                 </div>
                 <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-mono ${c.doses > 0 ? 'bg-white/10 text-white' : 'bg-red-500/15 text-red-300'}`}>
-                  {c.doses > 0 ? plural(c.doses, kindOf(c).unit) : c.kind === 'bomb' || c.kind === 'scroll' ? 'Used up' : 'Empty'}
+                  {c.doses > 0 ? plural(c.doses, kindOf(c).unit) : c.kind === 'bomb' || c.kind === 'scroll' || c.kind === 'arrow' ? 'Used up' : 'Empty'}
                 </span>
               </div>
               <div className="text-xs space-y-1 leading-relaxed">

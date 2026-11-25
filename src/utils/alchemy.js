@@ -109,6 +109,15 @@ export const ITEM_KINDS = {
     fear: 'it goes wrong: it lands short and catches the thrower or an ally in the blast for half damage, fizzles and the GM gains a Fear, or it goes off in the hand. It should sting but not end the character.',
     crit: 'a devastating burst: maximum damage dice, a wider radius (Close range), or a lasting effect on the area.'
   },
+  arrow: {
+    label: 'Arrows', verb: 'Fire one', unit: 'arrow', trait: 'agility', uses: [2, 5],
+    what: 'a quiver of special arrows (or bolts), their heads and fletching treated with the ingredients',
+    how: 'what the arrows look like and what they do in flight or on impact (they whistle, trail sparks, split apart, hiss as they bite…)',
+    use: 'When they fire one at a target they roll the Duality dice plus their Agility, as an attack',
+    hope: 'the arrow hits and its special effect goes off, in Daggerheart terms, sized for tier {tier}: the bow\'s normal damage plus extra dice and type (e.g. +1d6 fire for tier 1-2, +2d6 for tier 3, +3d6 for tier 4) and one rider: pins the target in place (Restrained), bursts into light (blinded, disadvantage), poisons, chains to a second enemy within Very Close range, knocks them back, or marks them so allies have advantage against them. Say how long it lasts.',
+    fear: 'the arrow goes wrong: it misses and its effect bursts around the archer (they take the extra dice instead), it splinters on the string and the archer marks Stress, it strikes the nearest ally instead, or the GM gains a Fear. It should sting but not end the character.',
+    crit: 'a legendary shot: maximum extra damage, the rider lasts the whole scene or hits every enemy in a line, with a flourish.'
+  },
   scroll: {
     label: 'Spell scroll', verb: 'Read it', unit: 'reading', trait: 'knowledge', uses: [1, 1],
     what: 'a single-use spell scroll, inked with the ingredients',
