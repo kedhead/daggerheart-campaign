@@ -26,7 +26,8 @@ export default function useShotArt({ campaign, characters = [], npcs = [], adver
 
   // `ids` is the DM's own choice for a shot, when they have changed who is in it.
   // How each person looks in this story: as the chapter recorded them (a recap), or as they are now.
-  const castOf = (text, ids = null) => shotCast(text, everyone, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '', ids, lookOf: e => lookForScene(e, chapter?.castStates) });
+  // `room` is how many people a picture may hold, each with their own portrait (a scene picture takes eight).
+  const castOf = (text, ids = null, room = 4) => shotCast(text, everyone, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '', ids, lookOf: e => lookForScene(e, chapter?.castStates), max: Array.isArray(ids) ? Math.max(room, 6) : 4, maxRefs: room });
 
   /** `text` with the people in it swapped for plain labels (for the video model). */
   const plainNames = (text, about = text, ids = null) => {
@@ -36,8 +37,8 @@ export default function useShotArt({ campaign, characters = [], npcs = [], adver
 
   /** Draw one picture; returns its URL. */
   // `onTold(info)` hears what the artist was given: the prompt and whose portraits went with it.
-  const drawScene = async ({ id, prompt, about, scenery: choice, cast: ids = null, onTold = null }) => {
-    const cast = castOf(about, ids);
+  const drawScene = async ({ id, prompt, about, scenery: choice, cast: ids = null, onTold = null, room = 4 }) => {
+    const cast = castOf(about, ids, room);
     const absent = shotAbsent(`${about} ${prompt}`, everyone, cast);
     const scenery = shotIsScenery(about, cast, choice);
     const told = groundShotPrompt(prompt, cast, { scenery, absent });
@@ -51,7 +52,7 @@ export default function useShotArt({ campaign, characters = [], npcs = [], adver
       })
     });
     const scene = await regenerateScene({
-      scene: { id, prompt: told, featuredEntityIds: cast.map(c => c.id), labels: Object.fromEntries(cast.map(c => [c.id, c.label])), scenery },
+      scene: { id, prompt: told, featuredEntityIds: cast.map(c => c.id), maxRefs: room, labels: Object.fromEntries(cast.map(c => [c.id, c.label])), scenery },
       chapter,
       entities: everyone,
       campaignId: campaign?.id,
