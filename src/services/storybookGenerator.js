@@ -340,7 +340,7 @@ async function generateSceneImage({ scene, entityDescriptions, entityAncestryHin
     ? (scene.featuredEntityIds || [])
         .map(id => entityPortraits?.[id])
         .filter(Boolean)
-        .slice(0, 4)
+        .slice(0, Math.min(8, scene.maxRefs || 4))
     : undefined;
 
   const basePrompt = stripAppendedClauses(scene.prompt);

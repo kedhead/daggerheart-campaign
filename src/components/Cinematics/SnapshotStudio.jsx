@@ -48,9 +48,12 @@ export default function SnapshotStudio({ isOpen, onClose, campaign, characters =
     ...adversaries.filter(e => e?.id && e.name).map(e => ({ ...e, group: 'Adversaries', portrait: e.imageUrl }))
   ], [characters, npcs, adversaries]);
   const byId = (id) => everyone.find(e => e.id === id);
-  const toggle = (id) => setCastIds(ids => (ids.includes(id) ? ids.filter(x => x !== id) : ids.length >= 6 ? ids : [...ids, id]));
+  // Up to eight people, each drawn from their own portrait.
+  const MAX_PEOPLE = 8;
+  const toggle = (id) => setCastIds(ids => (ids.includes(id) ? ids.filter(x => x !== id) : ids.length >= MAX_PEOPLE ? ids : [...ids, id]));
   const groups = ['Player characters', 'NPCs', 'Adversaries'].map(g => [g, everyone.filter(e => e.group === g)]).filter(([, l]) => l.length);
-  const tooMany = castIds.length > 4;
+  const crowded = castIds.length > 6;
+  const full = castIds.length >= MAX_PEOPLE;
 
   const draw = async (from = null) => {
     const ask = from || { prompt: description, castIds, where, mood, title };
@@ -63,6 +66,7 @@ export default function SnapshotStudio({ isOpen, onClose, campaign, characters =
         prompt: snapshotPrompt(ask.prompt, { where: ask.where, locations, mood: ask.mood }),
         about: ask.prompt,
         cast: ask.castIds,
+        room: 8,
         scenery: ask.castIds.length === 0,
         onTold: (info) => { told = info; }
       });
@@ -106,7 +110,7 @@ export default function SnapshotStudio({ isOpen, onClose, campaign, characters =
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold text-white">Who is in it</span>
                 <span className="text-[11px] text-lr-text-dim">
-                  {castIds.length === 0 ? 'Nobody: just the place' : `${castIds.length} chosen`}
+                  {castIds.length === 0 ? 'Nobody: just the place' : `${castIds.length} of ${MAX_PEOPLE} chosen`}
                   {' · '}
                   <button type="button" className="underline hover:text-white" onClick={() => setCastIds(defaultSnapshotCast(characters))}>The party</button>
                   {' · '}
@@ -131,7 +135,8 @@ export default function SnapshotStudio({ isOpen, onClose, campaign, characters =
                   })}
                 </div>
               ))}
-              {tooMany && <p className="text-[11px] text-amber-300">More than four people: the picture can only follow four portraits, so the rest are drawn from their descriptions.</p>}
+              {full && <p className="text-[11px] text-amber-300">That&apos;s the most a picture can hold: take someone out to add someone else.</p>}
+              {crowded && !full && <p className="text-[11px] text-lr-text-dim">A big group: everyone is drawn from their own portrait, but faces get smaller. A wide scene (a long table, a camp) suits it best.</p>}
             </div>
 
             <label className="block text-xs text-lr-text-dim">

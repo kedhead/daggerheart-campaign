@@ -732,7 +732,7 @@ export function settingText(setting, locations = []) {
 
 /** Who a new scene picture starts with: the living player characters. */
 export function defaultSnapshotCast(characters = []) {
-  return (characters || []).filter(c => c?.id && c.name && !c.deceased).map(c => c.id);
+  return (characters || []).filter(c => c?.id && c.name && !c.deceased).map(c => c.id).slice(0, 8);
 }
 
 /** The picture prompt for a scene the DM described. */
@@ -959,8 +959,7 @@ const dropNamed = (form, text) => String(text || '').replace(nameRe(form), m => 
  * `ids`, when given, is the DM's own choice of who is in the shot and
  * replaces what the text says (an empty list means nobody).
  */
-const MAX_REFS = 4;
-export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '', ids = null, lookOf = currentLook, max = 4 } = {}) {
+export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '', ids = null, lookOf = currentLook, max = 4, maxRefs = 4 } = {}) {
   const line = clean(text);
   const everyone = [
     ...(characters || []).map(e => ({ e, type: 'character' })),
@@ -993,9 +992,9 @@ export function shotCast(text, { characters = [], npcs = [], adversaries = [] } 
     const job = clean(type === 'character' ? e.characterClass || e.class : type === 'npc' ? e.occupation : '');
     const base = (job || (type === 'adversary' ? clean(e.name) : type === 'character' ? 'adventurer' : 'local')).toLowerCase();
     counts[base] = (counts[base] || 0) + 1;
-    const label = counts[base] === 1 ? `the ${base}` : `the ${['', '', 'second', 'third', 'fourth'][counts[base]]} ${base}`;
-    // The image model takes four reference portraits; anyone after that is drawn from words.
-    const portrait = refs < MAX_REFS ? (type === 'adversary' ? e.imageUrl : e.avatarUrl) : '';
+    const label = counts[base] === 1 ? `the ${base}` : `the ${['', '', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth'][counts[base]] || `number ${counts[base]}`} ${base}`;
+    // Only so many reference portraits go with a picture; anyone after that is drawn from words.
+    const portrait = refs < maxRefs ? (type === 'adversary' ? e.imageUrl : e.avatarUrl) : '';
     // With a portrait, the portrait is how they look. The stock phrase for
     // their ancestry ("a mechanical automaton of gears and brass" for a Clank)
     // overruled it, and a Clank came back as a gold robot whatever the portrait

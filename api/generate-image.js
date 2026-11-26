@@ -264,7 +264,7 @@ export default async function handler(req, res) {
           const sizeForGpt = openaiImageSize(imageSize);
           // Download the references once; each model in the chain gets its own form.
           const refBlobs = [];
-          for (let i = 0; i < Math.min(refs.length, 4); i++) {
+          for (let i = 0; i < Math.min(refs.length, 8); i++) {
             const imgRes = await fetch(refs[i]);
             if (!imgRes.ok) continue;
             const buf = await imgRes.arrayBuffer();

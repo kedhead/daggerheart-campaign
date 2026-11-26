@@ -4020,7 +4020,11 @@ section('Table cinematics');
     assert(/: Everyone around the tavern table\. It takes place in The Gilded Goose \(A crooked inn with a goose-shaped sign\)\. Mood and lighting: warm candlelight\./.test(ask) && /No text, no captions/.test(ask), `a scene picture asks for the moment, the place and the mood (got ${ask})`);
     const six = { characters: ['a', 'b', 'c', 'd', 'e', 'f'].map(id => ({ id, name: `Hero${id.toUpperCase()}x`, characterClass: 'Bard', avatarUrl: `https://x/${id}.png` })) };
     const picked = shotCast('', six, { ids: ['a', 'b', 'c', 'd', 'e', 'f'], max: 6 });
-    assert(picked.length === 6 && picked.map(c => c.ref).join() === '1,2,3,4,0,0', 'six can be in a scene picture: the first four follow their portraits, the rest their descriptions');
+    assert(picked.length === 6 && picked.map(c => c.ref).join() === '1,2,3,4,0,0', 'by default only four portraits go with a picture; the rest are drawn from their descriptions');
+    const eight = { characters: 'abcdefgh'.split('').map(id => ({ id, name: `Hero${id.toUpperCase()}x`, characterClass: 'Bard', avatarUrl: `https://x/${id}.png` })) };
+    const party = shotCast('', eight, { ids: 'abcdefgh'.split(''), max: 8, maxRefs: 8 });
+    assert(party.length === 8 && party.map(c => c.ref).join() === '1,2,3,4,5,6,7,8' && /Exactly these 8 characters appear/.test(groundShotPrompt('A frame.', party)) && /image 8 is the eighth bard/.test(groundShotPrompt('A frame.', party)),
+      'a scene picture holds eight, each from their own portrait, each tied to their reference image');
     assert(shotCast('', six, { ids: ['a', 'b', 'c', 'd', 'e', 'f'] }).length === 4, 'a cinematic shot still holds four');
   }
   assert(withShotNote('A frame.', 'make it darker.') === 'A frame. Direction for this shot, which overrides anything above: make it darker.' && withShotNote('A frame.', '  ') === 'A frame.',
