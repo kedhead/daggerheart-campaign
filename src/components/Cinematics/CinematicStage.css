@@ -36,3 +36,46 @@
   animation: cs-pulse 1.6s ease-in-out infinite;
 }
 @keyframes cs-pulse { 50% { background: rgba(124, 58, 237, 0.7); } }
+
+/* A scene picture: the whole frame, letterboxed over a blurred copy of itself. */
+.cs-still {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  animation: cs-still-in 1.2s ease-out both;
+}
+.cs-still-bg {
+  position: absolute;
+  inset: -5%;
+  width: 110%;
+  height: 110%;
+  object-fit: cover;
+  filter: blur(28px) brightness(0.45);
+}
+.cs-still-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: cs-still-drift 40s ease-out both;
+}
+.cs-still-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6vh;
+  text-align: center;
+  color: #fff;
+  font-size: clamp(20px, 3.2vw, 46px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
+  animation: cs-still-title 6s ease-in-out both;
+}
+@keyframes cs-still-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cs-still-drift { from { transform: scale(1); } to { transform: scale(1.06); } }
+@keyframes cs-still-title { 0% { opacity: 0; } 15%, 75% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cs-still-img, .cs-still-title { animation: none; }
+}

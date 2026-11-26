@@ -5,12 +5,13 @@ import BossIntro from './BossIntro';
 import RecapReel from './RecapReel';
 import CartoonReel from './CartoonReel';
 import PhaseShift from './PhaseShift';
+import SceneStill from './SceneStill';
 import { audioContext } from './cinematicSfx';
 import { createSoundPlayer } from './soundPlayer';
 import './CinematicStage.css';
 
 /**
- * Full-screen stage for one cinematic: { kind: 'boss' | 'phase' | 'recap' | 'cinematic', data }.
+ * Full-screen stage for one cinematic: { kind: 'boss' | 'phase' | 'recap' | 'cinematic' | 'still', data }.
  * Used by the battle map monitor and by the DM's own preview.
  *
  * Browsers only play sound after someone has clicked the page. If the
@@ -52,6 +53,7 @@ export default function CinematicStage({ cue, onClose }) {
       {ready && cue.kind === 'boss' && <BossIntro intro={cue.data} onDone={onClose} sfx={sfx} />}
       {ready && cue.kind === 'phase' && <PhaseShift shift={cue.data} onDone={onClose} sfx={sfx} />}
       {ready && cue.kind === 'recap' && cue.data?.style !== 'cartoon' && <RecapReel recap={cue.data} onDone={onClose} onSoundBlocked={setSoundBlocked} sfx={sfx} />}
+      {ready && cue.kind === 'still' && <SceneStill still={cue.data} />}
       {ready && (cue.kind === 'cinematic' || (cue.kind === 'recap' && cue.data?.style === 'cartoon')) && <CartoonReel recap={cue.data} onDone={onClose} onSoundBlocked={setSoundBlocked} sfx={sfx} />}
 
       {soundBlocked && (

@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import ConfirmDeleteModal from '../ConfirmDeleteModal';
-import { Plus, BookOpen, ScrollText, Sparkles, Clapperboard, Film } from 'lucide-react';
+import { Plus, BookOpen, ScrollText, Sparkles, Clapperboard, Film, Camera } from 'lucide-react';
 import RecapStudio from '../Cinematics/RecapStudio';
 import CinematicStudio from '../Cinematics/CinematicStudio';
+import SnapshotStudio from '../Cinematics/SnapshotStudio';
 import SessionCard from './SessionCard';
 import SessionForm from './SessionForm';
 import SessionLive from './SessionLive';
@@ -75,6 +76,7 @@ export default function SessionsView({
   const [isGMAssistantOpen, setIsGMAssistantOpen] = useState(false);
   const [isRecapOpen, setIsRecapOpen] = useState(false);
   const [isCinematicsOpen, setIsCinematicsOpen] = useState(false);
+  const [isSnapshotsOpen, setIsSnapshotsOpen] = useState(false);
 
   const gmAssistantHandlers = {
     addSession,
@@ -195,6 +197,15 @@ export default function SessionsView({
               <Film size={20} />
               Cinematics
             </button>
+            <button
+              type="button"
+              className="btn btn-secondary flex items-center gap-2 px-5 py-3"
+              onClick={() => setIsSnapshotsOpen(true)}
+              title="Pick your characters, describe a moment, and get one illustrated picture to show on the battle map monitor"
+            >
+              <Camera size={20} />
+              Scene pictures
+            </button>
             {gmAssistantReady && (
               <button
                 type="button"
@@ -309,6 +320,18 @@ export default function SessionsView({
         <CinematicStudio
           isOpen
           onClose={() => setIsCinematicsOpen(false)}
+          campaign={campaign}
+          characters={characters}
+          npcs={npcs}
+          adversaries={adversaries}
+          locations={locations}
+        />
+      )}
+
+      {isDM && isSnapshotsOpen && (
+        <SnapshotStudio
+          isOpen
+          onClose={() => setIsSnapshotsOpen(false)}
           campaign={campaign}
           characters={characters}
           npcs={npcs}

@@ -26,7 +26,7 @@ export default function useShotArt({ campaign, characters = [], npcs = [], adver
 
   // `ids` is the DM's own choice for a shot, when they have changed who is in it.
   // How each person looks in this story: as the chapter recorded them (a recap), or as they are now.
-  const castOf = (text, ids = null) => shotCast(text, everyone, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '', ids, lookOf: e => lookForScene(e, chapter?.castStates) });
+  const castOf = (text, ids = null) => shotCast(text, everyone, { ancestryLook: a => ANCESTRY_VISUAL_HINTS[a] || '', ids, lookOf: e => lookForScene(e, chapter?.castStates), max: Array.isArray(ids) ? 6 : 4 });
 
   /** `text` with the people in it swapped for plain labels (for the video model). */
   const plainNames = (text, about = text, ids = null) => {

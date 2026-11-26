@@ -724,6 +724,29 @@ export function settingText(setting, locations = []) {
   return detail ? `${where} (${detail})` : where;
 }
 
+// ── Scene pictures ───────────────────────────────────────────────────────
+//
+// A single still of the campaign's people in a moment the DM describes
+// ("everyone sitting around the tavern table"), drawn like the cinematics'
+// shots: each chosen person from their portrait, nobody else.
+
+/** Who a new scene picture starts with: the living player characters. */
+export function defaultSnapshotCast(characters = []) {
+  return (characters || []).filter(c => c?.id && c.name && !c.deceased).map(c => c.id);
+}
+
+/** The picture prompt for a scene the DM described. */
+export function snapshotPrompt(description, { where = '', locations = [], mood = '' } = {}) {
+  const what = clean(description).replace(/[.\s]+$/, '');
+  const place = settingText(where, locations);
+  return [
+    `A single wide illustrated scene from a fantasy tabletop campaign, like a still from an animated film: ${what}.`,
+    place ? `It takes place in ${place}.` : '',
+    clean(mood) ? `Mood and lighting: ${clean(mood)}.` : '',
+    'A clear, well-composed frame in which every character is fully visible, with their faces readable. No text, no captions, no speech bubbles, no borders.'
+  ].filter(Boolean).join(' ');
+}
+
 /** The per-beat settings a storyboard gave its shots, keeping only the beats where the place changes. */
 export function settingsFromShots(shots = []) {
   const out = {};
@@ -936,7 +959,8 @@ const dropNamed = (form, text) => String(text || '').replace(nameRe(form), m => 
  * `ids`, when given, is the DM's own choice of who is in the shot and
  * replaces what the text says (an empty list means nobody).
  */
-export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '', ids = null, lookOf = currentLook } = {}) {
+const MAX_REFS = 4;
+export function shotCast(text, { characters = [], npcs = [], adversaries = [] } = {}, { ancestryLook = () => '', ids = null, lookOf = currentLook, max = 4 } = {}) {
   const line = clean(text);
   const everyone = [
     ...(characters || []).map(e => ({ e, type: 'character' })),
@@ -961,7 +985,7 @@ export function shotCast(text, { characters = [], npcs = [], adversaries = [] } 
   const found = (Array.isArray(ids)
     ? ids.map(id => everyone.find(x => x.e.id === id)).filter(Boolean)
     : everyone.filter(({ e }) => hit.has(e.id))
-  ).slice(0, 4);
+  ).slice(0, max);
 
   const counts = {};
   let refs = 0;
@@ -970,7 +994,8 @@ export function shotCast(text, { characters = [], npcs = [], adversaries = [] } 
     const base = (job || (type === 'adversary' ? clean(e.name) : type === 'character' ? 'adventurer' : 'local')).toLowerCase();
     counts[base] = (counts[base] || 0) + 1;
     const label = counts[base] === 1 ? `the ${base}` : `the ${['', '', 'second', 'third', 'fourth'][counts[base]]} ${base}`;
-    const portrait = type === 'adversary' ? e.imageUrl : e.avatarUrl;
+    // The image model takes four reference portraits; anyone after that is drawn from words.
+    const portrait = refs < MAX_REFS ? (type === 'adversary' ? e.imageUrl : e.avatarUrl) : '';
     // With a portrait, the portrait is how they look. The stock phrase for
     // their ancestry ("a mechanical automaton of gears and brass" for a Clank)
     // overruled it, and a Clank came back as a gold robot whatever the portrait
