@@ -3,6 +3,7 @@ import { cartoonPlan, screenplayPlan, recapArtFills, recapMusicFactor, recapCueV
 import { playWhoosh, playRiser, playSlam } from './cinematicSfx';
 import useReelMusic from './useReelMusic';
 import useReelMedia from './useReelMedia';
+import BlurredBackdrop from './BlurredBackdrop';
 import './RecapReel.css';
 
 // How long the title card will wait for "Previously on…" to finish.
@@ -148,7 +149,7 @@ export default function CartoonReel({ recap, onDone, onSoundBlocked, sfx }) {
     return (
       <div key={`shot-${i}`} className={`rr-beat ${ratio ? 'rr-fit' : 'rr-full'} ${entering ? 'is-entering' : ''} ${role === 'next' ? 'rr-upnext' : ''} ${s.transition ? `rr-tr-${s.transition}` : ''}`}
         style={{ '--ratio': ratio || 1, '--beat': `${s.duration}s`, zIndex: role === 'current' ? 2 : role === 'previous' ? 1 : 0 }}>
-        {!!ratio && <img src={local(s.imageUrl)} alt="" className="rr-backdrop" />}
+        {!!ratio && <BlurredBackdrop src={local(s.imageUrl)} />}
         {s.videoUrl || s.imageUrl ? (
           <div className="rr-panel">
             {s.videoUrl ? (

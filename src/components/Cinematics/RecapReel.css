@@ -111,7 +111,7 @@
   width: 120%;
   height: 120%;
   object-fit: cover;
-  filter: blur(2.6vh) brightness(0.45) saturate(1.35);
+  /* Blurred and darkened once, by BlurredBackdrop: a CSS filter here is redone every frame. */
   animation: rr-backdrop var(--beat) linear both;
 }
 @keyframes rr-backdrop { from { transform: scale(1) translateX(-2%); } to { transform: scale(1.12) translateX(2%); } }
@@ -147,7 +147,8 @@
   pointer-events: none;
   background-image: radial-gradient(circle, rgba(0, 0, 0, 0.22) 1px, transparent 1.3px);
   background-size: 6px 6px;
-  mix-blend-mode: multiply;
+  /* Plain see-through black dots: the same as multiplying them in, without
+     re-blending the whole screen every frame. */
   opacity: 0.5;
 }
 
@@ -387,12 +388,11 @@
 @keyframes rr-mcut { from { transform: scale(1.2); filter: brightness(1.9); } to { transform: scale(1.05); filter: none; } }
 
 /* ── Film style: the same reel as a movie trailer. ──────────────────────── */
-.rr-film .rr-letterbox { height: 8vh; }
+.rr-film .rr-letterbox { height: 8vh; z-index: 1; } /* above the grain, so the bars stay black */
 .rr-film .rr-beat.is-entering { animation: rr-dissolve 0.9s ease both; }
 @keyframes rr-dissolve { from { opacity: 0; } }
 .rr-film .is-entering .rr-panel { animation: none; }
 .rr-film .rr-panel { background: transparent; }
-.rr-film .rr-media { filter: contrast(1.08) saturate(0.94); }
 
 /* Art that would be cropped: whole, centred, its sides feathered into the blur. */
 .rr-fit .rr-panel {
@@ -405,10 +405,14 @@
   mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
 }
 .rr-fit .rr-media { object-position: center; }
+/* A still pushes in as a whole, feathered edges and all, so the browser can
+   reuse the masked picture rather than mask it again on every frame. */
+.rr-fit .rr-media.rr-push { animation: none; }
+.rr-film .rr-fit .rr-panel:has(> .rr-push) { animation: rr-push calc(var(--beat) + 2s) linear both; }
 
 /* Behind a text card the picture drops back into the dark. */
 .rr-dim .rr-panel,
-.rr-dim .rr-backdrop { filter: brightness(0.25) saturate(0.7) blur(0.5vh); }
+.rr-dim .rr-backdrop { opacity: 0.25; } /* over the black beat: a quarter as bright */
 
 .rr-sub {
   position: absolute;
@@ -470,20 +474,23 @@
 }
 @keyframes rr-film-in { from { opacity: 0; letter-spacing: 0.3em; filter: blur(0.8vh); } }
 
-/* A colour grade (cool shadows above, warm below) and moving film grain over everything. */
+/* A colour grade (cool shadows above, warm below) and moving film grain over
+   everything. Both are plain see-through layers: blend modes here made the
+   browser re-blend the whole screen every frame, which crawled on a big monitor. */
 .rr-grade {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(30, 80, 120, 0.3), transparent 45%, rgba(255, 140, 40, 0.2));
-  mix-blend-mode: soft-light;
+  background: linear-gradient(180deg, rgba(30, 80, 120, 0.12), transparent 45%, rgba(255, 140, 40, 0.07));
 }
+/* Between the letterbox bars, which stay black. */
+.rr-film .rr-grade { inset: 8vh 0; }
+.rr-cartoon.rr-film .rr-grade { inset: 5vh 0; }
 .rr-grain {
   position: absolute;
-  inset: -50%;
+  inset: -6%; /* just past the furthest the grain moves */
   pointer-events: none;
-  opacity: 0.16;
-  mix-blend-mode: overlay;
+  opacity: 0.07;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   animation: rr-grain 0.6s steps(1) infinite;
 }
@@ -499,7 +506,6 @@
 /* ── Cartoon look: the storyboard played shot after shot (CartoonReel). ─── */
 .rr-cartoon.rr-film .rr-letterbox { height: 5vh; }
 .rr-cartoon.rr-film .rr-beat.is-entering { animation: rr-dissolve 0.4s ease both; }
-.rr-cartoon.rr-film .rr-media { filter: none; }
 .rr-cartoon .rr-fit .rr-panel { width: min(100vw, calc(90vh * var(--ratio))); }
 .rr-cartoon .rr-sub { bottom: 7.5vh; }
 

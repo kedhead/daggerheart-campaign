@@ -3,6 +3,7 @@ import { recapPlan, panelImages, recapArtFills, recapCardLine, recapMusicFactor,
 import { playWhoosh, playRiser, playSlam } from './cinematicSfx';
 import useReelMusic from './useReelMusic';
 import useReelMedia from './useReelMedia';
+import BlurredBackdrop from './BlurredBackdrop';
 import './RecapReel.css';
 
 // Slow drifts for full-screen pictures, and the wipes that bring a beat in,
@@ -194,7 +195,7 @@ export default function RecapReel({ recap, onDone, onSoundBlocked, sfx }) {
     return (
       <div key={`beat-${i}`} className={`rr-beat ${look} ${dim} rr-wipe-${film ? 'dissolve' : WIPES[i % WIPES.length]} ${entering ? 'is-entering' : ''}`}
         style={{ '--ratio': ratio || 1, '--beat': `${seconds}s` }}>
-        {!!ratio && <img src={local(url)} alt="" className="rr-backdrop" />}
+        {!!ratio && <BlurredBackdrop src={local(url)} />}
         {url || s.videoUrl ? (
           <div className="rr-panel">
             {s.videoUrl ? (
