@@ -21,8 +21,29 @@ export function normalizeSatchel(raw) {
   };
 }
 
+// How rare an ingredient is. The rarest one in a mix sets how potent the
+// result is, and rarer ingredients make a strange or wild result likelier.
+export const RARITIES = {
+  common: { label: 'Common', rank: 0, wild: 0, strange: 0, power: '' },
+  uncommon: { label: 'Uncommon', rank: 1, wild: 0.02, strange: 0.03,
+    power: 'POTENCY: UNCOMMON. Make the effects a little stronger than usual for the tier, or let them last longer.' },
+  rare: { label: 'Rare', rank: 2, wild: 0.05, strange: 0.05,
+    power: 'POTENCY: RARE. Make the effects clearly stronger than usual for the tier, and add one small extra twist drawn from the rare ingredient.' },
+  veryRare: { label: 'Very Rare', rank: 3, wild: 0.08, strange: 0.07,
+    power: 'POTENCY: VERY RARE. Size the Hope and Critical effects as if for the next tier up, with a signature flourish only the very rare ingredient could give. The Fear effect is harsher to match.' },
+  unique: { label: 'Unique', rank: 4, wild: 0.15, strange: 0.10,
+    power: 'POTENCY: UNIQUE. A one-of-a-kind ingredient: name the item after it, and give it a legendary effect the table will tell stories about (well beyond the tier, but short-lived). Its Fear effect is a true price to match. Never instantly fatal.' }
+};
+export const RARITY_KEYS = Object.keys(RARITIES);
+export const rarityOf = (ingredient) => (RARITIES[ingredient?.rarity] ? ingredient.rarity : 'common');
+
+/** The rarest of the chosen ingredients: it sets the mix's potency. */
+export function brewRarity(ingredients = []) {
+  return (ingredients || []).reduce((best, i) => (RARITIES[rarityOf(i)].rank > RARITIES[best].rank ? rarityOf(i) : best), 'common');
+}
+
 /** Add an ingredient, stacking onto one of the same name. */
-export function addIngredient(satchel, { name, qty = 1, notes = '' }) {
+export function addIngredient(satchel, { name, qty = 1, notes = '', rarity = 'common' }) {
   const s = normalizeSatchel(satchel);
   const clean = str(name, 80);
   if (!clean) return s;
@@ -31,7 +52,7 @@ export function addIngredient(satchel, { name, qty = 1, notes = '' }) {
   if (same) {
     return { ...s, ingredients: s.ingredients.map(i => (i === same ? { ...i, qty: (Number(i.qty) || 0) + n, notes: i.notes || str(notes, 300) } : i)) };
   }
-  return { ...s, ingredients: [...s.ingredients, { id: newId('ing'), name: clean, qty: n, notes: str(notes, 300) }] };
+  return { ...s, ingredients: [...s.ingredients, { id: newId('ing'), name: clean, qty: n, notes: str(notes, 300), rarity: RARITIES[rarity] ? rarity : 'common' }] };
 }
 
 /** Change an ingredient's quantity; at zero it leaves the satchel. */
@@ -58,10 +79,18 @@ export const VOLATILITY = {
   wild: { label: 'Wild', chance: 0.10 }
 };
 
-/** Roll how a brew turns out; `rand` is a number from 0 to 1. */
-export function rollVolatility(rand = Math.random()) {
-  if (rand < VOLATILITY.wild.chance) return 'wild';
-  if (rand < VOLATILITY.wild.chance + VOLATILITY.strange.chance) return 'strange';
+/**
+ * Roll how a brew turns out; `rand` is a number from 0 to 1. Rarer
+ * ingredients (`rarity`, the mix's rarest) make strange and wild likelier.
+ */
+export function volatilityOdds(rarity = 'common') {
+  const r = RARITIES[rarity] || RARITIES.common;
+  return { wild: VOLATILITY.wild.chance + r.wild, strange: VOLATILITY.strange.chance + r.strange };
+}
+export function rollVolatility(rand = Math.random(), rarity = 'common') {
+  const { wild, strange } = volatilityOdds(rarity);
+  if (rand < wild) return 'wild';
+  if (rand < wild + strange) return 'strange';
   return 'stable';
 }
 
@@ -145,7 +174,8 @@ export function buildBrewPrompt(ingredients, character = {}, volatility = 'stabl
   const level = Math.max(1, Number(character.level) || 1);
   const tier = level <= 1 ? 1 : level <= 4 ? 2 : level <= 7 ? 3 : 4;
   const k = ITEM_KINDS[kind] || ITEM_KINDS.potion;
-  const list = ingredients.map(i => `- ${i.name}${i.notes ? ` (${i.notes})` : ''}`).join('\n');
+  const list = ingredients.map(i => `- ${i.name}${rarityOf(i) !== 'common' ? ` [${RARITIES[rarityOf(i)].label}]` : ''}${i.notes ? ` (${i.notes})` : ''}`).join('\n');
+  const potency = RARITIES[brewRarity(ingredients)].power;
   const [lo, hi] = k.uses;
   const odd = (VOLATILITY_RULES[volatility] || '').replace(/EVERY dose/g, `EVERY ${k.unit}`).replace(/This brew/gi, `This ${k.label.toLowerCase()}`);
   return `You are the alchemy engine for a Daggerheart campaign's homebrew rule. ${character.name || 'A character'}${character.class ? `, a level ${level} ${character.class}` : ` (level ${level})`}, combines these ingredients into ${k.what}:
@@ -161,7 +191,7 @@ Rules:
 - "critEffect": ${k.crit}
 - "doses": how many ${k.unit}s it holds, ${lo === hi ? `exactly ${lo}` : `${lo} to ${hi}`}.
 - Effects follow from the ingredients' natures. Concrete and playable at the table: say what to roll or mark and for how long.
-${odd}
+${potency ? `- ${potency}\n` : ''}${odd}
 Answer with JSON only: {"name": "...", "description": "...", "hopeEffect": "...", "fearEffect": "...", "critEffect": "...",${volatility !== 'stable' ? ' "sideEffect": "...",' : ''} "doses": number}`;
 }
 
@@ -183,7 +213,8 @@ export function parseConcoction(text, ingredients = [], volatility = 'stable', k
   };
   if (!c.name || !c.hopeEffect || !c.fearEffect) return null;
   const odd = VOLATILITY[volatility] && volatility !== 'stable' ? { volatility, sideEffect: str(raw.sideEffect, 300) } : {};
-  return { ...c, kind: k, ...odd, maxDoses: c.doses, ingredients: ingredients.map(i => i.name) };
+  const rarity = brewRarity(ingredients);
+  return { ...c, kind: k, ...odd, ...(rarity !== 'common' ? { rarity } : {}), maxDoses: c.doses, ingredients: ingredients.map(i => i.name) };
 }
 
 /** Put a brewed concoction in the satchel, using one of each ingredient. */
@@ -234,7 +265,8 @@ export function updateIngredient(satchel, id, patch = {}) {
       const name = patch.name !== undefined ? str(patch.name, 80) : i.name;
       const qty = patch.qty !== undefined ? Math.max(0, Math.round(Number(patch.qty) || 0)) : i.qty;
       const notes = patch.notes !== undefined ? str(patch.notes, 300) : i.notes || '';
-      return { ...i, name: name || i.name, qty, notes };
+      const rarity = patch.rarity !== undefined && RARITIES[patch.rarity] ? patch.rarity : rarityOf(i);
+      return { ...i, name: name || i.name, qty, notes, rarity };
     }).filter(i => i.qty > 0)
   };
 }
