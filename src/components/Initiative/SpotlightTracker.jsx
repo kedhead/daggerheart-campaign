@@ -19,7 +19,7 @@ const timeAgo = (at) => {
  * player to give them the spotlight; the tracker shows who has had it this
  * scene and who has waited longest, so nobody is left out.
  */
-export default function SpotlightTracker({ campaign, characters = [], isDM }) {
+export default function SpotlightTracker({ campaign, characters = [], isDM, compact = false }) {
   const confirm = useConfirm();
   const { spotlight, loading, startScene, give, undo, renameScene } = useSpotlight(campaign?.id);
   const { fearCount = 0, addFear } = usePlayerDisplay(campaign?.id);
@@ -51,10 +51,10 @@ export default function SpotlightTracker({ campaign, characters = [], isDM }) {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-6">
+    <div className={compact ? 'p-2 space-y-3' : 'max-w-5xl mx-auto p-4 md:p-8 space-y-6'}>
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-white/10">
-        <div className="space-y-1">
+      <div className={`flex flex-col md:flex-row md:items-end justify-between gap-4 ${compact ? '' : 'pb-4 border-b border-white/10'}`}>
+        <div className={compact ? 'hidden' : 'space-y-1'}>
           <span className="text-[11px] font-bold uppercase tracking-[0.28em] text-amber-300">Daggerheart</span>
           <h2 className="text-3xl font-bold text-white flex items-center gap-3"><Sparkles className="text-amber-300" size={28} /> Spotlight</h2>
           <p className="text-sm text-lr-text-muted max-w-xl">
@@ -99,9 +99,9 @@ export default function SpotlightTracker({ campaign, characters = [], isDM }) {
         <p className="text-sm text-lr-text-dim">No player characters yet: add them under Characters and they appear here.</p>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className={compact ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-1 lg:grid-cols-3 gap-4'}>
         {/* The party */}
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={compact ? 'grid grid-cols-1 sm:grid-cols-2 gap-2' : 'lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3'}>
           {party.map(c => {
             const count = s.counts?.[c.id] || 0;
             const on = current === c.id;
