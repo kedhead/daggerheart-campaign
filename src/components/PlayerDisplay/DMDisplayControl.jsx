@@ -246,7 +246,7 @@ export default function DMDisplayControl({
 
         {/* Initiative Toggle */}
         <div className="control-section card">
-          <h3>Initiative Display</h3>
+          <h3>{isDaggerheart ? 'Spotlight Display' : 'Initiative Display'}</h3>
           <div className="toggle-control">
             <label className="checkbox-control">
               <input
@@ -254,9 +254,11 @@ export default function DMDisplayControl({
                 checked={showInitiative}
                 onChange={toggleInitiative}
               />
-              <span>Show Initiative on Display</span>
+              <span>{isDaggerheart ? 'Show who has the spotlight on the display' : 'Show Initiative on Display'}</span>
             </label>
-            {initiative?.active ? (
+            {isDaggerheart ? (
+              <span className="status-badge inactive">Set it on the Spotlight page</span>
+            ) : initiative?.active ? (
               <span className="status-badge active">
                 <Zap size={14} />
                 Combat Active - Round {initiative.round}

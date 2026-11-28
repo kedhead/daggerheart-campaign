@@ -17,6 +17,18 @@ export const REASONS = {
   gm: 'GM handed it over'
 };
 
+/**
+ * Who is in the party, as the TV shows them: { id: { name, avatarUrl } }.
+ * Only linked portraits are kept (an embedded image would bloat the document).
+ */
+export function spotlightCast(characters = []) {
+  const out = {};
+  (characters || []).filter(c => c?.id && c.name && !c.deceased).forEach(c => {
+    out[c.id] = { name: String(c.name).slice(0, 80), avatarUrl: /^https?:/.test(c.avatarUrl || '') ? c.avatarUrl : '' };
+  });
+  return out;
+}
+
 /** A fresh scene: nobody has had the spotlight yet. */
 export function newScene(name = '') {
   return { scene: String(name || '').slice(0, 80), current: null, passes: 0, counts: {}, lastAt: {}, log: [] };
