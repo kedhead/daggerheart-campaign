@@ -110,7 +110,18 @@ export default function AdversaryPicker({
         ) : (
           adversarySlots.map(slot => {
             const adv = getAdversaryDetails(slot.adversaryId);
-            if (!adv) return null;
+            // Deleted from the catalog since: say so, rather than hide it (it
+            // would stay saved, uncounted, and be skipped when the fight starts).
+            if (!adv) {
+              return (
+                <div key={slot.adversaryId} className="flex items-center justify-between gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <span className="text-sm text-amber-200">An adversary that is no longer in your catalog ({slot.quantity}×). It will be left out of the fight.</span>
+                  <button type="button" className="p-2 text-amber-200 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors" onClick={() => removeSlot(slot.adversaryId)} aria-label="Remove the missing adversary">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              );
+            }
 
             const isMinion = adv.role?.toLowerCase() === 'minion';
             const cost = BP_COSTS[adv.role?.toLowerCase()] || 2;
@@ -158,6 +169,7 @@ export default function AdversaryPicker({
                     type="button"
                     className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                     onClick={() => removeSlot(slot.adversaryId)}
+                    aria-label={`Remove ${adv.name}`}
                   >
                     <Trash2 size={16} />
                   </button>

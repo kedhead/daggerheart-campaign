@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Save, X, TreePine, Play, Info } from 'lucide-react';
-import BPCalculator, { calculateUsedBP, calculateBPBudget, calculateBPAdjustments } from './BPCalculator';
+import BPCalculator, { calculateUsedBP, calculateBPBudget, calculateBPAdjustments, partyTier, countLowerTier } from './BPCalculator';
 import AdversaryPicker from './AdversaryPicker';
 import WikiLinkInput from '../WikiText/WikiLinkInput';
 import { useEntityRegistry } from '../../hooks/useEntityRegistry';
@@ -49,6 +49,9 @@ export default function EncounterBuilder({
     adjustments: formData.bpAdjustments, soloCount, hasMajorThreats, hasSlots
   });
   const budget = calculateBPBudget(formData.partySize) + adjTotal;
+  // Adversaries below the party's tier, for the +1 each the Battle Guide gives.
+  const tier = partyTier(characters);
+  const detectedLowerTier = countLowerTier(formData.adversarySlots, adversaries, tier, formData.partySize);
 
   const handleChange = (field, value) => {
     setFormData({
@@ -113,6 +116,8 @@ export default function EncounterBuilder({
           soloCount={soloCount}
           hasMajorThreats={hasMajorThreats}
           hasSlots={hasSlots}
+          detectedLowerTier={characters.length ? detectedLowerTier : null}
+          tier={tier}
         />
       </div>
 
