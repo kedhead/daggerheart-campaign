@@ -11,6 +11,7 @@ import { DOMAIN_CARDS } from '../src/data/daggerheartDomainCards.js';
 import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js';
 import { getTierForLevel, getBaseProficiency, getEffectiveProficiency, getProficiencyBonus, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
 import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils/daggerheartLevelUp.js';
+import { sortByInitiative, keepTurn } from '../src/utils/initiativeOrder.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments } from '../src/components/Encounters/BPCalculator.jsx';
 import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
@@ -4182,6 +4183,21 @@ section('Boss phase transitions');
   const clean = withoutUndefined({ participants: [{ id: 'b', features: [{ name: 'Roar', description: undefined }], damage: undefined }, undefined], at: ts });
   assert(JSON.stringify(clean.participants) === '[{"id":"b","features":[{"name":"Roar"}]}]' && clean.at === ts,
     'undefined values are dropped at any depth (Firestore rejects them), and server timestamps pass through untouched');
+}
+
+section('Initiative order');
+{
+  const A = { id: 'a', initiative: 18 }, B = { id: 'b', initiative: 12 }, C = { id: 'c', initiative: 7 }, N = { id: 'n', initiative: 15 };
+  const order = [A, B, C];
+  // B's turn (index 1); N joins with 15 and sorts in above B.
+  const added = sortByInitiative([...order, N]);
+  assert(added.map(p => p.id).join() === 'a,n,b,c' && keepTurn(order, 1, added).turn === 2, 'someone joining mid-combat does not take the turn from whoever has it');
+  assert(keepTurn(order, 1, [B, A, C]).turn === 0, 'moving people keeps the turn with the same person');
+  assert(keepTurn(order, 2, [B, C]).turn === 1, 'removing someone earlier in the order does not skip the current turn');
+  assert(keepTurn(order, 1, [A, C]).turn === 1, 'removing the one whose turn it is passes it to the next');
+  const last = keepTurn(order, 2, [A, B]);
+  assert(last.turn === 0 && last.wrapped, 'removing the last in the order passes the turn to the top, a new round');
+  assert(sortByInitiative([{ id: 'x', initiative: 10 }, { id: 'y', initiative: 10 }]).map(p => p.id).join() === 'x,y', 'ties keep their order');
 }
 
 section('Homebrew: alchemy');
