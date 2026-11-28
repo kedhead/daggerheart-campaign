@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { fearCost } from '../../utils/dualityAutomation';
+import { fearCost, stressCost } from '../../utils/dualityAutomation';
 import { Heart, Zap, Skull, ChevronDown, ChevronRight, Shield, Swords, Target, X, Check, Crown } from 'lucide-react';
 import { DAGGERHEART_CONDITIONS } from '../../hooks/useActiveEncounter';
 import { parseDamageNotation } from '../../dice';
@@ -12,6 +12,7 @@ export default function ParticipantCard({
   onAddCondition,
   onRemoveCondition,
   onToggleDefeated,
+  onRemove,
   onRollDamage,
   isDM,
   isExpanded,
@@ -53,8 +54,10 @@ export default function ParticipantCard({
   } = participant;
 
   // Calculate HP percentage
-  const hpPercent = Math.max(0, Math.min(100, (currentHP / maxHP) * 100));
-  const stressPercent = Math.max(0, Math.min(100, (currentStress / maxStress) * 100));
+  const hpPercent = maxHP > 0 ? Math.max(0, Math.min(100, (currentHP / maxHP) * 100)) : 0;
+  const stressPercent = maxStress > 0 ? Math.max(0, Math.min(100, (currentStress / maxStress) * 100)) : 0;
+  const stressLeft = Math.max(0, (maxStress || 0) - (currentStress || 0));
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   // Damage thresholds use legacy field names: `minor` holds the Major
   // threshold and `major` holds Severe. They gate damage per hit (1/2/3 HP),
@@ -124,6 +127,11 @@ export default function ParticipantCard({
   const handleStressDamage = (amount) => {
     if (isDM && onApplyDamage) {
       onApplyDamage(participant.id, amount, 'stress');
+    }
+  };
+  const handleStressClear = (amount) => {
+    if (isDM && onApplyHealing) {
+      onApplyHealing(participant.id, amount, 'stress');
     }
   };
 
@@ -250,7 +258,7 @@ export default function ParticipantCard({
           )}
 
           {/* Conditions */}
-          {conditions.length > 0 && (
+          {(conditions || []).length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {conditions.map(condition => (
                 <span
@@ -469,9 +477,12 @@ export default function ParticipantCard({
 
               <div className="flex items-center gap-4">
                 <span className="text-xs font-bold text-lr-text-dim uppercase w-12 shrink-0">Stress</span>
-                <div className="flex gap-1">
-                  <button onClick={() => handleStressDamage(1)} className="btn-xs btn-secondary text-amber-400 hover:bg-amber-500/20">+1</button>
-                  <button onClick={() => handleStressDamage(2)} className="btn-xs btn-secondary text-amber-400 hover:bg-amber-500/20">+2</button>
+                <div className="flex flex-wrap items-center gap-1">
+                  <button onClick={() => handleStressDamage(1)} className="btn-xs btn-secondary text-amber-400 hover:bg-amber-500/20" title={stressLeft < 1 ? 'No Stress left: it marks 1 HP instead' : 'Mark 1 Stress'}>+1</button>
+                  <button onClick={() => handleStressDamage(2)} className="btn-xs btn-secondary text-amber-400 hover:bg-amber-500/20" title={stressLeft < 2 ? `Only ${stressLeft} Stress left: the rest marks HP` : 'Mark 2 Stress'}>+2</button>
+                  <div className="w-px h-6 bg-white/10 mx-2" />
+                  <button onClick={() => handleStressClear(1)} disabled={!(currentStress > 0)} className="btn-xs btn-secondary text-sky-300 hover:bg-sky-500/20 disabled:opacity-40" title="Clear 1 Stress">−1</button>
+                  {stressLeft === 0 && <span className="text-[11px] text-amber-300 ml-1">Full: more Stress marks HP</span>}
                 </div>
               </div>
 
@@ -487,7 +498,7 @@ export default function ParticipantCard({
 
                   {showConditionPicker && (
                     <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-[var(--bg-secondary)] border border-white/10 rounded-lg shadow-xl p-2 grid grid-cols-2 gap-1 animate-in fade-in zoom-in-95 duration-200">
-                      {DAGGERHEART_CONDITIONS.filter(c => !conditions.includes(c)).map(condition => (
+                      {DAGGERHEART_CONDITIONS.filter(c => !(conditions || []).includes(c)).map(condition => (
                         <button
                           key={condition}
                           className="px-2 py-1.5 text-xs text-left text-lr-text-muted hover:bg-white/10 rounded transition-colors"
@@ -511,6 +522,21 @@ export default function ParticipantCard({
                   {isDefeated ? 'Revive Unit' : 'Defeat Unit'}
                 </button>
               </div>
+              {onRemove && (
+                <div className="flex justify-end">
+                  {confirmRemove ? (
+                    <span className="inline-flex items-center gap-2 text-xs text-red-300">
+                      Take {name} out of the fight?
+                      <button type="button" className="btn-xs bg-red-500/80 hover:bg-red-500 text-white rounded px-2 py-0.5" onClick={() => { setConfirmRemove(false); onRemove(participant.id); }}>Remove</button>
+                      <button type="button" className="btn-xs btn-secondary" onClick={() => setConfirmRemove(false)}>Keep</button>
+                    </span>
+                  ) : (
+                    <button type="button" className="text-[11px] text-lr-text-dim hover:text-red-300" onClick={() => setConfirmRemove(true)} title="For one added by mistake; a defeated foe stays in the Defeated list instead">
+                      Remove from fight
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -547,15 +573,24 @@ export default function ParticipantCard({
                             </button>
                           );
                         })()}
-                        {feature.type === 'action' && isDM && onApplyDamage && (
-                          <button
-                            className="px-2 py-0.5 text-[11px] bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); onApplyDamage(participant.id, 1, 'stress'); }}
-                            title="Use this action — mark 1 stress"
-                          >
-                            Mark Stress
-                          </button>
-                        )}
+                        {(() => {
+                          // Only features whose text costs Stress ("Mark a Stress to…"),
+                          // whatever their type; most actions cost nothing.
+                          const cost = stressCost(`${feature.description || ''}`);
+                          if (!cost || !isDM || !onApplyDamage) return null;
+                          const short = stressLeft < cost;
+                          return (
+                            <button
+                              type="button"
+                              className="px-2 py-0.5 text-[11px] bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              disabled={short}
+                              onClick={(e) => { e.stopPropagation(); onApplyDamage(participant.id, cost, 'stress'); }}
+                              title={short ? `Needs ${cost} Stress — only ${stressLeft} left` : `Use ${feature.name}: mark ${cost} Stress`}
+                            >
+                              Mark {cost} Stress
+                            </button>
+                          );
+                        })()}
                         {feature.type && (
                           <span className="text-[11px] uppercase text-lr-text-dim bg-white/5 px-1.5 py-0.5 rounded">
                             {feature.type}

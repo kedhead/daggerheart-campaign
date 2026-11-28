@@ -22,6 +22,29 @@ export const BP_COSTS = {
   boss: 8
 };
 
+/** The party's tier from its characters' levels (1 / 2-4 / 5-7 / 8-10), by the average level. */
+export function partyTier(characters = []) {
+  const levels = (characters || []).map(c => Number(c?.level) || 1);
+  if (!levels.length) return 1;
+  const avg = Math.round(levels.reduce((a, b) => a + b, 0) / levels.length);
+  return avg <= 1 ? 1 : avg <= 4 ? 2 : avg <= 7 ? 3 : 4;
+}
+
+/**
+ * How many adversaries come from a tier below the party's (+1 BP each in the
+ * Battle Guide). A group of minions counts once per party-sized group.
+ */
+export function countLowerTier(adversarySlots = [], adversaries = [], tier = 1, partySize = 4) {
+  let n = 0;
+  for (const slot of Array.isArray(adversarySlots) ? adversarySlots : []) {
+    const adv = adversaries.find(a => a.id === slot.adversaryId);
+    if (!adv || !((adv.tier || 1) < tier)) continue;
+    const qty = slot.quantity || 1;
+    n += adv.role?.toLowerCase() === 'minion' ? Math.ceil(qty / Math.max(1, partySize || 4)) : qty;
+  }
+  return n;
+}
+
 export function calculateBPBudget(partySize) {
   return (3 * partySize) + 2;
 }
@@ -82,7 +105,9 @@ export default function BPCalculator({
   onAdjustmentsChange,
   soloCount = 0,
   hasMajorThreats = true,
-  hasSlots = false
+  hasSlots = false,
+  detectedLowerTier = null, // null when the party's level is unknown
+  tier = 1
 }) {
   const baseBudget = calculateBPBudget(partySize);
   const { total: adjTotal, notes: adjNotes } = calculateBPAdjustments({ adjustments, soloCount, hasMajorThreats, hasSlots });
@@ -94,7 +119,7 @@ export default function BPCalculator({
   const isBalanced = remaining >= 0 && remaining <= 2;
 
   // Calculate percentage for the meter
-  const fillPercent = Math.min((usedBP / budget) * 100, 100);
+  const fillPercent = budget > 0 ? Math.min((usedBP / budget) * 100, 100) : (usedBP > 0 ? 100 : 0);
 
   return (
     <div className="space-y-4">
@@ -134,13 +159,6 @@ export default function BPCalculator({
         {/* Labels & Markers */}
         <div className="absolute top-0 left-0 text-xs font-mono text-lr-text-dim">0</div>
 
-        {/* Budget Marker */}
-        <div
-          className="absolute top-0 bottom-0 pointer-events-none flex flex-col items-center justify-end"
-          style={{ left: `${Math.min((budget / (budget * 1.5)) * 100, 100)}%` }} // Simplified, just clamping logic
-        >
-          {/* Note: logic for marker position is tricky without fixed width, simplified here to just end of bar if 100% */}
-        </div>
 
         <div className="flex justify-between mt-2 text-sm font-medium">
           <span className={isOver ? 'text-red-400' : 'text-lr-text-muted'}>Used: {usedBP} BP</span>
@@ -177,6 +195,16 @@ export default function BPCalculator({
                 onChange={e => setAdj('lowerTier', Math.max(0, parseInt(e.target.value) || 0))}
                 className="w-12 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-center text-white focus:outline-none"
               />
+              {detectedLowerTier != null && detectedLowerTier !== (Number(adjustments.lowerTier) || 0) && (
+                <button
+                  type="button"
+                  className="px-2 py-0.5 text-xs bg-white/10 hover:bg-white/20 text-lr-text-muted rounded transition-colors"
+                  onClick={() => setAdj('lowerTier', detectedLowerTier)}
+                  title={`Your party is tier ${tier}: ${detectedLowerTier} adversar${detectedLowerTier === 1 ? 'y is' : 'ies are'} from a lower tier`}
+                >
+                  Use {detectedLowerTier}
+                </button>
+              )}
             </label>
           </div>
           {(soloCount >= 2 || (hasSlots && !hasMajorThreats)) && (

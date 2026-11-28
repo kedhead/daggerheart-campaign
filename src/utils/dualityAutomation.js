@@ -128,6 +128,18 @@ export function clampFear(n, max = FEAR_MAX) {
  *     could be right.
  */
 const FEAR_WORDS = { a: 1, an: 1, one: 1, two: 2, three: 3 };
+/**
+ * The Stress a feature costs to use, from its text ("Mark a Stress to…",
+ * "mark 2 Stress"), or 0. Only these features get a one-tap Mark Stress.
+ */
+export function stressCost(text) {
+  if (!text) return 0;
+  const m = String(text).replace(/[*_]/g, '').match(/\bmark(?:ing)?\s+(a|an|one|two|three|\d+)\s+stress\b/i);
+  if (!m) return 0;
+  const q = m[1].toLowerCase();
+  return FEAR_WORDS[q] ?? (parseInt(q, 10) || 0);
+}
+
 export function fearCost(text) {
   if (!text) return 0;
   const m = String(text).match(/\bspend(?:ing)?\s+(a|an|one|two|three|\d+)\s+fear\b/i);
