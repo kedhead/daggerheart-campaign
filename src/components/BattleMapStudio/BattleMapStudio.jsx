@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Save, Plus, Monitor, Radio, Volume2, Wand2, Loader2, Sparkles, CloudRain, Film, FolderOpen,
-  Trash2, RotateCcw, Check, MapPin, Send, History, AlertTriangle, X
+  Trash2, RotateCcw, Check, MapPin, Send, History, AlertTriangle, X, EyeOff
 } from 'lucide-react';
 import { useBattleMapStore } from '../../stores/battleMapStore';
 import { useBattleMap } from '../../hooks/useBattleMap';
@@ -79,7 +79,7 @@ export default function BattleMapStudio({ campaign, isDM, locations = [] }) {
     setMapName, setMapImage, resetMap, loadMapState, getSerializableState, markClean,
     toggleAnimationEffect, setAnimationIntensity, toggleAnimationEnabled, clearAnimationEffects
   } = useBattleMapStore();
-  const { savedMaps, saveMap, loadMap, deleteMap, broadcastToPlayers } = useBattleMap(campaignId);
+  const { savedMaps, saveMap, loadMap, deleteMap, broadcastToPlayers, stopBroadcast } = useBattleMap(campaignId);
 
   // What to make. Pre-filled from the open map, so its recipe can be tweaked.
   const [description, setDescription] = useState(mapImage?.description || '');
@@ -220,11 +220,22 @@ export default function BattleMapStudio({ campaign, isDM, locations = [] }) {
 
   const handleSend = async () => {
     try {
-      await broadcastToPlayers();
+      await broadcastToPlayers({ force: true });
       setSentAt(Date.now());
       setTimeout(() => setSentAt(0), 2000);
     } catch (err) {
       toast.error(`Could not show the map: ${err?.message || 'unknown error'}`);
+    }
+  };
+
+  // Take the map off the monitor (it shows "Waiting for the DM"), and stop live mode.
+  const handleTakeDown = async () => {
+    try {
+      setIsLive(false);
+      await stopBroadcast();
+      toast.success('The monitor is cleared.');
+    } catch (err) {
+      toast.error(`Could not clear the monitor: ${err?.message || 'unknown error'}`);
     }
   };
 
@@ -295,6 +306,9 @@ export default function BattleMapStudio({ campaign, isDM, locations = [] }) {
           </button>
           <button className="px-3 py-2 text-sm rounded-md flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40" onClick={handleSend} disabled={!mapImage}>
             {sentAt ? <Check size={16} className="text-emerald-400" /> : <Send size={16} />} Show on monitor
+          </button>
+          <button className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md" onClick={handleTakeDown} title="Take the map off the monitor">
+            <EyeOff size={18} />
           </button>
           <button className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-sm font-medium flex items-center gap-2 disabled:opacity-40" onClick={handleSave} disabled={!mapImage}>
             <Save size={16} /> Save

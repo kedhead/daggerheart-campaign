@@ -6,6 +6,9 @@ import MapAnimationOverlay from '../BattleMapStudio/Canvas/MapAnimationOverlay';
 import { DiceTray, DiceRoller, RollHistory } from '../../dice';
 import AudioReceiver from '../Soundboard/AudioReceiver';
 import MonitorCinematics from '../Cinematics/MonitorCinematics';
+import FearCounter from '../PlayerDisplay/FearCounter';
+import SpotlightDisplay from '../PlayerDisplay/SpotlightDisplay';
+import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import { useWakeLock } from '../../hooks/useWakeLock';
 import './BattleMapDisplayWindow.css';
 
@@ -81,6 +84,19 @@ export default function BattleMapDisplayWindow({ campaignId }) {
   const [rotation, setRotation] = useState(0);
   const [fit, setFit] = useState(readFit);
   const hideTimer = useRef(null);
+
+  // Fear and the spotlight over the map, for Daggerheart, following the same
+  // "show" switches as the Player Display.
+  const { fearCount, showFear, showInitiative } = usePlayerDisplay(campaignId);
+  const [gameSystem, setGameSystem] = useState(null);
+  const [spotlight, setSpotlight] = useState(null);
+  useEffect(() => {
+    if (!campaignId) return undefined;
+    const offCampaign = onSnapshot(doc(db, 'campaigns', campaignId), snap => setGameSystem(snap.exists() ? snap.data().gameSystem || 'daggerheart' : null), () => setGameSystem(null));
+    const offSpotlight = onSnapshot(doc(db, `campaigns/${campaignId}/initiative/spotlight`), snap => setSpotlight(snap.exists() ? snap.data() : null), () => setSpotlight(null));
+    return () => { offCampaign(); offSpotlight(); };
+  }, [campaignId]);
+  const isDaggerheart = gameSystem === 'daggerheart';
 
   // A map screen runs for a whole session; don't let it sleep.
   useWakeLock(true);
@@ -163,6 +179,13 @@ export default function BattleMapDisplayWindow({ campaignId }) {
       >
         <MapView mapState={mapState} fit={fit} />
       </div>
+
+      {isDaggerheart && ((showFear && fearCount != null) || (showInitiative && spotlight?.current)) && (
+        <div className="bmd-table-status">
+          {showFear && <div className="bmd-fear"><FearCounter fearCount={fearCount} /></div>}
+          {showInitiative && spotlight?.current && <SpotlightDisplay spotlight={spotlight} />}
+        </div>
+      )}
 
       {!mapState && (
         <div className="campaign-id-hint">Campaign: {campaignId || 'Not specified'}</div>

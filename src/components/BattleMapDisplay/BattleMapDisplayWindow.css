@@ -134,3 +134,23 @@
   color: #444;
   font-family: monospace;
 }
+
+/* Fear and the spotlight over the map (Daggerheart). */
+.bmd-table-status {
+  position: absolute;
+  top: 2vh;
+  left: 2vw;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  max-width: 80vw;
+  pointer-events: none;
+}
+.bmd-fear .fear-counter-display {
+  background: rgba(12, 8, 24, 0.7);
+  padding: 0.4rem 1rem;
+}
+.bmd-fear .fear-counter-display .fear-label { font-size: 1.1rem; }
+.bmd-fear .fear-counter-display .fear-number { font-size: 2.2rem; }

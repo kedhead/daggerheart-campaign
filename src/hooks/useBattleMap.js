@@ -108,7 +108,9 @@ export function useBattleMap(campaignId) {
   };
 
   // Broadcast current map state to battle map display (separate from player display)
-  const broadcastToPlayers = async () => {
+  // `force` sends even if this device thinks the monitor already has it
+  // (another device may have shown something else since).
+  const broadcastToPlayers = async ({ force = false } = {}) => {
     if (!displayPath) return;
 
     try {
@@ -117,7 +119,7 @@ export function useBattleMap(campaignId) {
       // Live mode fires this on every state change. Skip writes that would
       // publish exactly what the display already has.
       const serialized = JSON.stringify(playerViewState);
-      if (serialized === lastBroadcastRef.current) return;
+      if (!force && serialized === lastBroadcastRef.current) return;
 
       const displayRef = doc(db, displayPath);
 
