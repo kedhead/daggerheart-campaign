@@ -126,7 +126,7 @@ export default function EncountersView({ campaign, encounters = [], addEncounter
     // Visibility filter
     if (!isDM && encounter.hidden) return false;
 
-    const matchesSearch = encounter.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (encounter.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       encounter.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       encounter.enemies?.toLowerCase().includes(searchTerm.toLowerCase());
 

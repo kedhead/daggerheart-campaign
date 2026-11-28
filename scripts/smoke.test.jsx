@@ -12,7 +12,8 @@ import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js
 import { getTierForLevel, getBaseProficiency, getEffectiveProficiency, getProficiencyBonus, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
 import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils/daggerheartLevelUp.js';
 import { sortByInitiative, keepTurn } from '../src/utils/initiativeOrder.js';
-import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments } from '../src/components/Encounters/BPCalculator.jsx';
+import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments, partyTier, countLowerTier } from '../src/components/Encounters/BPCalculator.jsx';
+import { participantFor, adversaryMarkStress } from '../src/utils/encounterParticipants.js';
 import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt } from '../src/services/adversaryGenerator.js';
 import { responseParser } from '../src/services/responseParser.js';
 import { promptBuilder } from '../src/services/promptBuilder.js';
@@ -47,7 +48,7 @@ import { dialogueGuidance, normalizeDialogue, sampleLines, tableQuoteLines } fro
 import { verifyIdToken, bearerToken, requireUser, setTokenVerifierForTests } from '../api/_lib/auth.js';
 import { generateKeyPair, SignJWT, exportJWK, createLocalJWKSet } from 'jose';
 import AppearsIn from '../src/components/CampaignMemory/AppearsIn.jsx';
-import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost } from '../src/utils/dualityAutomation.js';
+import { dualityEffects, applyHopeStressGain, nextFearState, clampFear, isAutoHopeFearOn, FEAR_LEDGER_SIZE, fearCost, stressCost } from '../src/utils/dualityAutomation.js';
 import { getCharacterOwnerId } from '../src/utils/characterOwnership.js';
 import { isVisibleToPlayers, visibleTo } from '../src/utils/playerVisibility.js';
 import SessionDateFilters from '../src/components/Filters/SessionDateFilters.jsx';
@@ -4198,6 +4199,23 @@ section('Initiative order');
   const last = keepTurn(order, 2, [A, B]);
   assert(last.turn === 0 && last.wrapped, 'removing the last in the order passes the turn to the top, a new round');
   assert(sortByInitiative([{ id: 'x', initiative: 10 }, { id: 'y', initiative: 10 }]).map(p => p.id).join() === 'x,y', 'ties keep their order');
+}
+
+section('Encounters pass');
+{
+  assert(stressCost('**Mark a Stress** to have the Burrower burst out of the ground.') === 1 && stressCost('Mark 2 Stress to shift.') === 2 && stressCost('Make an attack against a target within Close range.') === 0,
+    'only a feature whose text costs Stress gets a Mark Stress button, with its cost');
+  const full = adversaryMarkStress({ currentStress: 3, maxStress: 3, currentHP: 5 }, 2);
+  assert(full.currentStress === 3 && full.currentHP === 3 && full.spilled === 2 && !full.defeated, 'Stress past full marks HP instead');
+  const part = adversaryMarkStress({ currentStress: 2, maxStress: 3, currentHP: 1 }, 2);
+  assert(part.currentStress === 3 && part.currentHP === 0 && part.defeated, 'one Stress fills up and the other marks the last HP');
+  assert(adversaryMarkStress({ currentStress: 0, maxStress: 3, currentHP: 4 }, 1).spilled === 0, 'Stress with room left marks only Stress');
+  const goblin = participantFor({ id: 'g', name: 'Goblin', hp: 4, stress: 2, attack: 1, attackDamage: '1d6 phy', role: 'standard' }, { id: 'p1', name: 'Goblin 3' });
+  assert(goblin.name === 'Goblin 3' && goblin.maxHP === 4 && goblin.damage === '1d6 phy' && !('evasion' in goblin) && goblin.conditions.length === 0, 'a reinforcement is built like any other participant, with no undefined fields');
+  assert(partyTier([{ level: 1 }, { level: 1 }]) === 1 && partyTier([{ level: 3 }, { level: 5 }]) === 2 && partyTier([{ level: 6 }]) === 3 && partyTier([]) === 1, 'the party tier comes from its average level');
+  const advs = [{ id: 'm', tier: 1, role: 'minion' }, { id: 's', tier: 1, role: 'standard' }, { id: 'b', tier: 2, role: 'bruiser' }];
+  assert(countLowerTier([{ adversaryId: 'm', quantity: 8 }, { adversaryId: 's', quantity: 2 }, { adversaryId: 'b', quantity: 1 }], advs, 2, 4) === 4,
+    'lower-tier adversaries are counted for the Battle Guide, minions by party-sized group');
 }
 
 section('Homebrew: alchemy');

@@ -211,8 +211,9 @@ export default function EncounterCard({ encounter, onEdit, onDelete, onRun, onUp
                         <span><span className="text-lr-text-dim">HP </span>{adv.hp}</span>
                         {adv.thresholds && (
                           <span>
+                            {/* Stored under legacy names: `minor` is Major, `major` is Severe. */}
                             <span className="text-lr-text-dim">Thresholds </span>
-                            {adv.thresholds.minor} / {adv.thresholds.major} / {adv.thresholds.severe}
+                            {adv.thresholds.minor} / {adv.thresholds.major}
                           </span>
                         )}
                         {adv.attackDamage && (

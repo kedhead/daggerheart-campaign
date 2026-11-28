@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, Pause, StopCircle, RotateCcw, Skull, Heart, Users, ChevronLeft, AlertTriangle } from 'lucide-react';
+import { Play, Pause, StopCircle, RotateCcw, Skull, Heart, Users, ChevronLeft, AlertTriangle, UserPlus } from 'lucide-react';
 import ParticipantCard from './ParticipantCard';
 import EnvironmentEffectsPanel from './EnvironmentEffectsPanel';
 import PhaseTransitionModal from './PhaseTransitionModal';
@@ -38,7 +38,9 @@ export default function LiveEncounterTracker({
     resumeEncounter,
     endEncounter,
     confirmPhaseTransition,
-    dismissPhaseTransition
+    dismissPhaseTransition,
+    addParticipants,
+    removeParticipant
   } = useActiveEncounter(campaignId);
 
   const { rollDamage } = useDice(campaignId);
@@ -54,6 +56,10 @@ export default function LiveEncounterTracker({
   const notify = useNotify();
   const [expandedParticipant, setExpandedParticipant] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+  // Reinforcements: more adversaries joining mid-fight.
+  const [reinforcing, setReinforcing] = useState(false);
+  const [reinforceSearch, setReinforceSearch] = useState('');
+  const [reinforceQty, setReinforceQty] = useState(1);
 
   if (loading) {
     return (
@@ -233,10 +239,59 @@ export default function LiveEncounterTracker({
         <div className="lg:col-span-2 space-y-6">
           {/* Participants Grid */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Skull className="text-red-500" size={24} />
-              Adversaries <span className="text-lr-text-dim text-base font-normal">({activeParticipants.length} active)</span>
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Skull className="text-red-500" size={24} />
+                Adversaries <span className="text-lr-text-dim text-base font-normal">({activeParticipants.length} active)</span>
+              </h3>
+              {isDM && (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setReinforcing(r => !r)} aria-expanded={reinforcing}>
+                  <UserPlus size={16} /> Add reinforcements
+                </button>
+              )}
+            </div>
+            {isDM && reinforcing && (() => {
+              const q = reinforceSearch.trim().toLowerCase();
+              const matches = adversaries
+                .filter(a => a?.id && a.name && (!q || a.name.toLowerCase().includes(q) || a.role?.toLowerCase().includes(q)))
+                .sort((a, b) => (a.tier || 1) - (b.tier || 1) || a.name.localeCompare(b.name))
+                .slice(0, 30);
+              return (
+                <div className="p-3 rounded-xl border border-white/10 bg-[var(--bg-secondary)] space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text" value={reinforceSearch} onChange={(e) => setReinforceSearch(e.target.value)} autoFocus
+                      placeholder="Search adversaries…" aria-label="Search adversaries to add"
+                      className="flex-1 min-w-[160px] bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm text-white focus:outline-none"
+                    />
+                    <label className="flex items-center gap-1.5 text-xs text-lr-text-muted">
+                      How many
+                      <input type="number" min={1} max={20} value={reinforceQty}
+                        onChange={(e) => setReinforceQty(Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)))}
+                        className="w-14 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white text-center focus:outline-none" />
+                    </label>
+                  </div>
+                  {matches.length === 0 ? (
+                    <p className="text-xs text-lr-text-dim">No adversaries match.</p>
+                  ) : (
+                    <div className="max-h-56 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1">
+                      {matches.map(a => (
+                        <button key={a.id} type="button"
+                          className="flex items-center justify-between gap-2 px-2 py-1.5 rounded text-left text-sm text-lr-text-muted hover:bg-white/10 hover:text-white"
+                          onClick={async () => {
+                            await addParticipants(a, reinforceQty);
+                            notify.success(`${reinforceQty > 1 ? `${reinforceQty} × ` : ''}${a.name} joined the fight.`);
+                            setReinforcing(false); setReinforceSearch(''); setReinforceQty(1);
+                          }}>
+                          <span className="truncate">{a.name}</span>
+                          <span className="text-[11px] text-lr-text-dim shrink-0 uppercase">T{a.tier || 1} · {a.role || 'standard'}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {activeParticipants.length === 0 && participants.length > 0 ? (
               <div className="p-8 text-center bg-emerald-500/10 border border-emerald-500/30 rounded-xl">
@@ -251,7 +306,7 @@ export default function LiveEncounterTracker({
                 <p className="text-lr-text-dim italic">No adversaries in this encounter yet.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 {activeParticipants.map(participant => (
                   <ParticipantCard
                     key={participant.id}
@@ -261,6 +316,7 @@ export default function LiveEncounterTracker({
                     onAddCondition={addCondition}
                     onRemoveCondition={removeCondition}
                     onToggleDefeated={toggleDefeated}
+                    onRemove={isDM ? removeParticipant : null}
                     onRollDamage={rollDamage}
                     isDM={isDM}
                     fearCount={fearCount}
@@ -281,7 +337,7 @@ export default function LiveEncounterTracker({
               <h4 className="text-sm font-bold text-lr-text-dim uppercase tracking-wider flex items-center gap-2">
                 Defeated <span className="bg-white/10 px-2 py-0.5 rounded-full text-lr-text-muted">{defeatedParticipants.length}</span>
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60 hover:opacity-100 transition-opacity">
+              <div className="space-y-2 opacity-60 hover:opacity-100 transition-opacity">
                 {defeatedParticipants.map(participant => (
                   <ParticipantCard
                     key={participant.id}
@@ -291,6 +347,7 @@ export default function LiveEncounterTracker({
                     onAddCondition={addCondition}
                     onRemoveCondition={removeCondition}
                     onToggleDefeated={toggleDefeated}
+                    onRemove={isDM ? removeParticipant : null}
                     onRollDamage={rollDamage}
                     isDM={isDM}
                     fearCount={fearCount}
