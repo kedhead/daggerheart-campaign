@@ -1,3 +1,4 @@
+import ConditionsBar from '../Conditions/ConditionsBar';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, ChevronLeft, Moon, ArrowUp, Skull, Palette, Heart, HeartCrack } from 'lucide-react';
 import { useDice, DiceTray } from '../../dice';
@@ -396,6 +397,13 @@ export default function PortalCharacterSheet({ character, currentUserId, updateC
                   setArmor,
                   armorSlotsTotal || armor.max
                 )} />
+              <div>
+                <div style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.55)', fontWeight: 700, marginBottom: 6 }}>Conditions</div>
+                <ConditionsBar
+                  conditions={character.conditions || []}
+                  onChange={updateCharacter ? (next) => applyUpdates({ conditions: next }) : undefined}
+                />
+              </div>
             </div>
           </div>
 

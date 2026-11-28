@@ -1,5 +1,6 @@
 import { ExternalLink, Heart, Zap } from 'lucide-react';
 import { partyVitals } from '../../../utils/daggerheartVitals';
+import { conditionLabel } from '../../../data/daggerheartConditions';
 
 function HPBar({ current, max }) {
   if (!max) return null;
@@ -75,6 +76,11 @@ export default function PartyStatusPanel({ characters = [], campaign, onViewAll 
                   {(char.class || level) && (
                     <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
                       {[char.class, level ? `Lvl ${level}` : null].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                  {(char.conditions || []).length > 0 && (
+                    <div style={{ fontSize: '0.7rem', color: '#d8b4fe', marginTop: 2 }} title="Conditions">
+                      {(char.conditions || []).map(conditionLabel).join(' · ')}
                     </div>
                   )}
                 </div>

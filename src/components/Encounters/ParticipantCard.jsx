@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { fearCost, stressCost } from '../../utils/dualityAutomation';
 import { Heart, Zap, Skull, ChevronDown, ChevronRight, Shield, Swords, Target, X, Check, Crown } from 'lucide-react';
-import { DAGGERHEART_CONDITIONS } from '../../hooks/useActiveEncounter';
+import ConditionsBar from '../Conditions/ConditionsBar';
 import { parseDamageNotation } from '../../dice';
 import { marksForDamage } from '../../utils/thresholdDamage';
 
@@ -18,8 +18,7 @@ export default function ParticipantCard({
   participant,
   onApplyDamage,
   onApplyHealing,
-  onAddCondition,
-  onRemoveCondition,
+  onSetConditions,
   onToggleDefeated,
   onRemove,
   onRollDamage,
@@ -30,7 +29,6 @@ export default function ParticipantCard({
   fearCount = 0,
   onSpendFear
 }) {
-  const [showConditionPicker, setShowConditionPicker] = useState(false);
   const [damageInput, setDamageInput] = useState('');
   const [lastAttackResult, setLastAttackResult] = useState(null);
   const [lastDamageResult, setLastDamageResult] = useState(null);
@@ -279,19 +277,14 @@ export default function ParticipantCard({
           </div>
         )}
 
-        {/* Conditions */}
-        {(conditions || []).length > 0 && (
-          <div className="w-full flex flex-wrap gap-1">
-            {conditions.map(condition => (
-              <span key={condition} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 bg-purple-500/20 text-purple-300 rounded-md text-[11px] border border-purple-500/30">
-                {condition}
-                {isDM && (
-                  <button type="button" className="p-0.5 hover:bg-purple-500/20 rounded-sm transition-colors" onClick={() => onRemoveCondition(participant.id, condition)} aria-label={`Remove ${condition}`}>
-                    <X size={10} />
-                  </button>
-                )}
-              </span>
-            ))}
+        {/* Conditions: the core three, every unique one from the catalog, or any by name. */}
+        {(isDM || (conditions || []).length > 0) && (
+          <div className="w-full">
+            <ConditionsBar
+              conditions={conditions || []}
+              forAdversary
+              onChange={isDM && onSetConditions ? (next) => onSetConditions(participant.id, next) : undefined}
+            />
           </div>
         )}
       </div>
@@ -395,33 +388,6 @@ export default function ParticipantCard({
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-white/5">
-                <div className="relative flex-1">
-                  <button
-                    className="btn btn-sm btn-secondary w-full justify-between"
-                    onClick={() => setShowConditionPicker(!showConditionPicker)}
-                  >
-                    <span className="whitespace-nowrap">+ Add Condition</span>
-                    <ChevronDown size={14} />
-                  </button>
-
-                  {showConditionPicker && (
-                    <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-[var(--bg-secondary)] border border-white/10 rounded-lg shadow-xl p-2 grid grid-cols-2 gap-1 animate-in fade-in zoom-in-95 duration-200">
-                      {DAGGERHEART_CONDITIONS.filter(c => !(conditions || []).includes(c)).map(condition => (
-                        <button
-                          key={condition}
-                          className="px-2 py-1.5 text-xs text-left text-lr-text-muted hover:bg-white/10 rounded transition-colors"
-                          onClick={() => {
-                            onAddCondition(participant.id, condition);
-                            setShowConditionPicker(false);
-                          }}
-                        >
-                          {condition}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 <button
                   className={`btn btn-sm flex-1 justify-center ${isDefeated ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
                   onClick={() => onToggleDefeated(participant.id)}
