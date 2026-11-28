@@ -274,8 +274,6 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     initAudio();
     playRollSound();
 
-    showSpecialFor(roll);
-
     watchdogsRef.current.set(roll.id, setTimeout(() => {
       console.warn('[DiceTray] roll never settled, retiring it:', roll.id);
       settleRoll(roll.id);
@@ -297,6 +295,12 @@ export default function DiceTray({ campaignId, currentUserId = null, animateRemo
     }
 
     settleRoll(roll.id);
+    // The crit / doubles celebration comes once the dice have landed. It
+    // used to burst in as the roll arrived: it gave the result away before
+    // the dice showed it, covered the throw with its dark backdrop, and on a
+    // big monitor the two full-screen animations at once dropped the frame
+    // rate to a crawl. Only if the roll is still on the table (not dismissed).
+    if (entriesRef.current.some(e => e.roll.id === roll.id)) showSpecialFor(roll);
   }, [pushToFeed, commitEntries, settleRoll, showSpecialFor, ensureEngine]);
 
   // Receive new canonical rolls from Firestore.
