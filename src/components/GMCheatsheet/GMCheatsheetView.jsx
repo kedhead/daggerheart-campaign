@@ -15,96 +15,99 @@ import './GMCheatsheetView.css';
 // STATIC REFERENCE DATA
 // ═══════════════════════════════════════════
 
+// Checked against the core rulebook text the app ships (api/daggerheart-rules.json).
 const DIFFICULTY_TABLE = [
-    { difficulty: 6, label: 'Very Easy', when: 'Trivial tasks, might not require a roll' },
-    { difficulty: 9, label: 'Easy', when: 'Simple tasks most could manage' },
-    { difficulty: 12, label: 'Moderate', when: 'Typical challenges, default difficulty' },
-    { difficulty: 15, label: 'Hard', when: 'Challenging tasks requiring skill or luck' },
-    { difficulty: 18, label: 'Very Hard', when: 'Extreme challenges, experts struggle' },
-    { difficulty: 21, label: 'Near Impossible', when: 'Legendary feats, borderline miracles' },
+    { difficulty: 5, label: 'Very Easy', when: 'Barely worth a roll' },
+    { difficulty: 10, label: 'Easy', when: 'Most people could do it' },
+    { difficulty: 15, label: 'Average', when: 'A real challenge for a capable hero' },
+    { difficulty: 20, label: 'Hard', when: 'Takes skill, luck, or both' },
+    { difficulty: 25, label: 'Very Hard', when: 'Experts often fail' },
+    { difficulty: 30, label: 'Nearly Impossible', when: 'The stuff of legend' },
 ];
 
-const DAMAGE_THRESHOLDS = [
-    { tier: 1, minor: '1–4', major: '5–9', severe: '10+' },
-    { tier: 2, minor: '1–7', major: '8–14', severe: '15+' },
-    { tier: 3, minor: '1–11', major: '12–20', severe: '21+' },
-    { tier: 4, minor: '1–15', major: '16–25', severe: '26+' },
+const DAMAGE_STEPS = [
+    { damage: 'Below Major', marks: '1 HP' },
+    { damage: 'Major or more', marks: '2 HP' },
+    { damage: 'Severe or more', marks: '3 HP' },
+    { damage: 'Double Severe or more (Massive)', marks: '4 HP' },
 ];
 
 const RANGE_BANDS = [
-    { range: 'Connected', desc: 'Touching / grappling distance' },
-    { range: 'Melee', desc: 'Within arm\'s reach (~5 ft)' },
-    { range: 'Very Close', desc: 'A few steps away (~10 ft)' },
-    { range: 'Close', desc: 'Across a room (~30 ft)' },
-    { range: 'Far', desc: 'Across a large area (~60 ft)' },
-    { range: 'Very Far', desc: 'Edge of visibility (~120 ft)' },
+    { range: 'Melee', desc: 'Touching distance, a few feet (more for very large creatures)' },
+    { range: 'Very Close', desc: "About 5–10 ft; fine details visible. On a map: a card's short edge (2–3 in)" },
+    { range: 'Close', desc: 'About 10–30 ft; across a room' },
+    { range: 'Far', desc: "About 30–100 ft; across a small battlefield. On a map: a sheet of paper's long edge (11–12 in)" },
+    { range: 'Very Far', desc: 'About 100–300 ft; shapes but no detail' },
+    { range: 'Out of Range', desc: "Beyond Very Far: usually can't be targeted" },
 ];
 
 const CONDITIONS = [
-    { name: 'Vulnerable', effect: 'Attacks against this creature gain advantage. Cleared after being attacked.' },
-    { name: 'Restrained', effect: 'Cannot move. Attacks against this creature gain advantage. Must succeed on a roll to escape.' },
-    { name: 'Cloaked', effect: 'Hidden from enemies. Attacks made while cloaked gain advantage. Cleared when you attack, cast a spell, or are spotted.' },
-    { name: 'Hidden', effect: 'Cannot be targeted. Cleared when you attack, cast a spell, or enter line of sight.' },
-    { name: 'Frightened', effect: 'Cannot willingly move closer to the source of fear. Disadvantage on action rolls while the source is in sight.' },
-    { name: 'Dazed', effect: 'Can only take one action on your turn.' },
-    { name: 'Weakened', effect: 'Roll with disadvantage on Strength and Agility action rolls.' },
-    { name: 'Slowed', effect: 'Move only up to Very Close range on your turn.' },
+    { name: 'Hidden', effect: "Out of sight of all foes and they don't know where you are: rolls against you have disadvantage. Ends when an adversary would see you, you move into their line of sight, or you attack." },
+    { name: 'Restrained', effect: "You can't move until it is cleared, but you can still act from where you are." },
+    { name: 'Vulnerable', effect: "You're in a bad spot (knocked down, off balance, caught off guard): all rolls targeting you have advantage." },
 ];
 
 const REST_RULES = {
+    general: [
+        'Each PC makes two downtime moves (the same one twice is allowed) and can swap domain cards between loadout and vault',
+        'Up to three short rests in a row; then the next rest must be a long rest',
+        "An interrupted short rest gives nothing; an interrupted long rest gives a short rest's benefits",
+        '"Per rest" features refresh on either rest; "per long rest" only on a long rest',
+    ],
     short: [
-        'Takes about 1 hour in a safe place',
-        'Clear all marked Armor Slots',
-        'Clear Stress equal to your level (minimum 1)',
-        'Each character may take 1 downtime move',
+        'About an hour',
+        'Tend to Wounds: clear 1d4 + tier Hit Points (yourself or an ally)',
+        'Clear Stress: clear 1d4 + tier Stress',
+        "Repair Armor: clear 1d4 + tier Armor Slots (yours or an ally's)",
+        'Prepare: gain a Hope, or 2 Hope each if you Prepare together',
+        'GM gains 1d4 Fear',
     ],
     long: [
-        'Takes about 8 hours, requires a safe place',
-        'Clear all Stress and Armor Slots',
-        'Clear Hit Points equal to half your max (round up)',
-        'Reset all "once per rest" features',
-        'Each character may take 2 downtime moves',
-    ],
-    downtime: [
-        'Forage / Hunt — find food and supplies',
-        'Craft — create or repair an item',
-        'Tend — heal an ally\'s Hit Points (roll a d6)',
-        'Explore — scout the area',
-        'Study — research a question or mystery',
-        'Prepare — gain a preparation benefit',
-        'Socialize — interact with NPCs or allies',
+        'A few hours: make camp and sleep',
+        'Tend to All Wounds: clear all Hit Points (yourself or an ally)',
+        'Clear All Stress',
+        "Repair All Armor (yours or an ally's)",
+        'Prepare: gain a Hope, or 2 Hope each if you Prepare together',
+        'Work on a Project: tick its countdown, or roll for progress if the GM asks',
+        'GM gains 1d4 + number of PCs Fear, and may advance a long-term countdown',
     ],
 };
 
 const HOPE_FEAR_RULES = {
     hope: [
-        'Players gain Hope when they roll with Hope (higher Hope Die)',
-        'Hope can be spent to: activate class features, Help an Ally (costs 1 Hope), activate Hope abilities',
-        'Hope is shared in a communal pool between all players',
-        'Max Hope pool = 2 × number of players',
+        'Each PC has their own Hope, up to 6; it carries over between sessions',
+        'Gain a Hope on any action roll with Hope, and on a critical success',
+        'Help an Ally: 1 Hope, the ally adds a d6 advantage die (any number can help)',
+        'Utilize an Experience: 1 Hope per Experience, add its modifier to an action or reaction roll',
+        'Initiate a Tag Team Roll: 3 Hope',
+        'Hope features: spend exactly what the feature says',
     ],
     fear: [
-        'GM gains Fear when players roll with Fear (higher Fear Die)',
-        'Fear can be spent to: activate adversary abilities, deal extra damage, introduce complications',
-        'GM Fear pool has no maximum',
-        'Fear is a pacing tool — spend it to escalate tension',
-        'Critical Failure: GM gains Fear AND the action fails',
+        'GM gains a Fear whenever a player rolls with Fear, and from rests',
+        'Maximum 12 Fear; it carries over between sessions — keep it visible to the players',
+        'Spend a Fear to: interrupt the players and make a GM move',
+        '…make an additional GM move after one you just made',
+        "…use an adversary's or environment's Fear feature",
+        "…add an adversary's Experience to a roll",
     ],
     duality: [
-        'Roll 2d12 (Hope Die + Fear Die) + Trait modifier',
-        'If Hope Die ≥ Fear Die → Success with Hope',
-        'If Fear Die > Hope Die → Success with Fear (GM gains 1 Fear)',
-        'Ties go to Hope',
-        'Critical Success: Doubles on a success — extra powerful outcome',
+        'Roll 2d12 (Hope Die + Fear Die) + trait + modifiers; meet or beat the Difficulty to succeed',
+        'Hope Die higher: the roll is "with Hope" (the player gains a Hope)',
+        'Fear Die higher: the roll is "with Fear" (the GM gains a Fear), success or failure',
+        'Matching dice: a critical success, even if the total missed. Gain a Hope and clear a Stress',
+        "Critical on an attack: extra damage. Start with the dice's maximum, then roll and add",
+        'There are no critical failures',
+        "Reaction rolls don't give Hope or Fear, and no one can help with them",
     ],
 };
 
-const ACTION_ECONOMY = [
-    { action: 'Action', desc: 'Your main activity: attack, cast spell, interact, move' },
-    { action: 'Reaction', desc: 'Triggered by specific circumstances; each limited to once per trigger' },
-    { action: 'Free Action', desc: 'Brief, simple things: speak a sentence, drop an item' },
-    { action: 'Movement', desc: 'Move up to Close range as part of your action; can split before/after' },
-    { action: 'Sprint', desc: 'Mark a Stress to move an additional Close range' },
+const SPOTLIGHT_RULES = [
+    { action: 'No turns', desc: 'There is no initiative: the spotlight moves between the players and the GM' },
+    { action: "GM's turn", desc: 'A player fails a roll or rolls with Fear, or the GM spends a Fear to interrupt' },
+    { action: 'Movement', desc: 'As part of an action, move anywhere within Close range you could plausibly reach' },
+    { action: 'Farther', desc: 'Beyond Close, or somewhere hard to reach (climb, swim, jump): an Agility roll or a move of its own' },
+    { action: 'Into melee', desc: 'While in danger, you can move into Melee with anything within Close range as part of your action' },
+    { action: 'Reactions', desc: 'Reaction rolls dodge or withstand an effect; they generate no Hope, Fear or GM moves' },
 ];
 
 // ═══════════════════════════════════════════
@@ -121,8 +124,8 @@ function useSections() {
             render: () => (
                 <>
                     <div className="gm-callout hope">
-                        <strong>Core Mechanic:</strong> Roll 2d12 (Hope Die + Fear Die) + Trait modifier vs. Difficulty.
-                        If the result meets or exceeds the Difficulty, it's a success.
+                        <strong>Core Mechanic:</strong> Roll 2d12 (Hope Die + Fear Die) + trait vs. Difficulty.
+                        Meet or beat it to succeed. Matching dice always succeed (a critical).
                     </div>
                     <ul className="gm-compact-list">
                         {HOPE_FEAR_RULES.duality.map((rule, i) => (
@@ -158,28 +161,30 @@ function useSections() {
             id: 'damage',
             title: 'Damage Thresholds',
             icon: Heart,
-            keywords: ['damage', 'threshold', 'minor', 'major', 'severe', 'hp', 'hit point', 'tier'],
+            keywords: ['damage', 'threshold', 'minor', 'major', 'severe', 'massive', 'hp', 'hit point', 'armor'],
             render: () => (
                 <>
                     <div className="gm-callout fear">
-                        <strong>Damage → Hit Points:</strong> Minor = 1 HP, Major = 2 HP, Severe = 3 HP.
-                        Armor Slots absorb 1 threshold step each.
+                        <strong>Thresholds:</strong> a PC's Major and Severe thresholds are their armor's base thresholds plus their level.
+                        Adversaries' are on their stat block. Damage marks Hit Points by threshold, not one per point.
                     </div>
                     <table className="gm-table">
                         <thead>
-                            <tr><th>Tier</th><th>Minor</th><th>Major</th><th>Severe</th></tr>
+                            <tr><th>Damage taken</th><th>Mark</th></tr>
                         </thead>
                         <tbody>
-                            {DAMAGE_THRESHOLDS.map(row => (
-                                <tr key={row.tier}>
-                                    <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Tier {row.tier}</td>
-                                    <td>{row.minor}</td>
-                                    <td>{row.major}</td>
-                                    <td style={{ color: '#ef4444', fontWeight: 600 }}>{row.severe}</td>
+                            {DAMAGE_STEPS.map(row => (
+                                <tr key={row.damage}>
+                                    <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{row.damage}</td>
+                                    <td>{row.marks}</td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
+                    <ul className="gm-compact-list">
+                        <li>Armor: mark one Armor Slot per attack to drop the damage one step (Severe → Major → Minor → none)</li>
+                        <li>A PC has Armor Slots equal to their Armor Score</li>
+                    </ul>
                 </>
             ),
         },
@@ -187,7 +192,7 @@ function useSections() {
             id: 'ranges',
             title: 'Range Bands',
             icon: Ruler,
-            keywords: ['range', 'melee', 'close', 'far', 'very close', 'very far', 'distance', 'connected'],
+            keywords: ['range', 'melee', 'close', 'far', 'very close', 'very far', 'distance', 'out of range', 'feet', 'map'],
             render: () => (
                 <table className="gm-table">
                     <thead>
@@ -208,8 +213,12 @@ function useSections() {
             id: 'conditions',
             title: 'Conditions',
             icon: AlertTriangle,
-            keywords: ['condition', 'vulnerable', 'restrained', 'cloaked', 'hidden', 'frightened', 'dazed', 'weakened', 'slowed', 'status'],
+            keywords: ['condition', 'vulnerable', 'restrained', 'hidden', 'status', 'advantage', 'disadvantage'],
             render: () => (
+                <>
+                <div className="gm-callout">
+                    Daggerheart has three conditions. Others come from features and work as their text says. A condition can't stack on the same target.
+                </div>
                 <table className="gm-table">
                     <thead>
                         <tr><th>Condition</th><th>Effect</th></tr>
@@ -223,20 +232,21 @@ function useSections() {
                         ))}
                     </tbody>
                 </table>
+                </>
             ),
         },
         {
             id: 'actions',
-            title: 'Economy of Action',
+            title: 'Spotlight & Movement',
             icon: Zap,
-            keywords: ['action', 'reaction', 'movement', 'sprint', 'free', 'turn', 'economy'],
+            keywords: ['action', 'reaction', 'movement', 'spotlight', 'turn', 'initiative', 'agility', 'move'],
             render: () => (
                 <table className="gm-table">
                     <thead>
-                        <tr><th>Action Type</th><th>Description</th></tr>
+                        <tr><th></th><th>How it works</th></tr>
                     </thead>
                     <tbody>
-                        {ACTION_ECONOMY.map(row => (
+                        {SPOTLIGHT_RULES.map(row => (
                             <tr key={row.action}>
                                 <td style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{row.action}</td>
                                 <td>{row.desc}</td>
@@ -250,9 +260,12 @@ function useSections() {
             id: 'rests',
             title: 'Rest Mechanics',
             icon: Moon,
-            keywords: ['rest', 'short', 'long', 'downtime', 'heal', 'recovery', 'stress', 'armor'],
+            keywords: ['rest', 'short', 'long', 'downtime', 'heal', 'recovery', 'stress', 'armor', 'prepare', 'project', 'fear'],
             render: () => (
                 <>
+                    <ul className="gm-compact-list" style={{ marginBottom: '0.75rem' }}>
+                        {REST_RULES.general.map((r, i) => <li key={i}>{r}</li>)}
+                    </ul>
                     <div style={{ marginBottom: '0.75rem' }}>
                         <strong style={{ color: 'var(--hope-color)', fontSize: '0.82rem' }}>Short Rest</strong>
                         <ul className="gm-compact-list">
@@ -265,12 +278,6 @@ function useSections() {
                             {REST_RULES.long.map((r, i) => <li key={i}>{r}</li>)}
                         </ul>
                     </div>
-                    <div>
-                        <strong style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Downtime Moves</strong>
-                        <ul className="gm-compact-list">
-                            {REST_RULES.downtime.map((r, i) => <li key={i}>{r}</li>)}
-                        </ul>
-                    </div>
                 </>
             ),
         },
@@ -278,7 +285,7 @@ function useSections() {
             id: 'hope-fear',
             title: 'Hope & Fear Economy',
             icon: Flame,
-            keywords: ['hope', 'fear', 'pool', 'economy', 'spend', 'gain', 'gm'],
+            keywords: ['hope', 'fear', 'pool', 'economy', 'spend', 'gain', 'gm', 'help', 'experience', 'tag team', 'maximum'],
             render: () => (
                 <>
                     <div style={{ marginBottom: '0.75rem' }}>
