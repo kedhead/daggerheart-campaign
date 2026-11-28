@@ -9,6 +9,7 @@ import {
     CLASSES, SUBCLASSES, ANCESTRIES, COMMUNITIES,
     ADVANCEMENT_OPTIONS, DOMAINS
 } from '../../data/systems/daggerheart';
+import { CORE_CONDITIONS, UNIQUE_CONDITIONS } from '../../data/daggerheartConditions';
 import './GMCheatsheetView.css';
 
 // ═══════════════════════════════════════════
@@ -41,11 +42,6 @@ const RANGE_BANDS = [
     { range: 'Out of Range', desc: "Beyond Very Far: usually can't be targeted" },
 ];
 
-const CONDITIONS = [
-    { name: 'Hidden', effect: "Out of sight of all foes and they don't know where you are: rolls against you have disadvantage. Ends when an adversary would see you, you move into their line of sight, or you attack." },
-    { name: 'Restrained', effect: "You can't move until it is cleared, but you can still act from where you are." },
-    { name: 'Vulnerable', effect: "You're in a bad spot (knocked down, off balance, caught off guard): all rolls targeting you have advantage." },
-];
 
 const REST_RULES = {
     general: [
@@ -213,21 +209,45 @@ function useSections() {
             id: 'conditions',
             title: 'Conditions',
             icon: AlertTriangle,
-            keywords: ['condition', 'vulnerable', 'restrained', 'hidden', 'status', 'advantage', 'disadvantage'],
+            // Every condition's name, so searching "poisoned" or "grappled" finds this section.
+            keywords: ['condition', 'status', 'advantage', 'disadvantage', 'unique', ...[...CORE_CONDITIONS, ...UNIQUE_CONDITIONS].map(c => c.name.toLowerCase())],
             render: () => (
                 <>
                 <div className="gm-callout">
-                    Daggerheart has three conditions. Others come from features and work as their text says. A condition can't stack on the same target.
+                    Daggerheart has three core conditions. Unique conditions come from features and work as their text says;
+                    these are the ones in the app's catalog. A condition can't stack on the same target.
                 </div>
+                <strong style={{ color: 'var(--hope-color)', fontSize: '0.82rem' }}>Core</strong>
                 <table className="gm-table">
                     <thead>
-                        <tr><th>Condition</th><th>Effect</th></tr>
+                        <tr><th>Condition</th><th>Effect</th><th>Ends</th></tr>
                     </thead>
                     <tbody>
-                        {CONDITIONS.map(row => (
+                        {CORE_CONDITIONS.map(row => (
                             <tr key={row.name}>
                                 <td style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{row.name}</td>
                                 <td>{row.effect}</td>
+                                <td>{row.clear}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <strong style={{ color: 'var(--fear-color, #a855f7)', fontSize: '0.82rem', display: 'block', marginTop: '0.75rem' }}>Unique (from features)</strong>
+                <table className="gm-table">
+                    <thead>
+                        <tr><th>Condition</th><th>Effect</th><th>Ends</th></tr>
+                    </thead>
+                    <tbody>
+                        {UNIQUE_CONDITIONS.map(row => (
+                            <tr key={row.name}>
+                                <td style={{ fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+                                    {row.name}
+                                    <div style={{ fontWeight: 400, fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'normal' }}>
+                                        {row.source}{row.adversary ? ' · on the adversary' : ''}
+                                    </div>
+                                </td>
+                                <td>{row.effect}</td>
+                                <td>{row.clear}</td>
                             </tr>
                         ))}
                     </tbody>
