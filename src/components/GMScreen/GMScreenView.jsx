@@ -7,6 +7,7 @@ import RollHistory from '../../dice/RollHistory';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearControl from '../PlayerDisplay/FearControl';
 import InitiativeTracker from '../Initiative/InitiativeTracker';
+import SpotlightTracker from '../Initiative/SpotlightTracker';
 import CountdownsPanel from './panels/CountdownsPanel';
 import PartyRestPanel from './panels/PartyRestPanel';
 import EncountersPanelMini from './panels/EncountersPanelMini';
@@ -19,7 +20,8 @@ const ALL_PANELS = [
   { id: 'fear',       label: 'Fear',       icon: Flame,      daggerheartOnly: true },
   { id: 'countdowns', label: 'Countdowns',  icon: Hourglass },
   { id: 'partyrest',  label: 'Party Rest',  icon: Tent,       daggerheartOnly: true },
-  { id: 'initiative', label: 'Initiative',  icon: Swords },
+  // Daggerheart has no initiative: there this panel is the Spotlight.
+  { id: 'initiative', label: 'Initiative',  icon: Swords, dhLabel: 'Spotlight' },
   { id: 'encounters', label: 'Encounters',  icon: Activity },
   { id: 'npcs',       label: 'NPCs',        icon: Users },
   { id: 'session',    label: 'Session',     icon: ScrollText },
@@ -97,7 +99,9 @@ export default function GMScreenView({
     try { localStorage.setItem(`${storageKey}_cols`, c); } catch { /* ignore */ }
   };
 
-  const availablePanels = ALL_PANELS.filter(p => !p.daggerheartOnly || isDaggerheart);
+  const availablePanels = ALL_PANELS
+    .filter(p => !p.daggerheartOnly || isDaggerheart)
+    .map(p => (isDaggerheart && p.dhLabel ? { ...p, label: p.dhLabel } : p));
 
   return (
     <div className="gm-screen-view">
@@ -153,7 +157,7 @@ export default function GMScreenView({
       ) : (
         <div className="gm-screen-grid" style={{ '--cols': cols }}>
           {enabledPanels.map(id => {
-            const meta = ALL_PANELS.find(p => p.id === id);
+            const meta = availablePanels.find(p => p.id === id) || ALL_PANELS.find(p => p.id === id);
             if (!meta || (meta.daggerheartOnly && !isDaggerheart)) return null;
             const Icon = meta.icon;
             return (
@@ -196,7 +200,11 @@ export default function GMScreenView({
                     />
                   )}
 
-                  {id === 'initiative' && (
+                  {id === 'initiative' && isDaggerheart && (
+                    <SpotlightTracker campaign={campaign} characters={characters} isDM={isDM} compact />
+                  )}
+
+                  {id === 'initiative' && !isDaggerheart && (
                     <InitiativeTracker
                       campaign={campaign}
                       initiative={initiative}
