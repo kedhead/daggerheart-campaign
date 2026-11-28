@@ -5,6 +5,15 @@ import { DAGGERHEART_CONDITIONS } from '../../hooks/useActiveEncounter';
 import { parseDamageNotation } from '../../dice';
 import { marksForDamage } from '../../utils/thresholdDamage';
 
+// The catalog's **bold** and _italic_ marks, shown as such rather than as symbols.
+function richText(text) {
+  return String(text).split(/(\*\*[^*]+\*\*|_[^_]+_)/g).map((part, i) => {
+    if (/^\*\*[^*]+\*\*$/.test(part)) return <strong key={i} className="text-white">{part.slice(2, -2)}</strong>;
+    if (/^_[^_]+_$/.test(part)) return <em key={i}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+}
+
 export default function ParticipantCard({
   participant,
   onApplyDamage,
@@ -175,122 +184,122 @@ export default function ParticipantCard({
         ${isExpanded ? 'ring-1 ring-[rgb(var(--color-primary))]' : ''}
       `}
     >
-      {/* Header / Main Row */}
-      <div
-        className="p-4 cursor-pointer flex items-center gap-4 hover:bg-white/5 transition-colors"
-        onClick={onToggleExpand}
-      >
-        {/* Name & Role */}
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            {isBoss && <Crown size={16} className="text-amber-400 shrink-0" />}
-            {isDefeated && <Skull size={16} className="text-lr-text-dim" />}
-            <span className={`font-bold text-lg ${isDefeated ? 'text-lr-text-dim line-through' : 'text-white'}`}>
-              {name}
-            </span>
-            <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider border ${getRoleColorClass()}`}>
-              {role}
-            </span>
-            <span className="bg-white/10 text-lr-text-muted px-1.5 py-0.5 rounded text-xs font-mono border border-white/10">
-              T{tier}
-            </span>
-            {currentPhaseName && (
-              <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded text-xs border border-amber-500/40 font-medium">
-                {currentPhaseName}
+      {/* One compact row: who it is, how hurt, and the everyday controls.
+          Opening the row is only for the full stat block and features. */}
+      <div className="px-3 py-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          aria-expanded={isExpanded}
+          className="flex items-center gap-1.5 min-w-0 text-left hover:text-white"
+          title={isExpanded ? 'Hide details' : 'Show stat block and features'}
+        >
+          {isExpanded ? <ChevronDown size={16} className="text-lr-text-dim shrink-0" /> : <ChevronRight size={16} className="text-lr-text-dim shrink-0" />}
+          {isBoss && <Crown size={14} className="text-amber-400 shrink-0" />}
+          {isDefeated && <Skull size={14} className="text-lr-text-dim shrink-0" />}
+          <span className={`font-bold truncate max-w-[12rem] ${isDefeated ? 'text-lr-text-dim line-through' : 'text-white'}`}>{name}</span>
+        </button>
+        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${getRoleColorClass()}`}>{role}</span>
+        <span className="text-[11px] font-mono text-lr-text-dim">T{tier}</span>
+        {(difficulty ?? evasion) != null && (
+          <span className="inline-flex items-center gap-0.5 text-[11px] text-lr-text-muted" title="Difficulty: what an attack must beat">
+            <Shield size={11} className="text-blue-400" />{difficulty ?? evasion}
+          </span>
+        )}
+        {currentPhaseName && (
+          <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 rounded text-[10px] border border-amber-500/40 font-medium">{currentPhaseName}</span>
+        )}
+
+        {/* HP and Stress */}
+        <div className="flex items-center gap-3 flex-1 min-w-[180px]">
+          <div className="flex items-center gap-1.5 flex-1 min-w-[90px]" title={`${currentHP} of ${maxHP} HP left`}>
+            <Heart size={12} className="text-red-400 shrink-0" />
+            <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden relative">
+              <div className={`h-full transition-all duration-300 ${getHPColor()}`} style={{ width: `${hpPercent}%` }} />
+              {isBoss && sortedPhases.map(ph => (
+                <div key={ph.id}
+                  className={`absolute top-0 bottom-0 w-0.5 z-10 ${(triggeredPhaseIds || []).includes(ph.id) ? 'bg-amber-400/40' : 'bg-amber-400/80'}`}
+                  style={{ left: `${ph.triggerPercent}%` }} title={`${ph.name} (${ph.triggerPercent}%)`} />
+              ))}
+            </div>
+            <span className="text-xs font-mono text-white whitespace-nowrap">{currentHP}/{maxHP}</span>
+          </div>
+          <span className="inline-flex items-center gap-1 text-xs font-mono text-lr-text-muted whitespace-nowrap" title={`${currentStress} of ${maxStress} Stress marked`}>
+            <Zap size={12} className="text-amber-400" />{currentStress}/{maxStress}
+          </span>
+        </div>
+
+        {/* Everyday controls */}
+        {isDM && !isDefeated && (
+          <div className="flex flex-wrap items-center gap-1">
+            {thresholds && (
+              <form className="flex items-center" onSubmit={(e) => { e.preventDefault(); applyThresholdDamage(); }}>
+                <input
+                  type="number" min={1} value={damageInput} onChange={(e) => setDamageInput(e.target.value)}
+                  placeholder="dmg" aria-label={`Damage to ${name}`}
+                  title={`Type the damage roll: under ${majorThreshold} marks 1 HP, ${majorThreshold}+ marks 2, ${severeThreshold}+ marks 3`}
+                  className="w-14 bg-white/5 border border-white/10 rounded-l px-1.5 py-1 text-xs text-white focus:outline-none focus:border-red-400/50"
+                />
+                <button type="submit" disabled={!(parseInt(damageInput, 10) > 0)}
+                  className="px-2 py-1 text-xs rounded-r bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-l-0 border-white/10 disabled:opacity-40"
+                  title={parseInt(damageInput, 10) > 0 ? `Marks ${marks(parseInt(damageInput, 10))} HP` : 'Apply damage by threshold'}>
+                  {parseInt(damageInput, 10) > 0 ? `−${marks(parseInt(damageInput, 10))} HP` : 'Hit'}
+                </button>
+              </form>
+            )}
+            <button type="button" onClick={() => handleQuickDamage(1)} className="px-1.5 py-1 text-xs rounded bg-white/5 text-red-400 hover:bg-red-500/20 border border-white/10" title="Mark 1 HP">−1 HP</button>
+            <button type="button" onClick={() => handleStressDamage(1)} className="px-1.5 py-1 text-xs rounded bg-white/5 text-amber-400 hover:bg-amber-500/20 border border-white/10"
+              title={stressLeft < 1 ? 'No Stress left: it marks 1 HP instead' : 'Mark 1 Stress'}>+1 St</button>
+            {attack !== undefined && onRollDamage && (
+              <button type="button" onClick={handleRollAttack} className="px-1.5 py-1 text-xs rounded bg-blue-500/15 text-blue-300 hover:bg-blue-500/25 border border-blue-500/25 inline-flex items-center gap-1" title={`Roll attack: d20+${attack || 0}`}>
+                <Swords size={11} /> +{attack || 0}
+              </button>
+            )}
+            {damage && parseDamageNotation(damage) && onRollDamage && (
+              <button type="button" onClick={handleRollDamage} className="px-1.5 py-1 text-xs rounded bg-red-500/15 text-red-300 hover:bg-red-500/25 border border-red-500/25 font-mono" title={`Roll damage: ${damage}`}>
+                {String(damage).replace(/\s*(phy|mag)\w*$/i, '')}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Rolled results, right on the row */}
+        {(lastAttackResult || lastDamageResult) && (
+          <div className="w-full flex flex-wrap items-center gap-2 text-xs">
+            {lastAttackResult && (
+              <span className={`px-2 py-0.5 rounded border ${lastAttackResult.isCrit ? 'bg-amber-500/20 border-amber-500/40 text-amber-200' : 'bg-black/30 border-white/10 text-white'}`}>
+                Attack {lastAttackResult.rolls?.[0]}{lastAttackResult.modifier ? ` ${lastAttackResult.modifier > 0 ? '+' : ''}${lastAttackResult.modifier}` : ''} = <b>{lastAttackResult.total}</b>{lastAttackResult.isCrit ? ' · Critical!' : ''}
+              </span>
+            )}
+            {lastDamageResult && (
+              <span className="px-2 py-0.5 rounded border bg-black/30 border-white/10 text-white">
+                Damage {lastDamageResult.rolls?.join(' + ')}{lastDamageResult.modifier ? ` ${lastDamageResult.modifier > 0 ? '+' : ''}${lastDamageResult.modifier}` : ''} = <b>{lastDamageResult.total}</b>
               </span>
             )}
           </div>
+        )}
 
-          {/* Stats Bars */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-            {/* HP Bar */}
-            <div className="flex items-center gap-2">
-              <Heart size={14} className="text-red-400 shrink-0" />
-              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden relative">
-                <div
-                  className={`h-full transition-all duration-300 ${getHPColor()}`}
-                  style={{ width: `${hpPercent}%` }}
-                />
-                {/* Boss phase threshold markers */}
-                {isBoss && sortedPhases.map(ph => (
-                  <div
-                    key={ph.id}
-                    className={`absolute top-0 bottom-0 w-0.5 z-10 ${
-                      (triggeredPhaseIds || []).includes(ph.id) ? 'bg-amber-400/40' : 'bg-amber-400/80'
-                    }`}
-                    style={{ left: `${ph.triggerPercent}%` }}
-                    title={`${ph.name} (${ph.triggerPercent}%)`}
-                  />
-                ))}
-              </div>
-              <span className="text-xs font-mono text-lr-text-muted min-w-[3ch] text-right">{currentHP}</span>
-            </div>
-
-            {/* Stress Bar */}
-            <div className="flex items-center gap-2">
-              <Zap size={14} className="text-amber-400 shrink-0" />
-              <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-amber-500 transition-all duration-300"
-                  style={{ width: `${stressPercent}%` }}
-                />
-              </div>
-              <span className="text-xs font-mono text-lr-text-muted min-w-[3ch] text-right">{currentStress}</span>
-            </div>
+        {/* Conditions */}
+        {(conditions || []).length > 0 && (
+          <div className="w-full flex flex-wrap gap-1">
+            {conditions.map(condition => (
+              <span key={condition} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 bg-purple-500/20 text-purple-300 rounded-md text-[11px] border border-purple-500/30">
+                {condition}
+                {isDM && (
+                  <button type="button" className="p-0.5 hover:bg-purple-500/20 rounded-sm transition-colors" onClick={() => onRemoveCondition(participant.id, condition)} aria-label={`Remove ${condition}`}>
+                    <X size={10} />
+                  </button>
+                )}
+              </span>
+            ))}
           </div>
-
-          {/* Boss phase progress dots */}
-          {isBoss && sortedPhases.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-1">
-              <Crown size={10} className="text-amber-400/60 shrink-0" />
-              {sortedPhases.map(ph => (
-                <div
-                  key={ph.id}
-                  className={`w-2.5 h-2.5 rounded-full border transition-colors ${
-                    (triggeredPhaseIds || []).includes(ph.id)
-                      ? 'bg-amber-400 border-amber-300'
-                      : 'bg-transparent border-amber-500/60'
-                  }`}
-                  title={`${ph.name} — ${ph.triggerPercent}%${(triggeredPhaseIds || []).includes(ph.id) ? ' (triggered)' : ''}`}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Conditions */}
-          {(conditions || []).length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {conditions.map(condition => (
-                <span
-                  key={condition}
-                  className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 bg-purple-500/20 text-purple-300 rounded-md text-xs border border-purple-500/30"
-                >
-                  {condition}
-                  {isDM && (
-                    <button
-                      className="p-0.5 hover:bg-purple-500/20 rounded-sm transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveCondition(participant.id, condition);
-                      }}
-                    >
-                      <X size={10} />
-                    </button>
-                  )}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <button className="text-lr-text-dim hover:text-white transition-colors">
-          {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-        </button>
+        )}
       </div>
 
       {/* Expanded Details */}
       {isExpanded && (
-        <div className="border-t border-white/5 p-4 space-y-4 bg-black/20 animate-in slide-in-from-top-2 duration-200">
+        <div className="border-t border-white/5 p-3 bg-black/20 grid grid-cols-1 lg:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="space-y-4 min-w-0">
 
           {/* Difficulty + Motives row.
               Adversaries store their evasion-equivalent stat as `difficulty`
@@ -332,80 +341,6 @@ export default function ParticipantCard({
                 )}
               </div>
 
-              {/* Roll buttons */}
-              <div className="flex gap-2 flex-wrap">
-                {attack !== undefined && onRollDamage && (
-                  <button
-                    className="btn btn-sm bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 transition-colors"
-                    onClick={handleRollAttack}
-                  >
-                    Roll Attack (d20)
-                  </button>
-                )}
-                {damage && parseDamageNotation(damage) && onRollDamage && (
-                  <button
-                    className="btn btn-sm bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition-colors"
-                    onClick={handleRollDamage}
-                  >
-                    Roll Damage
-                  </button>
-                )}
-              </div>
-
-              {/* Attack roll inline result */}
-              {lastAttackResult && (
-                <div className={`p-2 rounded border text-xs animate-in slide-in-from-top-1 duration-150 ${
-                  lastAttackResult.isCrit
-                    ? 'bg-amber-500/20 border-amber-500/40'
-                    : 'bg-black/30 border-white/10'
-                }`}>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-white px-2 py-1 bg-white/10 rounded">
-                      {lastAttackResult.rolls?.[0]}
-                    </span>
-                    {lastAttackResult.modifier !== 0 && (
-                      <span className="text-lr-text-muted">
-                        {lastAttackResult.modifier > 0 ? '+' : ''}{lastAttackResult.modifier}
-                      </span>
-                    )}
-                    <span className="font-bold text-white">= {lastAttackResult.total}</span>
-                    {lastAttackResult.isCrit && (
-                      <span className="font-bold text-amber-400 uppercase tracking-wide text-[11px]">
-                        Critical Hit!
-                      </span>
-                    )}
-                    <button
-                      className="ml-auto text-lr-text-dim hover:text-white transition-colors"
-                      onClick={() => setLastAttackResult(null)}
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Damage roll inline result */}
-              {lastDamageResult && (
-                <div className="p-2 rounded bg-black/30 border border-white/10 text-xs animate-in slide-in-from-top-1 duration-150">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {lastDamageResult.rolls?.map((r, i) => (
-                      <span key={i} className="px-2 py-1 bg-white/10 rounded font-mono text-white">{r}</span>
-                    ))}
-                    {lastDamageResult.modifier !== 0 && (
-                      <span className="text-lr-text-muted">
-                        {lastDamageResult.modifier > 0 ? '+' : ''}{lastDamageResult.modifier}
-                      </span>
-                    )}
-                    <span className="font-bold text-white">= {lastDamageResult.total}</span>
-                    <button
-                      className="ml-auto text-lr-text-dim hover:text-white transition-colors"
-                      onClick={() => setLastDamageResult(null)}
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -436,33 +371,6 @@ export default function ParticipantCard({
           {/* DM Controls */}
           {isDM && (
             <div className="space-y-4 p-4 bg-[var(--bg-primary)] rounded-lg border border-white/5">
-              {/* Threshold damage entry: type the damage roll → marks 1/2/3 HP */}
-              {thresholds && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-lr-text-dim uppercase shrink-0">Damage</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={damageInput}
-                    onChange={(e) => setDamageInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') applyThresholdDamage(); }}
-                    placeholder="roll total"
-                    className="w-20 bg-white/5 border border-white/10 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-red-400/50"
-                  />
-                  <button
-                    onClick={applyThresholdDamage}
-                    disabled={!damageInput}
-                    className="btn-xs btn-secondary text-red-300 hover:bg-red-500/20 disabled:opacity-40"
-                  >
-                    Apply
-                  </button>
-                  {damageInput && parseInt(damageInput, 10) > 0 && (
-                    <span className="text-xs text-lr-text-dim">
-                      → marks {marks(parseInt(damageInput, 10))} HP
-                    </span>
-                  )}
-                </div>
-              )}
               <div className="flex items-center gap-4">
                 <span className="text-xs font-bold text-lr-text-dim uppercase w-12 shrink-0" title="Manual HP adjustment">Manual</span>
                 <div className="flex flex-wrap gap-1">
@@ -492,7 +400,7 @@ export default function ParticipantCard({
                     className="btn btn-sm btn-secondary w-full justify-between"
                     onClick={() => setShowConditionPicker(!showConditionPicker)}
                   >
-                    <span>+ Add Condition</span>
+                    <span className="whitespace-nowrap">+ Add Condition</span>
                     <ChevronDown size={14} />
                   </button>
 
@@ -519,7 +427,7 @@ export default function ParticipantCard({
                   onClick={() => onToggleDefeated(participant.id)}
                 >
                   <Skull size={14} />
-                  {isDefeated ? 'Revive Unit' : 'Defeat Unit'}
+                  <span className="whitespace-nowrap">{isDefeated ? 'Revive Unit' : 'Defeat Unit'}</span>
                 </button>
               </div>
               {onRemove && (
@@ -540,6 +448,8 @@ export default function ParticipantCard({
             </div>
           )}
 
+          </div>
+          <div className="space-y-4 min-w-0">
           {/* Features */}
           {features && features.length > 0 && (
             <div className="space-y-3">
@@ -599,13 +509,15 @@ export default function ParticipantCard({
                       </div>
                     </div>
                     {feature.description && (
-                      <p className="text-xs text-lr-text-muted leading-relaxed">{feature.description}</p>
+                      <p className="text-xs text-lr-text-muted leading-relaxed">{richText(feature.description)}</p>
                     )}
                   </div>
                 ))}
               </div>
             </div>
           )}
+          {!(features && features.length) && <p className="text-xs text-lr-text-dim italic">No features.</p>}
+          </div>
         </div>
       )}
     </div>

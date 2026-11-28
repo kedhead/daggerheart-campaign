@@ -306,7 +306,7 @@ export default function LiveEncounterTracker({
                 <p className="text-lr-text-dim italic">No adversaries in this encounter yet.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 {activeParticipants.map(participant => (
                   <ParticipantCard
                     key={participant.id}
@@ -337,7 +337,7 @@ export default function LiveEncounterTracker({
               <h4 className="text-sm font-bold text-lr-text-dim uppercase tracking-wider flex items-center gap-2">
                 Defeated <span className="bg-white/10 px-2 py-0.5 rounded-full text-lr-text-muted">{defeatedParticipants.length}</span>
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-60 hover:opacity-100 transition-opacity">
+              <div className="space-y-2 opacity-60 hover:opacity-100 transition-opacity">
                 {defeatedParticipants.map(participant => (
                   <ParticipantCard
                     key={participant.id}
