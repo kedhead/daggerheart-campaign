@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, Plus, Play, Swords, ExternalLink } from 'lucide-react';
+import { Search, Plus, Play, Swords, ExternalLink, Loader2 } from 'lucide-react';
+import { useActiveEncounter } from '../../../hooks/useActiveEncounter';
 
 const DIFFICULTY_STYLES = {
   easy:    { text: 'Easy',   color: '#4ade80', bg: 'rgba(74,222,128,0.12)' },
@@ -15,10 +16,26 @@ export default function EncountersPanelMini({
   deleteEncounter,
   campaign,
   adversaries = [],
+  environments = [],
   isDM,
   onViewAll,
 }) {
   const [search, setSearch] = useState('');
+  // Start a fight from here, and see one that is running.
+  const { activeEncounter, startEncounter } = useActiveEncounter(campaign?.id);
+  const [starting, setStarting] = useState(null);
+  const run = async (enc) => {
+    setStarting(enc.id);
+    try {
+      const environment = enc.environmentId ? environments.find(e => e.id === enc.environmentId) : null;
+      await startEncounter(enc, adversaries, environment);
+      onViewAll?.();
+    } finally {
+      setStarting(null);
+    }
+  };
+  const live = activeEncounter?.participants ? activeEncounter : null;
+  const standing = live ? live.participants.filter(p => !p.isDefeated).length : 0;
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState('');
 
@@ -46,6 +63,18 @@ export default function EncountersPanelMini({
         />
       </div>
 
+      {live && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.75rem', background: 'rgba(239,68,68,0.12)', borderBottom: '1px solid rgba(239,68,68,0.3)', fontSize: '0.8rem' }}>
+          <Swords size={14} style={{ color: '#f87171', flexShrink: 0 }} />
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <b>{live.encounterName || 'Fight'}</b> · Round {live.round || 1} · {standing} of {live.participants.length} standing
+          </span>
+          <button type="button" className="gm-mini-footer-btn primary" style={{ flex: 'none', padding: '0.25rem 0.6rem' }} onClick={onViewAll}>
+            <Play size={12} /> Resume
+          </button>
+        </div>
+      )}
+
       {/* List */}
       <div className="gm-mini-list" style={{ flex: 1, overflow: 'auto' }}>
         {filtered.length === 0 ? (
@@ -70,6 +99,18 @@ export default function EncountersPanelMini({
                 {enc.calculatedBP ? (
                   <span className="gm-mini-item-sub">{enc.usedBP || 0}/{enc.calculatedBP} BP</span>
                 ) : null}
+                {isDM && enc.adversarySlots?.length > 0 && (
+                  <button
+                    type="button"
+                    className="gm-mini-footer-btn primary"
+                    style={{ flex: 'none', padding: '0.2rem 0.5rem', marginLeft: 'auto' }}
+                    onClick={() => run(enc)}
+                    disabled={!!starting || !!live}
+                    title={live ? 'A fight is already running: end it first' : `Start ${enc.name || 'this encounter'} in the live tracker`}
+                  >
+                    {starting === enc.id ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />} Run
+                  </button>
+                )}
               </div>
             );
           })

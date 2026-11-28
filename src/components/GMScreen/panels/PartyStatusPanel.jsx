@@ -15,7 +15,8 @@ function HPBar({ current, max }) {
 export default function PartyStatusPanel({ characters = [], campaign, onViewAll }) {
   const isDaggerheart = campaign?.gameSystem === 'daggerheart' || !campaign?.gameSystem;
 
-  const active = characters.filter(c => !c.isRetired && !c.isNPC);
+  // The living party: the fallen are in the Graveyard.
+  const active = characters.filter(c => !c.isRetired && !c.isNPC && !c.deceased);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

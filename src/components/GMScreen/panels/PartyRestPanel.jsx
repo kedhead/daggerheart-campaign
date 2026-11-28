@@ -3,6 +3,7 @@ import { Sun, Moon, Check, Flame } from 'lucide-react';
 import { getTierForLevel } from '../../../data/systems/daggerheart';
 import { scarCount } from '../../../utils/daggerheartHope';
 import { usesClearedByRest } from '../../../utils/cardActions';
+import { useConfirm } from '../../../contexts/ConfirmContext';
 
 const d4 = () => Math.floor(Math.random() * 4) + 1;
 
@@ -16,11 +17,21 @@ export default function PartyRestPanel({ characters = [], updateCharacter, addFe
   const [restType, setRestType] = useState('long');
   const [opts, setOpts] = useState({ hp: true, stress: true, armor: true, hope: true });
   const [result, setResult] = useState(null);
+  const confirm = useConfirm();
 
-  const pcs = characters.filter(c => !c.isFallen);
+  // The living party. Dead characters are marked `deceased` (the Graveyard's
+  // flag); this read `isFallen`, which nothing sets, so a rest healed the
+  // dead and a long rest counted them toward the GM's Fear.
+  const pcs = characters.filter(c => !c.deceased && !c.isFallen);
   const toggle = (k) => setOpts(o => ({ ...o, [k]: !o[k] }));
 
   const applyRest = async () => {
+    // It changes every player's sheet at once, so ask first.
+    const ok = await confirm({
+      message: `${restType === 'long' ? 'Long' : 'Short'} rest for ${pcs.map(c => c.name).join(', ')}? This updates every one of their sheets and adds the GM's Fear.`,
+      confirmLabel: 'Rest the party'
+    });
+    if (!ok) return;
     const lines = [];
     for (const c of pcs) {
       const tier = getTierForLevel(c.level || 1);

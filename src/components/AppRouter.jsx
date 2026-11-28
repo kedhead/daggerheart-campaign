@@ -414,6 +414,7 @@ export default function AppRouter({
           sessions={sessions}
           isDM={isDM}
           adversaries={adversaries}
+          environments={environments}
           setCurrentView={setCurrentView}
           updateCharacter={updateCharacter}
         />

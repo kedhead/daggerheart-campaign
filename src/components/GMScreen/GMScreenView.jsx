@@ -48,6 +48,7 @@ export default function GMScreenView({
   sessions = [],
   isDM,
   adversaries = [],
+  environments = [],
   setCurrentView,
   updateCharacter,
 }) {
@@ -222,6 +223,7 @@ export default function GMScreenView({
                       deleteEncounter={deleteEncounter}
                       campaign={campaign}
                       adversaries={adversaries}
+                      environments={environments}
                       isDM={isDM}
                       onViewAll={() => setCurrentView?.('encounters')}
                     />
