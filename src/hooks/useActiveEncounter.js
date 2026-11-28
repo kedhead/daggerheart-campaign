@@ -464,16 +464,5 @@ export function useActiveEncounter(campaignId) {
   };
 }
 
-// Daggerheart conditions
-export const DAGGERHEART_CONDITIONS = [
-  'frightened',
-  'restrained',
-  'vulnerable',
-  'hidden',
-  'stunned',
-  'weakened',
-  'slowed',
-  'burning',
-  'poisoned',
-  'bleeding'
-];
+// Daggerheart's conditions (core and unique) live in data/daggerheartConditions.js.
+export { ALL_CONDITIONS as DAGGERHEART_CONDITIONS } from '../data/daggerheartConditions';

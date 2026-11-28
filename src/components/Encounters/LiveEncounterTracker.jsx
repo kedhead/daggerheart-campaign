@@ -29,8 +29,7 @@ export default function LiveEncounterTracker({
     loading,
     applyDamage,
     applyHealing,
-    addCondition,
-    removeCondition,
+    updateParticipant,
     toggleDefeated,
     nextRound,
     toggleEnvironmentEffect,
@@ -313,8 +312,7 @@ export default function LiveEncounterTracker({
                     participant={participant}
                     onApplyDamage={applyDamage}
                     onApplyHealing={applyHealing}
-                    onAddCondition={addCondition}
-                    onRemoveCondition={removeCondition}
+                    onSetConditions={(id, conditions) => updateParticipant(id, { conditions })}
                     onToggleDefeated={toggleDefeated}
                     onRemove={isDM ? removeParticipant : null}
                     onRollDamage={rollDamage}
@@ -344,8 +342,7 @@ export default function LiveEncounterTracker({
                     participant={participant}
                     onApplyDamage={applyDamage}
                     onApplyHealing={applyHealing}
-                    onAddCondition={addCondition}
-                    onRemoveCondition={removeCondition}
+                    onSetConditions={(id, conditions) => updateParticipant(id, { conditions })}
                     onToggleDefeated={toggleDefeated}
                     onRemove={isDM ? removeParticipant : null}
                     onRollDamage={rollDamage}

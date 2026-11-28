@@ -13,6 +13,7 @@ import { getTierForLevel, getBaseProficiency, getEffectiveProficiency, getProfic
 import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils/daggerheartLevelUp.js';
 import { sortByInitiative, keepTurn } from '../src/utils/initiativeOrder.js';
 import { newScene, giveSpotlight, undoSpotlight, waitingOrder, spotlightCast, GM as SPOTLIGHT_GM } from '../src/utils/spotlight.js';
+import { CORE_CONDITIONS, UNIQUE_CONDITIONS, conditionInfo, conditionLabel, addCondition as addConditionTo, removeCondition as removeConditionFrom } from '../src/data/daggerheartConditions.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments, partyTier, countLowerTier } from '../src/components/Encounters/BPCalculator.jsx';
 import { participantFor, adversaryMarkStress } from '../src/utils/encounterParticipants.js';
 import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt } from '../src/services/adversaryGenerator.js';
@@ -4219,6 +4220,17 @@ section('Spotlight');
   assert(giveSpotlight(newScene(), 'a', 'nonsense', 1).log[0].reason === 'pass', 'an unknown reason is logged as a plain pass');
   const tvCast = spotlightCast([{ id: 'p', name: 'Pippin', avatarUrl: 'https://x/p.png' }, { id: 'k', name: 'Korra', avatarUrl: 'data:image/png;base64,AAAA' }, { id: 'd', name: 'Dan', deceased: true }]);
   assert(tvCast.p.avatarUrl === 'https://x/p.png' && tvCast.k.avatarUrl === '' && !tvCast.d, 'the TV gets the living party, with linked portraits only');
+}
+
+section('Conditions');
+{
+  assert(CORE_CONDITIONS.map(c => c.name).join() === 'Hidden,Restrained,Vulnerable', 'the three core conditions');
+  assert(UNIQUE_CONDITIONS.length >= 30 && UNIQUE_CONDITIONS.every(c => c.name && c.effect && c.clear && c.source), 'every unique condition says what it does, how it ends and where it comes from');
+  assert(new Set([...CORE_CONDITIONS, ...UNIQUE_CONDITIONS].map(c => c.name.toLowerCase())).size === CORE_CONDITIONS.length + UNIQUE_CONDITIONS.length, 'no condition is listed twice');
+  assert(conditionInfo('poisoned').name === 'Poisoned' && conditionLabel('vulnerable') === 'Vulnerable' && conditionLabel('soaked in ichor') === 'Soaked in ichor' && conditionInfo('soaked') === null,
+    'conditions match in any case, and a made-up one keeps its own words');
+  const on = addConditionTo(addConditionTo(['restrained'], 'Grappled'), 'RESTRAINED');
+  assert(on.join() === 'restrained,Grappled' && removeConditionFrom(on, 'Restrained').join() === 'Grappled', "a condition can't stack, and clearing it works whatever the case it was saved in");
 }
 
 section('Encounters pass');

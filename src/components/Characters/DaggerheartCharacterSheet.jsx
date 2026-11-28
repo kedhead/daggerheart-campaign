@@ -1,3 +1,4 @@
+import ConditionsBar from '../Conditions/ConditionsBar';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useDualityAutomation } from '../../hooks/useDualityAutomation';
 import { createPortal } from 'react-dom';
@@ -630,6 +631,17 @@ export default function DaggerheartCharacterSheet({ character, onEdit, onDelete,
               />
             ))}
           </div>
+        </div>
+
+        {/* Conditions: core and unique (from features), shared with the GM */}
+        <div className="dh-sidebar-vital-group">
+          <div className="dh-sidebar-vital-header">
+            <span className="dh-sidebar-vital-label">Conditions</span>
+          </div>
+          <ConditionsBar
+            conditions={character.conditions || []}
+            onChange={canEdit && updateCharacter ? (next) => updateCharacter(character.id, { conditions: next }) : undefined}
+          />
         </div>
 
         {/* Armor Slots */}
