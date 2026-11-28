@@ -12,7 +12,7 @@ import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js
 import { getTierForLevel, getBaseProficiency, getEffectiveProficiency, getProficiencyBonus, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
 import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils/daggerheartLevelUp.js';
 import { sortByInitiative, keepTurn } from '../src/utils/initiativeOrder.js';
-import { newScene, giveSpotlight, undoSpotlight, waitingOrder, GM as SPOTLIGHT_GM } from '../src/utils/spotlight.js';
+import { newScene, giveSpotlight, undoSpotlight, waitingOrder, spotlightCast, GM as SPOTLIGHT_GM } from '../src/utils/spotlight.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments, partyTier, countLowerTier } from '../src/components/Encounters/BPCalculator.jsx';
 import { participantFor, adversaryMarkStress } from '../src/utils/encounterParticipants.js';
 import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt } from '../src/services/adversaryGenerator.js';
@@ -4217,6 +4217,8 @@ section('Spotlight');
   const twice = undoSpotlight(giveSpotlight(giveSpotlight(newScene(), 'a', 'pass', 1), 'a', 'pass', 2));
   assert(twice.counts.a === 1 && twice.lastAt.a === 1, 'undo restores when they last had it');
   assert(giveSpotlight(newScene(), 'a', 'nonsense', 1).log[0].reason === 'pass', 'an unknown reason is logged as a plain pass');
+  const tvCast = spotlightCast([{ id: 'p', name: 'Pippin', avatarUrl: 'https://x/p.png' }, { id: 'k', name: 'Korra', avatarUrl: 'data:image/png;base64,AAAA' }, { id: 'd', name: 'Dan', deceased: true }]);
+  assert(tvCast.p.avatarUrl === 'https://x/p.png' && tvCast.k.avatarUrl === '' && !tvCast.d, 'the TV gets the living party, with linked portraits only');
 }
 
 section('Encounters pass');

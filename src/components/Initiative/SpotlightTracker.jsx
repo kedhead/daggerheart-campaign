@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Sparkles, Skull, Undo2, RotateCcw, Crown, Clock } from 'lucide-react';
 import { useSpotlight } from '../../hooks/useSpotlight';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
-import { GM, REASONS, waitingOrder } from '../../utils/spotlight';
+import { GM, REASONS, waitingOrder, spotlightCast } from '../../utils/spotlight';
 import { useConfirm } from '../../contexts/ConfirmContext';
 
 const timeAgo = (at) => {
@@ -25,6 +25,7 @@ export default function SpotlightTracker({ campaign, characters = [], isDM }) {
   const { fearCount = 0, addFear } = usePlayerDisplay(campaign?.id);
 
   const party = useMemo(() => characters.filter(c => c?.id && c.name && !c.deceased), [characters]);
+  const cast = useMemo(() => spotlightCast(characters), [characters]);
   const s = spotlight || { counts: {}, lastAt: {}, log: [], passes: 0, current: null, scene: '' };
   const ids = party.map(c => c.id);
   const order = waitingOrder(s, ids);
@@ -35,10 +36,10 @@ export default function SpotlightTracker({ campaign, characters = [], isDM }) {
 
   const newScene = async () => {
     if (s.passes > 0 && !(await confirm({ message: 'Start a new scene? The spotlight counts go back to zero.', confirmLabel: 'New scene' }))) return;
-    await startScene('');
+    await startScene('', cast);
   };
 
-  const gmTakes = (reason) => give(GM, reason);
+  const gmTakes = (reason) => give(GM, reason, cast);
   const spendFear = async () => {
     if (fearCount < 1) return;
     await addFear?.(-1);
@@ -110,7 +111,7 @@ export default function SpotlightTracker({ campaign, characters = [], isDM }) {
                 key={c.id}
                 type="button"
                 disabled={!isDM}
-                onClick={() => give(c.id, current === GM ? 'gm' : 'pass')}
+                onClick={() => give(c.id, current === GM ? 'gm' : 'pass', cast)}
                 aria-pressed={on}
                 className={`text-left p-3 rounded-xl border transition-all flex items-center gap-3 ${on
                   ? 'border-amber-400 bg-amber-400/15 shadow-lg shadow-amber-500/10'

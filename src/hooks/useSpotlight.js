@@ -34,8 +34,9 @@ export function useSpotlight(campaignId) {
   return {
     spotlight: state,
     loading,
-    startScene: (name) => save(newScene(name)),
-    give: (to, reason) => save(giveSpotlight(latest.current || newScene(), to, reason)),
+    // `cast` (see spotlightCast) goes with each change, so the TV can name and show the party.
+    startScene: (name, cast) => save({ ...newScene(name), ...(cast ? { cast } : {}) }),
+    give: (to, reason, cast) => save({ ...giveSpotlight(latest.current || newScene(), to, reason), ...(cast ? { cast } : {}) }),
     undo: () => save(undoSpotlight(latest.current || newScene())),
     renameScene: (name) => save({ ...(latest.current || newScene()), scene: String(name || '').slice(0, 80) })
   };

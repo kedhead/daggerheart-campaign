@@ -4,12 +4,13 @@ import { db } from '../../config/firebase';
 import { usePlayerDisplay } from '../../hooks/usePlayerDisplay';
 import FearCounter from './FearCounter';
 import InitiativeDisplay from './InitiativeDisplay';
+import SpotlightDisplay from './SpotlightDisplay';
 import ContentDisplay from './ContentDisplay';
 import ContentGrid from './ContentGrid';
 import { Maximize, Minimize } from 'lucide-react';
 import './PlayerDisplay.css';
 
-export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }) {
+export default function PlayerDisplay({ campaignId, gameSystem: givenSystem = null }) {
   const {
     loading,
     fearCount,
@@ -23,6 +24,21 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
   } = usePlayerDisplay(campaignId);
 
   const [initiative, setInitiative] = useState(null);
+  const [spotlight, setSpotlight] = useState(null);
+  // The TV is opened by link, so it reads the campaign's game system itself
+  // (it used to assume Daggerheart, and showed Fear for every system).
+  const [campaignSystem, setCampaignSystem] = useState(null);
+  useEffect(() => {
+    if (!campaignId || givenSystem) return undefined;
+    return onSnapshot(doc(db, 'campaigns', campaignId), snap => setCampaignSystem(snap.exists() ? snap.data().gameSystem || 'daggerheart' : 'daggerheart'), () => setCampaignSystem('daggerheart'));
+  }, [campaignId, givenSystem]);
+  const gameSystem = givenSystem || campaignSystem || 'daggerheart';
+
+  // Daggerheart's spotlight (see SpotlightTracker), shown in place of initiative.
+  useEffect(() => {
+    if (!campaignId) return undefined;
+    return onSnapshot(doc(db, `campaigns/${campaignId}/initiative/spotlight`), snap => setSpotlight(snap.exists() ? snap.data() : null), () => setSpotlight(null));
+  }, [campaignId]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(false);
 
@@ -124,7 +140,10 @@ export default function PlayerDisplay({ campaignId, gameSystem = 'daggerheart' }
         {isDaggerheart && showFear && (
           <FearCounter fearCount={fearCount} />
         )}
-        {showInitiative && initiative?.active && (
+        {showInitiative && isDaggerheart && spotlight?.current && (
+          <SpotlightDisplay spotlight={spotlight} />
+        )}
+        {showInitiative && !isDaggerheart && initiative?.active && (
           <InitiativeDisplay initiative={initiative} />
         )}
       </div>
