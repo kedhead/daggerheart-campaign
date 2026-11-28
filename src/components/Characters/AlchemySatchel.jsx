@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { FlaskConical, Plus, Minus, Sparkles, Loader2, Dices, Trash2, Sprout, Pencil, Check, X, Skull, Bomb, ScrollText, Gem, MoveUpRight } from 'lucide-react';
 import {
   normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction,
-  keepConcoction, takeDose, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, MAX_DOSES, rollVolatility, ITEM_KINDS, ITEM_KIND_KEYS, kindOf
+  keepConcoction, takeDose, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, MAX_DOSES, rollVolatility, ITEM_KINDS, ITEM_KIND_KEYS, kindOf, RARITIES, RARITY_KEYS, rarityOf, brewRarity, volatilityOdds
 } from '../../utils/alchemy';
 import { aiService } from '../../services/aiService';
 import { textProvider } from '../../services/cinematicsGenerator';
@@ -21,6 +21,22 @@ const KIND_ICON = { potion: FlaskConical, poison: Skull, bomb: Bomb, arrow: Move
 const KIND_COLOR = { potion: 'text-purple-300', poison: 'text-lime-300', bomb: 'text-orange-300', arrow: 'text-teal-300', scroll: 'text-sky-300', talisman: 'text-amber-300' };
 const TRAIT_NAME = { finesse: 'Finesse', knowledge: 'Knowledge', presence: 'Presence', instinct: 'Instinct', agility: 'Agility', strength: 'Strength' };
 const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+
+// Rarity badges: common shows none.
+const RARITY_STYLE = {
+  uncommon: 'text-emerald-300 border-emerald-400/40 bg-emerald-400/10',
+  rare: 'text-sky-300 border-sky-400/40 bg-sky-400/10',
+  veryRare: 'text-purple-300 border-purple-400/50 bg-purple-500/15',
+  unique: 'text-amber-300 border-amber-400/60 bg-amber-400/15'
+};
+const RarityBadge = ({ r }) => (r && r !== 'common' && RARITIES[r] ? (
+  <span className={`inline-block px-1.5 py-0 rounded border text-[10px] font-bold uppercase tracking-wide ${RARITY_STYLE[r]}`}>{RARITIES[r].label}</span>
+) : null);
+const RaritySelect = ({ value, onChange, className }) => (
+  <select value={value || 'common'} onChange={(e) => onChange(e.target.value)} aria-label="Rarity" className={className}>
+    {RARITY_KEYS.map(k => <option key={k} value={k}>{RARITIES[k].label}</option>)}
+  </select>
+);
 
 // A brew that came out strange or went wild wears it.
 const VOLATILITY_BADGE = {
@@ -46,7 +62,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
   const satchel = normalizeSatchel(character?.satchel);
   const started = !!character?.satchel;
 
-  const [draft, setDraft] = useState({ name: '', qty: 1, notes: '' });
+  const [draft, setDraft] = useState({ name: '', qty: 1, notes: '', rarity: 'common' });
   const [picked, setPicked] = useState([]);
   const [makeKind, setMakeKind] = useState('potion'); // what the next combine makes
   const [brewing, setBrewing] = useState(false);
@@ -79,7 +95,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
     e.preventDefault();
     if (!draft.name.trim()) return;
     save(addIngredient(satchel, draft));
-    setDraft({ name: '', qty: 1, notes: '' });
+    setDraft({ name: '', qty: 1, notes: '', rarity: 'common' });
   };
 
   const togglePick = (id) => setPicked(p => (p.includes(id) ? p.filter(x => x !== id) : p.length >= 5 ? p : [...p, id]));
@@ -90,7 +106,8 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
     try {
       const { apiKey, provider } = textProvider(getEffectiveKey);
       // Most brews behave; some come out strange, and a few go wild.
-      const volatility = rollVolatility();
+      // Rarer ingredients make a strange or wild result likelier.
+      const volatility = rollVolatility(Math.random(), brewRarity(chosen));
       const text = await aiService.generate(buildBrewPrompt(chosen, character, volatility, makeKind), apiKey, provider);
       const result = parseConcoction(text, chosen, volatility, makeKind);
       if (!result) throw new Error('The brew fizzled: the AI did not come back with a concoction. Try again.');
@@ -169,7 +186,10 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                     <input className={input} maxLength={80} aria-label="Ingredient name" {...field('name')} />
                     <input className={input} type="number" min="0" aria-label="Quantity" {...field('qty')} />
                   </div>
-                  <input className={input} maxLength={300} placeholder="Notes (optional)" aria-label="Notes" {...field('notes')} />
+                  <div className="grid grid-cols-[1fr_8rem] gap-2">
+                    <input className={input} maxLength={300} placeholder="Notes (optional)" aria-label="Notes" {...field('notes')} />
+                    <RaritySelect value={editing.rarity} onChange={(r) => setEditing(d => ({ ...d, rarity: r }))} className={input} />
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <button type="button" className="btn btn-primary btn-sm inline-flex items-center gap-1" onClick={saveEdit} disabled={!String(editing.name || '').trim()}><Check size={14} /> Save</button>
                     <button type="button" className="btn btn-ghost btn-sm inline-flex items-center gap-1" onClick={() => setEditing(null)}><X size={14} /> Cancel</button>
@@ -185,7 +205,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                   <input type="checkbox" checked={on} onChange={() => togglePick(i.id)} className="mt-1" aria-label={`Use ${i.name} in a brew`} />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white font-medium">{i.name}</div>
+                  <div className="text-sm text-white font-medium flex flex-wrap items-center gap-1.5">{i.name} <RarityBadge r={rarityOf(i)} /></div>
                   {i.notes && <div className="text-xs text-lr-text-dim">{i.notes}</div>}
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -193,7 +213,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                   <span className="text-sm font-mono text-white w-6 text-center">{i.qty}</span>
                   {canEdit && <button type="button" className="p-1 text-lr-text-dim hover:text-white" onClick={() => save(adjustIngredient(satchel, i.id, 1))} aria-label="One more"><Plus size={14} /></button>}
                   {canEdit && (
-                    <button type="button" className="p-1 ml-1 text-lr-text-dim hover:text-white" onClick={() => startEdit('ingredient', { id: i.id, name: i.name, qty: i.qty, notes: i.notes || '' })}
+                    <button type="button" className="p-1 ml-1 text-lr-text-dim hover:text-white" onClick={() => startEdit('ingredient', { id: i.id, name: i.name, qty: i.qty, notes: i.notes || '', rarity: rarityOf(i) })}
                       aria-label={`Edit or remove ${i.name}`} title="Edit or remove"><Pencil size={14} /></button>
                   )}
                 </div>
@@ -203,13 +223,14 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
         </div>
 
         {canEdit && (
-          <form onSubmit={add} className="grid grid-cols-[1fr_4rem] gap-2 pt-1">
+          <form onSubmit={add} className="grid grid-cols-[1fr_6.5rem] gap-2 pt-1">
             <input className={input} placeholder="Ingredient (e.g. Glowcap spores)" value={draft.name} maxLength={80}
               onChange={(e) => setDraft(d => ({ ...d, name: e.target.value }))} />
             <input className={input} type="number" min="1" value={draft.qty} aria-label="Quantity"
               onChange={(e) => setDraft(d => ({ ...d, qty: e.target.value }))} />
-            <input className={`${input} col-span-2`} placeholder="Notes: where it came from, what it seems to do (optional)" value={draft.notes} maxLength={300}
+            <input className={input} placeholder="Notes: where it came from, what it seems to do (optional)" value={draft.notes} maxLength={300}
               onChange={(e) => setDraft(d => ({ ...d, notes: e.target.value }))} />
+            <RaritySelect value={draft.rarity} onChange={(r) => setDraft(d => ({ ...d, rarity: r }))} className={`${input} px-1`} />
             <button type="submit" className="btn btn-secondary btn-sm col-span-2 inline-flex items-center justify-center gap-1" disabled={!draft.name.trim()}>
               <Plus size={14} /> Add to satchel
             </button>
@@ -231,6 +252,16 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
             })}
           </div>
         )}
+        {canEdit && chosen.length >= 2 && brewRarity(chosen) !== 'common' && (() => {
+          const r = brewRarity(chosen);
+          const odds = volatilityOdds(r);
+          return (
+            <p className="text-[11px] text-lr-text-muted">
+              <RarityBadge r={r} /> {RARITIES[r].label} ingredient: a more potent mix, and less stable
+              ({Math.round(odds.strange * 100)}% strange, {Math.round(odds.wild * 100)}% wild).
+            </p>
+          );
+        })()}
         {canEdit && satchel.ingredients.length > 1 && (
           <button
             type="button"
@@ -249,6 +280,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
         <section className="p-3 rounded-xl border border-emerald-400/40 bg-emerald-400/5 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-xs uppercase tracking-widest text-emerald-300 font-bold">Fresh {kindOf(brew).label.toLowerCase()}: tweak anything, then keep it</div>
+            <RarityBadge r={brew.rarity} />
             <Badge v={brew.volatility} />
           </div>
           <input className={`${input} font-bold`} value={brew.name} onChange={(e) => setBrew(b => ({ ...b, name: e.target.value }))} aria-label="Name" />
@@ -321,7 +353,7 @@ export default function AlchemySatchel({ character, campaign, canEdit, updateCha
                 <div>
                   <div className="font-bold text-white flex flex-wrap items-center gap-1.5">
                     {(() => { const Icon = KIND_ICON[c.kind] || FlaskConical; return <Icon size={15} className={KIND_COLOR[c.kind] || KIND_COLOR.potion} aria-hidden="true" />; })()}
-                    {c.name} <span className="text-[11px] font-normal text-lr-text-dim">{kindOf(c).label}</span> <Badge v={c.volatility} />
+                    {c.name} <span className="text-[11px] font-normal text-lr-text-dim">{kindOf(c).label}</span> <RarityBadge r={c.rarity} /> <Badge v={c.volatility} />
                   </div>
                   {c.description && <div className="text-xs text-lr-text-muted italic">{c.description}</div>}
                 </div>

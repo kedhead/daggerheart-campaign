@@ -38,7 +38,7 @@ import { applyArtStyle, applyMapArtStyle, stripCompetingStyle, artStylePreamble,
 import { campaignArtStyle, setCampaignArtStyle, artStyleRequestFields } from '../src/services/artStyle.js';
 import { currentStorySnapshot } from '../src/utils/currentStory.js';
 import { withoutUndefined } from '../src/utils/withoutUndefined.js';
-import { normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction, keepConcoction, takeDose, doseOutcome, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, rollVolatility, ITEM_KINDS, kindOf } from '../src/utils/alchemy.js';
+import { normalizeSatchel, addIngredient, adjustIngredient, buildBrewPrompt, parseConcoction, keepConcoction, takeDose, doseOutcome, updateIngredient, removeIngredient, updateConcoction, removeConcoction, clearLog, rollVolatility, ITEM_KINDS, kindOf, RARITIES, brewRarity, volatilityOdds } from '../src/utils/alchemy.js';
 import { isHomebrewOn, HOMEBREW_MODULES } from '../src/utils/homebrew.js';
 import { normalizeSceneSpec, isNonCombat, buildSceneSpecPrompt, parseSceneSpec } from '../src/utils/sceneSpec.js';
 import SceneSpecView from '../src/components/Encounters/SceneSpecView.jsx';
@@ -4251,6 +4251,20 @@ section('Encounters pass');
 }
 
 section('Homebrew: alchemy');
+{
+  const ing = [{ name: 'Glowcap' }, { name: 'Dragon Tear', rarity: 'veryRare' }, { name: 'Moss', rarity: 'uncommon' }];
+  assert(brewRarity(ing) === 'veryRare' && brewRarity([{ name: 'a' }, { name: 'b', rarity: 'bogus' }]) === 'common', 'the rarest ingredient sets the mix, and an unknown rarity counts as common');
+  const p = buildBrewPrompt(ing, {}, 'stable', 'potion');
+  assert(/Dragon Tear \[Very Rare\]/.test(p) && /POTENCY: VERY RARE/.test(p) && !/POTENCY/.test(buildBrewPrompt([{ name: 'a' }, { name: 'b' }])), 'a rare ingredient is named as such and makes the brew more potent; common ones change nothing');
+  assert(/name the item after it/.test(buildBrewPrompt([{ name: 'a' }, { name: 'The Last Phoenix Feather', rarity: 'unique' }])), 'a unique ingredient makes a legendary item named after it');
+  const common = volatilityOdds('common'), unique = volatilityOdds('unique');
+  assert(common.wild === 0.10 && common.strange === 0.25 && unique.wild > common.wild && unique.strange > common.strange, 'rarer ingredients make strange and wild results likelier');
+  assert(rollVolatility(0.12, 'common') === 'strange' && rollVolatility(0.12, 'rare') === 'wild', 'the same roll can go wild with a rare ingredient in it');
+  const kept = parseConcoction('{"name":"Wyrm Draught","hopeEffect":"h","fearEffect":"f","doses":1}', ing, 'stable', 'potion');
+  assert(kept.rarity === 'veryRare' && !('rarity' in parseConcoction('{"name":"x","hopeEffect":"h","fearEffect":"f"}', [{ name: 'a' }])), 'the brew remembers its rarity; a common one carries none');
+  const bag = addIngredient({}, { name: 'Dragon Tear', rarity: 'veryRare' });
+  assert(bag.ingredients[0].rarity === 'veryRare' && updateIngredient(bag, bag.ingredients[0].id, { rarity: 'unique' }).ingredients[0].rarity === 'unique', 'an ingredient keeps its rarity and it can be changed');
+}
 {
   const ing = [{ name: 'Blastcap' }, { name: 'Sulfur' }];
   const bomb = buildBrewPrompt(ing, { name: 'Tarkin', level: 3 }, 'stable', 'bomb');
