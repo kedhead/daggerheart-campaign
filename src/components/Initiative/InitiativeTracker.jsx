@@ -257,9 +257,28 @@ export default function InitiativeTracker({
                     <span className={`type-badge ${participant.type}`}>
                       {participant.type}
                     </span>
-                    <span className="initiative-value">
-                      Init: {participant.initiative}
-                    </span>
+                    {isDM ? (
+                      <label className="initiative-value" title="Change and press Enter: the order re-sorts and the turn stays where it is">
+                        Init:{' '}
+                        <input
+                          key={`${participant.id}-${participant.initiative}`}
+                          type="number"
+                          defaultValue={participant.initiative}
+                          aria-label={`Initiative for ${participant.name}`}
+                          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                          onBlur={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (Number.isFinite(v) && v !== participant.initiative) handleUpdateParticipant(participant.id, { initiative: v });
+                            else e.target.value = participant.initiative;
+                          }}
+                          style={{ width: '3.5rem', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 4, padding: '0 4px', color: 'inherit' }}
+                        />
+                      </label>
+                    ) : (
+                      <span className="initiative-value">
+                        Init: {participant.initiative}
+                      </span>
+                    )}
                   </div>
                 </div>
 

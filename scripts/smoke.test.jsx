@@ -11,6 +11,8 @@ import { DOMAIN_CARDS } from '../src/data/daggerheartDomainCards.js';
 import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js';
 import { getTierForLevel, getBaseProficiency, getEffectiveProficiency, getProficiencyBonus, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
 import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils/daggerheartLevelUp.js';
+import { sortByInitiative, keepTurn } from '../src/utils/initiativeOrder.js';
+import { newScene, giveSpotlight, undoSpotlight, waitingOrder, GM as SPOTLIGHT_GM } from '../src/utils/spotlight.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments, partyTier, countLowerTier } from '../src/components/Encounters/BPCalculator.jsx';
 import { participantFor, adversaryMarkStress } from '../src/utils/encounterParticipants.js';
 import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt } from '../src/services/adversaryGenerator.js';
@@ -4183,6 +4185,38 @@ section('Boss phase transitions');
   const clean = withoutUndefined({ participants: [{ id: 'b', features: [{ name: 'Roar', description: undefined }], damage: undefined }, undefined], at: ts });
   assert(JSON.stringify(clean.participants) === '[{"id":"b","features":[{"name":"Roar"}]}]' && clean.at === ts,
     'undefined values are dropped at any depth (Firestore rejects them), and server timestamps pass through untouched');
+}
+
+section('Initiative order');
+{
+  const A = { id: 'a', initiative: 18 }, B = { id: 'b', initiative: 12 }, C = { id: 'c', initiative: 7 }, N = { id: 'n', initiative: 15 };
+  const order = [A, B, C];
+  // B's turn (index 1); N joins with 15 and sorts in above B.
+  const added = sortByInitiative([...order, N]);
+  assert(added.map(p => p.id).join() === 'a,n,b,c' && keepTurn(order, 1, added).turn === 2, 'someone joining mid-combat does not take the turn from whoever has it');
+  assert(keepTurn(order, 1, [B, A, C]).turn === 0, 'moving people keeps the turn with the same person');
+  assert(keepTurn(order, 2, [B, C]).turn === 1, 'removing someone earlier in the order does not skip the current turn');
+  assert(keepTurn(order, 1, [A, C]).turn === 1, 'removing the one whose turn it is passes it to the next');
+  const last = keepTurn(order, 2, [A, B]);
+  assert(last.turn === 0 && last.wrapped, 'removing the last in the order passes the turn to the top, a new round');
+  assert(sortByInitiative([{ id: 'x', initiative: 10 }, { id: 'y', initiative: 10 }]).map(p => p.id).join() === 'x,y', 'ties keep their order');
+}
+
+section('Spotlight');
+{
+  let s = newScene('The bridge');
+  assert(waitingOrder(s, ['a', 'b', 'c']).join() === 'a,b,c', 'at the start of a scene nobody has had the spotlight');
+  s = giveSpotlight(s, 'a', 'pass', 1);
+  s = giveSpotlight(s, SPOTLIGHT_GM, 'fear', 2);
+  s = giveSpotlight(s, 'c', 'gm', 3);
+  assert(s.current === 'c' && s.counts.a === 1 && s.counts[SPOTLIGHT_GM] === 1 && s.passes === 3 && s.log[0].prev === SPOTLIGHT_GM && s.log[1].reason === 'fear',
+    'the spotlight moves, counts who had it, and logs why');
+  assert(waitingOrder(s, ['a', 'b', 'c']).join() === 'b,a,c', 'whoever has not had it yet comes first, then whoever has waited longest');
+  const back = undoSpotlight(s);
+  assert(back.current === SPOTLIGHT_GM && !back.counts.c && back.passes === 2 && back.log.length === 2 && back.lastAt.c === undefined, 'undo takes back a mis-tap');
+  const twice = undoSpotlight(giveSpotlight(giveSpotlight(newScene(), 'a', 'pass', 1), 'a', 'pass', 2));
+  assert(twice.counts.a === 1 && twice.lastAt.a === 1, 'undo restores when they last had it');
+  assert(giveSpotlight(newScene(), 'a', 'nonsense', 1).log[0].reason === 'pass', 'an unknown reason is logged as a plain pass');
 }
 
 section('Encounters pass');
