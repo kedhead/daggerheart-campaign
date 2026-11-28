@@ -18,6 +18,7 @@ import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useCollection } from './useCollection';
 import { partitionCharacters, trashFields } from '../utils/characterTrash';
+import { sortByInitiative, keepTurn } from '../utils/initiativeOrder';
 
 export function useFirestoreCampaign(campaignId) {
   const { currentUser } = useAuth();
@@ -868,32 +869,29 @@ export function useFirestoreCampaign(campaignId) {
       isHidden: participant.isHidden || false
     };
 
-    const participants = [...initiative.participants, newParticipant];
-    // Sort by initiative (descending)
-    participants.sort((a, b) => b.initiative - a.initiative);
-
-    await updateInitiative({ participants });
+    // Sorted by initiative, with the turn staying with whoever has it.
+    const participants = sortByInitiative([...initiative.participants, newParticipant]);
+    const { turn } = keepTurn(initiative.participants, initiative.currentTurn, participants);
+    await updateInitiative({ participants, currentTurn: turn });
   };
 
   const removeParticipant = async (participantId) => {
     if (!basePath || !initiative) return;
     const participants = initiative.participants.filter(p => p.id !== participantId);
-
-    // Adjust currentTurn if needed
-    let currentTurn = initiative.currentTurn;
-    if (currentTurn >= participants.length) {
-      currentTurn = Math.max(0, participants.length - 1);
-    }
-
-    await updateInitiative({ participants, currentTurn });
+    // The turn stays with whoever has it; if they left, it passes to the next.
+    const { turn, wrapped } = keepTurn(initiative.participants, initiative.currentTurn, participants);
+    await updateInitiative({ participants, currentTurn: turn, ...(wrapped ? { round: (initiative.round || 1) + 1 } : {}) });
   };
 
   const updateParticipant = async (participantId, updates) => {
     if (!basePath || !initiative) return;
-    const participants = initiative.participants.map(p =>
+    let participants = initiative.participants.map(p =>
       p.id === participantId ? { ...p, ...updates } : p
     );
-    await updateInitiative({ participants });
+    // A new initiative re-sorts the order; the turn stays with whoever has it.
+    if (updates.initiative !== undefined) participants = sortByInitiative(participants);
+    const { turn } = keepTurn(initiative.participants, initiative.currentTurn, participants);
+    await updateInitiative({ participants, currentTurn: turn });
   };
 
   const reorderParticipants = async (orderedIds) => {
@@ -902,7 +900,9 @@ export function useFirestoreCampaign(campaignId) {
     initiative.participants.forEach(p => { participantMap[p.id] = p; });
 
     const participants = orderedIds.map(id => participantMap[id]).filter(Boolean);
-    await updateInitiative({ participants, currentTurn: 0 });
+    // Moving someone keeps the turn with whoever has it.
+    const { turn } = keepTurn(initiative.participants, initiative.currentTurn, participants);
+    await updateInitiative({ participants, currentTurn: turn });
   };
 
   const endInitiative = async () => {

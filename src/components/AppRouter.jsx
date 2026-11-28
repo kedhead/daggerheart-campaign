@@ -27,6 +27,7 @@ const AdversariesView = lazy(() => import('./Adversaries/AdversariesView'));
 const EnvironmentsView = lazy(() => import('./Environments/EnvironmentsView'));
 const PartyInventoryView = lazy(() => import('./Inventory/PartyInventoryView'));
 const InitiativeTracker = lazy(() => import('./Initiative/InitiativeTracker'));
+const SpotlightTracker = lazy(() => import('./Initiative/SpotlightTracker'));
 const QuestsView = lazy(() => import('./Quests/QuestsView'));
 const DMDisplayControl = lazy(() => import('./PlayerDisplay/DMDisplayControl'));
 const BattleMapStudio = lazy(() => import('./BattleMapStudio/BattleMapStudio'));
@@ -683,6 +684,10 @@ export default function AppRouter({
       );
 
     case 'initiative':
+      // Daggerheart has no initiative: the spotlight moves between players and GM.
+      if ((campaign?.gameSystem || 'daggerheart') === 'daggerheart') {
+        return <SpotlightTracker campaign={campaign} characters={characters} isDM={isDM} />;
+      }
       return (
         <InitiativeTracker
           campaign={campaign}

@@ -30,7 +30,8 @@ export const VIEWS = {
 
   sessions:        { label: 'Sessions',            icon: ScrollText,      title: 'Session Logs', keywords: ['games', 'play', 'live notes'] },
   encounters:      { label: 'Encounters',          icon: Swords,          dm: true, title: 'Encounter Builder', keywords: ['combat', 'battle', 'fight'] },
-  initiative:      { label: 'Initiative',          icon: Zap,             dm: true, title: 'Initiative Tracker', keywords: ['turns', 'combat'] },
+  // Daggerheart has no initiative: there this is the Spotlight (see dhLabel).
+  initiative:      { label: 'Initiative',          icon: Zap,             dm: true, title: 'Initiative Tracker', keywords: ['turns', 'combat', 'spotlight'], dhLabel: 'Spotlight' },
   'gm-screen':     { label: 'GM Screen',           icon: LayoutDashboard, dm: true, keywords: ['fear', 'countdowns', 'party'] },
   playerDisplay:   { label: 'Player Display',      icon: Monitor,         dm: true, keywords: ['tv', 'screen', 'handout'] },
   battleMapStudio: { label: 'Battle Map Studio',   icon: Grid,            dm: true, keywords: ['map', 'tokens', 'grid'] },
@@ -100,7 +101,7 @@ export function navGroupsFor({ isDM = false, isDaggerheart = false, isSuperAdmin
       featured: !!g.featured,
       items: g.views
         .filter(id => VIEWS[id] && visible(VIEWS[id], who))
-        .map(id => ({ id, label: VIEWS[id].label, icon: VIEWS[id].icon, action: VIEWS[id].action || 'view', keywords: VIEWS[id].keywords || [] })),
+        .map(id => ({ id, label: (isDaggerheart && VIEWS[id].dhLabel) || VIEWS[id].label, icon: VIEWS[id].icon, action: VIEWS[id].action || 'view', keywords: VIEWS[id].keywords || [] })),
     }))
     .filter(g => g.items.length > 0);
 }
@@ -111,8 +112,8 @@ export function navItemsFor(who) {
 }
 
 /** The top bar's heading for a view. */
-export function viewTitle(viewId) {
+export function viewTitle(viewId, { isDaggerheart = false } = {}) {
   const view = VIEWS[viewId];
-  if (view) return view.title || view.label;
+  if (view) return (isDaggerheart && view.dhLabel) || view.title || view.label;
   return String(viewId || '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
