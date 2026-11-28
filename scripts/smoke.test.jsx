@@ -12,6 +12,7 @@ import { DAGGERHEART_ENVIRONMENTS } from '../src/data/daggerheartEnvironments.js
 import { getTierForLevel, getBaseProficiency, getEffectiveProficiency, getProficiencyBonus, ADVANCEMENT_OPTIONS } from '../src/data/systems/daggerheart.js';
 import { applyLevelUp, maxCardLevelFor, isTierBoundaryLevel } from '../src/utils/daggerheartLevelUp.js';
 import { sortByInitiative, keepTurn } from '../src/utils/initiativeOrder.js';
+import { newScene, giveSpotlight, undoSpotlight, waitingOrder, GM as SPOTLIGHT_GM } from '../src/utils/spotlight.js';
 import { calculateBPBudget, calculateUsedBP, getSlotBPCost, calculateBPAdjustments, partyTier, countLowerTier } from '../src/components/Encounters/BPCalculator.jsx';
 import { participantFor, adversaryMarkStress } from '../src/utils/encounterParticipants.js';
 import { fallbackAdversaryStats, sanitizeDaggerheartText, buildAdversaryPrompt } from '../src/services/adversaryGenerator.js';
@@ -4199,6 +4200,23 @@ section('Initiative order');
   const last = keepTurn(order, 2, [A, B]);
   assert(last.turn === 0 && last.wrapped, 'removing the last in the order passes the turn to the top, a new round');
   assert(sortByInitiative([{ id: 'x', initiative: 10 }, { id: 'y', initiative: 10 }]).map(p => p.id).join() === 'x,y', 'ties keep their order');
+}
+
+section('Spotlight');
+{
+  let s = newScene('The bridge');
+  assert(waitingOrder(s, ['a', 'b', 'c']).join() === 'a,b,c', 'at the start of a scene nobody has had the spotlight');
+  s = giveSpotlight(s, 'a', 'pass', 1);
+  s = giveSpotlight(s, SPOTLIGHT_GM, 'fear', 2);
+  s = giveSpotlight(s, 'c', 'gm', 3);
+  assert(s.current === 'c' && s.counts.a === 1 && s.counts[SPOTLIGHT_GM] === 1 && s.passes === 3 && s.log[0].prev === SPOTLIGHT_GM && s.log[1].reason === 'fear',
+    'the spotlight moves, counts who had it, and logs why');
+  assert(waitingOrder(s, ['a', 'b', 'c']).join() === 'b,a,c', 'whoever has not had it yet comes first, then whoever has waited longest');
+  const back = undoSpotlight(s);
+  assert(back.current === SPOTLIGHT_GM && !back.counts.c && back.passes === 2 && back.log.length === 2 && back.lastAt.c === undefined, 'undo takes back a mis-tap');
+  const twice = undoSpotlight(giveSpotlight(giveSpotlight(newScene(), 'a', 'pass', 1), 'a', 'pass', 2));
+  assert(twice.counts.a === 1 && twice.lastAt.a === 1, 'undo restores when they last had it');
+  assert(giveSpotlight(newScene(), 'a', 'nonsense', 1).log[0].reason === 'pass', 'an unknown reason is logged as a plain pass');
 }
 
 section('Encounters pass');

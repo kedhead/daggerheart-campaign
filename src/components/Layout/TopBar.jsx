@@ -90,7 +90,7 @@ export default function TopBar({ currentView, presenceList, currentCampaignId, c
     }, [panelOpen]);
 
     // Shared with the sidebar, so every page gets a real title.
-    const getBreadcrumbs = () => viewTitle(currentView);
+    const getBreadcrumbs = () => viewTitle(currentView, { isDaggerheart: (campaign?.gameSystem || 'daggerheart') === 'daggerheart' });
 
     return (
         <header
